@@ -1,0 +1,2544 @@
+{
+  "groups": [
+    {
+      "id": "securities-trading-practice-第九章-similar-001",
+      "bankId": "securities-trading-practice",
+      "bankTitle": "證券交易相關實務",
+      "chapterId": "第九章",
+      "chapterTitle": "第九章",
+      "score": 0.0598,
+      "questionIds": [
+        "securities-trading-practice-ch09-pdf-0079",
+        "securities-trading-practice-ch09-pdf-0102",
+        "securities-trading-practice-ch09-pdf-0103",
+        "securities-trading-practice-ch09-pdf-0115",
+        "securities-trading-practice-ch09-pdf-0117"
+      ]
+    },
+    {
+      "id": "financial-analysis-第五章-similar-001",
+      "bankId": "financial-analysis",
+      "bankTitle": "財務分析",
+      "chapterId": "第五章",
+      "chapterTitle": "第五章",
+      "score": 0.0683,
+      "questionIds": [
+        "financial-analysis-ch05-pdf-0011",
+        "financial-analysis-ch05-pdf-0012",
+        "financial-analysis-ch05-pdf-0034",
+        "financial-analysis-ch05-pdf-0061"
+      ]
+    },
+    {
+      "id": "investment-第二章-similar-001",
+      "bankId": "investment",
+      "bankTitle": "投資學",
+      "chapterId": "第二章",
+      "chapterTitle": "第二章",
+      "score": 0.0764,
+      "questionIds": [
+        "investment-ch02-pdf-0091",
+        "investment-ch02-pdf-0111",
+        "investment-ch02-pdf-0131",
+        "investment-ch02-pdf-0132"
+      ]
+    },
+    {
+      "id": "financial-analysis-第六章-similar-001",
+      "bankId": "financial-analysis",
+      "bankTitle": "財務分析",
+      "chapterId": "第六章",
+      "chapterTitle": "第六章",
+      "score": 0.0775,
+      "questionIds": [
+        "financial-analysis-ch06-pdf-0022",
+        "financial-analysis-ch06-pdf-0023",
+        "financial-analysis-ch06-pdf-0042",
+        "financial-analysis-ch06-pdf-0043"
+      ]
+    },
+    {
+      "id": "investment-第四章-similar-001",
+      "bankId": "investment",
+      "bankTitle": "投資學",
+      "chapterId": "第四章",
+      "chapterTitle": "第四章",
+      "score": 0.0829,
+      "questionIds": [
+        "investment-ch04-pdf-0030",
+        "investment-ch04-pdf-0100",
+        "investment-ch04-pdf-0103",
+        "investment-ch04-pdf-0149"
+      ]
+    },
+    {
+      "id": "securities-trading-practice-第十章-similar-001",
+      "bankId": "securities-trading-practice",
+      "bankTitle": "證券交易相關實務",
+      "chapterId": "第十章",
+      "chapterTitle": "第十章",
+      "score": 0.0849,
+      "questionIds": [
+        "securities-trading-practice-ch10-pdf-0046",
+        "securities-trading-practice-ch10-pdf-0047",
+        "securities-trading-practice-ch10-pdf-0063",
+        "securities-trading-practice-ch10-pdf-0071"
+      ]
+    },
+    {
+      "id": "securities-trading-practice-第二章-similar-001",
+      "bankId": "securities-trading-practice",
+      "bankTitle": "證券交易相關實務",
+      "chapterId": "第二章",
+      "chapterTitle": "第二章",
+      "score": 0.0853,
+      "questionIds": [
+        "securities-trading-practice-ch02-pdf-0040",
+        "securities-trading-practice-ch02-pdf-0044"
+      ]
+    },
+    {
+      "id": "financial-analysis-第十章-similar-001",
+      "bankId": "financial-analysis",
+      "bankTitle": "財務分析",
+      "chapterId": "第十章",
+      "chapterTitle": "第十章",
+      "score": 0.088,
+      "questionIds": [
+        "financial-analysis-ch10-pdf-0040",
+        "financial-analysis-ch10-pdf-0088",
+        "financial-analysis-ch10-pdf-0100",
+        "financial-analysis-ch10-pdf-0114"
+      ]
+    },
+    {
+      "id": "investment-第三章-similar-001",
+      "bankId": "investment",
+      "bankTitle": "投資學",
+      "chapterId": "第三章",
+      "chapterTitle": "第三章",
+      "score": 0.088,
+      "questionIds": [
+        "investment-ch03-pdf-0021",
+        "investment-ch03-pdf-0057"
+      ]
+    },
+    {
+      "id": "financial-analysis-第八章-similar-001",
+      "bankId": "financial-analysis",
+      "bankTitle": "財務分析",
+      "chapterId": "第八章",
+      "chapterTitle": "第八章",
+      "score": 0.0887,
+      "questionIds": [
+        "financial-analysis-ch08-pdf-0018",
+        "financial-analysis-ch08-pdf-0029",
+        "financial-analysis-ch08-pdf-0038"
+      ]
+    },
+    {
+      "id": "investment-第五章-similar-001",
+      "bankId": "investment",
+      "bankTitle": "投資學",
+      "chapterId": "第五章",
+      "chapterTitle": "第五章",
+      "score": 0.0918,
+      "questionIds": [
+        "investment-ch05-pdf-0008",
+        "investment-ch05-pdf-0020",
+        "investment-ch05-pdf-0033",
+        "investment-ch05-pdf-0076"
+      ]
+    },
+    {
+      "id": "financial-analysis-第五章-similar-002",
+      "bankId": "financial-analysis",
+      "bankTitle": "財務分析",
+      "chapterId": "第五章",
+      "chapterTitle": "第五章",
+      "score": 0.0934,
+      "questionIds": [
+        "financial-analysis-ch05-pdf-0011",
+        "financial-analysis-ch05-pdf-0012",
+        "financial-analysis-ch05-pdf-0032",
+        "financial-analysis-ch05-pdf-0061"
+      ]
+    },
+    {
+      "id": "financial-analysis-第十章-similar-002",
+      "bankId": "financial-analysis",
+      "bankTitle": "財務分析",
+      "chapterId": "第十章",
+      "chapterTitle": "第十章",
+      "score": 0.0934,
+      "questionIds": [
+        "financial-analysis-ch10-pdf-0142",
+        "financial-analysis-ch10-pdf-0143",
+        "financial-analysis-ch10-pdf-0144",
+        "financial-analysis-ch10-pdf-0164"
+      ]
+    },
+    {
+      "id": "investment-第四章-similar-002",
+      "bankId": "investment",
+      "bankTitle": "投資學",
+      "chapterId": "第四章",
+      "chapterTitle": "第四章",
+      "score": 0.0938,
+      "questionIds": [
+        "investment-ch04-pdf-0030",
+        "investment-ch04-pdf-0100",
+        "investment-ch04-pdf-0103",
+        "investment-ch04-pdf-0116"
+      ]
+    },
+    {
+      "id": "investment-第四章-similar-003",
+      "bankId": "investment",
+      "bankTitle": "投資學",
+      "chapterId": "第四章",
+      "chapterTitle": "第四章",
+      "score": 0.0941,
+      "questionIds": [
+        "investment-ch04-pdf-0030",
+        "investment-ch04-pdf-0103",
+        "investment-ch04-pdf-0116",
+        "investment-ch04-pdf-0149"
+      ]
+    },
+    {
+      "id": "investment-第二章-similar-002",
+      "bankId": "investment",
+      "bankTitle": "投資學",
+      "chapterId": "第二章",
+      "chapterTitle": "第二章",
+      "score": 0.0957,
+      "questionIds": [
+        "investment-ch02-pdf-0111",
+        "investment-ch02-pdf-0131",
+        "investment-ch02-pdf-0132",
+        "investment-ch02-pdf-0171"
+      ]
+    },
+    {
+      "id": "financial-analysis-第五章-similar-003",
+      "bankId": "financial-analysis",
+      "bankTitle": "財務分析",
+      "chapterId": "第五章",
+      "chapterTitle": "第五章",
+      "score": 0.0961,
+      "questionIds": [
+        "financial-analysis-ch05-pdf-0011",
+        "financial-analysis-ch05-pdf-0012",
+        "financial-analysis-ch05-pdf-0018",
+        "financial-analysis-ch05-pdf-0028"
+      ]
+    },
+    {
+      "id": "financial-analysis-第十章-similar-003",
+      "bankId": "financial-analysis",
+      "bankTitle": "財務分析",
+      "chapterId": "第十章",
+      "chapterTitle": "第十章",
+      "score": 0.0961,
+      "questionIds": [
+        "financial-analysis-ch10-pdf-0088",
+        "financial-analysis-ch10-pdf-0100",
+        "financial-analysis-ch10-pdf-0114",
+        "financial-analysis-ch10-pdf-0148"
+      ]
+    },
+    {
+      "id": "investment-第四章-similar-004",
+      "bankId": "investment",
+      "bankTitle": "投資學",
+      "chapterId": "第四章",
+      "chapterTitle": "第四章",
+      "score": 0.0968,
+      "questionIds": [
+        "investment-ch04-pdf-0028",
+        "investment-ch04-pdf-0030",
+        "investment-ch04-pdf-0100",
+        "investment-ch04-pdf-0103"
+      ]
+    },
+    {
+      "id": "financial-analysis-第一章-similar-001",
+      "bankId": "financial-analysis",
+      "bankTitle": "財務分析",
+      "chapterId": "第一章",
+      "chapterTitle": "第一章",
+      "score": 0.0968,
+      "questionIds": [
+        "financial-analysis-ch01-pdf-0024",
+        "financial-analysis-ch01-pdf-0025",
+        "financial-analysis-ch01-pdf-0049",
+        "financial-analysis-ch01-pdf-0070"
+      ]
+    },
+    {
+      "id": "securities-trading-regulations-第四章-similar-001",
+      "bankId": "securities-trading-regulations",
+      "bankTitle": "證券交易相關法規",
+      "chapterId": "第四章",
+      "chapterTitle": "第四章",
+      "score": 0.0968,
+      "questionIds": [
+        "securities-trading-regulations-ch04-pdf-0012",
+        "securities-trading-regulations-ch04-pdf-0044",
+        "securities-trading-regulations-ch04-pdf-0066",
+        "securities-trading-regulations-ch04-pdf-0071"
+      ]
+    },
+    {
+      "id": "investment-第二章-similar-003",
+      "bankId": "investment",
+      "bankTitle": "投資學",
+      "chapterId": "第二章",
+      "chapterTitle": "第二章",
+      "score": 0.0972,
+      "questionIds": [
+        "investment-ch02-pdf-0031",
+        "investment-ch02-pdf-0068",
+        "investment-ch02-pdf-0131",
+        "investment-ch02-pdf-0132"
+      ]
+    },
+    {
+      "id": "securities-trading-regulations-第五章-similar-001",
+      "bankId": "securities-trading-regulations",
+      "bankTitle": "證券交易相關法規",
+      "chapterId": "第五章",
+      "chapterTitle": "第五章",
+      "score": 0.0976,
+      "questionIds": [
+        "securities-trading-regulations-ch05-pdf-0012",
+        "securities-trading-regulations-ch05-pdf-0070",
+        "securities-trading-regulations-ch05-pdf-0073",
+        "securities-trading-regulations-ch05-pdf-0099"
+      ]
+    },
+    {
+      "id": "investment-第六章-similar-001",
+      "bankId": "investment",
+      "bankTitle": "投資學",
+      "chapterId": "第六章",
+      "chapterTitle": "第六章",
+      "score": 0.098,
+      "questionIds": [
+        "investment-ch06-pdf-0032",
+        "investment-ch06-pdf-0051",
+        "investment-ch06-pdf-0079",
+        "investment-ch06-pdf-0088"
+      ]
+    },
+    {
+      "id": "financial-analysis-第十章-similar-004",
+      "bankId": "financial-analysis",
+      "bankTitle": "財務分析",
+      "chapterId": "第十章",
+      "chapterTitle": "第十章",
+      "score": 0.098,
+      "questionIds": [
+        "financial-analysis-ch10-pdf-0142",
+        "financial-analysis-ch10-pdf-0151",
+        "financial-analysis-ch10-pdf-0155",
+        "financial-analysis-ch10-pdf-0164"
+      ]
+    },
+    {
+      "id": "securities-trading-regulations-第二章-similar-001",
+      "bankId": "securities-trading-regulations",
+      "bankTitle": "證券交易相關法規",
+      "chapterId": "第二章",
+      "chapterTitle": "第二章",
+      "score": 0.0984,
+      "questionIds": [
+        "securities-trading-regulations-ch02-pdf-0050",
+        "securities-trading-regulations-ch02-pdf-0078",
+        "securities-trading-regulations-ch02-pdf-0119",
+        "securities-trading-regulations-ch02-pdf-0133"
+      ]
+    },
+    {
+      "id": "securities-trading-regulations-第三章-similar-001",
+      "bankId": "securities-trading-regulations",
+      "bankTitle": "證券交易相關法規",
+      "chapterId": "第三章",
+      "chapterTitle": "第三章",
+      "score": 0.0988,
+      "questionIds": [
+        "securities-trading-regulations-ch03-pdf-0026",
+        "securities-trading-regulations-ch03-pdf-0039",
+        "securities-trading-regulations-ch03-pdf-0040",
+        "securities-trading-regulations-ch03-pdf-0054"
+      ]
+    },
+    {
+      "id": "investment-第四章-similar-005",
+      "bankId": "investment",
+      "bankTitle": "投資學",
+      "chapterId": "第四章",
+      "chapterTitle": "第四章",
+      "score": 0.0992,
+      "questionIds": [
+        "investment-ch04-pdf-0030",
+        "investment-ch04-pdf-0103",
+        "investment-ch04-pdf-0118",
+        "investment-ch04-pdf-0149"
+      ]
+    },
+    {
+      "id": "financial-analysis-第四章-similar-001",
+      "bankId": "financial-analysis",
+      "bankTitle": "財務分析",
+      "chapterId": "第四章",
+      "chapterTitle": "第四章",
+      "score": 0.0992,
+      "questionIds": [
+        "financial-analysis-ch04-pdf-0040",
+        "financial-analysis-ch04-pdf-0061",
+        "financial-analysis-ch04-pdf-0062",
+        "financial-analysis-ch04-pdf-0102"
+      ]
+    },
+    {
+      "id": "financial-analysis-第十章-similar-005",
+      "bankId": "financial-analysis",
+      "bankTitle": "財務分析",
+      "chapterId": "第十章",
+      "chapterTitle": "第十章",
+      "score": 0.0999,
+      "questionIds": [
+        "financial-analysis-ch10-pdf-0123",
+        "financial-analysis-ch10-pdf-0136",
+        "financial-analysis-ch10-pdf-0142",
+        "financial-analysis-ch10-pdf-0164"
+      ]
+    },
+    {
+      "id": "investment-第二章-similar-004",
+      "bankId": "investment",
+      "bankTitle": "投資學",
+      "chapterId": "第二章",
+      "chapterTitle": "第二章",
+      "score": 0.1003,
+      "questionIds": [
+        "investment-ch02-pdf-0003",
+        "investment-ch02-pdf-0041",
+        "investment-ch02-pdf-0043",
+        "investment-ch02-pdf-0071"
+      ]
+    },
+    {
+      "id": "financial-analysis-第十章-similar-006",
+      "bankId": "financial-analysis",
+      "bankTitle": "財務分析",
+      "chapterId": "第十章",
+      "chapterTitle": "第十章",
+      "score": 0.1003,
+      "questionIds": [
+        "financial-analysis-ch10-pdf-0104",
+        "financial-analysis-ch10-pdf-0136",
+        "financial-analysis-ch10-pdf-0142",
+        "financial-analysis-ch10-pdf-0164"
+      ]
+    },
+    {
+      "id": "securities-trading-practice-第三章-similar-001",
+      "bankId": "securities-trading-practice",
+      "bankTitle": "證券交易相關實務",
+      "chapterId": "第三章",
+      "chapterTitle": "第三章",
+      "score": 0.1007,
+      "questionIds": [
+        "securities-trading-practice-ch03-pdf-0036",
+        "securities-trading-practice-ch03-pdf-0037",
+        "securities-trading-practice-ch03-pdf-0039",
+        "securities-trading-practice-ch03-pdf-0041"
+      ]
+    },
+    {
+      "id": "securities-trading-practice-第十章-similar-002",
+      "bankId": "securities-trading-practice",
+      "bankTitle": "證券交易相關實務",
+      "chapterId": "第十章",
+      "chapterTitle": "第十章",
+      "score": 0.1007,
+      "questionIds": [
+        "securities-trading-practice-ch10-pdf-0070",
+        "securities-trading-practice-ch10-pdf-0087",
+        "securities-trading-practice-ch10-pdf-0107",
+        "securities-trading-practice-ch10-pdf-0108"
+      ]
+    },
+    {
+      "id": "financial-analysis-第十章-similar-007",
+      "bankId": "financial-analysis",
+      "bankTitle": "財務分析",
+      "chapterId": "第十章",
+      "chapterTitle": "第十章",
+      "score": 0.1015,
+      "questionIds": [
+        "financial-analysis-ch10-pdf-0040",
+        "financial-analysis-ch10-pdf-0075",
+        "financial-analysis-ch10-pdf-0088",
+        "financial-analysis-ch10-pdf-0100",
+        "financial-analysis-ch10-pdf-0114"
+      ]
+    },
+    {
+      "id": "financial-analysis-第十章-similar-008",
+      "bankId": "financial-analysis",
+      "bankTitle": "財務分析",
+      "chapterId": "第十章",
+      "chapterTitle": "第十章",
+      "score": 0.1019,
+      "questionIds": [
+        "financial-analysis-ch10-pdf-0118",
+        "financial-analysis-ch10-pdf-0142",
+        "financial-analysis-ch10-pdf-0143",
+        "financial-analysis-ch10-pdf-0144",
+        "financial-analysis-ch10-pdf-0164"
+      ]
+    },
+    {
+      "id": "securities-trading-regulations-第一章-similar-001",
+      "bankId": "securities-trading-regulations",
+      "bankTitle": "證券交易相關法規",
+      "chapterId": "第一章",
+      "chapterTitle": "第一章",
+      "score": 0.1019,
+      "questionIds": [
+        "securities-trading-regulations-ch01-pdf-0034",
+        "securities-trading-regulations-ch01-pdf-0055",
+        "securities-trading-regulations-ch01-pdf-0133",
+        "securities-trading-regulations-ch01-pdf-0150"
+      ]
+    },
+    {
+      "id": "securities-trading-regulations-第二章-similar-002",
+      "bankId": "securities-trading-regulations",
+      "bankTitle": "證券交易相關法規",
+      "chapterId": "第二章",
+      "chapterTitle": "第二章",
+      "score": 0.1019,
+      "questionIds": [
+        "securities-trading-regulations-ch02-pdf-0050",
+        "securities-trading-regulations-ch02-pdf-0078",
+        "securities-trading-regulations-ch02-pdf-0079",
+        "securities-trading-regulations-ch02-pdf-0119"
+      ]
+    },
+    {
+      "id": "investment-第七章-similar-001",
+      "bankId": "investment",
+      "bankTitle": "投資學",
+      "chapterId": "第七章",
+      "chapterTitle": "第七章",
+      "score": 0.1022,
+      "questionIds": [
+        "investment-ch07-pdf-0015",
+        "investment-ch07-pdf-0064",
+        "investment-ch07-pdf-0112",
+        "investment-ch07-pdf-0120"
+      ]
+    },
+    {
+      "id": "investment-第九章-similar-001",
+      "bankId": "investment",
+      "bankTitle": "投資學",
+      "chapterId": "第九章",
+      "chapterTitle": "第九章",
+      "score": 0.1022,
+      "questionIds": [
+        "investment-ch09-pdf-0023",
+        "investment-ch09-pdf-0035",
+        "investment-ch09-pdf-0040",
+        "investment-ch09-pdf-0066"
+      ]
+    },
+    {
+      "id": "securities-trading-practice-第九章-similar-002",
+      "bankId": "securities-trading-practice",
+      "bankTitle": "證券交易相關實務",
+      "chapterId": "第九章",
+      "chapterTitle": "第九章",
+      "score": 0.1022,
+      "questionIds": [
+        "securities-trading-practice-ch09-pdf-0044",
+        "securities-trading-practice-ch09-pdf-0045",
+        "securities-trading-practice-ch09-pdf-0054",
+        "securities-trading-practice-ch09-pdf-0063"
+      ]
+    },
+    {
+      "id": "securities-trading-regulations-第三章-similar-002",
+      "bankId": "securities-trading-regulations",
+      "bankTitle": "證券交易相關法規",
+      "chapterId": "第三章",
+      "chapterTitle": "第三章",
+      "score": 0.1034,
+      "questionIds": [
+        "securities-trading-regulations-ch03-pdf-0017",
+        "securities-trading-regulations-ch03-pdf-0025",
+        "securities-trading-regulations-ch03-pdf-0065",
+        "securities-trading-regulations-ch03-pdf-0069",
+        "securities-trading-regulations-ch03-pdf-0075"
+      ]
+    },
+    {
+      "id": "investment-第二章-similar-005",
+      "bankId": "investment",
+      "bankTitle": "投資學",
+      "chapterId": "第二章",
+      "chapterTitle": "第二章",
+      "score": 0.1038,
+      "questionIds": [
+        "investment-ch02-pdf-0112",
+        "investment-ch02-pdf-0136",
+        "investment-ch02-pdf-0161",
+        "investment-ch02-pdf-0188"
+      ]
+    },
+    {
+      "id": "securities-trading-practice-第三章-similar-002",
+      "bankId": "securities-trading-practice",
+      "bankTitle": "證券交易相關實務",
+      "chapterId": "第三章",
+      "chapterTitle": "第三章",
+      "score": 0.1042,
+      "questionIds": [
+        "securities-trading-practice-ch03-pdf-0004",
+        "securities-trading-practice-ch03-pdf-0017",
+        "securities-trading-practice-ch03-pdf-0018",
+        "securities-trading-practice-ch03-pdf-0030",
+        "securities-trading-practice-ch03-pdf-0047"
+      ]
+    },
+    {
+      "id": "securities-trading-practice-第十章-similar-003",
+      "bankId": "securities-trading-practice",
+      "bankTitle": "證券交易相關實務",
+      "chapterId": "第十章",
+      "chapterTitle": "第十章",
+      "score": 0.1042,
+      "questionIds": [
+        "securities-trading-practice-ch10-pdf-0046",
+        "securities-trading-practice-ch10-pdf-0047",
+        "securities-trading-practice-ch10-pdf-0063",
+        "securities-trading-practice-ch10-pdf-0071",
+        "securities-trading-practice-ch10-pdf-0098"
+      ]
+    },
+    {
+      "id": "investment-第四章-similar-006",
+      "bankId": "investment",
+      "bankTitle": "投資學",
+      "chapterId": "第四章",
+      "chapterTitle": "第四章",
+      "score": 0.1042,
+      "questionIds": [
+        "investment-ch04-pdf-0036",
+        "investment-ch04-pdf-0074",
+        "investment-ch04-pdf-0132",
+        "investment-ch04-pdf-0133"
+      ]
+    },
+    {
+      "id": "securities-trading-practice-第一章-similar-001",
+      "bankId": "securities-trading-practice",
+      "bankTitle": "證券交易相關實務",
+      "chapterId": "第一章",
+      "chapterTitle": "第一章",
+      "score": 0.1042,
+      "questionIds": [
+        "securities-trading-practice-ch01-pdf-0037",
+        "securities-trading-practice-ch01-pdf-0038",
+        "securities-trading-practice-ch01-pdf-0039",
+        "securities-trading-practice-ch01-pdf-0042"
+      ]
+    },
+    {
+      "id": "securities-trading-practice-第十章-similar-004",
+      "bankId": "securities-trading-practice",
+      "bankTitle": "證券交易相關實務",
+      "chapterId": "第十章",
+      "chapterTitle": "第十章",
+      "score": 0.1049,
+      "questionIds": [
+        "securities-trading-practice-ch10-pdf-0027",
+        "securities-trading-practice-ch10-pdf-0047",
+        "securities-trading-practice-ch10-pdf-0063",
+        "securities-trading-practice-ch10-pdf-0071"
+      ]
+    },
+    {
+      "id": "securities-trading-practice-第十章-similar-005",
+      "bankId": "securities-trading-practice",
+      "bankTitle": "證券交易相關實務",
+      "chapterId": "第十章",
+      "chapterTitle": "第十章",
+      "score": 0.1053,
+      "questionIds": [
+        "securities-trading-practice-ch10-pdf-0031",
+        "securities-trading-practice-ch10-pdf-0046",
+        "securities-trading-practice-ch10-pdf-0047",
+        "securities-trading-practice-ch10-pdf-0063",
+        "securities-trading-practice-ch10-pdf-0071"
+      ]
+    },
+    {
+      "id": "securities-trading-regulations-第四章-similar-002",
+      "bankId": "securities-trading-regulations",
+      "bankTitle": "證券交易相關法規",
+      "chapterId": "第四章",
+      "chapterTitle": "第四章",
+      "score": 0.1053,
+      "questionIds": [
+        "securities-trading-regulations-ch04-pdf-0084",
+        "securities-trading-regulations-ch04-pdf-0110",
+        "securities-trading-regulations-ch04-pdf-0112",
+        "securities-trading-regulations-ch04-pdf-0113"
+      ]
+    },
+    {
+      "id": "securities-trading-practice-第三章-similar-003",
+      "bankId": "securities-trading-practice",
+      "bankTitle": "證券交易相關實務",
+      "chapterId": "第三章",
+      "chapterTitle": "第三章",
+      "score": 0.1057,
+      "questionIds": [
+        "securities-trading-practice-ch03-pdf-0028",
+        "securities-trading-practice-ch03-pdf-0036",
+        "securities-trading-practice-ch03-pdf-0037",
+        "securities-trading-practice-ch03-pdf-0039",
+        "securities-trading-practice-ch03-pdf-0041"
+      ]
+    },
+    {
+      "id": "securities-trading-practice-第四章-similar-001",
+      "bankId": "securities-trading-practice",
+      "bankTitle": "證券交易相關實務",
+      "chapterId": "第四章",
+      "chapterTitle": "第四章",
+      "score": 0.1057,
+      "questionIds": [
+        "securities-trading-practice-ch04-pdf-0028",
+        "securities-trading-practice-ch04-pdf-0032",
+        "securities-trading-practice-ch04-pdf-0039",
+        "securities-trading-practice-ch04-pdf-0041"
+      ]
+    },
+    {
+      "id": "securities-trading-practice-第十章-similar-006",
+      "bankId": "securities-trading-practice",
+      "bankTitle": "證券交易相關實務",
+      "chapterId": "第十章",
+      "chapterTitle": "第十章",
+      "score": 0.1057,
+      "questionIds": [
+        "securities-trading-practice-ch10-pdf-0010",
+        "securities-trading-practice-ch10-pdf-0011",
+        "securities-trading-practice-ch10-pdf-0014",
+        "securities-trading-practice-ch10-pdf-0065"
+      ]
+    },
+    {
+      "id": "financial-analysis-第六章-similar-002",
+      "bankId": "financial-analysis",
+      "bankTitle": "財務分析",
+      "chapterId": "第六章",
+      "chapterTitle": "第六章",
+      "score": 0.1061,
+      "questionIds": [
+        "financial-analysis-ch06-pdf-0011",
+        "financial-analysis-ch06-pdf-0012",
+        "financial-analysis-ch06-pdf-0042",
+        "financial-analysis-ch06-pdf-0043"
+      ]
+    },
+    {
+      "id": "securities-trading-practice-第一章-similar-002",
+      "bankId": "securities-trading-practice",
+      "bankTitle": "證券交易相關實務",
+      "chapterId": "第一章",
+      "chapterTitle": "第一章",
+      "score": 0.1061,
+      "questionIds": [
+        "securities-trading-practice-ch01-pdf-0006",
+        "securities-trading-practice-ch01-pdf-0008",
+        "securities-trading-practice-ch01-pdf-0009",
+        "securities-trading-practice-ch01-pdf-0023"
+      ]
+    },
+    {
+      "id": "investment-第六章-similar-002",
+      "bankId": "investment",
+      "bankTitle": "投資學",
+      "chapterId": "第六章",
+      "chapterTitle": "第六章",
+      "score": 0.1065,
+      "questionIds": [
+        "investment-ch06-pdf-0032",
+        "investment-ch06-pdf-0051",
+        "investment-ch06-pdf-0068",
+        "investment-ch06-pdf-0069"
+      ]
+    },
+    {
+      "id": "securities-trading-regulations-第四章-similar-003",
+      "bankId": "securities-trading-regulations",
+      "bankTitle": "證券交易相關法規",
+      "chapterId": "第四章",
+      "chapterTitle": "第四章",
+      "score": 0.1065,
+      "questionIds": [
+        "securities-trading-regulations-ch04-pdf-0013",
+        "securities-trading-regulations-ch04-pdf-0046",
+        "securities-trading-regulations-ch04-pdf-0062",
+        "securities-trading-regulations-ch04-pdf-0088"
+      ]
+    },
+    {
+      "id": "securities-trading-practice-第九章-similar-003",
+      "bankId": "securities-trading-practice",
+      "bankTitle": "證券交易相關實務",
+      "chapterId": "第九章",
+      "chapterTitle": "第九章",
+      "score": 0.1069,
+      "questionIds": [
+        "securities-trading-practice-ch09-pdf-0099",
+        "securities-trading-practice-ch09-pdf-0101",
+        "securities-trading-practice-ch09-pdf-0102",
+        "securities-trading-practice-ch09-pdf-0103"
+      ]
+    },
+    {
+      "id": "securities-trading-practice-第十三章-similar-001",
+      "bankId": "securities-trading-practice",
+      "bankTitle": "證券交易相關實務",
+      "chapterId": "第十三章",
+      "chapterTitle": "第十三章",
+      "score": 0.1069,
+      "questionIds": [
+        "securities-trading-practice-ch13-pdf-0006",
+        "securities-trading-practice-ch13-pdf-0009",
+        "securities-trading-practice-ch13-pdf-0010",
+        "securities-trading-practice-ch13-pdf-0011"
+      ]
+    },
+    {
+      "id": "investment-第四章-similar-007",
+      "bankId": "investment",
+      "bankTitle": "投資學",
+      "chapterId": "第四章",
+      "chapterTitle": "第四章",
+      "score": 0.1073,
+      "questionIds": [
+        "investment-ch04-pdf-0002",
+        "investment-ch04-pdf-0028",
+        "investment-ch04-pdf-0030",
+        "investment-ch04-pdf-0103"
+      ]
+    },
+    {
+      "id": "financial-analysis-第六章-similar-003",
+      "bankId": "financial-analysis",
+      "bankTitle": "財務分析",
+      "chapterId": "第六章",
+      "chapterTitle": "第六章",
+      "score": 0.1073,
+      "questionIds": [
+        "financial-analysis-ch06-pdf-0021",
+        "financial-analysis-ch06-pdf-0023",
+        "financial-analysis-ch06-pdf-0042",
+        "financial-analysis-ch06-pdf-0043"
+      ]
+    },
+    {
+      "id": "securities-trading-practice-第十一章-similar-001",
+      "bankId": "securities-trading-practice",
+      "bankTitle": "證券交易相關實務",
+      "chapterId": "第十一章",
+      "chapterTitle": "第十一章",
+      "score": 0.1073,
+      "questionIds": [
+        "securities-trading-practice-ch11-pdf-0010",
+        "securities-trading-practice-ch11-pdf-0039",
+        "securities-trading-practice-ch11-pdf-0042",
+        "securities-trading-practice-ch11-pdf-0051"
+      ]
+    },
+    {
+      "id": "investment-第四章-similar-008",
+      "bankId": "investment",
+      "bankTitle": "投資學",
+      "chapterId": "第四章",
+      "chapterTitle": "第四章",
+      "score": 0.108,
+      "questionIds": [
+        "investment-ch04-pdf-0030",
+        "investment-ch04-pdf-0100",
+        "investment-ch04-pdf-0103",
+        "investment-ch04-pdf-0118"
+      ]
+    },
+    {
+      "id": "investment-第六章-similar-003",
+      "bankId": "investment",
+      "bankTitle": "投資學",
+      "chapterId": "第六章",
+      "chapterTitle": "第六章",
+      "score": 0.1084,
+      "questionIds": [
+        "investment-ch06-pdf-0002",
+        "investment-ch06-pdf-0032",
+        "investment-ch06-pdf-0050",
+        "investment-ch06-pdf-0051"
+      ]
+    },
+    {
+      "id": "securities-trading-practice-第十章-similar-007",
+      "bankId": "securities-trading-practice",
+      "bankTitle": "證券交易相關實務",
+      "chapterId": "第十章",
+      "chapterTitle": "第十章",
+      "score": 0.1084,
+      "questionIds": [
+        "securities-trading-practice-ch10-pdf-0063",
+        "securities-trading-practice-ch10-pdf-0071",
+        "securities-trading-practice-ch10-pdf-0086",
+        "securities-trading-practice-ch10-pdf-0096"
+      ]
+    },
+    {
+      "id": "investment-第五章-similar-002",
+      "bankId": "investment",
+      "bankTitle": "投資學",
+      "chapterId": "第五章",
+      "chapterTitle": "第五章",
+      "score": 0.1088,
+      "questionIds": [
+        "investment-ch05-pdf-0008",
+        "investment-ch05-pdf-0018",
+        "investment-ch05-pdf-0033",
+        "investment-ch05-pdf-0062"
+      ]
+    },
+    {
+      "id": "securities-trading-regulations-第四章-similar-004",
+      "bankId": "securities-trading-regulations",
+      "bankTitle": "證券交易相關法規",
+      "chapterId": "第四章",
+      "chapterTitle": "第四章",
+      "score": 0.1088,
+      "questionIds": [
+        "securities-trading-regulations-ch04-pdf-0013",
+        "securities-trading-regulations-ch04-pdf-0033",
+        "securities-trading-regulations-ch04-pdf-0046",
+        "securities-trading-regulations-ch04-pdf-0088"
+      ]
+    },
+    {
+      "id": "securities-trading-regulations-第二章-similar-003",
+      "bankId": "securities-trading-regulations",
+      "bankTitle": "證券交易相關法規",
+      "chapterId": "第二章",
+      "chapterTitle": "第二章",
+      "score": 0.1092,
+      "questionIds": [
+        "securities-trading-regulations-ch02-pdf-0035",
+        "securities-trading-regulations-ch02-pdf-0050",
+        "securities-trading-regulations-ch02-pdf-0093",
+        "securities-trading-regulations-ch02-pdf-0119"
+      ]
+    },
+    {
+      "id": "securities-trading-regulations-第二章-similar-004",
+      "bankId": "securities-trading-regulations",
+      "bankTitle": "證券交易相關法規",
+      "chapterId": "第二章",
+      "chapterTitle": "第二章",
+      "score": 0.1092,
+      "questionIds": [
+        "securities-trading-regulations-ch02-pdf-0050",
+        "securities-trading-regulations-ch02-pdf-0117",
+        "securities-trading-regulations-ch02-pdf-0119",
+        "securities-trading-regulations-ch02-pdf-0146"
+      ]
+    },
+    {
+      "id": "securities-trading-regulations-第四章-similar-005",
+      "bankId": "securities-trading-regulations",
+      "bankTitle": "證券交易相關法規",
+      "chapterId": "第四章",
+      "chapterTitle": "第四章",
+      "score": 0.1092,
+      "questionIds": [
+        "securities-trading-regulations-ch04-pdf-0031",
+        "securities-trading-regulations-ch04-pdf-0046",
+        "securities-trading-regulations-ch04-pdf-0088",
+        "securities-trading-regulations-ch04-pdf-0103"
+      ]
+    },
+    {
+      "id": "securities-trading-practice-第九章-similar-006",
+      "bankId": "securities-trading-practice",
+      "bankTitle": "證券交易相關實務",
+      "chapterId": "第九章",
+      "chapterTitle": "第九章",
+      "score": 0.1096,
+      "questionIds": [
+        "securities-trading-practice-ch09-pdf-0044",
+        "securities-trading-practice-ch09-pdf-0045",
+        "securities-trading-practice-ch09-pdf-0054",
+        "securities-trading-practice-ch09-pdf-0063",
+        "securities-trading-practice-ch09-pdf-0087"
+      ]
+    },
+    {
+      "id": "investment-第六章-similar-004",
+      "bankId": "investment",
+      "bankTitle": "投資學",
+      "chapterId": "第六章",
+      "chapterTitle": "第六章",
+      "score": 0.1096,
+      "questionIds": [
+        "investment-ch06-pdf-0032",
+        "investment-ch06-pdf-0051",
+        "investment-ch06-pdf-0069",
+        "investment-ch06-pdf-0088"
+      ]
+    },
+    {
+      "id": "investment-第八章-similar-001",
+      "bankId": "investment",
+      "bankTitle": "投資學",
+      "chapterId": "第八章",
+      "chapterTitle": "第八章",
+      "score": 0.1096,
+      "questionIds": [
+        "investment-ch08-pdf-0054",
+        "investment-ch08-pdf-0084",
+        "investment-ch08-pdf-0109",
+        "investment-ch08-pdf-0115"
+      ]
+    },
+    {
+      "id": "securities-trading-practice-第九章-similar-004",
+      "bankId": "securities-trading-practice",
+      "bankTitle": "證券交易相關實務",
+      "chapterId": "第九章",
+      "chapterTitle": "第九章",
+      "score": 0.1096,
+      "questionIds": [
+        "securities-trading-practice-ch09-pdf-0044",
+        "securities-trading-practice-ch09-pdf-0054",
+        "securities-trading-practice-ch09-pdf-0063",
+        "securities-trading-practice-ch09-pdf-0121"
+      ]
+    },
+    {
+      "id": "securities-trading-practice-第九章-similar-005",
+      "bankId": "securities-trading-practice",
+      "bankTitle": "證券交易相關實務",
+      "chapterId": "第九章",
+      "chapterTitle": "第九章",
+      "score": 0.1096,
+      "questionIds": [
+        "securities-trading-practice-ch09-pdf-0053",
+        "securities-trading-practice-ch09-pdf-0099",
+        "securities-trading-practice-ch09-pdf-0102",
+        "securities-trading-practice-ch09-pdf-0103"
+      ]
+    },
+    {
+      "id": "securities-trading-regulations-第五章-similar-002",
+      "bankId": "securities-trading-regulations",
+      "bankTitle": "證券交易相關法規",
+      "chapterId": "第五章",
+      "chapterTitle": "第五章",
+      "score": 0.11,
+      "questionIds": [
+        "securities-trading-regulations-ch05-pdf-0013",
+        "securities-trading-regulations-ch05-pdf-0032",
+        "securities-trading-regulations-ch05-pdf-0035",
+        "securities-trading-regulations-ch05-pdf-0048",
+        "securities-trading-regulations-ch05-pdf-0101"
+      ]
+    },
+    {
+      "id": "financial-analysis-第四章-similar-002",
+      "bankId": "financial-analysis",
+      "bankTitle": "財務分析",
+      "chapterId": "第四章",
+      "chapterTitle": "第四章",
+      "score": 0.11,
+      "questionIds": [
+        "financial-analysis-ch04-pdf-0060",
+        "financial-analysis-ch04-pdf-0061",
+        "financial-analysis-ch04-pdf-0062",
+        "financial-analysis-ch04-pdf-0083"
+      ]
+    },
+    {
+      "id": "securities-trading-practice-第九章-similar-007",
+      "bankId": "securities-trading-practice",
+      "bankTitle": "證券交易相關實務",
+      "chapterId": "第九章",
+      "chapterTitle": "第九章",
+      "score": 0.11,
+      "questionIds": [
+        "securities-trading-practice-ch09-pdf-0102",
+        "securities-trading-practice-ch09-pdf-0103",
+        "securities-trading-practice-ch09-pdf-0114",
+        "securities-trading-practice-ch09-pdf-0117"
+      ]
+    },
+    {
+      "id": "investment-第二章-similar-006",
+      "bankId": "investment",
+      "bankTitle": "投資學",
+      "chapterId": "第二章",
+      "chapterTitle": "第二章",
+      "score": 0.1107,
+      "questionIds": [
+        "investment-ch02-pdf-0131",
+        "investment-ch02-pdf-0132",
+        "investment-ch02-pdf-0156",
+        "investment-ch02-pdf-0180"
+      ]
+    },
+    {
+      "id": "securities-trading-regulations-第四章-similar-006",
+      "bankId": "securities-trading-regulations",
+      "bankTitle": "證券交易相關法規",
+      "chapterId": "第四章",
+      "chapterTitle": "第四章",
+      "score": 0.1107,
+      "questionIds": [
+        "securities-trading-regulations-ch04-pdf-0025",
+        "securities-trading-regulations-ch04-pdf-0046",
+        "securities-trading-regulations-ch04-pdf-0088",
+        "securities-trading-regulations-ch04-pdf-0091"
+      ]
+    },
+    {
+      "id": "securities-trading-regulations-第四章-similar-007",
+      "bankId": "securities-trading-regulations",
+      "bankTitle": "證券交易相關法規",
+      "chapterId": "第四章",
+      "chapterTitle": "第四章",
+      "score": 0.1107,
+      "questionIds": [
+        "securities-trading-regulations-ch04-pdf-0033",
+        "securities-trading-regulations-ch04-pdf-0046",
+        "securities-trading-regulations-ch04-pdf-0053",
+        "securities-trading-regulations-ch04-pdf-0088"
+      ]
+    },
+    {
+      "id": "securities-trading-practice-第一章-similar-003",
+      "bankId": "securities-trading-practice",
+      "bankTitle": "證券交易相關實務",
+      "chapterId": "第一章",
+      "chapterTitle": "第一章",
+      "score": 0.1107,
+      "questionIds": [
+        "securities-trading-practice-ch01-pdf-0038",
+        "securities-trading-practice-ch01-pdf-0039",
+        "securities-trading-practice-ch01-pdf-0042",
+        "securities-trading-practice-ch01-pdf-0043"
+      ]
+    },
+    {
+      "id": "securities-trading-practice-第十三章-similar-002",
+      "bankId": "securities-trading-practice",
+      "bankTitle": "證券交易相關實務",
+      "chapterId": "第十三章",
+      "chapterTitle": "第十三章",
+      "score": 0.1107,
+      "questionIds": [
+        "securities-trading-practice-ch13-pdf-0001",
+        "securities-trading-practice-ch13-pdf-0004",
+        "securities-trading-practice-ch13-pdf-0014"
+      ]
+    },
+    {
+      "id": "securities-trading-regulations-第五章-similar-003",
+      "bankId": "securities-trading-regulations",
+      "bankTitle": "證券交易相關法規",
+      "chapterId": "第五章",
+      "chapterTitle": "第五章",
+      "score": 0.1107,
+      "questionIds": [
+        "securities-trading-regulations-ch05-pdf-0054",
+        "securities-trading-regulations-ch05-pdf-0108"
+      ]
+    },
+    {
+      "id": "investment-第五章-similar-003",
+      "bankId": "investment",
+      "bankTitle": "投資學",
+      "chapterId": "第五章",
+      "chapterTitle": "第五章",
+      "score": 0.1111,
+      "questionIds": [
+        "investment-ch05-pdf-0008",
+        "investment-ch05-pdf-0033",
+        "investment-ch05-pdf-0054",
+        "investment-ch05-pdf-0091"
+      ]
+    },
+    {
+      "id": "investment-第八章-similar-002",
+      "bankId": "investment",
+      "bankTitle": "投資學",
+      "chapterId": "第八章",
+      "chapterTitle": "第八章",
+      "score": 0.1111,
+      "questionIds": [
+        "investment-ch08-pdf-0021",
+        "investment-ch08-pdf-0066",
+        "investment-ch08-pdf-0072",
+        "investment-ch08-pdf-0081"
+      ]
+    },
+    {
+      "id": "securities-trading-practice-第十章-similar-008",
+      "bankId": "securities-trading-practice",
+      "bankTitle": "證券交易相關實務",
+      "chapterId": "第十章",
+      "chapterTitle": "第十章",
+      "score": 0.1111,
+      "questionIds": [
+        "securities-trading-practice-ch10-pdf-0079",
+        "securities-trading-practice-ch10-pdf-0106",
+        "securities-trading-practice-ch10-pdf-0107",
+        "securities-trading-practice-ch10-pdf-0108"
+      ]
+    },
+    {
+      "id": "financial-analysis-第五章-similar-004",
+      "bankId": "financial-analysis",
+      "bankTitle": "財務分析",
+      "chapterId": "第五章",
+      "chapterTitle": "第五章",
+      "score": 0.1115,
+      "questionIds": [
+        "financial-analysis-ch05-pdf-0011",
+        "financial-analysis-ch05-pdf-0012",
+        "financial-analysis-ch05-pdf-0013",
+        "financial-analysis-ch05-pdf-0034",
+        "financial-analysis-ch05-pdf-0061"
+      ]
+    },
+    {
+      "id": "financial-analysis-第五章-similar-005",
+      "bankId": "financial-analysis",
+      "bankTitle": "財務分析",
+      "chapterId": "第五章",
+      "chapterTitle": "第五章",
+      "score": 0.1115,
+      "questionIds": [
+        "financial-analysis-ch05-pdf-0016",
+        "financial-analysis-ch05-pdf-0027",
+        "financial-analysis-ch05-pdf-0042",
+        "financial-analysis-ch05-pdf-0051"
+      ]
+    },
+    {
+      "id": "securities-trading-regulations-第二章-similar-005",
+      "bankId": "securities-trading-regulations",
+      "bankTitle": "證券交易相關法規",
+      "chapterId": "第二章",
+      "chapterTitle": "第二章",
+      "score": 0.1115,
+      "questionIds": [
+        "securities-trading-regulations-ch02-pdf-0050",
+        "securities-trading-regulations-ch02-pdf-0079",
+        "securities-trading-regulations-ch02-pdf-0119",
+        "securities-trading-regulations-ch02-pdf-0133"
+      ]
+    },
+    {
+      "id": "securities-trading-regulations-第四章-similar-008",
+      "bankId": "securities-trading-regulations",
+      "bankTitle": "證券交易相關法規",
+      "chapterId": "第四章",
+      "chapterTitle": "第四章",
+      "score": 0.1115,
+      "questionIds": [
+        "securities-trading-regulations-ch04-pdf-0046",
+        "securities-trading-regulations-ch04-pdf-0062",
+        "securities-trading-regulations-ch04-pdf-0088",
+        "securities-trading-regulations-ch04-pdf-0091"
+      ]
+    },
+    {
+      "id": "securities-trading-practice-第九章-similar-008",
+      "bankId": "securities-trading-practice",
+      "bankTitle": "證券交易相關實務",
+      "chapterId": "第九章",
+      "chapterTitle": "第九章",
+      "score": 0.1115,
+      "questionIds": [
+        "securities-trading-practice-ch09-pdf-0026",
+        "securities-trading-practice-ch09-pdf-0054",
+        "securities-trading-practice-ch09-pdf-0063",
+        "securities-trading-practice-ch09-pdf-0087"
+      ]
+    },
+    {
+      "id": "investment-第五章-similar-004",
+      "bankId": "investment",
+      "bankTitle": "投資學",
+      "chapterId": "第五章",
+      "chapterTitle": "第五章",
+      "score": 0.1119,
+      "questionIds": [
+        "investment-ch05-pdf-0056",
+        "investment-ch05-pdf-0093",
+        "investment-ch05-pdf-0098",
+        "investment-ch05-pdf-0099"
+      ]
+    },
+    {
+      "id": "investment-第六章-similar-005",
+      "bankId": "investment",
+      "bankTitle": "投資學",
+      "chapterId": "第六章",
+      "chapterTitle": "第六章",
+      "score": 0.1123,
+      "questionIds": [
+        "investment-ch06-pdf-0032",
+        "investment-ch06-pdf-0051",
+        "investment-ch06-pdf-0069",
+        "investment-ch06-pdf-0087"
+      ]
+    },
+    {
+      "id": "investment-第二章-similar-007",
+      "bankId": "investment",
+      "bankTitle": "投資學",
+      "chapterId": "第二章",
+      "chapterTitle": "第二章",
+      "score": 0.1127,
+      "questionIds": [
+        "investment-ch02-pdf-0091",
+        "investment-ch02-pdf-0131",
+        "investment-ch02-pdf-0132",
+        "investment-ch02-pdf-0171"
+      ]
+    },
+    {
+      "id": "investment-第九章-similar-002",
+      "bankId": "investment",
+      "bankTitle": "投資學",
+      "chapterId": "第九章",
+      "chapterTitle": "第九章",
+      "score": 0.1127,
+      "questionIds": [
+        "investment-ch09-pdf-0016",
+        "investment-ch09-pdf-0043",
+        "investment-ch09-pdf-0065",
+        "investment-ch09-pdf-0068"
+      ]
+    },
+    {
+      "id": "securities-trading-practice-第六章-similar-001",
+      "bankId": "securities-trading-practice",
+      "bankTitle": "證券交易相關實務",
+      "chapterId": "第六章",
+      "chapterTitle": "第六章",
+      "score": 0.1134,
+      "questionIds": [
+        "securities-trading-practice-ch06-pdf-0002",
+        "securities-trading-practice-ch06-pdf-0015",
+        "securities-trading-practice-ch06-pdf-0016",
+        "securities-trading-practice-ch06-pdf-0024"
+      ]
+    },
+    {
+      "id": "financial-analysis-第五章-similar-006",
+      "bankId": "financial-analysis",
+      "bankTitle": "財務分析",
+      "chapterId": "第五章",
+      "chapterTitle": "第五章",
+      "score": 0.1138,
+      "questionIds": [
+        "financial-analysis-ch05-pdf-0011",
+        "financial-analysis-ch05-pdf-0012",
+        "financial-analysis-ch05-pdf-0032",
+        "financial-analysis-ch05-pdf-0034"
+      ]
+    },
+    {
+      "id": "securities-trading-regulations-第二章-similar-007",
+      "bankId": "securities-trading-regulations",
+      "bankTitle": "證券交易相關法規",
+      "chapterId": "第二章",
+      "chapterTitle": "第二章",
+      "score": 0.1142,
+      "questionIds": [
+        "securities-trading-regulations-ch02-pdf-0050",
+        "securities-trading-regulations-ch02-pdf-0078",
+        "securities-trading-regulations-ch02-pdf-0098",
+        "securities-trading-regulations-ch02-pdf-0119",
+        "securities-trading-regulations-ch02-pdf-0133"
+      ]
+    },
+    {
+      "id": "securities-trading-regulations-第二章-similar-006",
+      "bankId": "securities-trading-regulations",
+      "bankTitle": "證券交易相關法規",
+      "chapterId": "第二章",
+      "chapterTitle": "第二章",
+      "score": 0.1142,
+      "questionIds": [
+        "securities-trading-regulations-ch02-pdf-0010",
+        "securities-trading-regulations-ch02-pdf-0035",
+        "securities-trading-regulations-ch02-pdf-0050",
+        "securities-trading-regulations-ch02-pdf-0119"
+      ]
+    },
+    {
+      "id": "securities-trading-regulations-第二章-similar-008",
+      "bankId": "securities-trading-regulations",
+      "bankTitle": "證券交易相關法規",
+      "chapterId": "第二章",
+      "chapterTitle": "第二章",
+      "score": 0.1142,
+      "questionIds": [
+        "securities-trading-regulations-ch02-pdf-0112",
+        "securities-trading-regulations-ch02-pdf-0123",
+        "securities-trading-regulations-ch02-pdf-0132",
+        "securities-trading-regulations-ch02-pdf-0147"
+      ]
+    },
+    {
+      "id": "investment-第二章-similar-008",
+      "bankId": "investment",
+      "bankTitle": "投資學",
+      "chapterId": "第二章",
+      "chapterTitle": "第二章",
+      "score": 0.1146,
+      "questionIds": [
+        "investment-ch02-pdf-0131",
+        "investment-ch02-pdf-0132",
+        "investment-ch02-pdf-0164",
+        "investment-ch02-pdf-0180"
+      ]
+    },
+    {
+      "id": "investment-第六章-similar-006",
+      "bankId": "investment",
+      "bankTitle": "投資學",
+      "chapterId": "第六章",
+      "chapterTitle": "第六章",
+      "score": 0.1146,
+      "questionIds": [
+        "investment-ch06-pdf-0032",
+        "investment-ch06-pdf-0051",
+        "investment-ch06-pdf-0069",
+        "investment-ch06-pdf-0079"
+      ]
+    },
+    {
+      "id": "investment-第五章-similar-005",
+      "bankId": "investment",
+      "bankTitle": "投資學",
+      "chapterId": "第五章",
+      "chapterTitle": "第五章",
+      "score": 0.115,
+      "questionIds": [
+        "investment-ch05-pdf-0008",
+        "investment-ch05-pdf-0025",
+        "investment-ch05-pdf-0026",
+        "investment-ch05-pdf-0033"
+      ]
+    },
+    {
+      "id": "financial-analysis-第四章-similar-003",
+      "bankId": "financial-analysis",
+      "bankTitle": "財務分析",
+      "chapterId": "第四章",
+      "chapterTitle": "第四章",
+      "score": 0.115,
+      "questionIds": [
+        "financial-analysis-ch04-pdf-0040",
+        "financial-analysis-ch04-pdf-0060",
+        "financial-analysis-ch04-pdf-0061",
+        "financial-analysis-ch04-pdf-0062"
+      ]
+    },
+    {
+      "id": "securities-trading-regulations-第五章-similar-004",
+      "bankId": "securities-trading-regulations",
+      "bankTitle": "證券交易相關法規",
+      "chapterId": "第五章",
+      "chapterTitle": "第五章",
+      "score": 0.115,
+      "questionIds": [
+        "securities-trading-regulations-ch05-pdf-0056",
+        "securities-trading-regulations-ch05-pdf-0070",
+        "securities-trading-regulations-ch05-pdf-0073",
+        "securities-trading-regulations-ch05-pdf-0099"
+      ]
+    },
+    {
+      "id": "securities-trading-regulations-第一章-similar-002",
+      "bankId": "securities-trading-regulations",
+      "bankTitle": "證券交易相關法規",
+      "chapterId": "第一章",
+      "chapterTitle": "第一章",
+      "score": 0.1154,
+      "questionIds": [
+        "securities-trading-regulations-ch01-pdf-0010",
+        "securities-trading-regulations-ch01-pdf-0022",
+        "securities-trading-regulations-ch01-pdf-0027",
+        "securities-trading-regulations-ch01-pdf-0078"
+      ]
+    },
+    {
+      "id": "investment-第六章-similar-007",
+      "bankId": "investment",
+      "bankTitle": "投資學",
+      "chapterId": "第六章",
+      "chapterTitle": "第六章",
+      "score": 0.1157,
+      "questionIds": [
+        "investment-ch06-pdf-0032",
+        "investment-ch06-pdf-0051",
+        "investment-ch06-pdf-0079",
+        "investment-ch06-pdf-0087"
+      ]
+    },
+    {
+      "id": "financial-analysis-第六章-similar-004",
+      "bankId": "financial-analysis",
+      "bankTitle": "財務分析",
+      "chapterId": "第六章",
+      "chapterTitle": "第六章",
+      "score": 0.1157,
+      "questionIds": [
+        "financial-analysis-ch06-pdf-0022",
+        "financial-analysis-ch06-pdf-0041",
+        "financial-analysis-ch06-pdf-0042",
+        "financial-analysis-ch06-pdf-0043"
+      ]
+    },
+    {
+      "id": "investment-第一章-similar-001",
+      "bankId": "investment",
+      "bankTitle": "投資學",
+      "chapterId": "第一章",
+      "chapterTitle": "第一章",
+      "score": 0.1161,
+      "questionIds": [
+        "investment-ch01-pdf-0052",
+        "investment-ch01-pdf-0053",
+        "investment-ch01-pdf-0097",
+        "investment-ch01-pdf-0098"
+      ]
+    },
+    {
+      "id": "financial-analysis-第三章-similar-001",
+      "bankId": "financial-analysis",
+      "bankTitle": "財務分析",
+      "chapterId": "第三章",
+      "chapterTitle": "第三章",
+      "score": 0.1169,
+      "questionIds": [
+        "financial-analysis-ch03-pdf-0016",
+        "financial-analysis-ch03-pdf-0030",
+        "financial-analysis-ch03-pdf-0032",
+        "financial-analysis-ch03-pdf-0079"
+      ]
+    },
+    {
+      "id": "financial-analysis-第六章-similar-005",
+      "bankId": "financial-analysis",
+      "bankTitle": "財務分析",
+      "chapterId": "第六章",
+      "chapterTitle": "第六章",
+      "score": 0.1169,
+      "questionIds": [
+        "financial-analysis-ch06-pdf-0022",
+        "financial-analysis-ch06-pdf-0032",
+        "financial-analysis-ch06-pdf-0042",
+        "financial-analysis-ch06-pdf-0043"
+      ]
+    },
+    {
+      "id": "securities-trading-regulations-第一章-similar-003",
+      "bankId": "securities-trading-regulations",
+      "bankTitle": "證券交易相關法規",
+      "chapterId": "第一章",
+      "chapterTitle": "第一章",
+      "score": 0.1169,
+      "questionIds": [
+        "securities-trading-regulations-ch01-pdf-0010",
+        "securities-trading-regulations-ch01-pdf-0027",
+        "securities-trading-regulations-ch01-pdf-0035",
+        "securities-trading-regulations-ch01-pdf-0090"
+      ]
+    },
+    {
+      "id": "financial-analysis-第五章-similar-007",
+      "bankId": "financial-analysis",
+      "bankTitle": "財務分析",
+      "chapterId": "第五章",
+      "chapterTitle": "第五章",
+      "score": 0.1173,
+      "questionIds": [
+        "financial-analysis-ch05-pdf-0011",
+        "financial-analysis-ch05-pdf-0012",
+        "financial-analysis-ch05-pdf-0028",
+        "financial-analysis-ch05-pdf-0032"
+      ]
+    },
+    {
+      "id": "securities-trading-regulations-第五章-similar-005",
+      "bankId": "securities-trading-regulations",
+      "bankTitle": "證券交易相關法規",
+      "chapterId": "第五章",
+      "chapterTitle": "第五章",
+      "score": 0.1173,
+      "questionIds": [
+        "securities-trading-regulations-ch05-pdf-0031",
+        "securities-trading-regulations-ch05-pdf-0036",
+        "securities-trading-regulations-ch05-pdf-0043",
+        "securities-trading-regulations-ch05-pdf-0049"
+      ]
+    },
+    {
+      "id": "securities-trading-practice-第二章-similar-002",
+      "bankId": "securities-trading-practice",
+      "bankTitle": "證券交易相關實務",
+      "chapterId": "第二章",
+      "chapterTitle": "第二章",
+      "score": 0.1173,
+      "questionIds": [
+        "securities-trading-practice-ch02-pdf-0007",
+        "securities-trading-practice-ch02-pdf-0022",
+        "securities-trading-practice-ch02-pdf-0027",
+        "securities-trading-practice-ch02-pdf-0033"
+      ]
+    },
+    {
+      "id": "investment-第五章-similar-006",
+      "bankId": "investment",
+      "bankTitle": "投資學",
+      "chapterId": "第五章",
+      "chapterTitle": "第五章",
+      "score": 0.1177,
+      "questionIds": [
+        "investment-ch05-pdf-0056",
+        "investment-ch05-pdf-0083",
+        "investment-ch05-pdf-0098",
+        "investment-ch05-pdf-0099"
+      ]
+    },
+    {
+      "id": "investment-第九章-similar-003",
+      "bankId": "investment",
+      "bankTitle": "投資學",
+      "chapterId": "第九章",
+      "chapterTitle": "第九章",
+      "score": 0.1181,
+      "questionIds": [
+        "investment-ch09-pdf-0023",
+        "investment-ch09-pdf-0035",
+        "investment-ch09-pdf-0040",
+        "investment-ch09-pdf-0066",
+        "investment-ch09-pdf-0072"
+      ]
+    },
+    {
+      "id": "investment-第五章-similar-007",
+      "bankId": "investment",
+      "bankTitle": "投資學",
+      "chapterId": "第五章",
+      "chapterTitle": "第五章",
+      "score": 0.1181,
+      "questionIds": [
+        "investment-ch05-pdf-0008",
+        "investment-ch05-pdf-0033",
+        "investment-ch05-pdf-0070",
+        "investment-ch05-pdf-0106"
+      ]
+    },
+    {
+      "id": "financial-analysis-第一章-similar-002",
+      "bankId": "financial-analysis",
+      "bankTitle": "財務分析",
+      "chapterId": "第一章",
+      "chapterTitle": "第一章",
+      "score": 0.1181,
+      "questionIds": [
+        "financial-analysis-ch01-pdf-0018",
+        "financial-analysis-ch01-pdf-0029",
+        "financial-analysis-ch01-pdf-0061",
+        "financial-analysis-ch01-pdf-0062"
+      ]
+    },
+    {
+      "id": "securities-trading-practice-第十一章-similar-002",
+      "bankId": "securities-trading-practice",
+      "bankTitle": "證券交易相關實務",
+      "chapterId": "第十一章",
+      "chapterTitle": "第十一章",
+      "score": 0.1181,
+      "questionIds": [
+        "securities-trading-practice-ch11-pdf-0011",
+        "securities-trading-practice-ch11-pdf-0027",
+        "securities-trading-practice-ch11-pdf-0040",
+        "securities-trading-practice-ch11-pdf-0058"
+      ]
+    },
+    {
+      "id": "investment-第九章-similar-004",
+      "bankId": "investment",
+      "bankTitle": "投資學",
+      "chapterId": "第九章",
+      "chapterTitle": "第九章",
+      "score": 0.1184,
+      "questionIds": [
+        "investment-ch09-pdf-0016",
+        "investment-ch09-pdf-0027",
+        "investment-ch09-pdf-0043",
+        "investment-ch09-pdf-0065",
+        "investment-ch09-pdf-0068"
+      ]
+    },
+    {
+      "id": "investment-第一章-similar-002",
+      "bankId": "investment",
+      "bankTitle": "投資學",
+      "chapterId": "第一章",
+      "chapterTitle": "第一章",
+      "score": 0.1184,
+      "questionIds": [
+        "investment-ch01-pdf-0077",
+        "investment-ch01-pdf-0084",
+        "investment-ch01-pdf-0092",
+        "investment-ch01-pdf-0118"
+      ]
+    },
+    {
+      "id": "securities-trading-regulations-第一章-similar-004",
+      "bankId": "securities-trading-regulations",
+      "bankTitle": "證券交易相關法規",
+      "chapterId": "第一章",
+      "chapterTitle": "第一章",
+      "score": 0.1184,
+      "questionIds": [
+        "securities-trading-regulations-ch01-pdf-0010",
+        "securities-trading-regulations-ch01-pdf-0027",
+        "securities-trading-regulations-ch01-pdf-0049",
+        "securities-trading-regulations-ch01-pdf-0090"
+      ]
+    },
+    {
+      "id": "investment-第三章-similar-002",
+      "bankId": "investment",
+      "bankTitle": "投資學",
+      "chapterId": "第三章",
+      "chapterTitle": "第三章",
+      "score": 0.1188,
+      "questionIds": [
+        "investment-ch03-pdf-0019",
+        "investment-ch03-pdf-0020",
+        "investment-ch03-pdf-0031",
+        "investment-ch03-pdf-0051"
+      ]
+    },
+    {
+      "id": "investment-第六章-similar-008",
+      "bankId": "investment",
+      "bankTitle": "投資學",
+      "chapterId": "第六章",
+      "chapterTitle": "第六章",
+      "score": 0.1188,
+      "questionIds": [
+        "investment-ch06-pdf-0032",
+        "investment-ch06-pdf-0051",
+        "investment-ch06-pdf-0068",
+        "investment-ch06-pdf-0088"
+      ]
+    },
+    {
+      "id": "financial-analysis-第一章-similar-003",
+      "bankId": "financial-analysis",
+      "bankTitle": "財務分析",
+      "chapterId": "第一章",
+      "chapterTitle": "第一章",
+      "score": 0.1188,
+      "questionIds": [
+        "financial-analysis-ch01-pdf-0024",
+        "financial-analysis-ch01-pdf-0049",
+        "financial-analysis-ch01-pdf-0050",
+        "financial-analysis-ch01-pdf-0070"
+      ]
+    },
+    {
+      "id": "investment-第一章-similar-003",
+      "bankId": "investment",
+      "bankTitle": "投資學",
+      "chapterId": "第一章",
+      "chapterTitle": "第一章",
+      "score": 0.1192,
+      "questionIds": [
+        "investment-ch01-pdf-0026",
+        "investment-ch01-pdf-0072",
+        "investment-ch01-pdf-0086",
+        "investment-ch01-pdf-0087",
+        "investment-ch01-pdf-0113"
+      ]
+    },
+    {
+      "id": "securities-trading-practice-第三章-similar-004",
+      "bankId": "securities-trading-practice",
+      "bankTitle": "證券交易相關實務",
+      "chapterId": "第三章",
+      "chapterTitle": "第三章",
+      "score": 0.1192,
+      "questionIds": [
+        "securities-trading-practice-ch03-pdf-0036",
+        "securities-trading-practice-ch03-pdf-0037",
+        "securities-trading-practice-ch03-pdf-0039",
+        "securities-trading-practice-ch03-pdf-0040",
+        "securities-trading-practice-ch03-pdf-0041"
+      ]
+    },
+    {
+      "id": "securities-trading-practice-第六章-similar-002",
+      "bankId": "securities-trading-practice",
+      "bankTitle": "證券交易相關實務",
+      "chapterId": "第六章",
+      "chapterTitle": "第六章",
+      "score": 0.1192,
+      "questionIds": [
+        "securities-trading-practice-ch06-pdf-0002",
+        "securities-trading-practice-ch06-pdf-0015",
+        "securities-trading-practice-ch06-pdf-0016",
+        "securities-trading-practice-ch06-pdf-0024",
+        "securities-trading-practice-ch06-pdf-0041"
+      ]
+    },
+    {
+      "id": "securities-trading-regulations-第六章-similar-001",
+      "bankId": "securities-trading-regulations",
+      "bankTitle": "證券交易相關法規",
+      "chapterId": "第六章",
+      "chapterTitle": "第六章",
+      "score": 0.1196,
+      "questionIds": [
+        "securities-trading-regulations-ch06-pdf-0006",
+        "securities-trading-regulations-ch06-pdf-0026",
+        "securities-trading-regulations-ch06-pdf-0074",
+        "securities-trading-regulations-ch06-pdf-0079",
+        "securities-trading-regulations-ch06-pdf-0112"
+      ]
+    },
+    {
+      "id": "securities-trading-regulations-第一章-similar-005",
+      "bankId": "securities-trading-regulations",
+      "bankTitle": "證券交易相關法規",
+      "chapterId": "第一章",
+      "chapterTitle": "第一章",
+      "score": 0.12,
+      "questionIds": [
+        "securities-trading-regulations-ch01-pdf-0010",
+        "securities-trading-regulations-ch01-pdf-0022",
+        "securities-trading-regulations-ch01-pdf-0027",
+        "securities-trading-regulations-ch01-pdf-0061",
+        "securities-trading-regulations-ch01-pdf-0078"
+      ]
+    },
+    {
+      "id": "investment-第五章-similar-008",
+      "bankId": "investment",
+      "bankTitle": "投資學",
+      "chapterId": "第五章",
+      "chapterTitle": "第五章",
+      "score": 0.12,
+      "questionIds": [
+        "investment-ch05-pdf-0006",
+        "investment-ch05-pdf-0008",
+        "investment-ch05-pdf-0020",
+        "investment-ch05-pdf-0033"
+      ]
+    },
+    {
+      "id": "financial-analysis-第一章-similar-004",
+      "bankId": "financial-analysis",
+      "bankTitle": "財務分析",
+      "chapterId": "第一章",
+      "chapterTitle": "第一章",
+      "score": 0.12,
+      "questionIds": [
+        "financial-analysis-ch01-pdf-0024",
+        "financial-analysis-ch01-pdf-0025",
+        "financial-analysis-ch01-pdf-0050",
+        "financial-analysis-ch01-pdf-0070"
+      ]
+    },
+    {
+      "id": "financial-analysis-第一章-similar-005",
+      "bankId": "financial-analysis",
+      "bankTitle": "財務分析",
+      "chapterId": "第一章",
+      "chapterTitle": "第一章",
+      "score": 0.12,
+      "questionIds": [
+        "financial-analysis-ch01-pdf-0024",
+        "financial-analysis-ch01-pdf-0025",
+        "financial-analysis-ch01-pdf-0064",
+        "financial-analysis-ch01-pdf-0070"
+      ]
+    },
+    {
+      "id": "financial-analysis-第三章-similar-002",
+      "bankId": "financial-analysis",
+      "bankTitle": "財務分析",
+      "chapterId": "第三章",
+      "chapterTitle": "第三章",
+      "score": 0.12,
+      "questionIds": [
+        "financial-analysis-ch03-pdf-0007",
+        "financial-analysis-ch03-pdf-0039",
+        "financial-analysis-ch03-pdf-0052",
+        "financial-analysis-ch03-pdf-0065"
+      ]
+    },
+    {
+      "id": "financial-analysis-第七章-similar-001",
+      "bankId": "financial-analysis",
+      "bankTitle": "財務分析",
+      "chapterId": "第七章",
+      "chapterTitle": "第七章",
+      "score": 0.12,
+      "questionIds": [
+        "financial-analysis-ch07-pdf-0044",
+        "financial-analysis-ch07-pdf-0080",
+        "financial-analysis-ch07-pdf-0081",
+        "financial-analysis-ch07-pdf-0109"
+      ]
+    },
+    {
+      "id": "securities-trading-practice-第六章-similar-003",
+      "bankId": "securities-trading-practice",
+      "bankTitle": "證券交易相關實務",
+      "chapterId": "第六章",
+      "chapterTitle": "第六章",
+      "score": 0.1204,
+      "questionIds": [
+        "securities-trading-practice-ch06-pdf-0013",
+        "securities-trading-practice-ch06-pdf-0031",
+        "securities-trading-practice-ch06-pdf-0034",
+        "securities-trading-practice-ch06-pdf-0037",
+        "securities-trading-practice-ch06-pdf-0048"
+      ]
+    },
+    {
+      "id": "financial-analysis-第四章-similar-004",
+      "bankId": "financial-analysis",
+      "bankTitle": "財務分析",
+      "chapterId": "第四章",
+      "chapterTitle": "第四章",
+      "score": 0.1204,
+      "questionIds": [
+        "financial-analysis-ch04-pdf-0054",
+        "financial-analysis-ch04-pdf-0061",
+        "financial-analysis-ch04-pdf-0062",
+        "financial-analysis-ch04-pdf-0102"
+      ]
+    },
+    {
+      "id": "securities-trading-regulations-第一章-similar-006",
+      "bankId": "securities-trading-regulations",
+      "bankTitle": "證券交易相關法規",
+      "chapterId": "第一章",
+      "chapterTitle": "第一章",
+      "score": 0.1204,
+      "questionIds": [
+        "securities-trading-regulations-ch01-pdf-0010",
+        "securities-trading-regulations-ch01-pdf-0027",
+        "securities-trading-regulations-ch01-pdf-0090",
+        "securities-trading-regulations-ch01-pdf-0100"
+      ]
+    },
+    {
+      "id": "securities-trading-practice-第一章-similar-004",
+      "bankId": "securities-trading-practice",
+      "bankTitle": "證券交易相關實務",
+      "chapterId": "第一章",
+      "chapterTitle": "第一章",
+      "score": 0.1204,
+      "questionIds": [
+        "securities-trading-practice-ch01-pdf-0003",
+        "securities-trading-practice-ch01-pdf-0006",
+        "securities-trading-practice-ch01-pdf-0008",
+        "securities-trading-practice-ch01-pdf-0009"
+      ]
+    },
+    {
+      "id": "financial-analysis-第四章-similar-005",
+      "bankId": "financial-analysis",
+      "bankTitle": "財務分析",
+      "chapterId": "第四章",
+      "chapterTitle": "第四章",
+      "score": 0.1208,
+      "questionIds": [
+        "financial-analysis-ch04-pdf-0040",
+        "financial-analysis-ch04-pdf-0054",
+        "financial-analysis-ch04-pdf-0061",
+        "financial-analysis-ch04-pdf-0062"
+      ]
+    },
+    {
+      "id": "financial-analysis-第四章-similar-006",
+      "bankId": "financial-analysis",
+      "bankTitle": "財務分析",
+      "chapterId": "第四章",
+      "chapterTitle": "第四章",
+      "score": 0.1208,
+      "questionIds": [
+        "financial-analysis-ch04-pdf-0040",
+        "financial-analysis-ch04-pdf-0061",
+        "financial-analysis-ch04-pdf-0062",
+        "financial-analysis-ch04-pdf-0083"
+      ]
+    },
+    {
+      "id": "financial-analysis-第一章-similar-006",
+      "bankId": "financial-analysis",
+      "bankTitle": "財務分析",
+      "chapterId": "第一章",
+      "chapterTitle": "第一章",
+      "score": 0.1211,
+      "questionIds": [
+        "financial-analysis-ch01-pdf-0024",
+        "financial-analysis-ch01-pdf-0046",
+        "financial-analysis-ch01-pdf-0064",
+        "financial-analysis-ch01-pdf-0070"
+      ]
+    },
+    {
+      "id": "financial-analysis-第六章-similar-006",
+      "bankId": "financial-analysis",
+      "bankTitle": "財務分析",
+      "chapterId": "第六章",
+      "chapterTitle": "第六章",
+      "score": 0.1215,
+      "questionIds": [
+        "financial-analysis-ch06-pdf-0002",
+        "financial-analysis-ch06-pdf-0004",
+        "financial-analysis-ch06-pdf-0037",
+        "financial-analysis-ch06-pdf-0047"
+      ]
+    },
+    {
+      "id": "securities-trading-practice-第四章-similar-002",
+      "bankId": "securities-trading-practice",
+      "bankTitle": "證券交易相關實務",
+      "chapterId": "第四章",
+      "chapterTitle": "第四章",
+      "score": 0.1215,
+      "questionIds": [
+        "securities-trading-practice-ch04-pdf-0009",
+        "securities-trading-practice-ch04-pdf-0011",
+        "securities-trading-practice-ch04-pdf-0017",
+        "securities-trading-practice-ch04-pdf-0019"
+      ]
+    },
+    {
+      "id": "financial-analysis-第三章-similar-003",
+      "bankId": "financial-analysis",
+      "bankTitle": "財務分析",
+      "chapterId": "第三章",
+      "chapterTitle": "第三章",
+      "score": 0.1219,
+      "questionIds": [
+        "financial-analysis-ch03-pdf-0016",
+        "financial-analysis-ch03-pdf-0030",
+        "financial-analysis-ch03-pdf-0032",
+        "financial-analysis-ch03-pdf-0036",
+        "financial-analysis-ch03-pdf-0079"
+      ]
+    },
+    {
+      "id": "financial-analysis-第三章-similar-004",
+      "bankId": "financial-analysis",
+      "bankTitle": "財務分析",
+      "chapterId": "第三章",
+      "chapterTitle": "第三章",
+      "score": 0.1219,
+      "questionIds": [
+        "financial-analysis-ch03-pdf-0016",
+        "financial-analysis-ch03-pdf-0030",
+        "financial-analysis-ch03-pdf-0032",
+        "financial-analysis-ch03-pdf-0060",
+        "financial-analysis-ch03-pdf-0079"
+      ]
+    },
+    {
+      "id": "investment-第九章-similar-005",
+      "bankId": "investment",
+      "bankTitle": "投資學",
+      "chapterId": "第九章",
+      "chapterTitle": "第九章",
+      "score": 0.1219,
+      "questionIds": [
+        "investment-ch09-pdf-0011",
+        "investment-ch09-pdf-0049",
+        "investment-ch09-pdf-0055",
+        "investment-ch09-pdf-0074"
+      ]
+    },
+    {
+      "id": "financial-analysis-第十一章-similar-001",
+      "bankId": "financial-analysis",
+      "bankTitle": "財務分析",
+      "chapterId": "第十一章",
+      "chapterTitle": "第十一章",
+      "score": 0.1219,
+      "questionIds": [
+        "financial-analysis-ch11-pdf-0002",
+        "financial-analysis-ch11-pdf-0003",
+        "financial-analysis-ch11-pdf-0014",
+        "financial-analysis-ch11-pdf-0022"
+      ]
+    },
+    {
+      "id": "securities-trading-practice-第一章-similar-005",
+      "bankId": "securities-trading-practice",
+      "bankTitle": "證券交易相關實務",
+      "chapterId": "第一章",
+      "chapterTitle": "第一章",
+      "score": 0.1219,
+      "questionIds": [
+        "securities-trading-practice-ch01-pdf-0006",
+        "securities-trading-practice-ch01-pdf-0008",
+        "securities-trading-practice-ch01-pdf-0030",
+        "securities-trading-practice-ch01-pdf-0034"
+      ]
+    },
+    {
+      "id": "financial-analysis-第四章-similar-007",
+      "bankId": "financial-analysis",
+      "bankTitle": "財務分析",
+      "chapterId": "第四章",
+      "chapterTitle": "第四章",
+      "score": 0.1223,
+      "questionIds": [
+        "financial-analysis-ch04-pdf-0036",
+        "financial-analysis-ch04-pdf-0039",
+        "financial-analysis-ch04-pdf-0061",
+        "financial-analysis-ch04-pdf-0062"
+      ]
+    },
+    {
+      "id": "securities-trading-regulations-第五章-similar-006",
+      "bankId": "securities-trading-regulations",
+      "bankTitle": "證券交易相關法規",
+      "chapterId": "第五章",
+      "chapterTitle": "第五章",
+      "score": 0.1223,
+      "questionIds": [
+        "securities-trading-regulations-ch05-pdf-0013",
+        "securities-trading-regulations-ch05-pdf-0027",
+        "securities-trading-regulations-ch05-pdf-0033",
+        "securities-trading-regulations-ch05-pdf-0035"
+      ]
+    },
+    {
+      "id": "investment-第一章-similar-004",
+      "bankId": "investment",
+      "bankTitle": "投資學",
+      "chapterId": "第一章",
+      "chapterTitle": "第一章",
+      "score": 0.1227,
+      "questionIds": [
+        "investment-ch01-pdf-0010",
+        "investment-ch01-pdf-0077",
+        "investment-ch01-pdf-0084",
+        "investment-ch01-pdf-0092",
+        "investment-ch01-pdf-0118"
+      ]
+    },
+    {
+      "id": "investment-第一章-similar-005",
+      "bankId": "investment",
+      "bankTitle": "投資學",
+      "chapterId": "第一章",
+      "chapterTitle": "第一章",
+      "score": 0.1227,
+      "questionIds": [
+        "investment-ch01-pdf-0052",
+        "investment-ch01-pdf-0053",
+        "investment-ch01-pdf-0057",
+        "investment-ch01-pdf-0097",
+        "investment-ch01-pdf-0098"
+      ]
+    },
+    {
+      "id": "securities-trading-regulations-第一章-similar-007",
+      "bankId": "securities-trading-regulations",
+      "bankTitle": "證券交易相關法規",
+      "chapterId": "第一章",
+      "chapterTitle": "第一章",
+      "score": 0.1227,
+      "questionIds": [
+        "securities-trading-regulations-ch01-pdf-0004",
+        "securities-trading-regulations-ch01-pdf-0036",
+        "securities-trading-regulations-ch01-pdf-0040",
+        "securities-trading-regulations-ch01-pdf-0044"
+      ]
+    },
+    {
+      "id": "securities-trading-regulations-第一章-similar-008",
+      "bankId": "securities-trading-regulations",
+      "bankTitle": "證券交易相關法規",
+      "chapterId": "第一章",
+      "chapterTitle": "第一章",
+      "score": 0.1227,
+      "questionIds": [
+        "securities-trading-regulations-ch01-pdf-0026",
+        "securities-trading-regulations-ch01-pdf-0034",
+        "securities-trading-regulations-ch01-pdf-0055",
+        "securities-trading-regulations-ch01-pdf-0091"
+      ]
+    },
+    {
+      "id": "securities-trading-regulations-第五章-similar-007",
+      "bankId": "securities-trading-regulations",
+      "bankTitle": "證券交易相關法規",
+      "chapterId": "第五章",
+      "chapterTitle": "第五章",
+      "score": 0.1227,
+      "questionIds": [
+        "securities-trading-regulations-ch05-pdf-0012",
+        "securities-trading-regulations-ch05-pdf-0056",
+        "securities-trading-regulations-ch05-pdf-0070",
+        "securities-trading-regulations-ch05-pdf-0099"
+      ]
+    },
+    {
+      "id": "securities-trading-regulations-第七章-similar-001",
+      "bankId": "securities-trading-regulations",
+      "bankTitle": "證券交易相關法規",
+      "chapterId": "第七章",
+      "chapterTitle": "第七章",
+      "score": 0.1227,
+      "questionIds": [
+        "securities-trading-regulations-ch07-pdf-0009",
+        "securities-trading-regulations-ch07-pdf-0015",
+        "securities-trading-regulations-ch07-pdf-0026",
+        "securities-trading-regulations-ch07-pdf-0034"
+      ]
+    },
+    {
+      "id": "securities-trading-practice-第一章-similar-006",
+      "bankId": "securities-trading-practice",
+      "bankTitle": "證券交易相關實務",
+      "chapterId": "第一章",
+      "chapterTitle": "第一章",
+      "score": 0.1227,
+      "questionIds": [
+        "securities-trading-practice-ch01-pdf-0020",
+        "securities-trading-practice-ch01-pdf-0037",
+        "securities-trading-practice-ch01-pdf-0038",
+        "securities-trading-practice-ch01-pdf-0039"
+      ]
+    },
+    {
+      "id": "securities-trading-practice-第三章-similar-005",
+      "bankId": "securities-trading-practice",
+      "bankTitle": "證券交易相關實務",
+      "chapterId": "第三章",
+      "chapterTitle": "第三章",
+      "score": 0.1227,
+      "questionIds": [
+        "securities-trading-practice-ch03-pdf-0019",
+        "securities-trading-practice-ch03-pdf-0036",
+        "securities-trading-practice-ch03-pdf-0037",
+        "securities-trading-practice-ch03-pdf-0040"
+      ]
+    },
+    {
+      "id": "securities-trading-practice-第十二章-similar-001",
+      "bankId": "securities-trading-practice",
+      "bankTitle": "證券交易相關實務",
+      "chapterId": "第十二章",
+      "chapterTitle": "第十二章",
+      "score": 0.1227,
+      "questionIds": [
+        "securities-trading-practice-ch12-pdf-0029",
+        "securities-trading-practice-ch12-pdf-0036",
+        "securities-trading-practice-ch12-pdf-0037"
+      ]
+    },
+    {
+      "id": "securities-trading-practice-第一章-similar-007",
+      "bankId": "securities-trading-practice",
+      "bankTitle": "證券交易相關實務",
+      "chapterId": "第一章",
+      "chapterTitle": "第一章",
+      "score": 0.1231,
+      "questionIds": [
+        "securities-trading-practice-ch01-pdf-0006",
+        "securities-trading-practice-ch01-pdf-0008",
+        "securities-trading-practice-ch01-pdf-0023",
+        "securities-trading-practice-ch01-pdf-0032"
+      ]
+    },
+    {
+      "id": "investment-第一章-similar-006",
+      "bankId": "investment",
+      "bankTitle": "投資學",
+      "chapterId": "第一章",
+      "chapterTitle": "第一章",
+      "score": 0.1235,
+      "questionIds": [
+        "investment-ch01-pdf-0052",
+        "investment-ch01-pdf-0053",
+        "investment-ch01-pdf-0069",
+        "investment-ch01-pdf-0097",
+        "investment-ch01-pdf-0098"
+      ]
+    },
+    {
+      "id": "investment-第八章-similar-003",
+      "bankId": "investment",
+      "bankTitle": "投資學",
+      "chapterId": "第八章",
+      "chapterTitle": "第八章",
+      "score": 0.1235,
+      "questionIds": [
+        "investment-ch08-pdf-0010",
+        "investment-ch08-pdf-0021",
+        "investment-ch08-pdf-0032",
+        "investment-ch08-pdf-0066"
+      ]
+    },
+    {
+      "id": "investment-第八章-similar-004",
+      "bankId": "investment",
+      "bankTitle": "投資學",
+      "chapterId": "第八章",
+      "chapterTitle": "第八章",
+      "score": 0.1235,
+      "questionIds": [
+        "investment-ch08-pdf-0037",
+        "investment-ch08-pdf-0050",
+        "investment-ch08-pdf-0051",
+        "investment-ch08-pdf-0060"
+      ]
+    },
+    {
+      "id": "financial-analysis-第六章-similar-007",
+      "bankId": "financial-analysis",
+      "bankTitle": "財務分析",
+      "chapterId": "第六章",
+      "chapterTitle": "第六章",
+      "score": 0.1235,
+      "questionIds": [
+        "financial-analysis-ch06-pdf-0022",
+        "financial-analysis-ch06-pdf-0031",
+        "financial-analysis-ch06-pdf-0042",
+        "financial-analysis-ch06-pdf-0043"
+      ]
+    },
+    {
+      "id": "securities-trading-practice-第四章-similar-003",
+      "bankId": "securities-trading-practice",
+      "bankTitle": "證券交易相關實務",
+      "chapterId": "第四章",
+      "chapterTitle": "第四章",
+      "score": 0.1235,
+      "questionIds": [
+        "securities-trading-practice-ch04-pdf-0018",
+        "securities-trading-practice-ch04-pdf-0025",
+        "securities-trading-practice-ch04-pdf-0032",
+        "securities-trading-practice-ch04-pdf-0041"
+      ]
+    },
+    {
+      "id": "financial-analysis-第三章-similar-005",
+      "bankId": "financial-analysis",
+      "bankTitle": "財務分析",
+      "chapterId": "第三章",
+      "chapterTitle": "第三章",
+      "score": 0.1238,
+      "questionIds": [
+        "financial-analysis-ch03-pdf-0016",
+        "financial-analysis-ch03-pdf-0030",
+        "financial-analysis-ch03-pdf-0032",
+        "financial-analysis-ch03-pdf-0078",
+        "financial-analysis-ch03-pdf-0079"
+      ]
+    },
+    {
+      "id": "financial-analysis-第四章-similar-008",
+      "bankId": "financial-analysis",
+      "bankTitle": "財務分析",
+      "chapterId": "第四章",
+      "chapterTitle": "第四章",
+      "score": 0.1238,
+      "questionIds": [
+        "financial-analysis-ch04-pdf-0029",
+        "financial-analysis-ch04-pdf-0040",
+        "financial-analysis-ch04-pdf-0061",
+        "financial-analysis-ch04-pdf-0062",
+        "financial-analysis-ch04-pdf-0102"
+      ]
+    },
+    {
+      "id": "securities-trading-practice-第六章-similar-004",
+      "bankId": "securities-trading-practice",
+      "bankTitle": "證券交易相關實務",
+      "chapterId": "第六章",
+      "chapterTitle": "第六章",
+      "score": 0.1238,
+      "questionIds": [
+        "securities-trading-practice-ch06-pdf-0002",
+        "securities-trading-practice-ch06-pdf-0015",
+        "securities-trading-practice-ch06-pdf-0016",
+        "securities-trading-practice-ch06-pdf-0017",
+        "securities-trading-practice-ch06-pdf-0024"
+      ]
+    },
+    {
+      "id": "securities-trading-practice-第十二章-similar-002",
+      "bankId": "securities-trading-practice",
+      "bankTitle": "證券交易相關實務",
+      "chapterId": "第十二章",
+      "chapterTitle": "第十二章",
+      "score": 0.1238,
+      "questionIds": [
+        "securities-trading-practice-ch12-pdf-0002",
+        "securities-trading-practice-ch12-pdf-0019",
+        "securities-trading-practice-ch12-pdf-0021",
+        "securities-trading-practice-ch12-pdf-0023",
+        "securities-trading-practice-ch12-pdf-0040"
+      ]
+    },
+    {
+      "id": "financial-analysis-第一章-similar-007",
+      "bankId": "financial-analysis",
+      "bankTitle": "財務分析",
+      "chapterId": "第一章",
+      "chapterTitle": "第一章",
+      "score": 0.1238,
+      "questionIds": [
+        "financial-analysis-ch01-pdf-0024",
+        "financial-analysis-ch01-pdf-0025",
+        "financial-analysis-ch01-pdf-0057",
+        "financial-analysis-ch01-pdf-0070"
+      ]
+    },
+    {
+      "id": "financial-analysis-第二章-similar-001",
+      "bankId": "financial-analysis",
+      "bankTitle": "財務分析",
+      "chapterId": "第二章",
+      "chapterTitle": "第二章",
+      "score": 0.1238,
+      "questionIds": [
+        "financial-analysis-ch02-pdf-0002",
+        "financial-analysis-ch02-pdf-0003",
+        "financial-analysis-ch02-pdf-0010",
+        "financial-analysis-ch02-pdf-0042"
+      ]
+    },
+    {
+      "id": "investment-第一章-similar-007",
+      "bankId": "investment",
+      "bankTitle": "投資學",
+      "chapterId": "第一章",
+      "chapterTitle": "第一章",
+      "score": 0.1242,
+      "questionIds": [
+        "investment-ch01-pdf-0016",
+        "investment-ch01-pdf-0077",
+        "investment-ch01-pdf-0088",
+        "investment-ch01-pdf-0092"
+      ]
+    },
+    {
+      "id": "investment-第八章-similar-005",
+      "bankId": "investment",
+      "bankTitle": "投資學",
+      "chapterId": "第八章",
+      "chapterTitle": "第八章",
+      "score": 0.1242,
+      "questionIds": [
+        "investment-ch08-pdf-0021",
+        "investment-ch08-pdf-0029",
+        "investment-ch08-pdf-0066",
+        "investment-ch08-pdf-0082"
+      ]
+    },
+    {
+      "id": "securities-trading-practice-第四章-similar-004",
+      "bankId": "securities-trading-practice",
+      "bankTitle": "證券交易相關實務",
+      "chapterId": "第四章",
+      "chapterTitle": "第四章",
+      "score": 0.1242,
+      "questionIds": [
+        "securities-trading-practice-ch04-pdf-0025",
+        "securities-trading-practice-ch04-pdf-0026",
+        "securities-trading-practice-ch04-pdf-0032",
+        "securities-trading-practice-ch04-pdf-0041"
+      ]
+    },
+    {
+      "id": "investment-第一章-similar-008",
+      "bankId": "investment",
+      "bankTitle": "投資學",
+      "chapterId": "第一章",
+      "chapterTitle": "第一章",
+      "score": 0.1246,
+      "questionIds": [
+        "investment-ch01-pdf-0053",
+        "investment-ch01-pdf-0057",
+        "investment-ch01-pdf-0065",
+        "investment-ch01-pdf-0097"
+      ]
+    },
+    {
+      "id": "financial-analysis-第七章-similar-002",
+      "bankId": "financial-analysis",
+      "bankTitle": "財務分析",
+      "chapterId": "第七章",
+      "chapterTitle": "第七章",
+      "score": 0.1246,
+      "questionIds": [
+        "financial-analysis-ch07-pdf-0040",
+        "financial-analysis-ch07-pdf-0041",
+        "financial-analysis-ch07-pdf-0047",
+        "financial-analysis-ch07-pdf-0056"
+      ]
+    },
+    {
+      "id": "securities-trading-practice-第一章-similar-008",
+      "bankId": "securities-trading-practice",
+      "bankTitle": "證券交易相關實務",
+      "chapterId": "第一章",
+      "chapterTitle": "第一章",
+      "score": 0.1246,
+      "questionIds": [
+        "securities-trading-practice-ch01-pdf-0013",
+        "securities-trading-practice-ch01-pdf-0020",
+        "securities-trading-practice-ch01-pdf-0038",
+        "securities-trading-practice-ch01-pdf-0039"
+      ]
+    }
+  ]
+}

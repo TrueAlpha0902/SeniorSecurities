@@ -1,0 +1,10 @@
+node_modules
+.netlify
+netlify
+dev-dist
+staging
+tmp
+_zip-output
+_cleanup-backup
+source-docx
+*.zip

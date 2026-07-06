@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Redirecting</title>
+    <script>
+      (function () {
+        var pathSegmentsToKeep = 1;
+        var locationRef = window.location;
+        var segments = locationRef.pathname.split("/").filter(Boolean);
+        var base = pathSegmentsToKeep > 0 ? "/" + segments.slice(0, pathSegmentsToKeep).join("/") : "";
+        var route = locationRef.pathname.slice(base.length) || "/";
+        var target =
+          locationRef.protocol +
+          "//" +
+          locationRef.hostname +
+          (locationRef.port ? ":" + locationRef.port : "") +
+          base +
+          "/?p=" +
+          encodeURIComponent(route + locationRef.search + locationRef.hash);
+        locationRef.replace(target);
+      })();
+    </script>
+  </head>
+  <body></body>
+</html>
