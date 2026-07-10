@@ -1,5 +1,6 @@
 -- SeniorSecurities v63
--- The web admin tools call this RPC only from a Vercel Function using service_role.
+-- Keep the legacy RPC available only to trusted server-side service_role callers.
+-- The current web admin activation-code flow inserts through a Vercel Function and does not expose this RPC to clients.
 -- Run once in Supabase SQL Editor if v42 was previously applied.
 
 alter function public.create_activation_code(text, text, integer) set search_path = public, extensions;
