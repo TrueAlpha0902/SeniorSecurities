@@ -5,21 +5,27 @@ import { AppLayout } from "./components/AppLayout";
 import { LoadingState } from "./components/LoadingState";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
 import { ProtectedRoute } from "./auth/ProtectedRoute";
-import { AccountPage } from "./pages/AccountPage";
-import { ActivatePage } from "./pages/ActivatePage";
-import { AuthPage } from "./pages/AuthPage";
-import { AdminPage } from "./pages/AdminPage";
-import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
-import { ResetPasswordPage } from "./pages/ResetPasswordPage";
-import { LeaderboardPage } from "./pages/LeaderboardPage";
 
+const AccountPage = lazy(() => import("./pages/AccountPage").then((module) => ({ default: module.AccountPage })));
+const ActivatePage = lazy(() => import("./pages/ActivatePage").then((module) => ({ default: module.ActivatePage })));
+const AdminPage = lazy(() => import("./pages/AdminPage").then((module) => ({ default: module.AdminPage })));
 const AnswerDrillPage = lazy(() => import("./pages/AnswerDrillPage").then((module) => ({ default: module.AnswerDrillPage })));
+const AuthPage = lazy(() => import("./pages/AuthPage").then((module) => ({ default: module.AuthPage })));
 const BankPage = lazy(() => import("./pages/BankPage").then((module) => ({ default: module.BankPage })));
+const ForgotPasswordPage = lazy(() =>
+  import("./pages/ForgotPasswordPage").then((module) => ({ default: module.ForgotPasswordPage })),
+);
 const HomePage = lazy(() => import("./pages/HomePage").then((module) => ({ default: module.HomePage })));
 const ImageQuizPage = lazy(() => import("./pages/ImageQuizPage").then((module) => ({ default: module.ImageQuizPage })));
+const LeaderboardPage = lazy(() =>
+  import("./pages/LeaderboardPage").then((module) => ({ default: module.LeaderboardPage })),
+);
 const QuestionsPage = lazy(() => import("./pages/QuestionsPage").then((module) => ({ default: module.QuestionsPage })));
 const QuizPage = lazy(() => import("./pages/QuizPage").then((module) => ({ default: module.QuizPage })));
 const RandomPracticePage = lazy(() => import("./pages/RandomPracticePage").then((module) => ({ default: module.RandomPracticePage })));
+const ResetPasswordPage = lazy(() =>
+  import("./pages/ResetPasswordPage").then((module) => ({ default: module.ResetPasswordPage })),
+);
 const ResultPage = lazy(() => import("./pages/ResultPage").then((module) => ({ default: module.ResultPage })));
 const ReviewPage = lazy(() => import("./pages/ReviewPage").then((module) => ({ default: module.ReviewPage })));
 const SimilarQuestionsPage = lazy(() =>
@@ -61,6 +67,7 @@ export function App() {
             <Route path="/similar" element={<RequireActive><SimilarQuestionsPage /></RequireActive>} />
             <Route path="/random" element={<RequireActive><RandomPracticePage /></RequireActive>} />
             <Route path="/image-quiz/daily" element={<RequireActive><ImageQuizPage /></RequireActive>} />
+            <Route path="/image-quiz/today-wrong" element={<RequireActive><ImageQuizPage /></RequireActive>} />
             <Route path="/image-quiz/all" element={<RequireActive><ImageQuizPage /></RequireActive>} />
             <Route path="/image-quiz/wrong" element={<RequireActive><ImageQuizPage /></RequireActive>} />
             <Route path="/image-quiz/favorites" element={<RequireActive><ImageQuizPage /></RequireActive>} />

@@ -38,6 +38,7 @@ import {
   type NumericAnswer,
 } from "../lib/imageQuiz";
 import { calculateAccuracy } from "../lib/quiz";
+import { addPracticeSeconds } from "../lib/practiceTime";
 import {
   calculateSmartStudyPlanStats,
   getStudyPlanConfig,
@@ -80,6 +81,9 @@ const T = {
   allEmpty: "\u76ee\u524d\u6c92\u6709\u984c\u76ee",
   dailyTitle: "每日練習",
   dailyEmpty: "今天的智能練習已完成",
+  todayWrongTitle: "今日錯題複習",
+  todayWrongSubtitle: "只複習今天答錯且尚未訂正成功的題目",
+  todayWrongEmpty: "今天目前沒有待複習的錯題",
   timer: "計時",
   pauseTimer: "暫停",
   resumeTimer: "繼續",
@@ -118,7 +122,7 @@ const T = {
   settleSummaryTitle: "\u6a21\u64ec\u8003\u7d50\u7b97",
   answerRate: "\u7b54\u5c0d\u7387",
   answered: "\u5df2\u4f5c\u7b54",
-  randomTitle: "\u6a21\u64ec\u8003",
+  randomTitle: "單科隨機測驗",
   randomSubtitle: "\u5f9e\u672c\u79d1\u6240\u6709\u7ae0\u7bc0\u96a8\u6a5f\u62bd\u984c",
   randomEmpty: "\u627e\u4e0d\u5230\u9019\u6b21\u6a21\u64ec\u8003",
   sessionWrongTitle: "\u6e2c\u9a57\u932f\u984c\u8907\u7fd2",
@@ -136,7 +140,7 @@ type AnswerRecord = {
   isCorrect: boolean;
 };
 
-type ImageQuizMode = "all" | "bank" | "chapter" | "wrong" | "favorites" | "random" | "sessionWrong" | "daily" | "trial";
+type ImageQuizMode = "all" | "bank" | "chapter" | "wrong" | "todayWrong" | "favorites" | "random" | "sessionWrong" | "daily" | "trial";
 
 type ImageQuizData = {
   title: string;
@@ -147,6 +151,7 @@ type ImageQuizData = {
   wrongCounts?: Record<string, number>;
   dailyCategoryCounts?: Record<DailyPlanCategory, number>;
   dailyCategoryQuestionIds?: Record<DailyPlanCategory, string[]>;
+  dailyInitialCompletedQuestionIds?: string[];
   remainingCount?: number;
   dailyPlannedCount?: number;
   dailyCompletedBeforePlanCount?: number;
@@ -160,6 +165,8 @@ export function ImageQuizPage() {
     ? "trial"
     : location.pathname.includes("/session-wrong")
     ? "sessionWrong"
+    : location.pathname.includes("/today-wrong")
+      ? "todayWrong"
     : location.pathname.includes("/daily")
       ? "daily"
     : location.pathname.includes("/wrong")
@@ -175,6 +182,8 @@ export function ImageQuizPage() {
               : "bank";
   const progressKey = mode === "daily"
     ? `image:daily:${localTodayKey()}:all`
+    : mode === "todayWrong"
+      ? `image:today-wrong:${localTodayKey()}:all`
     : mode === "trial"
       ? "image:trial:free"
       : `image:${mode}:${bankId || "all"}:${chapterId || sessionId || "all"}`;
@@ -197,16 +206,39 @@ export function ImageQuizPage() {
         listWrongQuestions(),
       ]);
       const dailyTraining = buildDailyTrainingQuestions(allQuestions, storedAnswers, wrongRecords);
+      const today = localTodayKey();
+      const todayAnswers = storedAnswers.filter(
+        (answer) => localTodayKey(new Date(answer.answeredAt)) === today,
+      );
       return {
         title: T.dailyTitle,
-        subtitle: T.dailyTitle,
+        subtitle: dailyTraining.summary,
         emptyTitle: T.dailyEmpty,
         questions: dailyTraining.questions,
+        answerRecords: storedAnswersToRecords(todayAnswers, dailyTraining.questions),
         dailyPlannedCount: dailyTraining.plannedCount,
         dailyCompletedBeforePlanCount: dailyTraining.completedBeforePlanCount,
         dailyCategoryCounts: dailyTraining.categoryCounts,
         dailyCategoryQuestionIds: dailyTraining.categoryQuestionIds,
+        dailyInitialCompletedQuestionIds: dailyTraining.initialCompletedQuestionIds,
         remainingCount: dailyTraining.remainingCount,
+      };
+    }
+
+    if (mode === "todayWrong") {
+      const [questions, wrongRecords] = await Promise.all([loadAllImageQuestions(), listWrongQuestions()]);
+      const today = localTodayKey();
+      const byId = new Map(questions.map((question) => [question.id, question]));
+      const todayWrongRecords = wrongRecords.filter((record) => localTodayKey(new Date(record.lastWrongAt)) === today);
+      const wrongCounts = Object.fromEntries(todayWrongRecords.map((record) => [record.questionId, record.wrongCount]));
+      return {
+        title: T.todayWrongTitle,
+        subtitle: T.todayWrongSubtitle,
+        emptyTitle: T.todayWrongEmpty,
+        questions: todayWrongRecords
+          .map((record) => byId.get(record.questionId))
+          .filter((question): question is ImageQuizQuestion => Boolean(question)),
+        wrongCounts,
       };
     }
 
@@ -364,6 +396,7 @@ export function ImageQuizPage() {
     }
     const timer = window.setInterval(() => {
       setElapsedSeconds((seconds) => seconds + 1);
+      addPracticeSeconds(1);
     }, 1000);
     return () => window.clearInterval(timer);
   }, [finished, progressKey, progressRestored, timerPaused]);
@@ -383,7 +416,7 @@ export function ImageQuizPage() {
         return;
       }
 
-      const shouldRestoreGlobalAnswers = !data?.answerRecords && mode !== "sessionWrong" && mode !== "daily";
+      const shouldRestoreGlobalAnswers = !data?.answerRecords && mode !== "sessionWrong" && mode !== "todayWrong" && mode !== "wrong";
       const [progress, favoriteRecords, storedAnswers] = await Promise.all([
         getQuizProgress(progressKey),
         listFavoriteQuestions(),
@@ -428,12 +461,22 @@ export function ImageQuizPage() {
   const shouldPromptRandomExit =
     mode === "random" && !finished && resultTotal > 0 && resultTotal < questions.length && Boolean(data?.session);
   const dailyAnsweredIds = useMemo(() => new Set(Object.keys(answers)), [answers]);
+  const dailyInitialCompletedIds = useMemo(() => new Set(data?.dailyInitialCompletedQuestionIds ?? []), [data?.dailyInitialCompletedQuestionIds]);
   const dailyRemainingCount = mode === "daily"
-    ? calculateLiveDailyRemainingCount(data?.remainingCount ?? questions.length, data?.dailyCategoryQuestionIds, dailyAnsweredIds)
+    ? calculateLiveDailyRemainingCount(
+        data?.remainingCount ?? questions.length,
+        data?.dailyCategoryQuestionIds,
+        dailyAnsweredIds,
+        dailyInitialCompletedIds,
+      )
     : undefined;
   const dailyPlannedCount = mode === "daily" ? (data?.dailyPlannedCount ?? questions.length) : undefined;
-  const dailyAnsweredCount = mode === "daily" ? resultTotal + (data?.dailyCompletedBeforePlanCount ?? 0) : undefined;
-  const dailyProgressIndex = mode === "daily" ? (data?.dailyCompletedBeforePlanCount ?? 0) + currentIndex + 1 : currentIndex + 1;
+  const dailyAnsweredCount = mode === "daily"
+    ? Math.max(0, (dailyPlannedCount ?? questions.length) - (dailyRemainingCount ?? 0))
+    : undefined;
+  const dailyProgressValue = mode === "daily"
+    ? Math.min(dailyPlannedCount ?? questions.length, Math.max(0, dailyAnsweredCount ?? 0))
+    : currentIndex + 1;
 
   useEffect(() => {
     if (!shouldPromptRandomExit) {
@@ -482,7 +525,7 @@ export function ImageQuizPage() {
 
 
   useEffect(() => {
-    preloadNeighborQuestionAssets(questions, currentIndex);
+    return preloadNeighborQuestionAssets(questions, currentIndex);
   }, [currentIndex, questions]);
 
   if (loading || (questions.length > 0 && !progressRestored)) {
@@ -495,7 +538,7 @@ export function ImageQuizPage() {
 
   if (!questions.length) {
     return (
-      <EmptyState title={data?.emptyTitle ?? T.allEmpty} message={T.emptyMessage} actionLabel={T.home} actionTo="/" />
+      <EmptyState title={data?.emptyTitle ?? T.allEmpty} message={emptyMessageForMode(mode)} actionLabel={T.home} actionTo="/" />
     );
   }
 
@@ -505,14 +548,15 @@ export function ImageQuizPage() {
   }
 
   const savedAnswer = answers[currentQuestion.id];
-  const answerModeRecord: AnswerRecord | undefined = answerModeEnabled
+  const answerModeAllowed = answerModeEnabled && mode !== "wrong" && mode !== "todayWrong" && mode !== "sessionWrong";
+  const answerModeRecord: AnswerRecord | undefined = answerModeAllowed
     ? { selected: currentQuestion.answer, correct: currentQuestion.answer, isCorrect: true }
     : undefined;
   const currentAnswer = savedAnswer ?? answerModeRecord;
   const isFavorite = favoriteIds.has(currentQuestion.id);
   const displayedQuestionNumber =
     mode === "random" || mode === "sessionWrong" ? currentIndex + 1 : currentQuestion.number;
-  const currentWrongCount = mode === "wrong" ? data?.wrongCounts?.[currentQuestion.id] : undefined;
+  const currentWrongCount = mode === "wrong" || mode === "todayWrong" ? data?.wrongCounts?.[currentQuestion.id] : undefined;
   const currentCorrectStreak = calculateConsecutiveCorrectStreak(questions, answers, currentIndex);
   const activeCorrectStreak = calculateActiveCorrectStreak(questions, answers, currentIndex);
   const encouragementCorrectStreak = currentAnswer?.isCorrect
@@ -527,12 +571,16 @@ export function ImageQuizPage() {
   const contextLabel =
     mode === "daily"
       ? `${T.dailyTitle} · ${questionSourceLabel}`
-      : mode === "chapter" || mode === "bank" || mode === "random" || mode === "sessionWrong"
-        ? (data?.title ?? questionSourceLabel)
-        : questionSourceLabel;
+      : mode === "random"
+        ? `${T.randomTitle} · ${questionSourceLabel}`
+        : mode === "sessionWrong"
+          ? `${T.sessionWrongTitle} · ${questionSourceLabel}`
+          : mode === "chapter" || mode === "bank"
+            ? (data?.title ?? questionSourceLabel)
+            : questionSourceLabel;
 
   async function handleAnswer(selected: NumericAnswer): Promise<void> {
-    if (!currentQuestion || answers[currentQuestion.id] || answerModeEnabled) {
+    if (!currentQuestion || answers[currentQuestion.id] || answerModeAllowed) {
       return;
     }
 
@@ -712,6 +760,10 @@ export function ImageQuizPage() {
               <span>{questionSourceLabel}</span>
             </div>
           </>
+        ) : mode === "random" || mode === "sessionWrong" ? (
+          <div className="daily-question-source-badge" aria-label="題目來源">
+            <span>{questionSourceLabel}</span>
+          </div>
         ) : null}
 
         <EncouragementNote
@@ -722,14 +774,18 @@ export function ImageQuizPage() {
         />
 
         <ProgressBar
-          value={mode === "daily" ? dailyProgressIndex : currentIndex + 1}
+          value={dailyProgressValue}
           max={mode === "daily" ? (dailyPlannedCount ?? questions.length) : questions.length}
           label={mode === "daily"
-            ? `${"\u7b2c"} ${dailyProgressIndex} / ${dailyPlannedCount ?? questions.length} ${"\u984c"}`
+            ? `已完成 ${dailyProgressValue} / ${dailyPlannedCount ?? questions.length} 題`
             : `${"\u7b2c"} ${currentIndex + 1} / ${questions.length} ${"\u984c"}`}
         />
 
-        <PdfSegmentStack label={`${"\u7b2c"} ${currentQuestion.number} ${"\u984c\u984c\u76ee"}`} segments={currentQuestion.questionSegments} />
+        <PdfSegmentStack
+          label={`${"\u7b2c"} ${currentQuestion.number} ${"\u984c\u984c\u76ee"}`}
+          segments={currentQuestion.questionSegments}
+          priority="high"
+        />
 
         <div className="numeric-option-grid" aria-label={T.answerOptions}>
           {ANSWERS.map((answer) => (
@@ -763,6 +819,7 @@ export function ImageQuizPage() {
               <PdfSegmentStack
                 label={`${"\u7b2c"} ${currentQuestion.number} ${"\u984c\u89e3\u6790"}`}
                 segments={currentQuestion.explanationSegments}
+                priority="auto"
               />
             </div>
           </div>
@@ -805,42 +862,55 @@ function calculateLiveDailyRemainingCount(
   baseRemainingCount: number,
   categoryQuestionIds: Record<DailyPlanCategory, string[]> | undefined,
   answeredIds: Set<string>,
+  initialCompletedIds: Set<string>,
 ): number {
   if (!categoryQuestionIds) {
     return Math.max(0, baseRemainingCount - answeredIds.size);
   }
 
-  const dailyNewQuestionIds = new Set(categoryQuestionIds.new ?? []);
-  let answeredNewQuestions = 0;
-  answeredIds.forEach((questionId) => {
-    if (dailyNewQuestionIds.has(questionId)) {
-      answeredNewQuestions += 1;
+  const dailyQuestionIds = new Set(Object.values(categoryQuestionIds).flat());
+  const completedQuestionIds = new Set<string>();
+  initialCompletedIds.forEach((questionId) => {
+    if (dailyQuestionIds.has(questionId)) {
+      completedQuestionIds.add(questionId);
     }
   });
-  return Math.max(0, baseRemainingCount - answeredNewQuestions);
+  answeredIds.forEach((questionId) => {
+    if (dailyQuestionIds.has(questionId)) {
+      completedQuestionIds.add(questionId);
+    }
+  });
+  const calculatedRemaining = Math.max(0, dailyQuestionIds.size - completedQuestionIds.size);
+  return Math.min(Math.max(0, baseRemainingCount), calculatedRemaining);
 }
 
 
-function preloadNeighborQuestionAssets(questions: readonly ImageQuizQuestion[], currentIndex: number): void {
+function preloadNeighborQuestionAssets(questions: readonly ImageQuizQuestion[], currentIndex: number): () => void {
   if (typeof window === "undefined" || !questions.length) {
-    return;
+    return () => undefined;
   }
 
-  const nearbyQuestions = [questions[currentIndex + 1], questions[currentIndex + 2], questions[currentIndex - 1]].filter(
-    (question): question is ImageQuizQuestion => Boolean(question),
-  );
+  const nextQuestion = questions[currentIndex + 1];
+  if (!nextQuestion) return () => undefined;
   const sources = new Set<string>();
+  nextQuestion.questionSegments.forEach((segment) => sources.add(segment.src));
 
-  nearbyQuestions.forEach((question) => {
-    question.questionSegments.forEach((segment) => sources.add(segment.src));
-    question.explanationSegments.slice(0, 1).forEach((segment) => sources.add(segment.src));
-  });
+  const preload = () => {
+    sources.forEach((source) => {
+      const image = new Image();
+      image.decoding = "async";
+      image.fetchPriority = "low";
+      image.src = assetUrl(source);
+    });
+  };
 
-  sources.forEach((source) => {
-    const image = new Image();
-    image.decoding = "async";
-    image.src = assetUrl(source);
-  });
+  if (typeof window.requestIdleCallback === "function") {
+    const idleId = window.requestIdleCallback(preload, { timeout: 1_500 });
+    return () => window.cancelIdleCallback(idleId);
+  }
+
+  const timerId = window.setTimeout(preload, 250);
+  return () => window.clearTimeout(timerId);
 }
 
 function formatElapsedTime(totalSeconds: number): string {
@@ -851,13 +921,23 @@ function formatElapsedTime(totalSeconds: number): string {
   return hours > 0 ? `${hours}:${two(minutes)}:${two(seconds)}` : `${minutes}:${two(seconds)}`;
 }
 
+function emptyMessageForMode(mode: ImageQuizMode): string {
+  if (mode === "daily") return "今日安排的新題、錯題與複習題都完成了，回首頁查看首輪覆蓋與明日任務。";
+  if (mode === "todayWrong") return "今天答錯但尚未訂正的題目會出現在這裡。";
+  if (mode === "wrong") return "答錯的題目會自動收進這裡，答對後即完成訂正。";
+  if (mode === "favorites") return "在題目頁點選收藏後，就能從這裡集中複習。";
+  return T.emptyMessage;
+}
+
 type DailyTrainingBuildResult = {
   questions: ImageQuizQuestion[];
+  planQuestionIds: string[];
   categoryCounts: Record<DailyPlanCategory, number>;
   categoryQuestionIds?: Record<DailyPlanCategory, string[]>;
   remainingCount?: number;
   plannedCount: number;
   completedBeforePlanCount: number;
+  initialCompletedQuestionIds: string[];
   plan: ReturnType<typeof calculateSmartStudyPlanStats>;
   summary: string;
 };
@@ -918,22 +998,53 @@ function buildDailyTrainingQuestions(
     review: reviewQuestions.map((question) => question.id),
     mixed: mixedQuestions.map((question) => question.id),
   };
-  const selectedQuestions = newQuestions;
+  const selectedQuestions = interleaveDailyQuestions({
+    new: newQuestions,
+    wrong: wrongQuestions,
+    review: reviewQuestions,
+    mixed: mixedQuestions,
+  });
   const remainingQuestions = selectedQuestions.filter((question) => !todayAnsweredIds.has(question.id));
-  const plannedCount = newQuestions.length;
+  const plannedCount = selectedQuestions.length;
   const categoryCounts = countRemainingCategoryQuestions(categoryQuestionIds, todayAnsweredIds);
   const summary = buildDailySummary(categoryCounts);
   const result = {
     questions: remainingQuestions,
+    planQuestionIds: selectedQuestions.map((question) => question.id),
     categoryCounts,
     categoryQuestionIds,
     remainingCount: remainingQuestions.length,
     plannedCount,
     completedBeforePlanCount: Math.max(0, plannedCount - remainingQuestions.length),
+    initialCompletedQuestionIds: selectedQuestions
+      .map((question) => question.id)
+      .filter((questionId) => todayAnsweredIds.has(questionId)),
     plan,
     summary,
   };
   writeStoredDailyPlan(result);
+  return result;
+}
+
+function interleaveDailyQuestions(
+  categories: Record<DailyPlanCategory, ImageQuizQuestion[]>,
+): ImageQuizQuestion[] {
+  const queues = Object.fromEntries(
+    DAILY_PLAN_CATEGORIES.map((category) => [category, [...categories[category]]]),
+  ) as Record<DailyPlanCategory, ImageQuizQuestion[]>;
+  const pattern: DailyPlanCategory[] = ["review", "wrong", "new", "new", "mixed"];
+  const result: ImageQuizQuestion[] = [];
+
+  while (Object.values(queues).some((queue) => queue.length > 0)) {
+    let added = false;
+    for (const category of pattern) {
+      const question = queues[category].shift();
+      if (!question) continue;
+      result.push(question);
+      added = true;
+    }
+    if (!added) break;
+  }
   return result;
 }
 
@@ -995,7 +1106,7 @@ function takeFromBucket(source: ImageQuizQuestion[], count: number, selectedIds:
 
 function distributeCount<K extends string>(count: number, inputs: { key: K; available: number; weight: number }[]): Record<K, number> {
   const result = Object.fromEntries(inputs.map((input) => [input.key, 0])) as Record<K, number>;
-  let remaining = Math.min(count, inputs.reduce((sum, input) => sum + input.available, 0));
+  const remaining = Math.min(count, inputs.reduce((sum, input) => sum + input.available, 0));
   const active = inputs.filter((input) => input.available > 0);
   if (remaining <= 0 || active.length === 0) return result;
   const totalWeight = active.reduce((sum, input) => sum + input.weight, 0);
@@ -1101,7 +1212,7 @@ function readStoredDailyPlan(
     const stored = JSON.parse(raw) as StoredDailyPlan;
     if (
       stored.date !== localTodayKey() ||
-      stored.version !== 28 ||
+      stored.version !== 39 ||
       stored.planSignature !== getStudyPlanSignature() ||
       !Array.isArray(stored.questionIds) ||
       stored.questionIds.length === 0
@@ -1113,22 +1224,26 @@ function readStoredDailyPlan(
       .map((questionId) => byId.get(questionId))
       .filter((question): question is ImageQuizQuestion => Boolean(question));
     if (allStoredQuestions.length === 0) return undefined;
-    const answeredIds = new Set(storedAnswers.map((answer) => answer.questionId));
-    const categoryQuestionIds = normalizeCategoryQuestionIds(stored, new Set(allQuestions.map((question) => question.id)));
+    const allQuestionIds = new Set(allQuestions.map((question) => question.id));
+    const answeredIds = getTodayAnsweredIds(storedAnswers, allQuestionIds);
+    const categoryQuestionIds = normalizeCategoryQuestionIds(stored, allQuestionIds);
     const categoryCounts = countRemainingCategoryQuestions(categoryQuestionIds, answeredIds);
     const remainingQuestions = allStoredQuestions.filter((question) => !answeredIds.has(question.id));
     const storedValidCount = allStoredQuestions.length;
     const plannedCount = Math.max(0, stored.plannedCount ?? storedValidCount);
     const remainingCount = remainingQuestions.length;
     const completedBeforePlanCount = Math.max(0, plannedCount - remainingCount);
+    const initialCompletedQuestionIds = stored.questionIds.filter((questionId) => answeredIds.has(questionId));
     return {
       questions: remainingQuestions,
+      planQuestionIds: allStoredQuestions.map((question) => question.id),
       categoryCounts,
       categoryQuestionIds,
       remainingCount,
       plannedCount,
       completedBeforePlanCount,
-      plan: { ...plan, suggestedDailyCount: plannedCount, estimatedMinutes: plannedCount },
+      initialCompletedQuestionIds,
+      plan: { ...plan, suggestedDailyCount: plannedCount },
       summary: buildDailySummary(categoryCounts),
     };
   } catch {
@@ -1137,12 +1252,12 @@ function readStoredDailyPlan(
 }
 
 function writeStoredDailyPlan(result: DailyTrainingBuildResult): void {
-  if (typeof window === "undefined" || result.questions.length === 0) return;
+  if (typeof window === "undefined" || result.planQuestionIds.length === 0) return;
   const stored: StoredDailyPlan = {
-    version: 28,
+    version: 39,
     date: localTodayKey(),
     planSignature: getStudyPlanSignature(),
-    questionIds: result.questions.map((question) => question.id),
+    questionIds: result.planQuestionIds,
     plannedCount: result.plannedCount,
     categoryCounts: result.categoryCounts,
     categoryQuestionIds: result.categoryQuestionIds,

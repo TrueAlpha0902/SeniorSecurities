@@ -5,7 +5,7 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist", "dev-dist", "node_modules", "staging", "tmp"] },
+  { ignores: ["dist", "dev-dist", ".vercel", "node_modules", "staging", "tmp"] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
@@ -25,6 +25,33 @@ export default tseslint.config(
       ...reactHooks.configs.recommended.rules,
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
       "@typescript-eslint/no-explicit-any": "error"
+    }
+  },
+  {
+    files: ["desktop/**/*.{js,cjs}"],
+    languageOptions: {
+      globals: globals.node
+    },
+    rules: {
+      "@typescript-eslint/no-require-imports": "off"
+    }
+  },
+  {
+    files: ["public/calculator-restore.js"],
+    languageOptions: {
+      globals: globals.browser
+    },
+    rules: {
+      "@typescript-eslint/no-unused-vars": ["error", {
+        caughtErrors: "all",
+        caughtErrorsIgnorePattern: "^err$"
+      }]
+    }
+  },
+  {
+    files: ["src/auth/AuthContext.tsx"],
+    rules: {
+      "react-refresh/only-export-components": "off"
     }
   }
 );

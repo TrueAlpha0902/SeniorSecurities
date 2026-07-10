@@ -1,14 +1,16 @@
 import { BookOpen, CalendarDays, Heart, ListChecks, PlayCircle, Shuffle, Target, Trophy } from "lucide-react";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { ErrorState } from "../components/ErrorState";
+import { FrierenAnimation } from "../components/FrierenAnimation";
 import { GlassButton, GlassLinkButton } from "../components/GlassButton";
 import { GlassCard } from "../components/GlassCard";
 import { LoadingState } from "../components/LoadingState";
 import { useAsync } from "../hooks/useAsync";
 import { useAuth } from "../auth/AuthContext";
 import { listUserAnswers, listWrongQuestions } from "../lib/db";
-import { assetUrl, loadImageQuizBankSummaries, loadImageQuizBanks, type ImageQuizBank } from "../lib/imageQuiz";
+import { loadImageQuizBankSummaries, type ImageQuizBank } from "../lib/imageQuiz";
 import { calculateAccuracy } from "../lib/quiz";
+import { formatTotalPracticeTime, getTotalPracticeSeconds, PRACTICE_TIME_CHANGED } from "../lib/practiceTime";
 import {
   calculateSmartStudyPlanStats,
   formatExamDate,
@@ -31,7 +33,7 @@ const T = {
   subject: "科目",
   question: "題",
   mixed: "全題庫練習",
-  random80: "模擬考",
+  random80: "單科隨機測驗",
   weakFirst: "弱點練習",
   similar: "相似題比較",
   favorites: "收藏題目",
@@ -39,19 +41,21 @@ const T = {
   bankList: "題庫科目",
   chapters: "章",
   enter: "進入題庫",
-  progress: "進度",
+  progress: "首輪覆蓋",
   setupTitle: "建立每日智能練習",
   setupDescription: "請設定考試日期、每天讀書時間與備考強度；App 會同時檢查期限壓力，不會只把總題庫平均除以天數。",
   examDate: "考試日期",
   dailyStudyTime: "每天讀書時間",
   intensity: "備考強度",
   save: "開始規劃",
+  skip: "稍後設定",
   required: "請選擇考試日期。",
   countdown: "考試倒數",
   days: "天",
   examToday: "就是今天",
   smartPractice: "每日練習",
   startDaily: "開始今日練習",
+  todayWrongReview: "今日錯題複習",
   wrongCorrection: "錯題訂正",
 };
 
@@ -61,18 +65,6 @@ const INTENSITY_OPTIONS: { id: StudyIntensity; label: string; description: strin
   { id: "standard", label: "標準型", description: "新題、錯題、複習均衡。" },
   { id: "sprint", label: "衝刺型", description: "期限優先，首輪覆蓋與錯題訂正比重較高。" },
 ];
-
-const FRIEREN_FRAME_COUNT = 29;
-const FRIEREN_FRAME_DURATION_SECONDS = 12.18;
-const FRIEREN_FRAME_STEP_SECONDS = FRIEREN_FRAME_DURATION_SECONDS / FRIEREN_FRAME_COUNT;
-const FRIEREN_FRAMES = Array.from({ length: FRIEREN_FRAME_COUNT }, (_, index) => {
-  const frameNumber = String(index + 1).padStart(3, "0");
-  return {
-    key: frameNumber,
-    src: assetUrl(`animation/frieren-sequence/frame-${frameNumber}.png`),
-    delay: `${(index * FRIEREN_FRAME_STEP_SECONDS).toFixed(3)}s`,
-  };
-});
 
 const EMPTY_BANKS: ImageQuizBank[] = [];
 const EMPTY_ANSWERS: UserAnswer[] = [];
@@ -85,21 +77,22 @@ type HomeData = {
 };
 
 async function loadHomeData(includePrivateData: boolean): Promise<HomeData> {
-  if (!includePrivateData) {
-    const banks = await loadImageQuizBankSummaries();
-    return { banks, answers: [], wrongRecords: [] };
-  }
-
-  const [banks, answers, wrongRecords] = await Promise.all([loadImageQuizBanks(), listUserAnswers(), listWrongQuestions()]);
+  const [banks, answers, wrongRecords] = await Promise.all([
+    loadImageQuizBankSummaries(),
+    includePrivateData ? listUserAnswers() : Promise.resolve([]),
+    includePrivateData ? listWrongQuestions() : Promise.resolve([]),
+  ]);
   return { banks, answers, wrongRecords };
 }
 
 export function HomePage() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [studyConfig, setStudyConfigState] = useState<StudyPlanConfig>(() => getStudyPlanConfig());
-  const [draftExamDate, setDraftExamDate] = useState(() => getStudyPlanConfig().examDate ?? localTodayKey());
+  const [draftExamDate, setDraftExamDate] = useState(() => getStudyPlanConfig().examDate ?? "");
   const [draftStudyMinutes, setDraftStudyMinutes] = useState(() => getStudyPlanConfig().dailyStudyMinutes);
   const [draftIntensity, setDraftIntensity] = useState<StudyIntensity>(() => getStudyPlanConfig().intensity);
+  const [totalPracticeSeconds, setTotalPracticeSeconds] = useState(() => getTotalPracticeSeconds());
+  const [setupDismissed, setSetupDismissed] = useState(false);
   const { isActivated } = useAuth();
   const { data, error, loading } = useAsync(() => loadHomeData(isActivated), [refreshKey, isActivated]);
 
@@ -113,11 +106,22 @@ export function HomePage() {
     return () => window.removeEventListener("records:changed", refreshRecords);
   }, []);
 
+
+  useEffect(() => {
+    const refreshPracticeTime = () => setTotalPracticeSeconds(getTotalPracticeSeconds());
+    window.addEventListener(PRACTICE_TIME_CHANGED, refreshPracticeTime);
+    window.addEventListener("storage", refreshPracticeTime);
+    return () => {
+      window.removeEventListener(PRACTICE_TIME_CHANGED, refreshPracticeTime);
+      window.removeEventListener("storage", refreshPracticeTime);
+    };
+  }, []);
+
   useEffect(() => {
     const refreshStudyPlan = () => {
       const config = getStudyPlanConfig();
       setStudyConfigState(config);
-      setDraftExamDate(config.examDate ?? localTodayKey());
+      setDraftExamDate(config.examDate ?? "");
       setDraftStudyMinutes(config.dailyStudyMinutes);
       setDraftIntensity(config.intensity);
     };
@@ -129,17 +133,20 @@ export function HomePage() {
     };
   }, []);
 
-  const allQuestionIds = useMemo(
-    () => new Set(banks.flatMap((bank) => bank.chapters.flatMap((chapter) => chapter.questions.map((question) => question.id)))),
+  const sourceBankIds = useMemo(
+    () => new Set(banks.flatMap((bank) => Array.from(getBankSourceIds(bank)))),
     [banks],
   );
   const questionCount = useMemo(
     () => banks.reduce((bankSum, bank) => bankSum + bank.chapters.reduce((chapterSum, chapter) => chapterSum + chapter.questionCount, 0), 0),
     [banks],
   );
-  const overallProgress = calculateOverallProgress(banks, answers);
-  const planningAnswers = useMemo(() => excludeTodayAnswers(answers, allQuestionIds), [allQuestionIds, answers]);
-  const smartInputs = useMemo(() => calculateSmartInputs(allQuestionIds, planningAnswers, wrongRecords), [allQuestionIds, planningAnswers, wrongRecords]);
+  const overallProgress = calculateOverallProgress(questionCount, answers, sourceBankIds);
+  const planningAnswers = useMemo(() => excludeTodayAnswers(answers, sourceBankIds), [answers, sourceBankIds]);
+  const smartInputs = useMemo(
+    () => calculateSmartInputs(questionCount, sourceBankIds, planningAnswers, wrongRecords),
+    [planningAnswers, questionCount, sourceBankIds, wrongRecords],
+  );
   const studyPlan = useMemo(
     () =>
       calculateSmartStudyPlanStats({
@@ -155,8 +162,14 @@ export function HomePage() {
     [questionCount, smartInputs, studyConfig],
   );
   const dailyDisplayPlan = useMemo(
-    () => calculateDailyDisplayPlan(studyPlan, allQuestionIds, answers),
-    [allQuestionIds, answers, studyPlan],
+    () => calculateDailyDisplayPlan(studyPlan, answers, sourceBankIds, questionCount),
+    [answers, questionCount, sourceBankIds, studyPlan],
+  );
+  const homeDailyAllocations = useMemo(
+    () =>
+      Object.values(dailyDisplayPlan.allocations)
+        .filter((allocation) => allocation.id !== "mixed"),
+    [dailyDisplayPlan.allocations],
   );
 
   async function handlePlanSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
@@ -169,12 +182,11 @@ export function HomePage() {
     setStudyConfigState(getStudyPlanConfig());
   }
 
-  if (loading) return <LoadingState label={T.loading} />;
-  if (error) return <ErrorState message={error} />;
-
   return (
     <div className="page-stack">
-      {isActivated && !studyConfig.examDate ? (
+      {loading ? <LoadingState label={T.loading} /> : error ? <ErrorState message={error} /> : (
+        <>
+      {isActivated && !studyConfig.examDate && !setupDismissed ? (
         <ExamSetupDialog
           draftExamDate={draftExamDate}
           draftStudyMinutes={draftStudyMinutes}
@@ -182,6 +194,7 @@ export function HomePage() {
           onDateChange={setDraftExamDate}
           onStudyMinutesChange={setDraftStudyMinutes}
           onIntensityChange={setDraftIntensity}
+          onDismiss={() => setSetupDismissed(true)}
           onSubmit={(event) => void handlePlanSubmit(event)}
         />
       ) : null}
@@ -193,6 +206,7 @@ export function HomePage() {
             <span className="glass-badge">{banks.length} {T.subject}</span>
             <span className="glass-badge">{questionCount} {T.question}</span>
             <span className="glass-badge">{T.progress} {overallProgress}%</span>
+            {isActivated ? <span className="glass-badge">累積 {formatTotalPracticeTime(totalPracticeSeconds)}</span> : null}
           </div>
         </GlassCard>
       </section>
@@ -213,19 +227,23 @@ export function HomePage() {
               <p className="eyebrow">Daily Smart Practice</p>
               <h2>{T.smartPractice} {dailyDisplayPlan.count} {T.question}</h2>
               <div className="daily-allocation-grid daily-home-allocation" aria-label="今日練習摘要">
-                {Object.values(dailyDisplayPlan.allocations)
-                  .filter((allocation) => allocation.id !== "mixed")
-                  .map((allocation) => (
-                    <div key={allocation.id} className={`daily-allocation-card daily-allocation-${allocation.id}`}>
-                      <span>{allocation.label}</span>
-                      <strong>{allocation.count}</strong>
-                    </div>
-                  ))}
+                {homeDailyAllocations.map((allocation) => (
+                  <div key={allocation.id} className={`daily-allocation-card daily-allocation-${allocation.id}`}>
+                    <span>{allocation.label}</span>
+                    <strong>{allocation.count}</strong>
+                  </div>
+                ))}
               </div>
-              <GlassLinkButton to="/image-quiz/daily" variant="primary">
-                <PlayCircle aria-hidden="true" size={19} />
-                <span>{T.startDaily}</span>
-              </GlassLinkButton>
+              <div className="daily-action-row">
+                <GlassLinkButton to="/image-quiz/daily" variant="primary">
+                  <PlayCircle aria-hidden="true" size={19} />
+                  <span>{T.startDaily}</span>
+                </GlassLinkButton>
+                <GlassLinkButton to="/image-quiz/today-wrong" variant="secondary">
+                  <Target aria-hidden="true" size={19} />
+                  <span>{T.todayWrongReview}</span>
+                </GlassLinkButton>
+              </div>
             </div>
           </GlassCard>
         </section>
@@ -233,7 +251,7 @@ export function HomePage() {
         <GlassCard className="daily-simple-card auth-banner" as="section">
           <div>
             <p className="eyebrow">Preview</p>
-            <h2>完整開通後會解鎖每日智能練習、錯題訂正、模擬考與收藏複習。</h2>
+            <h2>完整開通後會解鎖每日智能練習、錯題訂正、單科隨機測驗與收藏複習。</h2>
             <p>目前可以先使用 10 題試用模式。</p>
           </div>
           <GlassLinkButton to="/trial" variant="primary">試用 10 題</GlassLinkButton>
@@ -243,7 +261,7 @@ export function HomePage() {
       <section className="priority-bank-grid" aria-label={T.bankList}>
         {banks.map((bank) => {
           const total = bank.chapters.reduce((sum, chapter) => sum + chapter.questionCount, 0);
-          const progress = calculateBankProgress(bank, answers);
+          const progress = calculateBankProgress(bank, answers, total);
           return (
             <GlassCard key={bank.bankId} interactive as="article" className="bank-card">
               <div className="card-title-row">
@@ -271,9 +289,11 @@ export function HomePage() {
           <GlassLinkButton to="/leaderboard" variant="secondary"><Trophy aria-hidden="true" size={19} /><span>{T.leaderboard}</span></GlassLinkButton>
         </div>
       </section>
+        </>
+      )}
 
       <section className="cat-playground" aria-hidden="true">
-        <div className="frieren-walker"><span className="frieren-shadow" /><div className="frieren-sprite">{FRIEREN_FRAMES.map((frame) => <img key={frame.key} className="frieren-frame" src={frame.src} alt="" style={{ animationDelay: frame.delay }} />)}</div></div>
+        <FrierenAnimation />
       </section>
     </div>
   );
@@ -286,6 +306,7 @@ function ExamSetupDialog({
   onDateChange,
   onStudyMinutesChange,
   onIntensityChange,
+  onDismiss,
   onSubmit,
 }: {
   draftExamDate: string;
@@ -294,6 +315,7 @@ function ExamSetupDialog({
   onDateChange: (date: string) => void;
   onStudyMinutesChange: (minutes: number) => void;
   onIntensityChange: (intensity: StudyIntensity) => void;
+  onDismiss: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }) {
   return (
@@ -306,47 +328,81 @@ function ExamSetupDialog({
           <label className="exam-date-field"><span>{T.examDate}</span><input type="date" min={localTodayKey()} value={draftExamDate} onChange={(event) => onDateChange(event.currentTarget.value)} /></label>
           <div className="smart-setup-section">
             <span>{T.dailyStudyTime}</span>
-            <div className="setup-choice-grid setup-time-grid">{STUDY_TIME_OPTIONS.map((minutes) => <button key={minutes} type="button" className={`setup-choice-button ${draftStudyMinutes === minutes ? "is-selected" : ""}`} onClick={() => onStudyMinutesChange(minutes)}>{minutes} 分鐘</button>)}</div>
+            <div className="setup-choice-grid setup-time-grid">{STUDY_TIME_OPTIONS.map((minutes) => <button key={minutes} type="button" aria-pressed={draftStudyMinutes === minutes} className={`setup-choice-button ${draftStudyMinutes === minutes ? "is-selected" : ""}`} onClick={() => onStudyMinutesChange(minutes)}>{minutes} 分鐘</button>)}</div>
             <label className="custom-minutes-field"><span>自訂</span><input type="number" min={15} max={720} step={5} value={draftStudyMinutes} onChange={(event) => onStudyMinutesChange(Number(event.currentTarget.value))} /></label>
           </div>
           <div className="smart-setup-section">
             <span>{T.intensity}</span>
-            <div className="setup-choice-grid setup-intensity-grid">{INTENSITY_OPTIONS.map((option) => <button key={option.id} type="button" className={`setup-choice-button setup-intensity-button ${draftIntensity === option.id ? "is-selected" : ""}`} onClick={() => onIntensityChange(option.id)}><strong>{option.label}</strong><small>{option.description}</small></button>)}</div>
+            <div className="setup-choice-grid setup-intensity-grid">{INTENSITY_OPTIONS.map((option) => <button key={option.id} type="button" aria-pressed={draftIntensity === option.id} className={`setup-choice-button setup-intensity-button ${draftIntensity === option.id ? "is-selected" : ""}`} onClick={() => onIntensityChange(option.id)}><strong>{option.label}</strong><small>{option.description}</small></button>)}</div>
           </div>
-          <GlassButton type="submit" variant="primary">{T.save}</GlassButton>
+          <div className="setup-action-row">
+            <GlassButton type="button" variant="secondary" onClick={onDismiss}>{T.skip}</GlassButton>
+            <GlassButton type="submit" variant="primary">{T.save}</GlassButton>
+          </div>
         </form>
       </GlassCard>
     </div>
   );
 }
 
-function calculateBankProgress(bank: ImageQuizBank, answers: UserAnswer[]): number {
-  const questionIds = new Set(bank.chapters.flatMap((chapter) => chapter.questions.map((question) => question.id)));
-  const answeredIds = new Set(answers.filter((answer) => questionIds.has(answer.questionId)).map((answer) => answer.questionId));
-  return calculateAccuracy(answeredIds.size, questionIds.size);
+function getBankSourceIds(bank: ImageQuizBank): Set<string> {
+  return new Set(bank.chapters.map((chapter) => chapter.sourceBankId ?? chapter.bankId ?? bank.bankId));
 }
 
-function calculateOverallProgress(banks: ImageQuizBank[], answers: UserAnswer[]): number {
-  const questionIds = new Set(banks.flatMap((bank) => bank.chapters.flatMap((chapter) => chapter.questions.map((question) => question.id))));
-  const answeredIds = new Set(answers.filter((answer) => questionIds.has(answer.questionId)).map((answer) => answer.questionId));
-  return calculateAccuracy(answeredIds.size, questionIds.size);
+function calculateBankProgress(bank: ImageQuizBank, answers: UserAnswer[], questionCount: number): number {
+  const sourceIds = getBankSourceIds(bank);
+  const answeredIds = new Set(
+    answers.filter((answer) => sourceIds.has(answer.bankId)).map((answer) => answer.questionId),
+  );
+  return calculateAccuracy(answeredIds.size, questionCount);
 }
-function excludeTodayAnswers(answers: UserAnswer[], allQuestionIds: Set<string>): UserAnswer[] {
+
+function calculateOverallProgress(
+  questionCount: number,
+  answers: UserAnswer[],
+  sourceBankIds: Set<string>,
+): number {
+  const answeredIds = new Set(
+    answers.filter((answer) => sourceBankIds.has(answer.bankId)).map((answer) => answer.questionId),
+  );
+  return calculateAccuracy(answeredIds.size, questionCount);
+}
+
+function excludeTodayAnswers(answers: UserAnswer[], sourceBankIds: Set<string>): UserAnswer[] {
   const today = localTodayKey();
-  return answers.filter((answer) => !allQuestionIds.has(answer.questionId) || localTodayKey(new Date(answer.answeredAt)) !== today);
+  return answers.filter(
+    (answer) => sourceBankIds.has(answer.bankId) && localTodayKey(new Date(answer.answeredAt)) !== today,
+  );
 }
 
-function calculateSmartInputs(allQuestionIds: Set<string>, answers: UserAnswer[], wrongRecords: WrongQuestionRecord[]) {
-  const answerById = new Map(answers.filter((answer) => allQuestionIds.has(answer.questionId)).map((answer) => [answer.questionId, answer]));
+function calculateSmartInputs(
+  questionCount: number,
+  sourceBankIds: Set<string>,
+  answers: UserAnswer[],
+  wrongRecords: WrongQuestionRecord[],
+) {
+  const answerById = new Map(
+    answers.filter((answer) => sourceBankIds.has(answer.bankId)).map((answer) => [answer.questionId, answer]),
+  );
   const answeredIds = new Set(answerById.keys());
   const wrongIds = new Set(
     wrongRecords
-      .filter((record) => allQuestionIds.has(record.questionId) && answerById.get(record.questionId)?.isCorrect !== true)
+      .filter((record) => sourceBankIds.has(record.bankId) && answerById.get(record.questionId)?.isCorrect !== true)
       .map((record) => record.questionId),
   );
-  const reviewDueIds = new Set(answers.filter((answer) => allQuestionIds.has(answer.questionId) && answer.isCorrect && !wrongIds.has(answer.questionId) && isReviewDue(answer.answeredAt)).map((answer) => answer.questionId));
+  const reviewDueIds = new Set(
+    answers
+      .filter(
+        (answer) =>
+          sourceBankIds.has(answer.bankId) &&
+          answer.isCorrect &&
+          !wrongIds.has(answer.questionId) &&
+          isReviewDue(answer.answeredAt),
+      )
+      .map((answer) => answer.questionId),
+  );
   return {
-    unattemptedCount: Math.max(0, allQuestionIds.size - answeredIds.size),
+    unattemptedCount: Math.max(0, questionCount - answeredIds.size),
     wrongDueCount: wrongIds.size,
     reviewDueCount: reviewDueIds.size,
     mixedPoolCount: Math.max(0, answeredIds.size - wrongIds.size - reviewDueIds.size),
@@ -374,19 +430,19 @@ const DAILY_PLAN_CATEGORIES: DailyPlanCategory[] = ["new", "wrong", "review", "m
 
 function calculateDailyDisplayPlan(
   studyPlan: ReturnType<typeof calculateSmartStudyPlanStats>,
-  allQuestionIds: Set<string>,
   answers: UserAnswer[],
+  sourceBankIds: Set<string>,
+  totalQuestionCount: number,
 ): DailyDisplayPlan {
-  const todayAnsweredIds = getTodayAnsweredIds(answers, allQuestionIds);
-  const stored = readTodayDailyPlan(allQuestionIds, getStudyPlanSignature(studyPlan));
+  const todayAnsweredIds = getTodayAnsweredIds(answers, sourceBankIds);
+  const stored = readTodayDailyPlan(getStudyPlanSignature(studyPlan));
   if (!stored) {
-    return { hasTodayPlan: false, count: studyPlan.allocations.new.count, allocations: studyPlan.allocations };
+    return { hasTodayPlan: false, count: studyPlan.suggestedDailyCount, allocations: studyPlan.allocations };
   }
 
-  const categoryIds = normalizeStoredCategoryIds(stored, allQuestionIds);
+  const categoryIds = normalizeStoredCategoryIds(stored);
   const remainingCounts = countRemainingByCategory(categoryIds, todayAnsweredIds);
-  const plannedQuestionIds = new Set(stored.questionIds.filter((questionId) => allQuestionIds.has(questionId)));
-  const plannedNewTotal = getStoredPlannedNewCount(stored, categoryIds, allQuestionIds, plannedQuestionIds);
+  const remainingTotal = Object.values(remainingCounts).reduce((sum, count) => sum + count, 0);
   const allocations = Object.fromEntries(
     DAILY_PLAN_CATEGORIES.map((category) => [
       category,
@@ -398,17 +454,19 @@ function calculateDailyDisplayPlan(
     ]),
   ) as ReturnType<typeof calculateSmartStudyPlanStats>["allocations"];
 
-  return { hasTodayPlan: true, count: plannedNewTotal, allocations };
+  return { hasTodayPlan: true, count: Math.min(remainingTotal, totalQuestionCount), allocations };
 }
 
-function readTodayDailyPlan(allQuestionIds: Set<string>, expectedPlanSignature: string): StoredDailyPlan | undefined {
+function readTodayDailyPlan(expectedPlanSignature: string): StoredDailyPlan | undefined {
   if (typeof window === "undefined") return undefined;
   const raw = window.localStorage.getItem(`quizpwa:daily-plan:${localTodayKey()}`);
   if (!raw) return undefined;
   try {
     const stored = JSON.parse(raw) as StoredDailyPlan;
-    if (stored.date !== localTodayKey() || stored.version !== 28 || stored.planSignature !== expectedPlanSignature || !Array.isArray(stored.questionIds)) return undefined;
-    const questionIds = stored.questionIds.filter((questionId) => allQuestionIds.has(questionId));
+    if (stored.date !== localTodayKey() || stored.version !== 39 || stored.planSignature !== expectedPlanSignature || !Array.isArray(stored.questionIds)) return undefined;
+    const questionIds = stored.questionIds.filter(
+      (questionId): questionId is string => typeof questionId === "string" && questionId.length > 0,
+    );
     if (questionIds.length === 0) return undefined;
     return { ...stored, questionIds };
   } catch {
@@ -417,33 +475,17 @@ function readTodayDailyPlan(allQuestionIds: Set<string>, expectedPlanSignature: 
 }
 
 
-function getStoredPlannedNewCount(
-  stored: StoredDailyPlan,
-  categoryIds: Record<DailyPlanCategory, string[]>,
-  allQuestionIds: Set<string>,
-  plannedQuestionIds: Set<string>,
-): number {
-  if (stored.categoryQuestionIds?.new) {
-    return categoryIds.new.length;
-  }
-
-  if (typeof stored.categoryCounts?.new === "number") {
-    return Math.max(0, Math.min(stored.categoryCounts.new, plannedQuestionIds.size || allQuestionIds.size));
-  }
-
-  return plannedQuestionIds.size;
-}
-
 function normalizeStoredCategoryIds(
   stored: StoredDailyPlan,
-  allQuestionIds: Set<string>,
 ): Record<DailyPlanCategory, string[]> {
+  const validIds = (values: string[] | undefined) =>
+    (values ?? []).filter((questionId) => typeof questionId === "string" && questionId.length > 0);
   if (stored.categoryQuestionIds) {
     return {
-      new: (stored.categoryQuestionIds.new ?? []).filter((questionId) => allQuestionIds.has(questionId)),
-      wrong: (stored.categoryQuestionIds.wrong ?? []).filter((questionId) => allQuestionIds.has(questionId)),
-      review: (stored.categoryQuestionIds.review ?? []).filter((questionId) => allQuestionIds.has(questionId)),
-      mixed: (stored.categoryQuestionIds.mixed ?? []).filter((questionId) => allQuestionIds.has(questionId)),
+      new: validIds(stored.categoryQuestionIds.new),
+      wrong: validIds(stored.categoryQuestionIds.wrong),
+      review: validIds(stored.categoryQuestionIds.review),
+      mixed: validIds(stored.categoryQuestionIds.mixed),
     };
   }
 
@@ -451,7 +493,7 @@ function normalizeStoredCategoryIds(
   let cursor = 0;
   for (const category of DAILY_PLAN_CATEGORIES) {
     const count = Math.max(0, stored.categoryCounts?.[category] ?? 0);
-    result[category] = stored.questionIds.slice(cursor, cursor + count).filter((questionId) => allQuestionIds.has(questionId));
+    result[category] = validIds(stored.questionIds.slice(cursor, cursor + count));
     cursor += count;
   }
   return result;
@@ -469,11 +511,11 @@ function countRemainingByCategory(
   };
 }
 
-function getTodayAnsweredIds(answers: UserAnswer[], allQuestionIds: Set<string>): Set<string> {
+function getTodayAnsweredIds(answers: UserAnswer[], sourceBankIds: Set<string>): Set<string> {
   const today = localTodayKey();
   return new Set(
     answers
-      .filter((answer) => allQuestionIds.has(answer.questionId) && localTodayKey(new Date(answer.answeredAt)) === today)
+      .filter((answer) => sourceBankIds.has(answer.bankId) && localTodayKey(new Date(answer.answeredAt)) === today)
       .map((answer) => answer.questionId),
   );
 }

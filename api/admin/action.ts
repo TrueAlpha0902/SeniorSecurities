@@ -1,21 +1,24 @@
 import { createClient } from "@supabase/supabase-js";
+import { getErrorStatusCode, HttpError, type ApiRequest, type ApiResponse } from "../_adminClient.js";
 
 const DEFAULT_ADMIN_EMAILS = "true.alpha0902@gmail.com";
 const DEFAULT_PASSWORD_RESET_URL = "https://senior-securities.vercel.app/reset-password";
 const EMAIL_LIMIT_PER_HOUR = Number(process.env.PASSWORD_RESET_EMAIL_LIMIT_PER_HOUR || 3);
+type AdminClient = ReturnType<typeof getAdminClient>;
+type JsonObject = Record<string, unknown>;
 
 function getEnv(name: string): string {
   return String(process.env[name] || "").trim();
 }
 
-function sendJson(res: any, statusCode: number, payload: unknown): void {
+function sendJson(res: ApiResponse, statusCode: number, payload: unknown): void {
   res.statusCode = statusCode;
   res.setHeader("Content-Type", "application/json; charset=utf-8");
   res.end(JSON.stringify(payload));
 }
 
-function sendError(res: any, error: unknown): void {
-  const statusCode = typeof (error as any)?.statusCode === "number" ? (error as any).statusCode : 500;
+function sendError(res: ApiResponse, error: unknown): void {
+  const statusCode = getErrorStatusCode(error);
   const message = error instanceof Error ? error.message : String(error || "未知錯誤。");
   sendJson(res, statusCode, { error: message });
 }
@@ -25,15 +28,11 @@ function getAdminClient() {
   const serviceRoleKey = getEnv("SUPABASE_SERVICE_ROLE_KEY") || getEnv("SUPABASE_SECRET_KEY");
 
   if (!supabaseUrl) {
-    const error: any = new Error("缺少 Vercel 環境變數：VITE_SUPABASE_URL 或 SUPABASE_URL。");
-    error.statusCode = 500;
-    throw error;
+    throw new HttpError("缺少 Vercel 環境變數：VITE_SUPABASE_URL 或 SUPABASE_URL。", 500);
   }
 
   if (!serviceRoleKey) {
-    const error: any = new Error("缺少 Vercel 環境變數：SUPABASE_SERVICE_ROLE_KEY。管理後台需要這個 server-only key。");
-    error.statusCode = 500;
-    throw error;
+    throw new HttpError("缺少 Vercel 環境變數：SUPABASE_SERVICE_ROLE_KEY。管理後台需要這個 server-only key。", 500);
   }
 
   return createClient(supabaseUrl, serviceRoleKey, {
@@ -51,39 +50,62 @@ function getConfiguredAdminEmails(): string[] {
     .filter(Boolean);
 }
 
-function extractBearerToken(req: any): string | null {
+
+async function isDatabaseAdmin(supabase: AdminClient, email: string): Promise<boolean> {
+  const normalizedEmail = email.trim().toLowerCase();
+  if (!normalizedEmail) return false;
+
+  const { data, error } = await supabase
+    .from("admin_users")
+    .select("email, is_active")
+    .eq("email", normalizedEmail)
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (error) {
+    const message = String(error.message || "");
+    if (message.includes("admin_users") || message.includes("Could not find the table")) {
+      console.warn("admin_users table not found. Falling back to ADMIN_EMAILS only.");
+      return false;
+    }
+    console.error("Database admin lookup failed:", message || error);
+    return false;
+  }
+
+  return Boolean(data);
+}
+
+
+function extractBearerToken(req: ApiRequest): string | null {
   const header = String(req.headers?.authorization || req.headers?.Authorization || "");
   const match = header.match(/^Bearer\s+(.+)$/i);
   return match ? match[1] : null;
 }
 
-async function requireAdminUser(req: any) {
+async function requireAdminUser(req: ApiRequest) {
   const token = extractBearerToken(req);
   if (!token) {
-    const error: any = new Error("尚未登入，或登入狀態已過期。");
-    error.statusCode = 401;
-    throw error;
+    throw new HttpError("尚未登入，或登入狀態已過期。", 401);
   }
 
   const supabase = getAdminClient();
   const { data, error } = await supabase.auth.getUser(token);
   if (error || !data.user) {
-    const authError: any = new Error("無法驗證目前登入帳號，請重新登入管理員帳號。");
-    authError.statusCode = 401;
-    throw authError;
+    throw new HttpError("無法驗證目前登入帳號，請重新登入管理員帳號。", 401);
   }
 
   const email = data.user.email?.toLowerCase() || "";
-  if (!getConfiguredAdminEmails().includes(email)) {
-    const adminError: any = new Error(`這個帳號沒有管理員權限：${email}。請確認 Vercel 環境變數 ADMIN_EMAILS。`);
-    adminError.statusCode = 403;
-    throw adminError;
+  const isConfiguredAdmin = getConfiguredAdminEmails().includes(email);
+  const isDbAdmin = isConfiguredAdmin ? true : await isDatabaseAdmin(supabase, email);
+
+  if (!isDbAdmin) {
+    throw new HttpError(`這個帳號沒有管理員權限：${email}。請先用管理員帳號產生器加入 admin_users，或確認 Vercel 環境變數 ADMIN_EMAILS。`, 403);
   }
 
   return { supabase, user: data.user };
 }
 
-async function findUserIdByEmail(supabase: any, email: string): Promise<string> {
+async function findUserIdByEmail(supabase: AdminClient, email: string): Promise<string> {
   let page = 1;
   const perPage = 200;
   const normalizedEmail = email.trim().toLowerCase();
@@ -92,7 +114,7 @@ async function findUserIdByEmail(supabase: any, email: string): Promise<string> 
     const { data, error } = await supabase.auth.admin.listUsers({ page, perPage });
     if (error) throw error;
 
-    const found = (data.users || []).find((user: any) => user.email?.toLowerCase() === normalizedEmail);
+    const found = (data.users || []).find((user) => user.email?.toLowerCase() === normalizedEmail);
     if (found?.id) return found.id;
     if ((data.users || []).length < perPage) break;
     page += 1;
@@ -122,13 +144,14 @@ function getPasswordResetRedirectUrl(): string {
   return DEFAULT_PASSWORD_RESET_URL;
 }
 
-function parseBody(req: any): any {
-  if (!req.body) return {};
-  if (typeof req.body === "string") return JSON.parse(req.body || "{}");
-  return req.body;
+function parseBody(req: ApiRequest): JsonObject {
+  const parsed: unknown = typeof req.body === "string" ? JSON.parse(req.body || "{}") : req.body;
+  return typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)
+    ? parsed as JsonObject
+    : {};
 }
 
-async function countRecentPasswordResetRequests(supabase: any, email: string): Promise<number> {
+async function countRecentPasswordResetRequests(supabase: AdminClient, email: string): Promise<number> {
   const since = new Date(Date.now() - 60 * 60 * 1000).toISOString();
   const { count, error } = await supabase
     .from("password_reset_requests")
@@ -146,7 +169,7 @@ async function countRecentPasswordResetRequests(supabase: any, email: string): P
   return count || 0;
 }
 
-async function recordPasswordResetRequest(supabase: any, args: {
+async function recordPasswordResetRequest(supabase: AdminClient, args: {
   email: string;
   status: "sent" | "blocked" | "failed";
   errorMessage?: string;
@@ -160,7 +183,7 @@ async function recordPasswordResetRequest(supabase: any, args: {
   if (error) console.error("Failed to record admin password reset request:", error);
 }
 
-export default async function handler(req: any, res: any) {
+export default async function handler(req: ApiRequest, res: ApiResponse) {
   if (req.method !== "POST") {
     sendJson(res, 405, { error: "Method not allowed" });
     return;
@@ -224,9 +247,7 @@ export default async function handler(req: any, res: any) {
           status: "blocked",
           errorMessage: "email hourly limit",
         });
-        const limitError: any = new Error(`這個 Email 1 小時內已經寄送 ${EMAIL_LIMIT_PER_HOUR} 次重設密碼信，請稍後再試。`);
-        limitError.statusCode = 429;
-        throw limitError;
+        throw new HttpError(`這個 Email 1 小時內已經寄送 ${EMAIL_LIMIT_PER_HOUR} 次重設密碼信，請稍後再試。`, 429);
       }
 
       const redirectTo = getPasswordResetRedirectUrl();

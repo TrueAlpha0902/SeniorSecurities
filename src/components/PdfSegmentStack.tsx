@@ -4,31 +4,33 @@ import { assetUrl, type PdfCropSegment } from "../lib/imageQuiz";
 type PdfSegmentStackProps = {
   label: string;
   segments: PdfCropSegment[];
+  priority?: "high" | "auto" | "low";
 };
 
-export function PdfSegmentStack({ label, segments }: PdfSegmentStackProps) {
+export function PdfSegmentStack({ label, segments, priority = "auto" }: PdfSegmentStackProps) {
   return (
     <div className="pdf-segment-stack" aria-label={label}>
-      {segments.map((segment) => (
-        <PdfCrop key={`${segment.src}-${segment.x}-${segment.y}-${segment.width}-${segment.height}`} segment={segment} />
+      {segments.map((segment, index) => (
+        <PdfCrop
+          key={`${segment.src}-${segment.x}-${segment.y}-${segment.width}-${segment.height}`}
+          segment={segment}
+          priority={index === 0 ? priority : priority === "high" ? "auto" : priority}
+        />
       ))}
     </div>
   );
 }
 
-const PDF_IMAGE_CACHE_VERSION = "20260706-question-crop-v29";
+const PDF_IMAGE_CACHE_VERSION = "20260707-v51-crop-fix";
 
-function PdfCrop({ segment }: { segment: PdfCropSegment }) {
+function PdfCrop({ segment, priority }: { segment: PdfCropSegment; priority: "high" | "auto" | "low" }) {
   const [retryToken, setRetryToken] = useState(0);
   const [failed, setFailed] = useState(false);
-  // Do not extend the crop downward. Extending the viewport can accidentally show
-  // the explanation line when the original PDF crop already ends near the answer.
-  const displayHeight = segment.height;
   const imageStyle: CSSProperties = {
     width: `${(segment.pageWidth / segment.width) * 100}%`,
-    height: `${(segment.pageHeight / displayHeight) * 100}%`,
+    height: `${(segment.pageHeight / segment.height) * 100}%`,
     left: `${(-segment.x / segment.width) * 100}%`,
-    top: `${(-segment.y / displayHeight) * 100}%`,
+    top: `${(-segment.y / segment.height) * 100}%`,
   };
 
   useEffect(() => {
@@ -37,14 +39,14 @@ function PdfCrop({ segment }: { segment: PdfCropSegment }) {
   }, [segment.src, segment.x, segment.y, segment.width, segment.height]);
 
   return (
-    <div className="pdf-crop-viewport" style={{ aspectRatio: `${segment.width} / ${displayHeight}` }}>
+    <div className="pdf-crop-viewport" style={{ aspectRatio: `${segment.width} / ${segment.height}` }}>
       <img
         key={`${segment.src}:${retryToken}`}
         src={pdfImageUrl(segment.src, retryToken)}
         alt=""
-        loading="eager"
+        loading={priority === "high" ? "eager" : "lazy"}
         decoding="async"
-        fetchPriority="high"
+        fetchPriority={priority}
         style={imageStyle}
         onLoad={() => setFailed(false)}
         onError={() => {

@@ -1,8 +1,14 @@
 import { createClient } from "@supabase/supabase-js";
+import { getErrorStatusCode, HttpError, type ApiRequest, type ApiResponse } from "../_adminClient.js";
 
-type AnyRecord = Record<string, any>;
+interface AdminDataRow {
+  user_id?: string | null;
+  [key: string]: unknown;
+}
 
 const DEFAULT_ADMIN_EMAILS = "true.alpha0902@gmail.com";
+const ONLINE_WINDOW_SECONDS = 120;
+type AdminClient = ReturnType<typeof getAdminClient>;
 
 function getEnv(name: string): string {
   return String(process.env[name] || "").trim();
@@ -15,14 +21,40 @@ function getConfiguredAdminEmails(): string[] {
     .filter(Boolean);
 }
 
-function sendJson(res: any, statusCode: number, payload: unknown): void {
+
+async function isDatabaseAdmin(supabase: AdminClient, email: string): Promise<boolean> {
+  const normalizedEmail = email.trim().toLowerCase();
+  if (!normalizedEmail) return false;
+
+  const { data, error } = await supabase
+    .from("admin_users")
+    .select("email, is_active")
+    .eq("email", normalizedEmail)
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (error) {
+    const message = String(error.message || "");
+    if (message.includes("admin_users") || message.includes("Could not find the table")) {
+      console.warn("admin_users table not found. Falling back to ADMIN_EMAILS only.");
+      return false;
+    }
+    console.error("Database admin lookup failed:", message || error);
+    return false;
+  }
+
+  return Boolean(data);
+}
+
+
+function sendJson(res: ApiResponse, statusCode: number, payload: unknown): void {
   res.statusCode = statusCode;
   res.setHeader("Content-Type", "application/json; charset=utf-8");
   res.end(JSON.stringify(payload));
 }
 
-function sendError(res: any, error: unknown): void {
-  const statusCode = typeof (error as any)?.statusCode === "number" ? (error as any).statusCode : 500;
+function sendError(res: ApiResponse, error: unknown): void {
+  const statusCode = getErrorStatusCode(error);
   const rawMessage = error instanceof Error ? error.message : String(error || "未知錯誤。");
   const message = rawMessage.includes("FUNCTION_INVOCATION_FAILED")
     ? "Vercel 後端 API 執行失敗。請到 Vercel Functions Logs 查看錯誤細節。"
@@ -35,15 +67,11 @@ function getAdminClient() {
   const serviceRoleKey = getEnv("SUPABASE_SERVICE_ROLE_KEY") || getEnv("SUPABASE_SECRET_KEY");
 
   if (!supabaseUrl) {
-    const error: any = new Error("缺少 Vercel 環境變數：VITE_SUPABASE_URL 或 SUPABASE_URL。");
-    error.statusCode = 500;
-    throw error;
+    throw new HttpError("缺少 Vercel 環境變數：VITE_SUPABASE_URL 或 SUPABASE_URL。", 500);
   }
 
   if (!serviceRoleKey) {
-    const error: any = new Error("缺少 Vercel 環境變數：SUPABASE_SERVICE_ROLE_KEY。管理後台需要這個 server-only key。");
-    error.statusCode = 500;
-    throw error;
+    throw new HttpError("缺少 Vercel 環境變數：SUPABASE_SERVICE_ROLE_KEY。管理後台需要這個 server-only key。", 500);
   }
 
   return createClient(supabaseUrl, serviceRoleKey, {
@@ -54,40 +82,37 @@ function getAdminClient() {
   });
 }
 
-function extractBearerToken(req: any): string | null {
+function extractBearerToken(req: ApiRequest): string | null {
   const header = String(req.headers?.authorization || req.headers?.Authorization || "");
   const match = header.match(/^Bearer\s+(.+)$/i);
   return match ? match[1] : null;
 }
 
-async function requireAdminUser(req: any) {
+async function requireAdminUser(req: ApiRequest) {
   const token = extractBearerToken(req);
   if (!token) {
-    const error: any = new Error("尚未登入，或登入狀態已過期。");
-    error.statusCode = 401;
-    throw error;
+    throw new HttpError("尚未登入，或登入狀態已過期。", 401);
   }
 
   const supabase = getAdminClient();
   const { data, error } = await supabase.auth.getUser(token);
   if (error || !data.user) {
-    const authError: any = new Error("無法驗證目前登入帳號，請重新登入管理員帳號。");
-    authError.statusCode = 401;
-    throw authError;
+    throw new HttpError("無法驗證目前登入帳號，請重新登入管理員帳號。", 401);
   }
 
   const email = data.user.email?.toLowerCase() || "";
-  if (!getConfiguredAdminEmails().includes(email)) {
-    const adminError: any = new Error(`這個帳號沒有管理員權限：${email}。請確認 Vercel 環境變數 ADMIN_EMAILS。`);
-    adminError.statusCode = 403;
-    throw adminError;
+  const isConfiguredAdmin = getConfiguredAdminEmails().includes(email);
+  const isDbAdmin = isConfiguredAdmin ? true : await isDatabaseAdmin(supabase, email);
+
+  if (!isDbAdmin) {
+    throw new HttpError(`這個帳號沒有管理員權限：${email}。請先用管理員帳號產生器加入 admin_users，或確認 Vercel 環境變數 ADMIN_EMAILS。`, 403);
   }
 
   return { supabase, user: data.user };
 }
 
-function toMapByUserId(rows: AnyRecord[] | null | undefined): Map<string, AnyRecord> {
-  const map = new Map<string, AnyRecord>();
+function toMapByUserId(rows: AdminDataRow[] | null | undefined): Map<string, AdminDataRow> {
+  const map = new Map<string, AdminDataRow>();
   for (const row of rows || []) {
     if (row.user_id && !map.has(row.user_id)) map.set(row.user_id, row);
   }
@@ -98,16 +123,26 @@ function normalizeDate(value: unknown): string | null {
   return typeof value === "string" && value ? value : null;
 }
 
-async function safeSelect<T>(promise: PromiseLike<{ data: T | null; error: any }>, fallback: T): Promise<T> {
+async function safeSelect<T>(promise: PromiseLike<{ data: T | null; error: unknown }>, fallback: T): Promise<T> {
   const { data, error } = await promise;
   if (error) {
-    console.error("Admin optional query failed:", error.message || error);
+    const message = typeof error === "object" && error !== null && "message" in error
+      ? (error as { message?: unknown }).message
+      : error;
+    console.error("Admin optional query failed:", message || error);
     return fallback;
   }
   return data ?? fallback;
 }
 
-export default async function handler(req: any, res: any) {
+function isOnline(lastSeenAt: string | null): boolean {
+  if (!lastSeenAt) return false;
+  const seenTime = new Date(lastSeenAt).getTime();
+  if (Number.isNaN(seenTime)) return false;
+  return Date.now() - seenTime <= ONLINE_WINDOW_SECONDS * 1000;
+}
+
+export default async function handler(req: ApiRequest, res: ApiResponse) {
   if (req.method !== "GET") {
     sendJson(res, 405, { error: "Method not allowed" });
     return;
@@ -122,25 +157,17 @@ export default async function handler(req: any, res: any) {
     if (usersError) throw usersError;
 
     const users = authData.users || [];
-    const userIds = users.map((user: AnyRecord) => user.id).filter(Boolean);
+    const userIds = users.map((user) => user.id).filter(Boolean);
 
     if (userIds.length === 0) {
       sendJson(res, 200, { users: [] });
       return;
     }
 
-    const [entitlements, devices, logs, answerRows] = await Promise.all([
+    const [entitlements, logs, answerRows, leaderboardRows, presenceRows] = await Promise.all([
       safeSelect(
-        supabase.from("user_entitlements").select("user_id, plan, status, granted_at, expires_at").in("user_id", userIds),
-        [] as AnyRecord[],
-      ),
-      safeSelect(
-        supabase
-          .from("user_devices")
-          .select("id, user_id, device_label, first_seen, last_seen, revoked_at")
-          .in("user_id", userIds)
-          .order("last_seen", { ascending: false }),
-        [] as AnyRecord[],
+        supabase.from("user_entitlements").select("user_id, plan, status, source_code_hash, granted_at, expires_at").in("user_id", userIds),
+        [],
       ),
       safeSelect(
         supabase
@@ -149,7 +176,7 @@ export default async function handler(req: any, res: any) {
           .in("user_id", userIds)
           .order("created_at", { ascending: false })
           .limit(1000),
-        [] as AnyRecord[],
+        [],
       ),
       safeSelect(
         supabase
@@ -157,32 +184,60 @@ export default async function handler(req: any, res: any) {
           .select("user_id, question_id")
           .in("user_id", userIds)
           .limit(50000),
-        [] as AnyRecord[],
+        [],
+      ),
+      safeSelect(
+        supabase
+          .from("user_leaderboard_stats")
+          .select("user_id, total_practice_seconds")
+          .in("user_id", userIds),
+        [],
+      ),
+      safeSelect(
+        supabase
+          .from("user_presence")
+          .select("user_id, last_seen_at")
+          .in("user_id", userIds),
+        [],
       ),
     ]);
 
-    const entitlementByUser = toMapByUserId(entitlements as AnyRecord[]);
-    const lastLogByUser = toMapByUserId(logs as AnyRecord[]);
-    const deviceRows = (devices || []) as AnyRecord[];
-    const logRows = (logs || []) as AnyRecord[];
+    const entitlementByUser = toMapByUserId(entitlements as AdminDataRow[]);
+    const lastLogByUser = toMapByUserId(logs as AdminDataRow[]);
+    const leaderboardByUser = toMapByUserId(leaderboardRows as AdminDataRow[]);
+    const presenceByUser = toMapByUserId(presenceRows as AdminDataRow[]);
+    const logRows = (logs || []) as AdminDataRow[];
     const practicedByUser = new Map<string, Set<string>>();
-    for (const answer of (answerRows || []) as AnyRecord[]) {
+    for (const answer of (answerRows || []) as AdminDataRow[]) {
       if (!answer.user_id) continue;
       if (!practicedByUser.has(answer.user_id)) practicedByUser.set(answer.user_id, new Set<string>());
       practicedByUser.get(answer.user_id)?.add(String(answer.question_id || ""));
     }
 
-    const result = users.map((user: AnyRecord) => {
+    const sourceCodeHashes = Array.from(new Set((entitlements as AdminDataRow[])
+      .map((row) => String(row.source_code_hash || ""))
+      .filter(Boolean)));
+    const activationCodeByHash = new Map<string, string>();
+    if (sourceCodeHashes.length > 0) {
+      const activationRows = await safeSelect(
+        supabase
+          .from("activation_codes")
+          .select("code_hash, code_plain, code_preview")
+          .in("code_hash", sourceCodeHashes),
+        [],
+      );
+      for (const code of activationRows as AdminDataRow[]) {
+        activationCodeByHash.set(String(code.code_hash), String(code.code_plain || code.code_preview || ""));
+      }
+    }
+
+    const result = users.map((user) => {
       const entitlement = entitlementByUser.get(user.id);
-      const userDevices = deviceRows.filter((row) => row.user_id === user.id);
-      const activeDevices = userDevices.filter((row) => !row.revoked_at);
-      const lastDeviceSeen = activeDevices
-        .map((row) => row.last_seen)
-        .filter(Boolean)
-        .sort()
-        .slice(-1)[0] || null;
       const userLogs = logRows.filter((row) => row.user_id === user.id);
       const lastLog = lastLogByUser.get(user.id);
+      const presence = presenceByUser.get(user.id);
+      const lastSeenAt = normalizeDate(presence?.last_seen_at);
+      const sourceCodeHash = String(entitlement?.source_code_hash || "");
 
       return {
         id: user.id,
@@ -193,21 +248,15 @@ export default async function handler(req: any, res: any) {
         plan: entitlement?.plan || null,
         grantedAt: normalizeDate(entitlement?.granted_at),
         expiresAt: normalizeDate(entitlement?.expires_at),
-        activeDeviceCount: activeDevices.length,
-        devices: userDevices.map((device) => ({
-          id: device.id,
-          deviceLabel: device.device_label || null,
-          firstSeen: normalizeDate(device.first_seen),
-          lastSeen: normalizeDate(device.last_seen),
-          revokedAt: normalizeDate(device.revoked_at),
-        })),
-        lastDeviceSeen: normalizeDate(lastDeviceSeen),
+        activationCode: sourceCodeHash ? activationCodeByHash.get(sourceCodeHash) || null : null,
         lastEventAt: normalizeDate(lastLog?.created_at),
         lastEventType: lastLog?.event_type || null,
         lastIp: lastLog?.ip_address || null,
-        lastUserAgent: lastLog?.user_agent || null,
         loginEventCount: userLogs.length,
         practicedQuestionCount: practicedByUser.get(user.id)?.size || 0,
+        totalPracticeSeconds: Number(leaderboardByUser.get(user.id)?.total_practice_seconds ?? 0),
+        lastSeenAt,
+        isOnline: isOnline(lastSeenAt),
       };
     });
 

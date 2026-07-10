@@ -1,11 +1,12 @@
-import { type PointerEvent, useEffect, useRef, useState } from "react";
-import { GripHorizontal, X } from "lucide-react";
+import { type PointerEvent, useEffect, useMemo, useRef, useState } from "react";
+import { Calculator, GripHorizontal, Landmark, Percent, Sigma, X } from "lucide-react";
 import { GlassButton } from "./GlassButton";
 import { GlassCard } from "./GlassCard";
+import "../styles/calculator-finance-v46.css";
 
 const T = {
   title: "計算機",
-  description: "可拖曳視窗位置，避免擋到題目。",
+  description: "可計算現值、終值、殖利率，也可解簡單未知數 x。",
   close: "關閉計算機",
   clear: "清除",
   delete: "刪除",
@@ -23,10 +24,26 @@ type Position = {
   y: number;
 };
 
+type Mode = "basic" | "finance" | "solve";
+type FinanceMode = "pv" | "fv" | "yield";
+
+type FinanceFields = {
+  pv: string;
+  fv: string;
+  rate: string;
+  periods: string;
+};
+
+type FractionResult = {
+  numerator: number;
+  denominator: number;
+};
+
 const FUNCTION_KEYS = [
   { label: "√", value: "sqrt(" },
   { label: "x²", value: "^2" },
   { label: "xʸ", value: "^" },
+  { label: "x", value: "x" },
   { label: "(", value: "(" },
   { label: ")", value: ")" },
 ];
@@ -40,21 +57,39 @@ const KEY_ROWS = [
 ] as const;
 
 export function CalculatorModal({ open, onClose }: CalculatorModalProps) {
+  const [mode, setMode] = useState<Mode>("basic");
   const [expression, setExpression] = useState("");
   const [result, setResult] = useState("");
+  const [fractionResult, setFractionResult] = useState<FractionResult | null>(null);
+  const [solveEquation, setSolveEquation] = useState("2x + 3 = 11");
+  const [solveResult, setSolveResult] = useState("");
+  const [financeMode, setFinanceMode] = useState<FinanceMode>("pv");
+  const [financeFields, setFinanceFields] = useState<FinanceFields>({ pv: "", fv: "", rate: "", periods: "" });
+  const [financeResult, setFinanceResult] = useState("");
   const [error, setError] = useState("");
   const [position, setPosition] = useState<Position>(() => ({ x: 24, y: 92 }));
   const dragStartRef = useRef<{ pointerId: number; startX: number; startY: number; originX: number; originY: number } | null>(null);
 
-  useEffect(() => {
-    if (!open) {
-      return;
+  const financeFormula = useMemo(() => {
+    if (financeMode === "pv") {
+      return { title: "現值 PV", label: "PV", numerator: "FV", denominator: "(1 + r)^n", suffix: "" };
     }
+    if (financeMode === "fv") {
+      return { title: "終值 FV", label: "FV", numerator: "PV × (1 + r)^n", denominator: "", suffix: "" };
+    }
+    return { title: "殖利率 r", label: "r", numerator: "FV", denominator: "PV", suffix: "^(1/n) - 1" };
+  }, [financeMode]);
+
+  useEffect(() => {
+    if (!open) return;
     setPosition((current) => clampPosition(current));
   }, [open]);
 
-  if (!open) {
-    return null;
+  if (!open) return null;
+
+  function switchMode(nextMode: Mode): void {
+    setMode(nextMode);
+    setError("");
   }
 
   function appendValue(value: string): void {
@@ -70,12 +105,16 @@ export function CalculatorModal({ open, onClose }: CalculatorModalProps) {
   function handleClear(): void {
     setExpression("");
     setResult("");
+    setFractionResult(null);
+    setSolveResult("");
+    setFinanceResult("");
     setError("");
   }
 
   function handleCalculate(): void {
     if (!expression.trim()) {
       setResult("");
+      setFractionResult(null);
       setError("");
       return;
     }
@@ -83,18 +122,64 @@ export function CalculatorModal({ open, onClose }: CalculatorModalProps) {
     try {
       const calculated = evaluateCalculatorExpression(expression);
       setResult(formatCalculatorResult(calculated));
+      setFractionResult(toReasonableFraction(calculated));
       setError("");
     } catch {
       setResult("");
+      setFractionResult(null);
       setError(T.error);
+    }
+  }
+
+  function handleFinanceCalculate(): void {
+    setError("");
+    setFinanceResult("");
+
+    try {
+      const pv = parseOptionalNumber(financeFields.pv);
+      const fv = parseOptionalNumber(financeFields.fv);
+      const rate = parseOptionalNumber(financeFields.rate);
+      const periods = parseOptionalNumber(financeFields.periods);
+
+      if (financeMode === "pv") {
+        if (fv === null || rate === null || periods === null) throw new Error("missing");
+        const value = fv / Math.pow(1 + rate / 100, periods);
+        setFinanceResult(`PV = ${formatMoneyLike(value)}`);
+        return;
+      }
+
+      if (financeMode === "fv") {
+        if (pv === null || rate === null || periods === null) throw new Error("missing");
+        const value = pv * Math.pow(1 + rate / 100, periods);
+        setFinanceResult(`FV = ${formatMoneyLike(value)}`);
+        return;
+      }
+
+      if (pv === null || fv === null || periods === null || pv <= 0 || fv <= 0 || periods <= 0) {
+        throw new Error("missing");
+      }
+      const y = (Math.pow(fv / pv, 1 / periods) - 1) * 100;
+      setFinanceResult(`殖利率 = ${formatCalculatorResult(y)}%`);
+    } catch {
+      setError("請確認欄位皆已輸入，且數值大於 0。");
+    }
+  }
+
+  function handleSolveX(): void {
+    setError("");
+    setSolveResult("");
+
+    try {
+      const solved = solveEquationForX(solveEquation);
+      setSolveResult(`x = ${formatCalculatorResult(solved)}`);
+    } catch {
+      setError("目前可解簡單一元方程式，例如 2x + 3 = 11、100/(1+x)^2 = 90。");
     }
   }
 
   function handleDragStart(event: PointerEvent<HTMLDivElement>): void {
     const target = event.target as HTMLElement;
-    if (target.closest("button")) {
-      return;
-    }
+    if (target.closest("button") || target.closest("input") || target.closest("textarea")) return;
     event.currentTarget.setPointerCapture(event.pointerId);
     dragStartRef.current = {
       pointerId: event.pointerId,
@@ -107,28 +192,23 @@ export function CalculatorModal({ open, onClose }: CalculatorModalProps) {
 
   function handleDragMove(event: PointerEvent<HTMLDivElement>): void {
     const dragStart = dragStartRef.current;
-    if (!dragStart || dragStart.pointerId !== event.pointerId) {
-      return;
-    }
-    const nextPosition = {
+    if (!dragStart || dragStart.pointerId !== event.pointerId) return;
+    setPosition(clampPosition({
       x: dragStart.originX + event.clientX - dragStart.startX,
       y: dragStart.originY + event.clientY - dragStart.startY,
-    };
-    setPosition(clampPosition(nextPosition));
+    }));
   }
 
   function handleDragEnd(event: PointerEvent<HTMLDivElement>): void {
     const dragStart = dragStartRef.current;
-    if (!dragStart || dragStart.pointerId !== event.pointerId) {
-      return;
-    }
+    if (!dragStart || dragStart.pointerId !== event.pointerId) return;
     dragStartRef.current = null;
     event.currentTarget.releasePointerCapture(event.pointerId);
   }
 
   return (
     <GlassCard
-      className="calculator-floating-dialog"
+      className="calculator-floating-dialog calculator-finance-dialog"
       as="div"
       role="dialog"
       aria-label={T.title}
@@ -154,92 +234,199 @@ export function CalculatorModal({ open, onClose }: CalculatorModalProps) {
         </div>
       </div>
 
-      <div className="calculator-display" aria-live="polite">
-        <div className="calculator-expression">{expression || "0"}</div>
-        <div className="calculator-output">{error || (result ? `= ${result}` : " ")}</div>
+      <div className="calculator-mode-tabs" aria-label="計算機模式">
+        <button type="button" className={mode === "basic" ? "active" : ""} onClick={() => switchMode("basic")}>
+          <Calculator size={16} />一般
+        </button>
+        <button type="button" className={mode === "finance" ? "active" : ""} onClick={() => switchMode("finance")}>
+          <Landmark size={16} />財務
+        </button>
+        <button type="button" className={mode === "solve" ? "active" : ""} onClick={() => switchMode("solve")}>
+          <Sigma size={16} />解 x
+        </button>
       </div>
 
-      <div className="calculator-function-row" aria-label="進階功能">
-        {FUNCTION_KEYS.map((key) => (
-          <button key={key.label} type="button" onClick={() => appendValue(key.value)}>
-            {key.label}
-          </button>
-        ))}
-      </div>
+      {mode === "basic" ? (
+        <>
+          <div className="calculator-display calculator-natural-display" aria-live="polite">
+            <div className="calculator-expression">{expression || "0"}</div>
+            <div className="calculator-output">
+              {error || (result ? <CalculatorResult value={result} fraction={fractionResult} /> : " ")}
+            </div>
+          </div>
 
-      <div className="calculator-keypad" aria-label="計算機鍵盤">
-        {KEY_ROWS.flat().map((key) => {
-          if (key === T.clear) {
-            return <button key={key} type="button" className="calculator-command-key" onClick={handleClear}>{T.clear}</button>;
-          }
-          if (key === T.delete) {
-            return <button key={key} type="button" className="calculator-command-key" onClick={handleDelete}>{T.delete}</button>;
-          }
-          if (key === T.calculate) {
-            return (
-              <GlassButton key={key} variant="primary" className="calculator-equals-key" onClick={handleCalculate}>
-                {T.calculate}
-              </GlassButton>
-            );
-          }
-          return (
-            <button key={key} type="button" onClick={() => appendValue(normalizeKeyValue(key))}>
-              {key}
-            </button>
-          );
-        })}
-      </div>
+          <div className="calculator-function-row" aria-label="進階功能">
+            {FUNCTION_KEYS.map((key) => (
+              <button key={key.label} type="button" onClick={() => appendValue(key.value)}>
+                {key.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="calculator-keypad" aria-label="計算機鍵盤">
+            {KEY_ROWS.flat().map((key) => {
+              if (key === T.clear) {
+                return <button key={key} type="button" className="calculator-command-key" onClick={handleClear}>{T.clear}</button>;
+              }
+              if (key === T.delete) {
+                return <button key={key} type="button" className="calculator-command-key" onClick={handleDelete}>{T.delete}</button>;
+              }
+              if (key === T.calculate) {
+                return (
+                  <GlassButton key={key} variant="primary" className="calculator-equals-key" onClick={handleCalculate}>
+                    {T.calculate}
+                  </GlassButton>
+                );
+              }
+              return (
+                <button key={key} type="button" onClick={() => appendValue(normalizeKeyValue(key))}>
+                  {key}
+                </button>
+              );
+            })}
+          </div>
+        </>
+      ) : null}
+
+      {mode === "finance" ? (
+        <div className="finance-calculator-panel">
+          <div className="finance-subtabs" aria-label="財務計算模式">
+            <button type="button" className={financeMode === "pv" ? "active" : ""} onClick={() => setFinanceMode("pv")}>現值</button>
+            <button type="button" className={financeMode === "fv" ? "active" : ""} onClick={() => setFinanceMode("fv")}>終值</button>
+            <button type="button" className={financeMode === "yield" ? "active" : ""} onClick={() => setFinanceMode("yield")}>殖利率</button>
+          </div>
+
+          <div className="calculator-display calculator-natural-display finance-formula-display" aria-live="polite">
+            <div className="calculator-expression">{financeFormula.title}</div>
+            <div className="calculator-output finance-formula">
+              {financeMode === "fv" ? (
+                <span>FV = PV × (1 + r)<sup>n</sup></span>
+              ) : financeMode === "yield" ? (
+                <span>r = (<StackedFraction numerator={financeFormula.numerator} denominator={financeFormula.denominator} />)<sup>1/n</sup> - 1</span>
+              ) : (
+                <span>PV = <StackedFraction numerator={financeFormula.numerator} denominator={financeFormula.denominator} /></span>
+              )}
+            </div>
+            <div className="calculator-output finance-result-line">{error || financeResult || " "}</div>
+          </div>
+
+          <div className="finance-input-grid">
+            <FinanceInput label="現值 PV" value={financeFields.pv} onChange={(value) => setFinanceFields((current) => ({ ...current, pv: value }))} disabled={financeMode === "pv"} />
+            <FinanceInput label="終值 FV" value={financeFields.fv} onChange={(value) => setFinanceFields((current) => ({ ...current, fv: value }))} disabled={financeMode === "fv"} />
+            <FinanceInput label="利率 r (%)" value={financeFields.rate} onChange={(value) => setFinanceFields((current) => ({ ...current, rate: value }))} disabled={financeMode === "yield"} />
+            <FinanceInput label="期數 n" value={financeFields.periods} onChange={(value) => setFinanceFields((current) => ({ ...current, periods: value }))} />
+          </div>
+
+          <div className="finance-actions">
+            <GlassButton variant="primary" onClick={handleFinanceCalculate}>
+              <Percent size={18} />計算
+            </GlassButton>
+            <button type="button" className="calculator-command-key" onClick={handleClear}>清除</button>
+          </div>
+        </div>
+      ) : null}
+
+      {mode === "solve" ? (
+        <div className="solve-x-panel">
+          <div className="calculator-display calculator-natural-display" aria-live="polite">
+            <div className="calculator-expression">解未知數 x</div>
+            <div className="calculator-output">{error || solveResult || "輸入例如：2x + 3 = 11"}</div>
+          </div>
+          <label className="solve-input-label">
+            方程式
+            <input value={solveEquation} onChange={(event) => setSolveEquation(event.target.value)} placeholder="2x + 3 = 11" />
+          </label>
+          <p className="calculator-hint">支援簡單 +、-、×、÷、次方與括號，例如：100/(1+x)^2 = 90。</p>
+          <div className="finance-actions">
+            <GlassButton variant="primary" onClick={handleSolveX}>解 x</GlassButton>
+            <button type="button" className="calculator-command-key" onClick={handleClear}>清除</button>
+          </div>
+        </div>
+      ) : null}
     </GlassCard>
   );
 }
 
+function FinanceInput({ label, value, onChange, disabled }: { label: string; value: string; onChange: (value: string) => void; disabled?: boolean }) {
+  return (
+    <label className="finance-input-label">
+      {label}
+      <input
+        value={value}
+        disabled={disabled}
+        inputMode="decimal"
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={disabled ? "待計算" : "輸入數值"}
+      />
+    </label>
+  );
+}
+
+function CalculatorResult({ value, fraction }: { value: string; fraction: FractionResult | null }) {
+  if (!fraction || fraction.denominator === 1) {
+    return <span>= {value}</span>;
+  }
+  return (
+    <span className="calculator-result-with-fraction">
+      <span>= {value}</span>
+      <span className="calculator-fraction-chip"><StackedFraction numerator={fraction.numerator} denominator={fraction.denominator} /></span>
+    </span>
+  );
+}
+
+function StackedFraction({ numerator, denominator }: { numerator: string | number; denominator: string | number }) {
+  return (
+    <span className="stacked-fraction" aria-label={`${numerator} over ${denominator}`}>
+      <span>{numerator}</span>
+      <span>{denominator}</span>
+    </span>
+  );
+}
+
 function normalizeKeyValue(key: string): string {
-  if (key === "×") {
-    return "*";
-  }
-  if (key === "÷") {
-    return "/";
-  }
+  if (key === "×") return "*";
+  if (key === "÷") return "/";
   return key;
 }
 
 function clampPosition(position: Position): Position {
-  if (typeof window === "undefined") {
-    return position;
-  }
-  const maxX = Math.max(12, window.innerWidth - 360);
-  const maxY = Math.max(72, window.innerHeight - 520);
+  if (typeof window === "undefined") return position;
+  const dialogWidth = Math.min(460, Math.max(320, window.innerWidth - 24));
+  const dialogHeight = 680;
+  const maxX = Math.max(8, window.innerWidth - dialogWidth - 8);
+  const maxY = Math.max(56, window.innerHeight - dialogHeight);
   return {
-    x: Math.min(Math.max(12, position.x), maxX),
-    y: Math.min(Math.max(72, position.y), maxY),
+    x: Math.min(Math.max(8, position.x), maxX),
+    y: Math.min(Math.max(56, position.y), maxY),
   };
 }
 
-function evaluateCalculatorExpression(rawExpression: string): number {
-  const normalized = rawExpression
-    .replace(/×/g, "*")
-    .replace(/÷/g, "/")
-    .replace(/％/g, "%")
-    .replace(/√/g, "sqrt")
-    .replace(/，/g, ",")
-    .replace(/,/g, "")
-    .replace(/\s+/g, "");
+function parseOptionalNumber(value: string): number | null {
+  const normalized = value.trim().replace(/,/g, "");
+  if (!normalized) return null;
+  const number = Number(normalized);
+  return Number.isFinite(number) ? number : null;
+}
 
-  if (!normalized || /[^0-9.+\-*/%^()sqrt]/.test(normalized)) {
+function evaluateCalculatorExpression(rawExpression: string, variables: Record<string, number> = {}): number {
+  const normalized = normalizeExpression(rawExpression);
+  if (!normalized || /[^0-9.x+\-*/%^()sqrt]/.test(normalized)) {
     throw new Error("Invalid calculator expression");
   }
 
-  const matchedTokens = normalized.match(/sqrt|\d*\.?\d+|[()+\-*/%^]/g);
+  const matchedTokens = normalized.match(/sqrt|x|\d*\.?\d+|[()+\-*/%^]/g);
   if (!matchedTokens || matchedTokens.join("") !== normalized) {
     throw new Error("Invalid calculator expression");
   }
+
   const tokens: string[] = matchedTokens;
   let position = 0;
 
   function parseExpression(): number {
     let value = parseTerm();
     while (tokens[position] === "+" || tokens[position] === "-") {
-      const operator = tokens[position++];
+      const operator = tokens[position];
+      position += 1;
       const right = parseTerm();
       value = operator === "+" ? value + right : value - right;
     }
@@ -249,11 +436,10 @@ function evaluateCalculatorExpression(rawExpression: string): number {
   function parseTerm(): number {
     let value = parsePower();
     while (tokens[position] === "*" || tokens[position] === "/") {
-      const operator = tokens[position++];
+      const operator = tokens[position];
+      position += 1;
       const right = parsePower();
-      if (operator === "/" && right === 0) {
-        throw new Error("Invalid calculator expression");
-      }
+      if (operator === "/" && right === 0) throw new Error("Division by zero");
       value = operator === "*" ? value * right : value / right;
     }
     return value;
@@ -265,9 +451,7 @@ function evaluateCalculatorExpression(rawExpression: string): number {
       position += 1;
       value = Math.pow(value, parsePower());
     }
-    if (!Number.isFinite(value)) {
-      throw new Error("Invalid calculator expression");
-    }
+    if (!Number.isFinite(value)) throw new Error("Invalid calculator expression");
     return value;
   }
 
@@ -283,23 +467,21 @@ function evaluateCalculatorExpression(rawExpression: string): number {
       value = -parseFactor();
     } else if (token === "sqrt") {
       position += 1;
-      if (tokens[position] !== "(") {
-        throw new Error("Invalid calculator expression");
-      }
+      if (tokens[position] !== "(") throw new Error("Invalid calculator expression");
       position += 1;
       value = parseExpression();
-      if (tokens[position] !== ")" || value < 0) {
-        throw new Error("Invalid calculator expression");
-      }
+      if (tokens[position] !== ")" || value < 0) throw new Error("Invalid calculator expression");
       position += 1;
       value = Math.sqrt(value);
     } else if (token === "(") {
       position += 1;
       value = parseExpression();
-      if (tokens[position] !== ")") {
-        throw new Error("Invalid calculator expression");
-      }
+      if (tokens[position] !== ")") throw new Error("Invalid calculator expression");
       position += 1;
+    } else if (token === "x") {
+      position += 1;
+      if (typeof variables.x !== "number") throw new Error("Missing variable");
+      value = variables.x;
     } else if (token && /\d/.test(token)) {
       position += 1;
       value = Number(token);
@@ -312,19 +494,135 @@ function evaluateCalculatorExpression(rawExpression: string): number {
       value /= 100;
     }
 
-    if (!Number.isFinite(value)) {
-      throw new Error("Invalid calculator expression");
-    }
+    if (!Number.isFinite(value)) throw new Error("Invalid calculator expression");
     return value;
   }
 
-  const result = parseExpression();
-  if (position !== tokens.length || !Number.isFinite(result)) {
+  const evaluated = parseExpression();
+  if (position !== tokens.length || !Number.isFinite(evaluated)) {
     throw new Error("Invalid calculator expression");
   }
-  return result;
+  return evaluated;
+}
+
+function normalizeExpression(rawExpression: string): string {
+  return rawExpression
+    .replace(/×/g, "*")
+    .replace(/÷/g, "/")
+    .replace(/％/g, "%")
+    .replace(/√/g, "sqrt")
+    .replace(/，/g, ",")
+    .replace(/,/g, "")
+    .replace(/\s+/g, "")
+    .replace(/(\d)(x|\()/g, "$1*$2")
+    .replace(/(x|\))(\d|x|\()/g, "$1*$2");
+}
+
+function solveEquationForX(equation: string): number {
+  const parts = equation.split("=");
+  if (parts.length !== 2) throw new Error("Equation must contain one equals sign");
+
+  const leftExpression = parts[0] ?? "";
+  const rightExpression = parts[1] ?? "";
+  const f = (x: number): number => evaluateCalculatorExpression(leftExpression, { x }) - evaluateCalculatorExpression(rightExpression, { x });
+  const f0 = f(0);
+  const f1 = f(1);
+
+  if (Number.isFinite(f0) && Number.isFinite(f1) && Math.abs(f1 - f0) > 1e-12) {
+    const linearCandidate = -f0 / (f1 - f0);
+    if (Number.isFinite(linearCandidate) && Math.abs(f(linearCandidate)) < 1e-7) {
+      return linearCandidate;
+    }
+  }
+
+  const ranges: Array<[number, number]> = [
+    [-1_000_000, -100_000],
+    [-100_000, -10_000],
+    [-10_000, -1_000],
+    [-1_000, -100],
+    [-100, -10],
+    [-10, -1],
+    [-1, 0],
+    [0, 1],
+    [1, 10],
+    [10, 100],
+    [100, 1_000],
+    [1_000, 10_000],
+    [10_000, 100_000],
+    [100_000, 1_000_000],
+  ];
+
+  for (const [initialLeft, initialRight] of ranges) {
+    let left = initialLeft;
+    let right = initialRight;
+    let leftValue = f(left);
+    let rightValue = f(right);
+
+    if (Math.abs(leftValue) < 1e-7) return left;
+    if (Math.abs(rightValue) < 1e-7) return right;
+    if (!Number.isFinite(leftValue) || !Number.isFinite(rightValue) || leftValue * rightValue > 0) continue;
+
+    for (let step = 0; step < 90; step += 1) {
+      const mid = (left + right) / 2;
+      const midValue = f(mid);
+      if (Math.abs(midValue) < 1e-9) return mid;
+      if (leftValue * midValue <= 0) {
+        right = mid;
+        rightValue = midValue;
+      } else {
+        left = mid;
+        leftValue = midValue;
+      }
+    }
+    return (left + right) / 2;
+  }
+
+  throw new Error("No root found");
+}
+
+function formatMoneyLike(value: number): string {
+  return Number(value.toFixed(4)).toLocaleString("zh-TW", { maximumFractionDigits: 4 });
 }
 
 function formatCalculatorResult(value: number): string {
   return Number.isInteger(value) ? value.toString() : Number(value.toFixed(10)).toString();
+}
+
+function toReasonableFraction(value: number): FractionResult | null {
+  if (!Number.isFinite(value) || Math.abs(value) > 1_000_000) return null;
+  const sign = value < 0 ? -1 : 1;
+  const absolute = Math.abs(value);
+  let bestNumerator = Math.round(absolute);
+  let bestDenominator = 1;
+  let bestError = Math.abs(absolute - bestNumerator);
+
+  for (let denominator = 2; denominator <= 999; denominator += 1) {
+    const numerator = Math.round(absolute * denominator);
+    const error = Math.abs(absolute - numerator / denominator);
+    if (error < bestError) {
+      bestError = error;
+      bestNumerator = numerator;
+      bestDenominator = denominator;
+    }
+    if (error < 1e-10) break;
+  }
+
+  if (bestDenominator === 1 || bestError > 1e-8) return null;
+
+  const divisor = gcd(bestNumerator, bestDenominator);
+  return {
+    numerator: sign * (bestNumerator / divisor),
+    denominator: bestDenominator / divisor,
+  };
+}
+
+function gcd(a: number, b: number): number {
+  let x = Math.abs(a);
+  let y = Math.abs(b);
+  while (y) {
+    const remainder = x % y;
+    x = y;
+    y = remainder;
+  }
+  return x || 1;
 }

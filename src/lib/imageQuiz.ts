@@ -58,6 +58,19 @@ type ImageQuizData = {
   banks: ImageQuizBank[];
 };
 
+export type ImageQuizQuestionOverride = {
+  questionId: string;
+  answer: NumericAnswer;
+  questionSegments: PdfCropSegment[];
+  explanationSegments: PdfCropSegment[];
+  updatedAt: string;
+  updatedBy: string;
+};
+
+type QuestionOverridesResponse = {
+  overrides?: ImageQuizQuestionOverride[];
+};
+
 export type SimilarQuestionGroup = {
   id: string;
   bankId: string;
@@ -76,6 +89,7 @@ const dataCache: { promise?: Promise<ImageQuizData> } = {};
 const similarGroupsCache: { promise?: Promise<SimilarQuestionGroup[]> } = {};
 const trialQuestionsCache: { promise?: Promise<ImageQuizQuestion[]> } = {};
 const summaryBanksCache: { promise?: Promise<ImageQuizBank[]> } = {};
+const questionOverridesCache: { promise?: Promise<Map<string, ImageQuizQuestionOverride>> } = {};
 const IMAGE_DATA_CACHE_VERSION = "20260705-crop-fix";
 const SECURITIES_COMBINED_BANK_ID = "securities-laws-practice";
 const SECURITIES_COMBINED_BANK_TITLE = "\u8b49\u5238\u76f8\u95dc\u6cd5\u898f\u8207\u5be6\u52d9";
@@ -148,7 +162,10 @@ async function fetchJson<T>(path: string): Promise<T> {
 }
 
 export async function loadImageQuizData(): Promise<ImageQuizData> {
-  dataCache.promise ??= fetchJson<ImageQuizData>("data/pdf-image-quiz.json").then(normalizeImageQuizData);
+  dataCache.promise ??= Promise.all([
+    fetchJson<ImageQuizData>("data/pdf-image-quiz.json"),
+    loadQuestionOverrides(),
+  ]).then(([data, overrides]) => normalizeImageQuizData(applyQuestionOverrides(data, overrides)));
   return dataCache.promise;
 }
 
@@ -196,10 +213,52 @@ export async function loadAllImageQuestions(): Promise<ImageQuizQuestion[]> {
 }
 
 export async function loadTrialImageQuestions(): Promise<ImageQuizQuestion[]> {
-  trialQuestionsCache.promise ??= fetchJson<ImageQuizData>("data/pdf-image-quiz-trial.json")
-    .then(normalizeImageQuizData)
+  trialQuestionsCache.promise ??= Promise.all([
+    fetchJson<ImageQuizData>("data/pdf-image-quiz-trial.json"),
+    loadQuestionOverrides(),
+  ])
+    .then(([data, overrides]) => normalizeImageQuizData(applyQuestionOverrides(data, overrides)))
     .then((data) => data.banks.flatMap((bank) => bank.chapters.flatMap((chapter) => chapter.questions)).slice(0, 10));
   return trialQuestionsCache.promise;
+}
+
+async function loadQuestionOverrides(): Promise<Map<string, ImageQuizQuestionOverride>> {
+  questionOverridesCache.promise ??= (async () => {
+    try {
+      const response = await fetch(assetUrl("api/question-overrides"), { cache: "no-store" });
+      if (!response.ok || !(response.headers.get("content-type") || "").includes("application/json")) return new Map();
+      const payload = await response.json() as QuestionOverridesResponse;
+      return new Map((payload.overrides || []).map((override) => [override.questionId, override]));
+    } catch {
+      // Offline and local Vite mode keep using the bundled question bank.
+      return new Map();
+    }
+  })();
+  return questionOverridesCache.promise;
+}
+
+function applyQuestionOverrides(
+  data: ImageQuizData,
+  overrides: Map<string, ImageQuizQuestionOverride>,
+): ImageQuizData {
+  if (overrides.size === 0) return data;
+  return {
+    banks: data.banks.map((bank) => ({
+      ...bank,
+      chapters: bank.chapters.map((chapter) => ({
+        ...chapter,
+        questions: chapter.questions.map((question) => {
+          const override = overrides.get(question.id);
+          return override ? {
+            ...question,
+            answer: override.answer,
+            questionSegments: override.questionSegments,
+            explanationSegments: override.explanationSegments,
+          } : question;
+        }),
+      })),
+    })),
+  };
 }
 
 export async function loadSimilarQuestionGroups(): Promise<SimilarQuestionGroup[]> {

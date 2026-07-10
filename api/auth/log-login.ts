@@ -1,10 +1,13 @@
 import { createClient } from "@supabase/supabase-js";
+import type { ApiRequest, ApiResponse } from "../_adminClient.js";
+
+type JsonObject = Record<string, unknown>;
 
 function getEnv(name: string): string {
   return String(process.env[name] || "").trim();
 }
 
-function sendJson(res: any, statusCode: number, payload: unknown): void {
+function sendJson(res: ApiResponse, statusCode: number, payload: unknown): void {
   res.statusCode = statusCode;
   res.setHeader("Content-Type", "application/json; charset=utf-8");
   res.end(JSON.stringify(payload));
@@ -19,19 +22,19 @@ function getAdminClient() {
   });
 }
 
-function getClientIp(req: any): string {
+function getClientIp(req: ApiRequest): string {
   const forwarded = String(req.headers?.["x-forwarded-for"] || "");
   if (forwarded) return forwarded.split(",")[0]?.trim() || "";
   return String(req.headers?.["x-real-ip"] || req.socket?.remoteAddress || "").trim();
 }
 
-function getBearerToken(req: any): string | null {
+function getBearerToken(req: ApiRequest): string | null {
   const header = String(req.headers?.authorization || req.headers?.Authorization || "");
   const match = header.match(/^Bearer\s+(.+)$/i);
   return match ? match[1] : null;
 }
 
-export default async function handler(req: any, res: any) {
+export default async function handler(req: ApiRequest, res: ApiResponse) {
   if (req.method !== "POST") {
     sendJson(res, 405, { error: "Method not allowed" });
     return;
@@ -51,7 +54,10 @@ export default async function handler(req: any, res: any) {
       return;
     }
 
-    const body = typeof req.body === "string" ? JSON.parse(req.body || "{}") : req.body || {};
+    const parsedBody: unknown = typeof req.body === "string" ? JSON.parse(req.body || "{}") : req.body;
+    const body: JsonObject = typeof parsedBody === "object" && parsedBody !== null && !Array.isArray(parsedBody)
+      ? parsedBody as JsonObject
+      : {};
     const eventType = String(body.event_type || "session_seen").slice(0, 40);
 
     const { error: insertError } = await supabase.from("login_audit_events").insert({

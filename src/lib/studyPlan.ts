@@ -205,9 +205,14 @@ export function calculateSmartStudyPlanStats(args: {
   }
 
   const suggestedDailyCount = Object.values(counts).reduce((sum, count) => sum + count, 0);
-  const estimatedMinutes = suggestedDailyCount;
+  const estimatedMinutes = Math.round(
+    (Object.keys(counts) as DailyPlanCategory[]).reduce(
+      (sum, category) => sum + counts[category] * profile.categories[category].minutesPerQuestion,
+      0,
+    ),
+  );
   const requiredMinutes = Math.round(requiredNewPerDay * profile.categories.new.minutesPerQuestion);
-  const overloadGap = Math.max(0, requiredNewPerDay - Math.max(timeCounts.new, timeCapacityCount));
+  const overloadGap = Math.max(0, requiredNewPerDay - timeCounts.new);
   const isOverloaded = requiredMinutes > effectivePracticeMinutes || requiredNewPerDay > timeCapacityCount;
   const suggestedMinutes = Math.ceil((estimatedMinutes || requiredMinutes) / profile.focusRate);
   const allocations = Object.fromEntries(
@@ -217,7 +222,7 @@ export function calculateSmartStudyPlanStats(args: {
         id: category,
         label: CATEGORY_LABELS[category],
         count: counts[category],
-        estimatedMinutes: counts[category],
+        estimatedMinutes: Math.round(counts[category] * profile.categories[category].minutesPerQuestion),
         description: CATEGORY_DESCRIPTIONS[category],
       },
     ]),

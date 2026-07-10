@@ -1,0 +1,324 @@
+.admin-tools-card {
+  display: grid;
+  gap: 20px;
+  width: min(1180px, 100%);
+  margin: 0 auto;
+  padding: clamp(18px, 3vw, 28px);
+  border-radius: 32px;
+}
+
+.admin-tools-header,
+.admin-tool-actions,
+.question-editor-summary,
+.segment-toolbar,
+.admin-inline-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.admin-tools-header p:not(.eyebrow),
+.question-editor-summary span {
+  display: block;
+  margin-top: 5px;
+  color: var(--muted);
+}
+
+.admin-tools-security {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 13px;
+  border-radius: 999px;
+  color: var(--success);
+  background: rgba(29, 122, 90, 0.1);
+  font-weight: 850;
+}
+
+.admin-tools-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.admin-tools-tabs > button {
+  display: grid;
+  gap: 3px;
+  min-height: 72px;
+  padding: 12px 16px;
+  border: 1px solid var(--glass-border-low);
+  border-radius: 20px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.58);
+  cursor: pointer;
+  text-align: left;
+}
+
+.admin-tools-tabs > button span {
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.admin-tools-tabs > button.is-active {
+  color: #fff;
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--primary), var(--primary-strong));
+}
+
+.admin-tools-tabs > button.is-active span {
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.admin-tool-pane {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+  border: 1px solid var(--glass-border-low);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.46);
+}
+
+.admin-tool-form-grid,
+.question-editor-selectors,
+.segment-field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.admin-tool-form-grid label,
+.question-editor-selectors label,
+.question-editor-summary label,
+.segment-field-grid label,
+.segment-toolbar label {
+  display: grid;
+  gap: 6px;
+  color: var(--secondary);
+  font-weight: 800;
+}
+
+.admin-tool-form-grid input,
+.question-editor-selectors input,
+.question-editor-selectors select,
+.question-editor-summary select,
+.segment-field-grid input,
+.segment-toolbar select {
+  width: 100%;
+  min-height: 46px;
+  padding: 10px 13px;
+  border: 1px solid var(--glass-border-low);
+  border-radius: 15px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.86);
+  font: inherit;
+}
+
+.admin-tool-wide,
+.segment-src-field {
+  grid-column: 1 / -1;
+}
+
+.admin-tool-actions {
+  justify-content: flex-start;
+}
+
+.admin-created-code {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(29, 111, 138, 0.1);
+}
+
+.admin-created-code strong {
+  overflow-wrap: anywhere;
+  color: var(--primary-strong);
+  font-size: 1.16rem;
+}
+
+.admin-tool-list {
+  display: grid;
+  gap: 9px;
+  max-height: 360px;
+  overflow: auto;
+}
+
+.admin-tool-list article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--glass-border-low);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.68);
+}
+
+.admin-tool-list article > div:first-child {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.admin-tool-list article span {
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.admin-tool-list button,
+.question-jump-control button,
+.segment-toolbar button,
+.segment-nudges button,
+.question-editor-mode-tabs button,
+.admin-inline-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 38px;
+  padding: 7px 12px;
+  border: 1px solid var(--glass-border-low);
+  border-radius: 999px;
+  color: var(--primary-strong);
+  background: rgba(255, 255, 255, 0.86);
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.admin-tool-list button.is-danger,
+.segment-toolbar button.is-danger,
+.admin-inline-actions button.is-danger {
+  color: var(--danger);
+}
+
+.is-enabled {
+  color: var(--success) !important;
+  font-weight: 850;
+}
+
+.is-disabled {
+  color: var(--danger) !important;
+  font-weight: 850;
+}
+
+.question-editor-selectors {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.question-jump-control {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 7px;
+}
+
+.question-editor-summary {
+  padding: 13px 15px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.66);
+}
+
+.question-editor-summary label {
+  min-width: 150px;
+}
+
+.question-editor-mode-tabs {
+  display: flex;
+  gap: 8px;
+}
+
+.question-editor-mode-tabs button.is-active {
+  color: #fff;
+  border-color: transparent;
+  background: var(--primary);
+}
+
+.question-editor-workspace {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.82fr) minmax(380px, 1.18fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.question-editor-fields,
+.question-editor-preview {
+  display: grid;
+  gap: 13px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--glass-border-low);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.question-editor-preview > p {
+  color: var(--secondary);
+  font-weight: 850;
+}
+
+.segment-toolbar {
+  justify-content: flex-start;
+}
+
+.segment-toolbar label {
+  flex: 1 1 170px;
+}
+
+.segment-field-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.segment-nudges {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.question-editor-save-actions {
+  position: sticky;
+  bottom: 8px;
+  z-index: 3;
+  padding: 12px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: var(--soft-shadow);
+  backdrop-filter: blur(18px);
+}
+
+.admin-tool-loading {
+  color: var(--primary-strong);
+  font-weight: 850;
+}
+
+@media (max-width: 900px) {
+  .question-editor-selectors,
+  .question-editor-workspace {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .question-editor-workspace {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 620px) {
+  .admin-tools-tabs,
+  .admin-tool-form-grid,
+  .question-editor-selectors,
+  .segment-field-grid,
+  .segment-nudges {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-tool-list article {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-tool-wide,
+  .segment-src-field {
+    grid-column: auto;
+  }
+}

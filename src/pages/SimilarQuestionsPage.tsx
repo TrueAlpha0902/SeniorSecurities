@@ -156,6 +156,7 @@ export function SimilarQuestionsPage() {
                   <PdfSegmentStack
                     label={`${question.bankTitle} ${question.chapterTitle} ${question.number} \u984c`}
                     segments={question.questionSegments}
+                    priority="low"
                   />
                 </article>
               ))}

@@ -1,12 +1,13 @@
 import { createClient } from "@supabase/supabase-js";
+import type { ApiRequest, ApiResponse } from "../_adminClient.js";
 
-function sendJson(res: any, statusCode: number, payload: unknown): void {
+function sendJson(res: ApiResponse, statusCode: number, payload: unknown): void {
   res.statusCode = statusCode;
   res.setHeader("Content-Type", "application/json; charset=utf-8");
   res.end(JSON.stringify(payload));
 }
 
-export default async function handler(_req: any, res: any) {
+export default async function handler(_req: ApiRequest, res: ApiResponse) {
   try {
     const supabaseUrl = String(process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "").trim();
     const serviceRoleKey = String(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || "").trim();

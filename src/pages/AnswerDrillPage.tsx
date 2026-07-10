@@ -84,6 +84,7 @@ export function AnswerDrillPage() {
         <PdfSegmentStack
           label={`${currentQuestion.bankTitle} ${currentQuestion.chapterTitle} ${currentQuestion.number} \u984c`}
           segments={currentQuestion.questionSegments}
+          priority="high"
         />
 
         <div className="answer-drill-key">
@@ -98,6 +99,7 @@ export function AnswerDrillPage() {
           <PdfSegmentStack
             label={`${currentQuestion.bankTitle} ${currentQuestion.chapterTitle} ${currentQuestion.number} \u984c\u89e3\u6790`}
             segments={currentQuestion.explanationSegments}
+            priority="auto"
           />
         </div>
       </GlassCard>

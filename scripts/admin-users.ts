@@ -2,6 +2,11 @@ import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { createClient } from "@supabase/supabase-js";
 
+type ListUsers = (params: { page: number; perPage: number }) => Promise<{
+  data: { users: Array<{ id: string; email?: string }> };
+  error: unknown;
+}>;
+
 type Command = "list" | "revoke" | "restore" | "reset-devices" | "disable-code" | "delete-auth" | "help";
 
 type CliOptions = {
@@ -76,12 +81,12 @@ function requireArg(value: string | undefined, name: string): string {
   return value;
 }
 
-async function findUserIdByEmail(supabase: any, email: string): Promise<string> {
+async function findUserIdByEmail(listUsers: ListUsers, email: string): Promise<string> {
   let page = 1;
   const perPage = 200;
 
   while (true) {
-    const { data, error } = await supabase.auth.admin.listUsers({ page, perPage });
+    const { data, error } = await listUsers({ page, perPage });
     if (error) throw error;
 
     const found = data.users.find((user: { id: string; email?: string }) => user.email?.toLowerCase() === email.toLowerCase());
@@ -162,7 +167,7 @@ async function main(): Promise<void> {
 
   if (options.command === "delete-auth") {
     const email = requireArg(options.email, "--email");
-    const userId = await findUserIdByEmail(supabase, email);
+    const userId = await findUserIdByEmail((params) => supabase.auth.admin.listUsers(params), email);
     const { error } = await supabase.auth.admin.deleteUser(userId, options.softDelete);
     if (error) throw error;
     console.log(`Done: Auth user deleted for ${email}. softDelete=${options.softDelete}`);

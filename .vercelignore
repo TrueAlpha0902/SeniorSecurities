@@ -7,4 +7,12 @@ tmp
 _zip-output
 _cleanup-backup
 source-docx
+public/data/backups
+desktop
+docs
+README-v*.txt
+*.bak
+*.exe
+*.ps1
+*.cmd
 *.zip

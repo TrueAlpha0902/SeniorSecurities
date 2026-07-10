@@ -1,10 +1,13 @@
-import { MailCheck, RefreshCcw, ShieldOff, ShieldCheck, Trophy, Trash2, X } from "lucide-react";
+import { MailCheck, RefreshCcw, ShieldCheck, ShieldOff, Trash2, Trophy, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { ProtectedRoute } from "../auth/ProtectedRoute";
+import { useAuth } from "../auth/AuthContext";
+import { AdminToolsPanel } from "../components/AdminToolsPanel";
 import { GlassButton } from "../components/GlassButton";
 import { GlassCard } from "../components/GlassCard";
 import { LoadingState } from "../components/LoadingState";
-import { useAuth } from "../auth/AuthContext";
-import { ProtectedRoute } from "../auth/ProtectedRoute";
+import { formatTotalPracticeTime } from "../lib/practiceTime";
+import "../styles/admin-leaderboard-v42.css";
 
 const DATE_FORMATTER = new Intl.DateTimeFormat("zh-TW", {
   year: "numeric",
@@ -13,14 +16,6 @@ const DATE_FORMATTER = new Intl.DateTimeFormat("zh-TW", {
   hour: "2-digit",
   minute: "2-digit",
 });
-
-type AdminDeviceRow = {
-  id: string;
-  deviceLabel: string | null;
-  firstSeen: string | null;
-  lastSeen: string | null;
-  revokedAt: string | null;
-};
 
 type AdminUserRow = {
   id: string;
@@ -31,15 +26,14 @@ type AdminUserRow = {
   plan: string | null;
   grantedAt: string | null;
   expiresAt: string | null;
-  activeDeviceCount: number;
-  devices?: AdminDeviceRow[];
-  lastDeviceSeen: string | null;
+  activationCode: string | null;
   lastEventAt: string | null;
-  lastEventType: string | null;
   lastIp: string | null;
-  lastUserAgent: string | null;
   loginEventCount: number;
   practicedQuestionCount?: number;
+  totalPracticeSeconds?: number;
+  isOnline?: boolean;
+  lastSeenAt?: string | null;
 };
 
 type LeaderboardAdminEntry = {
@@ -51,6 +45,7 @@ type LeaderboardAdminEntry = {
   currentCorrectStreak: number;
   totalAnswered: number;
   totalCorrect: number;
+  totalPracticeSeconds?: number;
   updatedAt: string | null;
 };
 
@@ -120,6 +115,7 @@ function AdminContent() {
   const [busyUserId, setBusyUserId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [leaderboardQuery, setLeaderboardQuery] = useState("");
+  const [leaderboardMode, setLeaderboardMode] = useState<"streak" | "practice">("streak");
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [leaderboardError, setLeaderboardError] = useState<string | null>(null);
@@ -128,21 +124,36 @@ function AdminContent() {
     const normalizedQuery = query.trim().toLowerCase();
     if (!normalizedQuery) return users;
     return users.filter((row) =>
-      [row.email, row.lastIp, row.entitlementStatus]
+      [row.email, row.lastIp, row.entitlementStatus, row.activationCode]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(normalizedQuery)),
     );
   }, [query, users]);
 
   const filteredLeaderboardEntries = useMemo(() => {
+    const sortedEntries = [...leaderboardEntries].sort((a, b) => {
+      if (leaderboardMode === "practice") {
+        return (
+          (b.totalPracticeSeconds ?? 0) - (a.totalPracticeSeconds ?? 0) ||
+          b.totalAnswered - a.totalAnswered ||
+          b.bestCorrectStreak - a.bestCorrectStreak
+        );
+      }
+      return (
+        b.bestCorrectStreak - a.bestCorrectStreak ||
+        b.totalCorrect - a.totalCorrect ||
+        (b.totalPracticeSeconds ?? 0) - (a.totalPracticeSeconds ?? 0)
+      );
+    });
+
     const normalizedQuery = leaderboardQuery.trim().toLowerCase();
-    if (!normalizedQuery) return leaderboardEntries;
-    return leaderboardEntries.filter((entry) =>
+    if (!normalizedQuery) return sortedEntries;
+    return sortedEntries.filter((entry) =>
       [entry.displayName, entry.email]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(normalizedQuery)),
     );
-  }, [leaderboardEntries, leaderboardQuery]);
+  }, [leaderboardEntries, leaderboardMode, leaderboardQuery]);
 
   const loadUsers = useCallback(async () => {
     if (!session?.access_token) return;
@@ -184,17 +195,13 @@ function AdminContent() {
     void loadUsers();
   }, [loadUsers]);
 
-  async function runUserAction(
+  async function runAction(
     action: "revoke" | "restore" | "send-password-reset",
     target: AdminUserRow,
   ): Promise<void> {
     if (!session?.access_token) return;
 
-    const actionText = action === "revoke"
-      ? "取消權限"
-      : action === "restore"
-        ? "恢復權限"
-        : "寄送重設密碼信";
+    const actionText = action === "revoke" ? "取消權限" : action === "restore" ? "恢復權限" : "寄送重設密碼信";
     if (!window.confirm(`確定要對 ${target.email} 執行「${actionText}」？`)) return;
 
     setBusyUserId(target.id);
@@ -256,6 +263,7 @@ function AdminContent() {
 
   return (
     <div className="page-stack admin-page">
+      {session?.access_token ? <AdminToolsPanel accessToken={session.access_token} /> : null}
       <GlassCard className="admin-card">
         <div className="admin-header">
           <div>
@@ -280,7 +288,7 @@ function AdminContent() {
             className="glass-input admin-search-input"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="搜尋 Email、IP 或狀態"
+            placeholder="搜尋 Email、IP、啟用碼或狀態"
           />
           <div className="admin-summary">
             <span>總帳號：{users.length}</span>
@@ -297,65 +305,74 @@ function AdminContent() {
               {error ? "目前沒有可顯示資料。請先修正上方錯誤後重新整理。" : "目前沒有使用者資料。"}
             </div>
           ) : (
-            filteredUsers.map((row) => {
-              return (
-                <article className="admin-user-card" key={row.id}>
-                  <div className="admin-user-card-main">
-                    <section className="admin-user-identity">
-                      <strong className="admin-user-email">{row.email || "—"}</strong>
-                      <span className={`admin-status admin-status-${row.entitlementStatus}`}>{statusLabel(row.entitlementStatus)}</span>
-                    </section>
+            filteredUsers.map((row) => (
+              <article className="admin-user-card" key={row.id}>
+                <div className="admin-user-card-main">
+                  <section className="admin-user-identity">
+                    <strong className="admin-user-email">{row.email || "—"}</strong>
+                    <span className={`admin-status admin-status-${row.entitlementStatus}`}>{statusLabel(row.entitlementStatus)}</span>
+                    {row.entitlementStatus === "active" && row.activationCode ? (
+                      <span className="admin-activation-code">啟用碼：{row.activationCode}</span>
+                    ) : null}
+                    <span className={`admin-online-pill ${row.isOnline ? "is-online" : "is-offline"}`}>
+                      <span className="admin-online-dot" aria-hidden="true" />
+                      {row.isOnline ? "Online" : "Offline"}
+                    </span>
+                  </section>
 
-                    <section className="admin-info-grid admin-info-grid-clean" aria-label={`${row.email} 的帳號資訊`}>
-                      <div className="admin-info-item admin-info-item-practice admin-info-item-center">
-                        <span className="admin-info-label">已練習</span>
-                        <strong className="admin-practice-count">{row.practicedQuestionCount ?? 0}</strong>
-                        <span className="admin-muted">題</span>
-                      </div>
-                      <div className="admin-info-item admin-info-item-login">
-                        <span className="admin-info-label">最後登入</span>
-                        <strong>{formatDate(row.lastEventAt || row.lastSignInAt)}</strong>
-                        <span className="admin-muted">IP：{row.lastIp || "尚未記錄"}</span>
-                      </div>
-                      <div className="admin-info-item admin-info-item-created">
-                        <span className="admin-info-label">建立時間</span>
-                        <span>{formatDate(row.createdAt)}</span>
-                      </div>
-                    </section>
-                  </div>
+                  <section className="admin-info-grid admin-info-grid-clean" aria-label={`${row.email} 的帳號資訊`}>
+                    <div className="admin-info-item admin-info-item-practice admin-info-item-center">
+                      <span className="admin-info-label">已練習</span>
+                      <strong className="admin-practice-count">{row.practicedQuestionCount ?? 0}</strong>
+                      <span className="admin-muted">題</span>
+                    </div>
+                    <div className="admin-info-item admin-info-item-practice admin-info-item-center">
+                      <span className="admin-info-label">累積時間</span>
+                      <strong>{formatTotalPracticeTime(row.totalPracticeSeconds ?? 0)}</strong>
+                    </div>
+                    <div className="admin-info-item admin-info-item-login">
+                      <span className="admin-info-label">最後登入</span>
+                      <strong>{formatDate(row.lastEventAt || row.lastSignInAt)}</strong>
+                      <span className="admin-muted">IP：{row.lastIp || "尚未記錄"}</span>
+                    </div>
+                    <div className="admin-info-item admin-info-item-created">
+                      <span className="admin-info-label">建立時間</span>
+                      <span>{formatDate(row.createdAt)}</span>
+                    </div>
+                  </section>
+                </div>
 
-                  <aside className="admin-card-actions">
-                    {row.entitlementStatus === "active" ? (
-                      <GlassButton
-                        variant="danger"
-                        disabled={busyUserId === row.id}
-                        onClick={() => void runUserAction("revoke", row)}
-                      >
-                        <ShieldOff aria-hidden="true" size={16} />
-                        <span>取消權限</span>
-                      </GlassButton>
-                    ) : (
-                      <GlassButton
-                        variant="primary"
-                        disabled={busyUserId === row.id}
-                        onClick={() => void runUserAction("restore", row)}
-                      >
-                        <ShieldCheck aria-hidden="true" size={16} />
-                        <span>恢復權限</span>
-                      </GlassButton>
-                    )}
+                <aside className="admin-card-actions">
+                  {row.entitlementStatus === "active" ? (
                     <GlassButton
-                      variant="secondary"
-                      disabled={busyUserId === row.id || !row.email}
-                      onClick={() => void runUserAction("send-password-reset", row)}
+                      variant="danger"
+                      disabled={busyUserId === row.id}
+                      onClick={() => void runAction("revoke", row)}
                     >
-                      <MailCheck aria-hidden="true" size={16} />
-                      <span>重設密碼信</span>
+                      <ShieldOff aria-hidden="true" size={16} />
+                      <span>取消權限</span>
                     </GlassButton>
-                  </aside>
-                </article>
-              );
-            })
+                  ) : (
+                    <GlassButton
+                      variant="primary"
+                      disabled={busyUserId === row.id}
+                      onClick={() => void runAction("restore", row)}
+                    >
+                      <ShieldCheck aria-hidden="true" size={16} />
+                      <span>恢復權限</span>
+                    </GlassButton>
+                  )}
+                  <GlassButton
+                    variant="secondary"
+                    disabled={busyUserId === row.id || !row.email}
+                    onClick={() => void runAction("send-password-reset", row)}
+                  >
+                    <MailCheck aria-hidden="true" size={16} />
+                    <span>重設密碼信</span>
+                  </GlassButton>
+                </aside>
+              </article>
+            ))
           )}
         </div>
       </GlassCard>
@@ -369,7 +386,7 @@ function AdminContent() {
               <div>
                 <p className="eyebrow">Leaderboard</p>
                 <h2>排行榜管理</h2>
-                <p>查看排行榜名稱對應的 Email，並刪除指定使用者的排行榜紀錄。</p>
+                <p>查看排行榜名稱對應的 Email，可切換連續答對與累積時數排行，並刪除指定紀錄。</p>
               </div>
               <button type="button" className="admin-modal-close" onClick={() => setLeaderboardOpen(false)} aria-label="關閉排行榜管理">
                 <X size={22} aria-hidden="true" />
@@ -389,6 +406,23 @@ function AdminContent() {
               </GlassButton>
             </div>
 
+            <div className="admin-leaderboard-tabs" role="tablist" aria-label="排行榜類型">
+              <button
+                type="button"
+                className={leaderboardMode === "streak" ? "is-active" : ""}
+                onClick={() => setLeaderboardMode("streak")}
+              >
+                連續答對排行
+              </button>
+              <button
+                type="button"
+                className={leaderboardMode === "practice" ? "is-active" : ""}
+                onClick={() => setLeaderboardMode("practice")}
+              >
+                累積時數排行
+              </button>
+            </div>
+
             {leaderboardError ? <p className="form-error">{leaderboardError}</p> : null}
 
             <div className="admin-leaderboard-list">
@@ -397,18 +431,29 @@ function AdminContent() {
               ) : filteredLeaderboardEntries.length === 0 ? (
                 <div className="admin-empty-cell">目前沒有排行榜資料。</div>
               ) : (
-                filteredLeaderboardEntries.map((entry) => (
+                filteredLeaderboardEntries.map((entry, index) => (
                   <article className="admin-leaderboard-row" key={entry.userId}>
-                    <div className="admin-leaderboard-rank">#{entry.rank}</div>
+                    <div className="admin-leaderboard-rank">#{index + 1}</div>
                     <div className="admin-leaderboard-player">
                       <strong>{entry.displayName}</strong>
                       <span>{entry.email}</span>
                     </div>
                     <div className="admin-leaderboard-stats">
-                      <div><span>最高連對</span><strong>{entry.bestCorrectStreak}</strong></div>
-                      <div><span>目前連對</span><strong>{entry.currentCorrectStreak}</strong></div>
-                      <div><span>總答對</span><strong>{entry.totalCorrect}</strong></div>
-                      <div><span>總作答</span><strong>{entry.totalAnswered}</strong></div>
+                      {leaderboardMode === "practice" ? (
+                        <>
+                          <div className="admin-leaderboard-time-stat admin-leaderboard-time-main">
+                            <span>累積時數</span>
+                            <strong>{formatTotalPracticeTime(entry.totalPracticeSeconds ?? 0)}</strong>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div><span>最高連對</span><strong>{entry.bestCorrectStreak}</strong></div>
+                          <div><span>目前連對</span><strong>{entry.currentCorrectStreak}</strong></div>
+                          <div><span>總答對</span><strong>{entry.totalCorrect}</strong></div>
+                          <div><span>總作答</span><strong>{entry.totalAnswered}</strong></div>
+                        </>
+                      )}
                     </div>
                     <div className="admin-leaderboard-updated">
                       <span>更新時間</span>

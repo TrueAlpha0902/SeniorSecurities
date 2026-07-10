@@ -13,7 +13,7 @@ import {
   listUserAnswers,
   type ImageQuizSessionRecord,
 } from "../lib/db";
-import { loadImageBankQuestions, loadImageQuizBanks, type ImageQuizBank } from "../lib/imageQuiz";
+import { loadImageBankQuestions, loadImageQuizBanks, type ImageQuizBank, type ImageQuizQuestion } from "../lib/imageQuiz";
 import { buildSessionId, calculateAccuracy, shuffleQuestions } from "../lib/quiz";
 import type { UserAnswer } from "../types";
 
@@ -23,22 +23,23 @@ const MAX_RANDOM_SIZE = 300;
 const QUICK_RANDOM_SIZES = [25, 50, 80, 100] as const;
 
 const T = {
-  loading: "載入模擬考",
-  title: "模擬考",
-  description: "每次從單一科目的所有章節隨機抽題，預設 50 題，也可以依自己的時間自訂練習題數。退出或完成後會保留當次答對率與錯題複習。",
+  loading: "載入單科隨機測驗",
+  title: "單科隨機測驗",
+  description: "每次從單一科目依各章節題庫比例抽題，預設 50 題，也可以依自己的時間自訂練習題數。退出或完成後會保留當次答對率與錯題複習。",
   subject: "科目",
   chapter: "章",
   question: "題",
   start: "測驗開始",
   avoidAnswered: "避開已作答題目",
   questionCount: "每次練習題數",
-  questionCountHint: "預設 50 題，可依當天時間調整。若可用題目不足，系統會以目前可抽題數為準。",
+  questionCountHint: "預設 50 題，系統會依各章節題庫比例分配抽題。若可用題目不足，會以目前可抽題數為準。",
+  proportionalHint: "依章節比例抽題",
   customQuestionCount: "自訂題數",
   remaining: "剩餘",
   noAvailable: "這個科目目前沒有可抽取的題目。",
   progress: "進度",
   records: "測驗紀錄",
-  noRecords: "目前還沒有模擬考紀錄",
+  noRecords: "目前還沒有單科隨機測驗紀錄",
   accuracy: "答對率",
   correct: "答對",
   wrong: "答錯",
@@ -52,9 +53,9 @@ const T = {
   deleteMode: "刪除紀錄",
   deleteSelected: "刪除選取",
   cancelDelete: "取消",
-  deleteConfirm: "確定要刪除選取的模擬考紀錄嗎？",
+  deleteConfirm: "確定要刪除選取的單科隨機測驗紀錄嗎？",
   examRules: "證券高業考試規定",
-  examRulesNote: "依證券商高級業務員測驗節次設計模擬考節奏，可先單科練習，再做完整三科。",
+  examRulesNote: "這裡是單科隨機測驗並會逐題回饋；完整三科、統一交卷後批改的正式模考將另行提供。",
   questionsUnit: "題",
   minutesUnit: "分鐘",
   totalRules: "合計 150 題 / 210 分鐘",
@@ -96,9 +97,14 @@ export function RandomPracticePage() {
   async function handleStart(bank: ImageQuizBank): Promise<void> {
     const allQuestions = await loadImageBankQuestions(bank.bankId);
     const answeredIds = new Set((data?.answers ?? []).map((answer) => answer.questionId));
-    const candidates = avoidAnswered ? allQuestions.filter((question) => !answeredIds.has(question.id)) : allQuestions;
     const targetCount = normalizeQuestionCount(questionCount);
-    const questions = shuffleQuestions(candidates).slice(0, targetCount);
+    const questions = buildProportionalMockExamQuestions({
+      bank,
+      allQuestions,
+      answeredIds,
+      avoidAnswered,
+      targetCount,
+    });
     if (questions.length === 0) {
       window.alert(T.noAvailable);
       return;
@@ -174,7 +180,7 @@ export function RandomPracticePage() {
           <p>{T.description}</p>
         </div>
 
-        <div className="random-quiz-options" aria-label="模擬考設定">
+        <div className="random-quiz-options" aria-label="單科隨機測驗設定">
           <div className="random-count-panel">
             <div>
               <h2>{T.questionCount}</h2>
@@ -256,6 +262,7 @@ export function RandomPracticePage() {
                   <span className="glass-badge">{bank.chapters.length} {T.chapter}</span>
                   <span className="glass-badge">{T.progress} {progress}%</span>
                   {avoidAnswered ? <span className="glass-badge">{T.remaining} {availableCount} {T.question}</span> : null}
+                  <span className="glass-badge">{T.proportionalHint}</span>
                   <span className="glass-badge">本次 {sessionQuestionCount} {T.question}</span>
                 </div>
               </div>
@@ -383,4 +390,82 @@ function calculateBankProgress(bank: ImageQuizBank, answers: UserAnswer[]): numb
   const questionIds = new Set(bank.chapters.flatMap((chapter) => chapter.questions.map((question) => question.id)));
   const answeredIds = new Set(answers.filter((answer) => questionIds.has(answer.questionId)).map((answer) => answer.questionId));
   return calculateAccuracy(answeredIds.size, questionIds.size);
+}
+
+
+type ProportionalMockExamInput = {
+  bank: ImageQuizBank;
+  allQuestions: ImageQuizQuestion[];
+  answeredIds: Set<string>;
+  avoidAnswered: boolean;
+  targetCount: number;
+};
+
+type ChapterQuestionBucket = {
+  chapterId: string;
+  questionCount: number;
+  questions: ImageQuizQuestion[];
+};
+
+function buildProportionalMockExamQuestions({
+  bank,
+  allQuestions,
+  answeredIds,
+  avoidAnswered,
+  targetCount,
+}: ProportionalMockExamInput): ImageQuizQuestion[] {
+  const questionById = new Map(allQuestions.map((question) => [question.id, question]));
+  const buckets: ChapterQuestionBucket[] = bank.chapters
+    .map((chapter) => {
+      const chapterQuestions = chapter.questions
+        .map((questionRef) => questionById.get(questionRef.id))
+        .filter((question): question is ImageQuizQuestion => Boolean(question))
+        .filter((question) => !avoidAnswered || !answeredIds.has(question.id));
+
+      return {
+        chapterId: chapter.chapterId,
+        questionCount: chapter.questionCount,
+        questions: shuffleQuestions(chapterQuestions),
+      };
+    })
+    .filter((bucket) => bucket.questions.length > 0);
+
+  const availableTotal = buckets.reduce((sum, bucket) => sum + bucket.questions.length, 0);
+  const drawTotal = Math.min(targetCount, availableTotal);
+
+  if (drawTotal <= 0 || availableTotal <= 0) {
+    return [];
+  }
+
+  const quotas = buckets.map((bucket, index) => {
+    const rawQuota = (drawTotal * bucket.questions.length) / availableTotal;
+    return {
+      bucket,
+      index,
+      count: Math.min(bucket.questions.length, Math.floor(rawQuota)),
+      remainder: rawQuota - Math.floor(rawQuota),
+    };
+  });
+
+  let allocated = quotas.reduce((sum, quota) => sum + quota.count, 0);
+
+  for (const quota of [...quotas].sort((a, b) => {
+    if (b.remainder !== a.remainder) {
+      return b.remainder - a.remainder;
+    }
+    if (b.bucket.questions.length !== a.bucket.questions.length) {
+      return b.bucket.questions.length - a.bucket.questions.length;
+    }
+    return a.index - b.index;
+  })) {
+    if (allocated >= drawTotal) {
+      break;
+    }
+    if (quota.count < quota.bucket.questions.length) {
+      quota.count += 1;
+      allocated += 1;
+    }
+  }
+
+  return shuffleQuestions(quotas.flatMap((quota) => quota.bucket.questions.slice(0, quota.count)));
 }

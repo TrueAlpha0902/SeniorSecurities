@@ -3,7 +3,11 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { registerSW } from "virtual:pwa-register";
 import { App } from "./App";
+import { preloadFrierenAnimation } from "./lib/frierenAnimation";
 import "./styles/glass.css";
+
+// Fetch and decode the home animation during authentication so it is ready on entry.
+void preloadFrierenAnimation().catch(() => undefined);
 
 const updateServiceWorker = registerSW({
   immediate: true,

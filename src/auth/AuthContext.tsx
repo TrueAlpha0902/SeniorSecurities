@@ -63,15 +63,36 @@ async function triggerCloudRecordSync(): Promise<void> {
   }
 }
 
+async function sendPresenceHeartbeat(userId: string): Promise<void> {
+  if (!supabase || !userId) return;
+
+  try {
+    const { error } = await supabase.rpc("touch_user_presence");
+    if (!error) return;
+
+    // Fallback for projects that have not applied v46 SQL yet.
+    const fallback = await supabase.from("user_presence").upsert({
+      user_id: userId,
+      last_seen_at: new Date().toISOString(),
+    }, { onConflict: "user_id" });
+    if (fallback.error) throw fallback.error;
+  } catch (error) {
+    // Presence is best-effort. It should not block the app if SQL has not been applied yet.
+    console.warn("Presence heartbeat failed", error);
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [access, setAccess] = useState<AccessStatus>(defaultAccess);
   const hasLoggedSessionSeen = useRef(false);
+  const verifiedAccessUserId = useRef<string | null>(null);
 
   const refreshAccessForUser = useCallback(async (currentUser: AuthUser | null) => {
     if (!supabase || !currentUser) {
+      verifiedAccessUserId.current = null;
       setAccess(defaultAccess);
       return;
     }
@@ -83,11 +104,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .maybeSingle();
 
     if (error) {
-      setAccess({ ...defaultAccess, error: error.message });
+      setAccess((previous) => verifiedAccessUserId.current === currentUser.id
+        ? { ...previous, error: error.message }
+        : { ...defaultAccess, error: error.message });
       return;
     }
 
     const isActive = Boolean(data && data.status === "active" && (!data.expires_at || new Date(data.expires_at).getTime() > Date.now()));
+    verifiedAccessUserId.current = currentUser.id;
     setAccess({
       hasEntitlement: isActive,
       plan: data?.plan ?? null,
@@ -217,6 +241,66 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { error } = await supabase.auth.updateUser({ password });
     if (error) throw error;
   }, []);
+
+  useEffect(() => {
+    if (!user?.id) return;
+
+    let heartbeatInFlight = false;
+    let lastHeartbeatAt = 0;
+    const heartbeat = (force = false) => {
+      const now = Date.now();
+      if (heartbeatInFlight || (!force && now - lastHeartbeatAt < 15_000)) return;
+      heartbeatInFlight = true;
+      lastHeartbeatAt = now;
+      void sendPresenceHeartbeat(user.id).finally(() => {
+        heartbeatInFlight = false;
+      });
+    };
+
+    heartbeat(true);
+    const heartbeatTimer = window.setInterval(() => {
+      if (document.visibilityState === "visible") {
+        heartbeat();
+      }
+    }, 30_000);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        heartbeat();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("focus", handleVisibilityChange);
+
+    return () => {
+      window.clearInterval(heartbeatTimer);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("focus", handleVisibilityChange);
+    };
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    let refreshInFlight = false;
+    const revalidateAccess = () => {
+      if (refreshInFlight || document.visibilityState !== "visible") return;
+      refreshInFlight = true;
+      void refreshAccessForUser(user).finally(() => {
+        refreshInFlight = false;
+      });
+    };
+
+    const revalidationTimer = window.setInterval(revalidateAccess, 2 * 60_000);
+    document.addEventListener("visibilitychange", revalidateAccess);
+    window.addEventListener("focus", revalidateAccess);
+    return () => {
+      window.clearInterval(revalidationTimer);
+      document.removeEventListener("visibilitychange", revalidateAccess);
+      window.removeEventListener("focus", revalidateAccess);
+    };
+  }, [refreshAccessForUser, user]);
 
   const value = useMemo<AuthContextValue>(() => ({
     isConfigured: isSupabaseConfigured,
