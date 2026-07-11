@@ -525,10 +525,25 @@ p {
 
 .cat-playground {
   position: relative;
-  min-height: 290px;
-  overflow: hidden;
+  overflow: visible;
   border: 0;
   background: transparent;
+}
+
+.homepage-frieren-card {
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: clamp(12px, 2vw, 20px);
+  overflow: hidden;
+}
+
+.homepage-frieren-image {
+  display: block;
+  width: min(100%, 380px);
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 14px 30px rgba(109, 88, 136, 0.14));
 }
 
 .overview-panel .metric-row {

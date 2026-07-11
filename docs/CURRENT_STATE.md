@@ -1,19 +1,16 @@
 ﻿# SeniorSecurities Current State
 
 更新日期：2026-07-11
-目前版本：v71 無縫首頁、白屏計算機與角色生活空間動畫
+目前版本：v72 首頁靜態芙莉蓮加油圖與動畫移除
 
-## v71 已完成
+## v72 已完成
 
-- 首頁考試倒數與「今日應做」維持同一張白色卡片，移除桌面與行動版分隔線。
-- 計算機顯示區改為純白底；等號移到右上角工具列。
-- `x²` 與 `xʸ` 維持同一列功能鍵，Ans／EXE 位置沿用 v70。
-- 首頁角色區改為單一固定房間：窗戶、書架、地毯、書桌、椅子、檯燈、床與床頭櫃從第一幀即存在。
-- 角色圖像完全沿用現有資產，沒有重新生成角色，因此髮型、服裝、臉部與比例維持一致。
-- 動畫改為 54 秒連續生活循環：讀書、翻頁、推眼鏡、疲倦、起身走向床鋪、呼吸入睡。
-- 角色姿勢以長交疊淡化、連續位移、走路四幀循環、呼吸與環境微動作銜接，避免投影片式硬切。
-- 加入窗簾擺動、燈光呼吸、灰塵粒子、鏡頭微位移與睡眠符號，動畫在離開可視範圍或分頁隱藏時自動暫停。
-- `prefers-reduced-motion` 使用者會看到穩定靜態讀書畫面。
+- 首頁底部原本的芙莉蓮生活空間動畫已完全移除。
+- 首頁底部改為單張 Q 版芙莉蓮「加油」靜態插圖。
+- 移除首頁動畫 React 元件、動畫預載程式、動畫 CSS、產圖最佳化腳本與舊動畫素材。
+- 新圖片使用 WebP，約 92 KB，採延遲載入與非同步解碼，避免首頁持續執行動畫與預載多張素材。
+- 首頁底部圖片維持響應式置中顯示，最大寬度 380 px。
+- 本次未新增 npm 套件，也沒有資料庫變更。
 
 ## 驗證
 
@@ -32,11 +29,24 @@
 
 ## 資料庫
 
-v71 沒有新增 Supabase migration，不需執行 `supabase db push`。
+v72 沒有新增 Supabase migration，不需執行 `supabase db push`。
 
-## 資產說明
+## 主要變更檔案
 
-本版本保留既有角色圖像，只以 CSS／React 編排同一空間的連續動畫。受限於現有讀書、步行與睡眠關鍵姿勢數量，效果為高品質網頁合成動畫，而不是逐幀手繪電影動畫。
+- `src/pages/HomePage.tsx`
+- `src/main.tsx`
+- `src/styles/glass.css`
+- `public/frieren-cheer-home.webp`
+- `docs/CURRENT_STATE.md`
+- `docs/AI_CHANGELOG.md`
+
+## 已移除檔案
+
+- `src/components/FrierenAnimation.tsx`
+- `src/lib/frierenStory.ts`
+- `src/styles/frieren-story-v65.css`
+- `scripts/optimize-frieren-story-assets.py`
+- `public/animation/frieren-story/`
 
 ## Codex／AI 下次開始方式
 

@@ -61,3 +61,11 @@
 - 完全沿用既有角色資產，透過交疊淡化、走路循環、呼吸、燈光、窗簾、粒子與鏡頭微動作，建立 54 秒連續生活循環。
 - 動畫離開視窗或分頁隱藏時自動暫停，並支援 reduced-motion。
 - 完整 `npm run verify` 通過；無 Supabase migration、無新增 npm 套件。
+
+## 2026-07-11 — v72 首頁靜態加油圖與動畫完整移除
+
+- 首頁底部移除 54 秒芙莉蓮生活空間動畫，改為 Q 版芙莉蓮「加油」靜態插圖。
+- 移除動畫元件、首頁動畫預載、動畫 CSS、動畫素材最佳化腳本與 `public/animation/frieren-story/` 全部舊素材。
+- 新圖片轉為約 92 KB WebP，採 lazy loading 與 async decoding，降低首頁載入與持續動畫成本。
+- 更新 `docs/CURRENT_STATE.md`，讓後續 Codex／AI 從 GitHub 儲存庫即可讀取最新版本狀態與變更範圍。
+- 完整 `npm run verify` 通過；無 Supabase migration、無新增 npm 套件。

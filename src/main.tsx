@@ -3,10 +3,8 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { registerSW } from "virtual:pwa-register";
 import { App } from "./App";
-import { preloadFrierenStory } from "./lib/frierenStory";
 import "./styles/glass.css";
 
-void preloadFrierenStory();
 
 const updateServiceWorker = registerSW({
   immediate: true,

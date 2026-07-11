@@ -13,7 +13,6 @@ import {
 } from "lucide-react";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { ErrorState } from "../components/ErrorState";
-import { FrierenAnimation } from "../components/FrierenAnimation";
 import { GlassButton, GlassLinkButton } from "../components/GlassButton";
 import { GlassCard } from "../components/GlassCard";
 import { LoadingState } from "../components/LoadingState";
@@ -79,6 +78,8 @@ const T = {
   todayWrongReview: "今日錯題複習",
   wrongCorrection: "錯題訂正",
 };
+
+const HOMEPAGE_FRIEREN_IMAGE = `${import.meta.env.BASE_URL}frieren-cheer-home.webp`;
 
 const STUDY_TIME_OPTIONS = [30, 60, 90, 120, 240] as const;
 const INTENSITY_OPTIONS: {
@@ -549,9 +550,17 @@ export function HomePage() {
 
           <section
             className="cat-playground"
-            aria-label="芙莉蓮的讀書與晚安動畫"
+            aria-label="主頁底部加油插圖"
           >
-            <FrierenAnimation />
+            <GlassCard className="homepage-frieren-card">
+              <img
+                className="homepage-frieren-image"
+                src={HOMEPAGE_FRIEREN_IMAGE}
+                alt="Q版芙莉蓮握拳說加油的插圖"
+                loading="lazy"
+                decoding="async"
+              />
+            </GlassCard>
           </section>
         </>
       )}
