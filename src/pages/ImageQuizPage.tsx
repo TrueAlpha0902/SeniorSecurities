@@ -41,11 +41,13 @@ import { calculateAccuracy } from "../lib/quiz";
 import { addPracticeSeconds } from "../lib/practiceTime";
 import {
   calculateSmartStudyPlanStats,
+  DAILY_PLAN_STORAGE_VERSION,
   getStudyPlanConfig,
   getStudyPlanSignature,
   isReviewDue,
   localTodayKey,
   type DailyPlanCategory,
+  type StudyIntensity,
 } from "../lib/studyPlan";
 import {
   ANSWER_MODE_SETTING_CHANGED,
@@ -987,9 +989,9 @@ function buildDailyTrainingQuestions(
   }
 
   const selectedIds = new Set<string>();
-  const newQuestions = takeBalancedByExamSubject(unattemptedQuestions, plan.allocations.new.count, selectedIds);
   const wrongQuestions = takeBalancedByExamSubject(wrongDueQuestions, plan.allocations.wrong.count, selectedIds);
   const reviewQuestions = takeBalancedByExamSubject(reviewDueQuestions, plan.allocations.review.count, selectedIds);
+  const newQuestions = takeBalancedByExamSubject(unattemptedQuestions, plan.allocations.new.count, selectedIds);
   // 「混合小測」已從每日計畫移除；保留 mixed 欄位只為相容舊的本機暫存格式。
   const mixedQuestions: ImageQuizQuestion[] = [];
   const categoryQuestionIds: Record<DailyPlanCategory, string[]> = {
@@ -998,12 +1000,15 @@ function buildDailyTrainingQuestions(
     review: reviewQuestions.map((question) => question.id),
     mixed: mixedQuestions.map((question) => question.id),
   };
-  const selectedQuestions = interleaveDailyQuestions({
-    new: newQuestions,
-    wrong: wrongQuestions,
-    review: reviewQuestions,
-    mixed: mixedQuestions,
-  });
+  const selectedQuestions = interleaveDailyQuestions(
+    {
+      new: newQuestions,
+      wrong: wrongQuestions,
+      review: reviewQuestions,
+      mixed: mixedQuestions,
+    },
+    config.intensity,
+  );
   const remainingQuestions = selectedQuestions.filter((question) => !todayAnsweredIds.has(question.id));
   const plannedCount = selectedQuestions.length;
   const categoryCounts = countRemainingCategoryQuestions(categoryQuestionIds, todayAnsweredIds);
@@ -1028,11 +1033,20 @@ function buildDailyTrainingQuestions(
 
 function interleaveDailyQuestions(
   categories: Record<DailyPlanCategory, ImageQuizQuestion[]>,
+  intensity: StudyIntensity,
 ): ImageQuizQuestion[] {
   const queues = Object.fromEntries(
     DAILY_PLAN_CATEGORIES.map((category) => [category, [...categories[category]]]),
   ) as Record<DailyPlanCategory, ImageQuizQuestion[]>;
-  const pattern: DailyPlanCategory[] = ["review", "wrong", "new", "new", "mixed"];
+  // Every intensity starts with retrieval repair: wrong answers first, then
+  // spaced reviews. Higher intensity adds more new-question slots without
+  // pushing those due items behind untouched material.
+  const patternByIntensity: Record<StudyIntensity, DailyPlanCategory[]> = {
+    steady: ["wrong", "review", "review", "new", "mixed"],
+    standard: ["wrong", "review", "new", "new", "mixed"],
+    sprint: ["wrong", "review", "new", "new", "new", "mixed"],
+  };
+  const pattern = patternByIntensity[intensity];
   const result: ImageQuizQuestion[] = [];
 
   while (Object.values(queues).some((queue) => queue.length > 0)) {
@@ -1188,7 +1202,7 @@ function normalizeCategoryQuestionIds(stored: StoredDailyPlan, validQuestionIds:
 }
 
 function buildDailySummary(categoryCounts: Record<DailyPlanCategory, number>): string {
-  return [`新題 ${categoryCounts.new}`, `錯題 ${categoryCounts.wrong}`, `複習 ${categoryCounts.review}`].join(" / ");
+  return [`錯題 ${categoryCounts.wrong}`, `複習 ${categoryCounts.review}`, `新題 ${categoryCounts.new}`].join(" / ");
 }
 
 function getTodayAnsweredIds(answers: UserAnswer[], allQuestionIds: Set<string>): Set<string> {
@@ -1212,7 +1226,7 @@ function readStoredDailyPlan(
     const stored = JSON.parse(raw) as StoredDailyPlan;
     if (
       stored.date !== localTodayKey() ||
-      stored.version !== 39 ||
+      stored.version !== DAILY_PLAN_STORAGE_VERSION ||
       stored.planSignature !== getStudyPlanSignature() ||
       !Array.isArray(stored.questionIds) ||
       stored.questionIds.length === 0
@@ -1254,7 +1268,7 @@ function readStoredDailyPlan(
 function writeStoredDailyPlan(result: DailyTrainingBuildResult): void {
   if (typeof window === "undefined" || result.planQuestionIds.length === 0) return;
   const stored: StoredDailyPlan = {
-    version: 39,
+    version: DAILY_PLAN_STORAGE_VERSION,
     date: localTodayKey(),
     planSignature: getStudyPlanSignature(),
     questionIds: result.planQuestionIds,

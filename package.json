@@ -13,6 +13,7 @@
     "validate:data": "tsx scripts/validate-question-bank.ts",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "test:calculator": "tsx scripts/test-calculator-core.ts",
     "activation:code": "tsx scripts/generate-activation-code.ts",
     "dev:admin": "npx vercel dev"
   },

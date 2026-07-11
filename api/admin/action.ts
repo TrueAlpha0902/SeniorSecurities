@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { getErrorStatusCode, HttpError, type ApiRequest, type ApiResponse, writeAdminAudit } from "../_adminClient.js";
+import { getErrorStatusCode, HttpError, sendJson, type ApiRequest, type ApiResponse, writeAdminAudit } from "../_adminClient.js";
 
 const DEFAULT_ADMIN_EMAILS = "true.alpha0902@gmail.com";
 const DEFAULT_PASSWORD_RESET_URL = "https://senior-securities.vercel.app/reset-password";
@@ -9,12 +9,6 @@ type JsonObject = Record<string, unknown>;
 
 function getEnv(name: string): string {
   return String(process.env[name] || "").trim();
-}
-
-function sendJson(res: ApiResponse, statusCode: number, payload: unknown): void {
-  res.statusCode = statusCode;
-  res.setHeader("Content-Type", "application/json; charset=utf-8");
-  res.end(JSON.stringify(payload));
 }
 
 function sendError(res: ApiResponse, error: unknown): void {

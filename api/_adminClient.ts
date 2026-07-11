@@ -97,8 +97,13 @@ export async function requireAdminUser(req: ApiRequest) {
   return { supabase, user: data.user };
 }
 
+function setAdminResponseHeaders(res: ApiResponse): void {
+  res.setHeader("Cache-Control", "private, no-store, max-age=0");
+}
+
 export function sendJson(res: ApiResponse, statusCode: number, payload: unknown): void {
   res.statusCode = statusCode;
+  setAdminResponseHeaders(res);
   res.setHeader("Content-Type", "application/json; charset=utf-8");
   res.end(JSON.stringify(payload));
 }

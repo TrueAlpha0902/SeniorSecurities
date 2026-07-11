@@ -1,4 +1,4 @@
-import { BookOpen, CalendarDays, Heart, ListChecks, PlayCircle, Shuffle, Target, Trophy } from "lucide-react";
+import { AlertTriangle, BookOpen, CalendarDays, Heart, ListChecks, PlayCircle, Shuffle, Target, Trophy } from "lucide-react";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { ErrorState } from "../components/ErrorState";
 import { FrierenAnimation } from "../components/FrierenAnimation";
@@ -13,6 +13,7 @@ import { calculateAccuracy } from "../lib/quiz";
 import { formatTotalPracticeTime, getTotalPracticeSeconds, PRACTICE_TIME_CHANGED } from "../lib/practiceTime";
 import {
   calculateSmartStudyPlanStats,
+  DAILY_PLAN_STORAGE_VERSION,
   formatExamDate,
   getStudyPlanConfig,
   getStudyPlanSignature,
@@ -167,8 +168,8 @@ export function HomePage() {
   );
   const homeDailyAllocations = useMemo(
     () =>
-      Object.values(dailyDisplayPlan.allocations)
-        .filter((allocation) => allocation.id !== "mixed"),
+      (["wrong", "review", "new"] as DailyPlanCategory[])
+        .map((category) => dailyDisplayPlan.allocations[category]),
     [dailyDisplayPlan.allocations],
   );
 
@@ -226,6 +227,32 @@ export function HomePage() {
             <div className="daily-simple-practice daily-original-practice">
               <p className="eyebrow">Daily Smart Practice</p>
               <h2>{T.smartPractice} {dailyDisplayPlan.count} {T.question}</h2>
+              <div className="daily-simple-stats" aria-label="每日訓練容量">
+                <div>
+                  <span>截止日前理論需求</span>
+                  <strong>{studyPlan.requiredNewPerDay}</strong>
+                  <small>題新題 / 天（預留 {studyPlan.reserveDays} 天複習）</small>
+                </div>
+                <div>
+                  <span>今天可完成</span>
+                  <strong>{dailyDisplayPlan.targetCount}</strong>
+                  <small>
+                    {dailyDisplayPlan.hasTodayPlan
+                      ? `${dailyDisplayPlan.count} 題尚未完成 / `
+                      : null}
+                    {studyPlan.dailyStudyMinutes} 分鐘時間上限
+                  </small>
+                </div>
+              </div>
+              <div className={`smart-warning${studyPlan.isOverloaded ? " warning" : ""}`}>
+                {studyPlan.isOverloaded
+                  ? <AlertTriangle aria-hidden="true" size={20} />
+                  : <Target aria-hidden="true" size={20} />}
+                <div>
+                  <strong>{studyPlan.warningTitle}</strong>
+                  <p>{studyPlan.warningMessage}</p>
+                </div>
+              </div>
               <div className="daily-allocation-grid daily-home-allocation" aria-label="今日練習摘要">
                 {homeDailyAllocations.map((allocation) => (
                   <div key={allocation.id} className={`daily-allocation-card daily-allocation-${allocation.id}`}>
@@ -423,6 +450,7 @@ type StoredDailyPlan = {
 type DailyDisplayPlan = {
   hasTodayPlan: boolean;
   count: number;
+  targetCount: number;
   allocations: ReturnType<typeof calculateSmartStudyPlanStats>["allocations"];
 };
 
@@ -437,7 +465,12 @@ function calculateDailyDisplayPlan(
   const todayAnsweredIds = getTodayAnsweredIds(answers, sourceBankIds);
   const stored = readTodayDailyPlan(getStudyPlanSignature(studyPlan));
   if (!stored) {
-    return { hasTodayPlan: false, count: studyPlan.suggestedDailyCount, allocations: studyPlan.allocations };
+    return {
+      hasTodayPlan: false,
+      count: studyPlan.suggestedDailyCount,
+      targetCount: studyPlan.suggestedDailyCount,
+      allocations: studyPlan.allocations,
+    };
   }
 
   const categoryIds = normalizeStoredCategoryIds(stored);
@@ -454,7 +487,12 @@ function calculateDailyDisplayPlan(
     ]),
   ) as ReturnType<typeof calculateSmartStudyPlanStats>["allocations"];
 
-  return { hasTodayPlan: true, count: Math.min(remainingTotal, totalQuestionCount), allocations };
+  return {
+    hasTodayPlan: true,
+    count: Math.min(remainingTotal, totalQuestionCount),
+    targetCount: Math.min(stored.plannedCount ?? stored.questionIds.length, totalQuestionCount),
+    allocations,
+  };
 }
 
 function readTodayDailyPlan(expectedPlanSignature: string): StoredDailyPlan | undefined {
@@ -463,7 +501,7 @@ function readTodayDailyPlan(expectedPlanSignature: string): StoredDailyPlan | un
   if (!raw) return undefined;
   try {
     const stored = JSON.parse(raw) as StoredDailyPlan;
-    if (stored.date !== localTodayKey() || stored.version !== 39 || stored.planSignature !== expectedPlanSignature || !Array.isArray(stored.questionIds)) return undefined;
+    if (stored.date !== localTodayKey() || stored.version !== DAILY_PLAN_STORAGE_VERSION || stored.planSignature !== expectedPlanSignature || !Array.isArray(stored.questionIds)) return undefined;
     const questionIds = stored.questionIds.filter(
       (questionId): questionId is string => typeof questionId === "string" && questionId.length > 0,
     );

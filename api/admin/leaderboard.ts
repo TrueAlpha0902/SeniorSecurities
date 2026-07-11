@@ -1,5 +1,5 @@
 import { createClient, type User } from "@supabase/supabase-js";
-import { getErrorStatusCode, HttpError, type ApiRequest, type ApiResponse } from "../_adminClient.js";
+import { getErrorStatusCode, HttpError, sendJson, type ApiRequest, type ApiResponse } from "../_adminClient.js";
 
 interface LeaderboardProfileRow {
   user_id: string;
@@ -55,12 +55,6 @@ async function isDatabaseAdmin(supabase: AdminClient, email: string): Promise<bo
   return Boolean(data);
 }
 
-
-function sendJson(res: ApiResponse, statusCode: number, payload: unknown): void {
-  res.statusCode = statusCode;
-  res.setHeader("Content-Type", "application/json; charset=utf-8");
-  res.end(JSON.stringify(payload));
-}
 
 function sendError(res: ApiResponse, error: unknown): void {
   const statusCode = getErrorStatusCode(error);

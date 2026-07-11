@@ -4,6 +4,7 @@ const STUDY_INTENSITY_KEY = "quizpwa:study-intensity";
 const DAILY_PLAN_KEY_PREFIX = "quizpwa:daily-plan:";
 
 export const STUDY_PLAN_CHANGED = "quizpwa:study-plan-changed";
+export const DAILY_PLAN_STORAGE_VERSION = 40;
 export const DAY_MS = 24 * 60 * 60 * 1000;
 
 export type StudyIntensity = "steady" | "standard" | "sprint";
@@ -198,11 +199,10 @@ export function calculateSmartStudyPlanStats(args: {
   };
   const timeCounts = allocateByTime(availability, effectivePracticeMinutes, profile);
   const timeCapacityCount = Object.values(timeCounts).reduce((sum, count) => sum + count, 0);
+  // Keep the executable session inside the configured time budget. The much
+  // larger requiredNewPerDay value remains available as the theoretical pace
+  // and overload warning instead of being inserted into today's question list.
   const counts: Record<DailyPlanCategory, number> = { ...timeCounts };
-
-  if (requiredNewPerDay > counts.new) {
-    counts.new = Math.min(availability.new, requiredNewPerDay);
-  }
 
   const suggestedDailyCount = Object.values(counts).reduce((sum, count) => sum + count, 0);
   const estimatedMinutes = Math.round(
@@ -213,8 +213,10 @@ export function calculateSmartStudyPlanStats(args: {
   );
   const requiredMinutes = Math.round(requiredNewPerDay * profile.categories.new.minutesPerQuestion);
   const overloadGap = Math.max(0, requiredNewPerDay - timeCounts.new);
-  const isOverloaded = requiredMinutes > effectivePracticeMinutes || requiredNewPerDay > timeCapacityCount;
-  const suggestedMinutes = Math.ceil((estimatedMinutes || requiredMinutes) / profile.focusRate);
+  const isOverloaded = requiredMinutes > effectivePracticeMinutes || overloadGap > 0;
+  const suggestedMinutes = Math.ceil(
+    (isOverloaded ? requiredMinutes : estimatedMinutes) / profile.focusRate,
+  );
   const allocations = Object.fromEntries(
     (Object.keys(counts) as DailyPlanCategory[]).map((category) => [
       category,
@@ -249,7 +251,7 @@ export function calculateSmartStudyPlanStats(args: {
     modeLabel: isOverloaded ? pressureMode : profile.label,
     warningTitle: isOverloaded ? "目前計畫時間不足" : "目前節奏可執行",
     warningMessage: isOverloaded
-      ? `若要保留 ${reserveDays} 天考前複習，接下來 ${progressDays} 天每天至少要推進 ${requiredNewPerDay} 題新題；目前 ${dailyStudyMinutes} 分鐘約只能完整消化 ${timeCapacityCount} 題。`
+      ? `若要保留 ${reserveDays} 天考前複習，接下來 ${progressDays} 天每天理論上需推進 ${requiredNewPerDay} 題新題；今天的 ${dailyStudyMinutes} 分鐘 Session 會先做錯題與到期複習，再安排 ${timeCounts.new} 題新題，共 ${timeCapacityCount} 題。`
       : `目前讀書時間可以支撐今日任務，仍建議保留錯題與複習時間。`,
     allocations,
     wrongDueQuestions: availability.wrong,

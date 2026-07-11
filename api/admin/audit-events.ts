@@ -1,7 +1,6 @@
 import { type ApiRequest, type ApiResponse, requireAdminUser, sendError, sendJson } from "../_adminClient.js";
 
 export default async function handler(req: ApiRequest, res: ApiResponse) {
-  res.setHeader("Cache-Control", "private, no-store, max-age=0");
   if (req.method !== "GET") {
     sendJson(res, 405, { error: "Method not allowed" });
     return;

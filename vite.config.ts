@@ -90,6 +90,7 @@ export default defineConfig({
         theme_color: "#ffffff",
         background_color: "#ffffff",
         display: "standalone",
+        lang: "zh-Hant",
         orientation: "any",
         scope: base,
         start_url: base,
