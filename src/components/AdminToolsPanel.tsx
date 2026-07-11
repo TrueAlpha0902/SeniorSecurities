@@ -698,105 +698,162 @@ function QuestionEditorTool({ accessToken, isPrimaryAdmin }: { accessToken: stri
 
       {editable ? (
         <>
-          <div className="question-editor-summary">
-            <div><strong>{editable.bankTitle}／{editable.chapterTitle}／第 {editable.number} 題</strong><span>{editable.id}</span></div>
-            <label>正確答案<select value={editable.answer} onChange={(event) => setEditable({ ...editable, answer: event.target.value as NumericAnswer })}><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></label>
-          </div>
-
-          <div className="question-editor-mode-tabs">
-            <button type="button" className={mode === "question" ? "is-active" : ""} onClick={() => { setMode("question"); setSegmentIndex(0); }}>題目截圖</button>
-            <button type="button" className={mode === "explanation" ? "is-active" : ""} onClick={() => { setMode("explanation"); setSegmentIndex(0); }}>解析截圖</button>
-          </div>
-
-          <div className="question-editor-workspace">
-            <div className="question-editor-fields">
-              <div className="segment-toolbar">
-                <label>段落<select value={segmentIndex} onChange={(event) => setSegmentIndex(Number(event.target.value))}>{segments.map((_, index) => <option key={index} value={index}>段落 {index + 1}</option>)}</select></label>
-                <button type="button" onClick={addSegment}>新增／複製</button>
-                <button type="button" className="is-danger" disabled={!segment} onClick={removeSegment}>移除</button>
+          <div className="question-editor-focus-header">
+            <div className="question-editor-summary question-editor-summary-compact">
+              <div>
+                <strong>{editable.bankTitle}／{editable.chapterTitle}／第 {editable.number} 題</strong>
+                <span>{editable.id}</span>
               </div>
-              {segment ? <SegmentFields segment={segment} onChange={updateSegment} /> : <p>目前沒有段落，請先新增。</p>}
-              {segment ? (
-                <div className="segment-crop-tools">
-                  <div className="segment-crop-tool-head">
-                    <label>調整步長
-                      <select value={cropStep} onChange={(event) => setCropStep(Number(event.target.value))}>
-                        <option value={1}>1 px</option>
-                        <option value={5}>5 px</option>
-                        <option value={10}>10 px</option>
-                        <option value={20}>20 px</option>
-                      </select>
-                    </label>
-                    <button type="button" disabled={!cropUndoStack.length || cropBusy} onClick={undoCropAction}>復原上一步</button>
-                  </div>
+              <label>正確答案
+                <select value={editable.answer} onChange={(event) => setEditable({ ...editable, answer: event.target.value as NumericAnswer })}>
+                  <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option>
+                </select>
+              </label>
+            </div>
+            <div className="question-editor-header-actions">
+              <GlassButton variant="secondary" disabled={!cropUndoStack.length || cropBusy} onClick={undoCropAction}>復原</GlassButton>
+              <GlassButton variant="primary" disabled={busy} onClick={() => void saveOverride()}><Save size={18} />儲存草稿</GlassButton>
+            </div>
+          </div>
 
-                  <section className="segment-control-group">
-                    <strong>移動整個截圖</strong>
-                    <div className="segment-nudges">
+          <div className="question-editor-focus-toolbar" aria-label="裁切快速工具列">
+            <div className="question-editor-mode-tabs">
+              <button type="button" className={mode === "question" ? "is-active" : ""} onClick={() => { setMode("question"); setSegmentIndex(0); }}>題目</button>
+              <button type="button" className={mode === "explanation" ? "is-active" : ""} onClick={() => { setMode("explanation"); setSegmentIndex(0); }}>解析</button>
+            </div>
+            <label className="question-editor-toolbar-select">段落
+              <select value={segmentIndex} onChange={(event) => setSegmentIndex(Number(event.target.value))}>
+                {segments.map((_, index) => <option key={index} value={index}>段落 {index + 1}</option>)}
+              </select>
+              <span>{segments.length} 段</span>
+            </label>
+            <label className="question-editor-toolbar-select">步長
+              <select value={cropStep} onChange={(event) => setCropStep(Number(event.target.value))}>
+                <option value={1}>1 px</option>
+                <option value={5}>5 px</option>
+                <option value={10}>10 px</option>
+                <option value={20}>20 px</option>
+              </select>
+            </label>
+            <button type="button" className="question-editor-toolbar-action" disabled={!segment || cropBusy} onClick={() => void autoTrimActiveSegment()}>
+              {cropBusy ? "分析中…" : "自動裁白邊"}
+            </button>
+            <button type="button" className="question-editor-toolbar-action is-primary" disabled={cropBusy || segmentIndex < 1} onClick={() => void autoCompressPreviousSeam()}>
+              自動壓縮接縫
+            </button>
+          </div>
+
+          <div className="question-editor-workspace question-editor-focus-workspace">
+            <aside className="question-editor-fields question-editor-focus-controls" aria-label="裁切控制">
+              {segment ? (
+                <>
+                  <section className="focus-control-section">
+                    <div className="focus-control-heading">
+                      <strong>上下位置</strong>
+                      <span>移動整個截圖</span>
+                    </div>
+                    <div className="focus-control-grid">
                       <button type="button" onClick={() => updateActiveSegment((current) => movePdfCropSegment(current, 0, -cropStep))}>上移 {cropStep}</button>
                       <button type="button" onClick={() => updateActiveSegment((current) => movePdfCropSegment(current, 0, cropStep))}>下移 {cropStep}</button>
-                      <button type="button" onClick={() => updateActiveSegment((current) => movePdfCropSegment(current, -cropStep, 0))}>左移 {cropStep}</button>
-                      <button type="button" onClick={() => updateActiveSegment((current) => movePdfCropSegment(current, cropStep, 0))}>右移 {cropStep}</button>
                     </div>
                   </section>
 
-                  <section className="segment-control-group">
-                    <strong>改變外框大小</strong>
-                    <div className="segment-nudges">
-                      <button type="button" onClick={() => updateActiveSegment((current) => resizePdfCropSegment(current, -cropStep, 0))}>減寬 {cropStep}</button>
-                      <button type="button" onClick={() => updateActiveSegment((current) => resizePdfCropSegment(current, cropStep, 0))}>加寬 {cropStep}</button>
+                  <section className="focus-control-section is-crop-primary">
+                    <div className="focus-control-heading">
+                      <strong>裁掉空白</strong>
+                      <span>保留另一側內容</span>
+                    </div>
+                    <div className="focus-control-grid">
+                      <button type="button" onClick={() => updateActiveSegment((current) => trimPdfCropEdge(current, "top", cropStep))}>裁上 {cropStep}</button>
+                      <button type="button" onClick={() => updateActiveSegment((current) => trimPdfCropEdge(current, "bottom", cropStep))}>裁下 {cropStep}</button>
                       <button type="button" onClick={() => updateActiveSegment((current) => resizePdfCropSegment(current, 0, -cropStep))}>減高 {cropStep}</button>
                       <button type="button" onClick={() => updateActiveSegment((current) => resizePdfCropSegment(current, 0, cropStep))}>加高 {cropStep}</button>
                     </div>
                   </section>
 
-                  <section className="segment-control-group segment-seam-tools">
-                    <div>
-                      <strong>裁除白邊／跨頁接縫</strong>
-                      <p>「裁上」只移除本段頂部空白；「裁下」只移除底部空白，不會把整張截圖一起移動。</p>
-                    </div>
-                    <div className="segment-nudges">
-                      <button type="button" onClick={() => updateActiveSegment((current) => trimPdfCropEdge(current, "top", cropStep))}>裁上 {cropStep}</button>
-                      <button type="button" onClick={() => updateActiveSegment((current) => trimPdfCropEdge(current, "bottom", cropStep))}>裁下 {cropStep}</button>
-                      <button type="button" onClick={() => updateActiveSegment((current) => trimPdfCropEdge(current, "left", cropStep))}>裁左 {cropStep}</button>
-                      <button type="button" onClick={() => updateActiveSegment((current) => trimPdfCropEdge(current, "right", cropStep))}>裁右 {cropStep}</button>
-                    </div>
-                    <div className="segment-auto-actions">
-                      <button type="button" disabled={cropBusy} onClick={() => void autoTrimActiveSegment()}>{cropBusy ? "分析中…" : "自動裁上下白邊"}</button>
-                      <button type="button" disabled={cropBusy || segmentIndex < 1} onClick={() => void autoCompressPreviousSeam()}>自動壓縮與前段接縫</button>
-                      {segmentIndex > 0 ? (
-                        <button type="button" disabled={cropBusy} onClick={() => applyCropAction((items, activeIndex) => {
-                          const next = [...items];
-                          const previousItem = next[activeIndex - 1];
-                          const currentItem = next[activeIndex];
-                          if (!previousItem || !currentItem) return next;
-                          const [previousSegment, currentSegment] = compressPdfCropSeam(previousItem, currentItem, cropStep);
-                          next[activeIndex - 1] = previousSegment;
-                          next[activeIndex] = currentSegment;
-                          return next;
-                        }, `前段底部與本段頂部各裁除 ${cropStep}px。`)}>接縫兩側各裁 {cropStep}</button>
-                      ) : null}
-                    </div>
-                    {cropMessage ? <p className="segment-crop-message" role="status">{cropMessage}</p> : null}
-                  </section>
-                </div>
-              ) : null}
-            </div>
-            <div className="question-editor-preview">
-              <p>App 實際顯示預覽</p>
-              <PdfSegmentStack segments={segments} label={`第 ${editable.number} 題預覽`} priority="auto" activeIndex={segmentIndex} />
-            </div>
-          </div>
+                  {segmentIndex > 0 ? (
+                    <section className="focus-control-section is-seam-primary">
+                      <div className="focus-control-heading">
+                        <strong>跨頁接縫</strong>
+                        <span>前段底部＋本段頂部</span>
+                      </div>
+                      <button type="button" className="focus-wide-action" disabled={cropBusy} onClick={() => applyCropAction((items, activeIndex) => {
+                        const next = [...items];
+                        const previousItem = next[activeIndex - 1];
+                        const currentItem = next[activeIndex];
+                        if (!previousItem || !currentItem) return next;
+                        const [previousSegment, currentSegment] = compressPdfCropSeam(previousItem, currentItem, cropStep);
+                        next[activeIndex - 1] = previousSegment;
+                        next[activeIndex] = currentSegment;
+                        return next;
+                      }, `前段底部與本段頂部各裁除 ${cropStep}px。`)}>接縫兩側各裁 {cropStep}</button>
+                      <button type="button" className="focus-wide-action is-primary" disabled={cropBusy} onClick={() => void autoCompressPreviousSeam()}>
+                        {cropBusy ? "分析中…" : "自動貼合前段接縫"}
+                      </button>
+                    </section>
+                  ) : (
+                    <p className="focus-seam-hint">切換到段落 2 之後，這裡會出現跨頁接縫工具。</p>
+                  )}
 
-          <div className="admin-tool-actions question-editor-save-actions">
-            <GlassButton variant="primary" disabled={busy} onClick={() => void saveOverride()}><Save size={18} />儲存工作草稿</GlassButton>
-            {overrideIds.has(editable.id) ? <GlassButton variant="danger" disabled={busy} onClick={() => void revertOverride()}><Trash2 size={17} />恢復部署版本</GlassButton> : null}
-            <GlassButton variant="secondary" disabled={busy || loading} onClick={() => void loadEditorData()}><RefreshCcw size={17} />重新載入</GlassButton>
+                  {cropMessage ? <p className="segment-crop-message" role="status">{cropMessage}</p> : null}
+
+                  <details className="question-editor-advanced">
+                    <summary>進階設定</summary>
+                    <div className="question-editor-advanced-body">
+                      <div className="segment-toolbar segment-management-toolbar">
+                        <strong>段落管理</strong>
+                        <div>
+                          <button type="button" onClick={addSegment}>新增／複製</button>
+                          <button type="button" className="is-danger" disabled={!segment} onClick={removeSegment}>移除</button>
+                        </div>
+                      </div>
+                      <SegmentFields segment={segment} onChange={updateSegment} />
+                      <section className="segment-control-group">
+                        <strong>左右與寬度微調</strong>
+                        <div className="segment-nudges">
+                          <button type="button" onClick={() => updateActiveSegment((current) => movePdfCropSegment(current, -cropStep, 0))}>左移 {cropStep}</button>
+                          <button type="button" onClick={() => updateActiveSegment((current) => movePdfCropSegment(current, cropStep, 0))}>右移 {cropStep}</button>
+                          <button type="button" onClick={() => updateActiveSegment((current) => trimPdfCropEdge(current, "left", cropStep))}>裁左 {cropStep}</button>
+                          <button type="button" onClick={() => updateActiveSegment((current) => trimPdfCropEdge(current, "right", cropStep))}>裁右 {cropStep}</button>
+                          <button type="button" onClick={() => updateActiveSegment((current) => resizePdfCropSegment(current, -cropStep, 0))}>減寬 {cropStep}</button>
+                          <button type="button" onClick={() => updateActiveSegment((current) => resizePdfCropSegment(current, cropStep, 0))}>加寬 {cropStep}</button>
+                        </div>
+                      </section>
+                      <div className="question-editor-advanced-actions">
+                        {overrideIds.has(editable.id) ? <GlassButton variant="danger" disabled={busy} onClick={() => void revertOverride()}><Trash2 size={17} />恢復部署版本</GlassButton> : null}
+                        <GlassButton variant="secondary" disabled={busy || loading} onClick={() => void loadEditorData()}><RefreshCcw size={17} />重新載入</GlassButton>
+                      </div>
+                    </div>
+                  </details>
+                </>
+              ) : (
+                <div className="question-editor-empty-segment">
+                  <p>目前沒有段落。</p>
+                  <button type="button" onClick={addSegment}>新增第一個段落</button>
+                </div>
+              )}
+            </aside>
+
+            <section className="question-editor-preview question-editor-focus-preview" aria-label="App 實際顯示預覽">
+              <div className="question-preview-head">
+                <div>
+                  <strong>即時預覽</strong>
+                  <span>{mode === "question" ? "題目截圖" : "解析截圖"}・段落 {Math.min(segmentIndex + 1, Math.max(1, segments.length))}/{Math.max(1, segments.length)}</span>
+                </div>
+                {segment ? <span className="question-preview-page">第 {segment.page} 頁</span> : null}
+              </div>
+              <div className="question-preview-canvas">
+                <PdfSegmentStack segments={segments} label={`第 ${editable.number} 題預覽`} priority="auto" activeIndex={segmentIndex} />
+              </div>
+            </section>
           </div>
         </>
       ) : null}
       <ToolMessages message={message} error={error} />
-      <QuestionReleaseControls accessToken={accessToken} isPrimaryAdmin={isPrimaryAdmin} />
+      <details className="question-release-collapsible">
+        <summary>題庫發布管理</summary>
+        <QuestionReleaseControls accessToken={accessToken} isPrimaryAdmin={isPrimaryAdmin} />
+      </details>
     </div>
   );
 }

@@ -9,6 +9,10 @@ function assertIncludes(source: string, fragment: string, message: string): void
   if (!source.includes(fragment)) throw new Error(message);
 }
 
+function assertNotIncludes(source: string, fragment: string, message: string): void {
+  if (source.includes(fragment)) throw new Error(message);
+}
+
 const app = read("src/App.tsx");
 const account = read("src/pages/AccountPage.tsx");
 const adminClient = read("api/_adminClient.ts");
@@ -28,10 +32,16 @@ assertIncludes(tools, '"upsert-admin"', "Administrator account management must r
 assertIncludes(tools, 'requireAal2: true', "Destructive administrator actions must retain AAL2 enforcement.");
 assertIncludes(migration, "public.admin_users", "Restoration migration must use the existing administrator registry.");
 assertIncludes(migration, "primary_admin", "Restoration migration must bootstrap the primary administrator role.");
-assertIncludes(adminPanel, "自動壓縮與前段接縫", "Cross-page question editing must retain automatic seam compression.");
+assertIncludes(adminPanel, "自動壓縮接縫", "Cross-page question editing must retain automatic seam compression.");
 assertIncludes(adminPanel, "裁上", "The crop editor must support trimming individual crop edges.");
-assertIncludes(adminPanel, "復原上一步", "The crop editor must provide a safe undo action.");
+assertIncludes(adminPanel, ">復原</GlassButton>", "The crop editor must provide a safe undo action.");
 assertIncludes(segmentStack, "activeIndex", "The preview must identify the segment currently being edited.");
+assertIncludes(adminPanel, 'className="question-editor-workspace question-editor-focus-workspace"', "The question editor must retain the single-screen crop focus workspace.");
+assertIncludes(adminPanel, '<details className="question-editor-advanced">', "Low-frequency crop fields must remain available inside a collapsed advanced panel.");
+assertIncludes(adminPanel, "自動貼合前段接縫", "The focused crop editor must keep the cross-page seam workflow prominent.");
+assertIncludes(adminPanel, "儲存草稿", "The focused crop editor must keep the primary save action in the visible header.");
+assertIncludes(adminPanel, '<details className="question-release-collapsible">', "Question publishing must remain available without crowding the crop workspace.");
+assertNotIncludes(adminPanel, 'className="admin-tool-actions question-editor-save-actions"', "The obsolete bottom sticky save bar must not return to the crop workspace.");
 if (adminClient.includes("true.alpha0902@gmail.com") || migration.includes("true.alpha0902@gmail.com")) {
   throw new Error("Administrator access must not depend on an embedded email address.");
 }
