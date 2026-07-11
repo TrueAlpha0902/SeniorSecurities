@@ -1,15 +1,16 @@
-# SeniorSecurities AI 工作規則
+﻿# SeniorSecurities AI 工作規則
 
 ## 最低讀取範圍
 
 1. 先執行 `git status --short` 與 `git log -1 --oneline`。
 2. 讀取 `docs/CURRENT_STATE.md`。
 3. 只讀取 `docs/AI_CHANGELOG.md` 最後一筆。
-4. 除非任務需要，不要預先掃描整個儲存庫、舊版 README、備份 JSON、桌面 EXE 或建置產物。
+4. 架構、同步、效能或安全任務再讀取 `docs/OPTIMIZATION_ROADMAP.md`。
+5. 除非任務需要，不要預先掃描整個儲存庫、舊版 README、備份 JSON、桌面 EXE 或建置產物。
 
 ## 修改後必做
 
-執行 `npm run verify`，再更新 `docs/CURRENT_STATE.md` 與 `docs/AI_CHANGELOG.md`。
+執行 `npm run verify`，再更新 `docs/CURRENT_STATE.md` 與 `docs/AI_CHANGELOG.md`。PR 與 main push 必須通過 GitHub Actions `Verify`。
 涉及資料庫時，新增 migration，不可直接改寫已套用的 migration。
 
 ## 資料與安全

@@ -15,6 +15,7 @@ import {
   syncLearningAttempt,
   type AnswerConfidence,
   type LearningAttemptInput,
+  type QuestionLearningState,
 } from "./learningEngine";
 
 export type StoredImageAnswer = {
@@ -769,16 +770,6 @@ async function clearCloudTable(userId: string, tableName: string): Promise<void>
   if (error) throw error;
 }
 
-async function safeCloudWrite(operation: () => Promise<void>): Promise<void> {
-  try {
-    await operation();
-  } catch (error) {
-    if (!isCloudSyncTableMissing(error)) {
-      console.warn("Cloud record sync failed", error);
-    }
-  }
-}
-
 type CloudTableName =
   | "user_answer_records"
   | "user_wrong_records"
@@ -795,6 +786,8 @@ type CloudMutation =
   | { kind: "upsert-progress"; record: QuizProgressRecord }
   | { kind: "delete-progress"; scopeId: string }
   | { kind: "upsert-session"; record: QuizSession }
+  | { kind: "sync-learning-attempt"; attempt: LearningAttemptInput; state: QuestionLearningState }
+  | { kind: "record-leaderboard-answer"; eventId: string; isCorrect: boolean }
   | { kind: "delete-many"; table: CloudTableName; column: string; values: string[] }
   | { kind: "clear-table"; table: CloudTableName };
 
@@ -840,7 +833,7 @@ function writeCloudMutationQueue(userId: string, queue: QueuedCloudMutation[]): 
   else storage.setItem(queueStorageKey(userId), JSON.stringify(queue));
 }
 
-function mutationTable(mutation: CloudMutation): CloudTableName {
+function mutationTable(mutation: CloudMutation): CloudTableName | null {
   switch (mutation.kind) {
     case "upsert-answer": return "user_answer_records";
     case "upsert-wrong":
@@ -850,6 +843,8 @@ function mutationTable(mutation: CloudMutation): CloudTableName {
     case "upsert-progress":
     case "delete-progress": return "user_quiz_progress";
     case "upsert-session": return "user_quiz_sessions";
+    case "sync-learning-attempt":
+    case "record-leaderboard-answer": return null;
     case "delete-many":
     case "clear-table": return mutation.table;
   }
@@ -865,6 +860,8 @@ function mutationCoalesceKey(mutation: CloudMutation): string | null {
     case "upsert-progress": return `progress:${mutation.record.scopeId}`;
     case "delete-progress": return `progress:${mutation.scopeId}`;
     case "upsert-session": return `session:${mutation.record.sessionId}`;
+    case "sync-learning-attempt": return `learning:${mutation.attempt.eventId}`;
+    case "record-leaderboard-answer": return `leaderboard:${mutation.eventId}`;
     case "delete-many":
     case "clear-table": return null;
   }
@@ -910,6 +907,8 @@ async function executeCloudMutation(userId: string, mutation: CloudMutation): Pr
     case "upsert-progress": return upsertCloudProgress(userId, mutation.record);
     case "delete-progress": return deleteCloudProgress(userId, mutation.scopeId);
     case "upsert-session": return upsertCloudSession(userId, mutation.record);
+    case "sync-learning-attempt": return syncLearningAttempt(mutation.attempt, mutation.state);
+    case "record-leaderboard-answer": return updateLeaderboardAfterAnswer(mutation.isCorrect, mutation.eventId);
     case "delete-many": return deleteCloudRecords(userId, mutation.table, mutation.column, mutation.values);
     case "clear-table": return clearCloudTable(userId, mutation.table);
   }
@@ -1103,12 +1102,15 @@ async function recordLearningAndLeaderboard(args: {
   };
   const learningState = recordLocalLearningAttempt(args.userId, attempt);
   if (!args.userId) return;
-  void safeCloudWrite(async () => {
-    if ((await getCurrentUserId()) !== args.userId) return;
-    await Promise.all([
-      syncLearningAttempt(attempt, learningState),
-      updateLeaderboardAfterAnswer(args.isCorrect, eventId),
-    ]);
+  enqueueCloudMutation(args.userId, {
+    kind: "sync-learning-attempt",
+    attempt,
+    state: learningState,
+  });
+  enqueueCloudMutation(args.userId, {
+    kind: "record-leaderboard-answer",
+    eventId,
+    isCorrect: args.isCorrect,
   });
 }
 

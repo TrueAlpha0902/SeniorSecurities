@@ -1,4 +1,9 @@
 import { supabase } from "./supabase";
+import {
+  getActiveUserStorageScope,
+  readScopedStorageItem,
+  writeScopedStorageItem,
+} from "./userScopedStorage";
 
 const TOTAL_PRACTICE_SECONDS_KEY = "quizpwa:total-practice-seconds";
 const PENDING_CLOUD_PRACTICE_SECONDS_KEY = "quizpwa:pending-cloud-practice-seconds";
@@ -7,23 +12,14 @@ export const PRACTICE_TIME_CHANGED = "practice-time:changed";
 let flushingPracticeSeconds = false;
 let lastFlushAttemptAt = 0;
 
-function safeReadStorage(): Storage | undefined {
-  if (typeof window === "undefined") return undefined;
-  return window.localStorage;
-}
-
 function readNumber(key: string): number {
-  const storage = safeReadStorage();
-  if (!storage) return 0;
-  const raw = storage.getItem(key);
+  const raw = readScopedStorageItem(key);
   const value = raw ? Number(raw) : 0;
   return Number.isFinite(value) && value > 0 ? Math.floor(value) : 0;
 }
 
 function writeNumber(key: string, value: number): void {
-  const storage = safeReadStorage();
-  if (!storage) return;
-  storage.setItem(key, String(Math.max(0, Math.floor(value))));
+  writeScopedStorageItem(key, String(Math.max(0, Math.floor(value))));
 }
 
 export function getTotalPracticeSeconds(): number {
@@ -52,6 +48,7 @@ export async function flushPracticeSecondsToCloud(force = false): Promise<void> 
   try {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) return;
+    if (getActiveUserStorageScope() !== `user:${userData.user.id}`) return;
 
     const { error } = await supabase.rpc("record_leaderboard_practice_seconds", {
       p_seconds: pendingSeconds,
@@ -71,12 +68,11 @@ export async function flushPracticeSecondsToCloud(force = false): Promise<void> 
 }
 
 export function addPracticeSeconds(seconds: number): number {
-  const storage = safeReadStorage();
-  if (!storage || seconds <= 0) return getTotalPracticeSeconds();
+  if (typeof window === "undefined" || seconds <= 0) return getTotalPracticeSeconds();
 
   const safeSeconds = Math.floor(seconds);
   const next = getTotalPracticeSeconds() + safeSeconds;
-  storage.setItem(TOTAL_PRACTICE_SECONDS_KEY, String(next));
+  writeNumber(TOTAL_PRACTICE_SECONDS_KEY, next);
   setPendingCloudPracticeSeconds(getPendingCloudPracticeSeconds() + safeSeconds);
   window.dispatchEvent(new CustomEvent(PRACTICE_TIME_CHANGED, { detail: { seconds: next } }));
 

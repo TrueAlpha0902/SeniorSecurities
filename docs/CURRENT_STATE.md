@@ -1,16 +1,18 @@
 ﻿# SeniorSecurities Current State
 
 更新日期：2026-07-11
-目前版本：v72.5 首頁置中與作答視覺修正
+目前版本：v73 Phase 1 資料可靠性與多帳號隔離
 
-## v72.5 已完成
+## v73 Phase 1 已完成
 
-- 首頁底部的透明芙莉蓮插圖改為真正置中顯示，避免偏左。
-- 首頁倒數卡再往右微調。
-- 章節練習卡片中的進度條恢復正常顯示。
-- 題目頁「錯誤次數」紅色徽章恢復顏色。
-- 題目作答後的正解／答錯顏色恢復。
-- 移除「作答把握程度」整個區塊。
+- FSRS learning attempt 與排行榜答題事件改為寫入既有的持久 cloud mutation queue；離線、斷線或短暫 RPC 失敗後會保留並重試，不再只記錄 `console.warn` 後遺失。
+- 事件以 `eventId` 做 coalescing／冪等識別，避免同一題重送時在佇列中重複堆積。
+- 新增 `userScopedStorage`：累積練習時間、待同步練習秒數、考試計畫、每日計畫、相似題掌握／筆記及答題設定均依登入者隔離。
+- 舊版未分帳號的 localStorage 僅允許第一位登入使用者認領並遷移；其他帳號不會讀到該批資料。
+- Auth 初始化、登入、註冊、登出及 auth state change 都會先切換 storage scope；登入後也會立即補送目前帳號待同步的練習秒數。
+- 新增 user-scoped storage 自動測試，涵蓋帳號隔離、前綴清理與舊資料遷移。
+- 新增 GitHub Actions `Verify` workflow，PR 與 main push 都會執行 `npm ci` 與完整 `npm run verify`。
+- 同一更新包亦包含尚未成功套用的 v72.5 視覺修正，避免目前 production 與進度文件不一致。
 
 ## 驗證
 
@@ -23,17 +25,14 @@
 - ESLint
 - 計算機核心與進階測試
 - FSRS 學習引擎與 deadline plan 測試
+- 多帳號 localStorage 隔離與舊資料遷移測試
 - 題庫資料驗證
 - Production build
 - PWA generation
 
 ## 資料庫
 
-v71 沒有新增 Supabase migration，不需執行 `supabase db push`。
-
-## 資產說明
-
-本版本保留既有角色圖像，只以 CSS／React 編排同一空間的連續動畫。受限於現有讀書、步行與睡眠關鍵姿勢數量，效果為高品質網頁合成動畫，而不是逐幀手繪電影動畫。
+v73 Phase 1 沒有新增 Supabase migration，也沒有新增 npm 套件。
 
 ## Codex／AI 下次開始方式
 

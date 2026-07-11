@@ -51,6 +51,7 @@ import {
   type DailyPlanCategory,
   type StudyIntensity,
 } from "../lib/studyPlan";
+import { readScopedStorageItem, writeScopedStorageItem } from "../lib/userScopedStorage";
 import {
   ANSWER_MODE_SETTING_CHANGED,
   AUTO_NEXT_CORRECT_SETTING_CHANGED,
@@ -1371,7 +1372,7 @@ function readStoredDailyPlan(
   storedAnswers: UserAnswer[],
 ): DailyTrainingBuildResult | undefined {
   if (typeof window === "undefined") return undefined;
-  const raw = window.localStorage.getItem(dailyPlanStorageKey());
+  const raw = readScopedStorageItem(dailyPlanStorageKey());
   if (!raw) return undefined;
   try {
     const stored = JSON.parse(raw) as StoredDailyPlan;
@@ -1427,7 +1428,7 @@ function writeStoredDailyPlan(result: DailyTrainingBuildResult): void {
     categoryCounts: result.categoryCounts,
     categoryQuestionIds: result.categoryQuestionIds,
   };
-  window.localStorage.setItem(dailyPlanStorageKey(), JSON.stringify(stored));
+  writeScopedStorageItem(dailyPlanStorageKey(), JSON.stringify(stored));
 }
 
 function storedAnswersToRecords(

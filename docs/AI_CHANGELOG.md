@@ -1,5 +1,16 @@
 ﻿# AI Change Log
 
+## 2026-07-11 — v73 Phase 1 資料可靠性與多帳號隔離
+
+- FSRS learning attempt 與排行榜 answer event 納入持久 cloud mutation queue，離線及短暫同步失敗後可重新補送。
+- learning／leaderboard mutation 以 `eventId` coalescing，保留既有後端冪等語意。
+- 新增 `userScopedStorage`，隔離練習秒數、考試計畫、每日計畫、相似題資料與答題設定。
+- 舊 global localStorage 採單一 owner 遷移，防止第二個帳號誤讀第一個帳號的資料。
+- Auth 切換帳號時同步切換 storage scope，登入後補送待同步練習秒數。
+- 新增 `test:storage` 並納入 `npm run verify`。
+- 新增 GitHub Actions Verify workflow，PR／main push 自動執行完整驗證。
+- 無 Supabase migration、無新增 npm 套件。
+
 ## 2026-07-11 — v72.5 首頁置中與作答視覺修正
 
 - 首頁透明芙莉蓮插圖改為置中顯示，並把倒數區塊再往右微調。

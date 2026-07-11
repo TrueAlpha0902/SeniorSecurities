@@ -2,6 +2,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { Session } from "@supabase/supabase-js";
 import { isSupabaseConfigured, supabase, type AuthUser } from "../lib/supabase";
 import { syncLocalRecordsToCloud } from "../lib/db";
+import { flushPracticeSecondsToCloud } from "../lib/practiceTime";
+import { setActiveUserStorageScope } from "../lib/userScopedStorage";
 
 export type AccessStatus = {
   hasEntitlement: boolean;
@@ -55,11 +57,15 @@ async function sendAuthAudit(session: Session | null, eventType: "sign_in" | "si
 
 
 async function triggerCloudRecordSync(): Promise<void> {
-  try {
-    await syncLocalRecordsToCloud();
-  } catch (error) {
-    // Sync should never block login. The account page will show actionable errors if SQL is missing.
-    console.warn("Cloud learning-record sync failed", error);
+  const results = await Promise.allSettled([
+    syncLocalRecordsToCloud(),
+    flushPracticeSecondsToCloud(true),
+  ]);
+  for (const result of results) {
+    if (result.status === "rejected") {
+      // Sync should never block login. The account page will show actionable errors if SQL is missing.
+      console.warn("Cloud learning-record sync failed", result.reason);
+    }
   }
 }
 
@@ -129,6 +135,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     async function initializeAuth() {
       if (!supabase) {
+        setActiveUserStorageScope(null);
         if (mounted) setLoading(false);
         return;
       }
@@ -141,6 +148,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       const nextSession = data.session ?? null;
+      setActiveUserStorageScope(nextSession?.user.id ?? null);
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
       await refreshAccessForUser(nextSession?.user ?? null);
@@ -165,6 +173,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setActiveUserStorageScope(nextSession?.user.id ?? null);
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
       void refreshAccessForUser(nextSession?.user ?? null);
@@ -183,6 +192,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!supabase) throw new Error("尚未設定 Supabase。請先建立 .env.local。 ");
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
+    setActiveUserStorageScope(data.user?.id ?? null);
     setSession(data.session ?? null);
     setUser(data.user ?? null);
     await refreshAccessForUser(data.user ?? null);
@@ -196,6 +206,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!supabase) throw new Error("尚未設定 Supabase。請先建立 .env.local。 ");
     const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) throw error;
+    setActiveUserStorageScope(data.user?.id ?? null);
     setSession(data.session ?? null);
     setUser(data.user ?? null);
     await refreshAccessForUser(data.user ?? null);
@@ -211,6 +222,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void sendAuthAudit(session, "sign_out");
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
+    setActiveUserStorageScope(null);
     setSession(null);
     setUser(null);
     setAccess(defaultAccess);

@@ -1,3 +1,10 @@
+import {
+  clearScopedStorageByPrefix,
+  readScopedStorageItem,
+  removeScopedStorageItem,
+  writeScopedStorageItem,
+} from "./userScopedStorage";
+
 const EXAM_DATE_KEY = "quizpwa:exam-date";
 const DAILY_STUDY_MINUTES_KEY = "quizpwa:daily-study-minutes";
 const STUDY_INTENSITY_KEY = "quizpwa:study-intensity";
@@ -134,10 +141,10 @@ export function getStudyPlanConfig(): StudyPlanConfig {
 
 export function setStudyPlanConfig(config: StudyPlanConfig): void {
   if (typeof window === "undefined") return;
-  if (config.examDate) window.localStorage.setItem(EXAM_DATE_KEY, config.examDate);
-  else window.localStorage.removeItem(EXAM_DATE_KEY);
-  window.localStorage.setItem(DAILY_STUDY_MINUTES_KEY, clampMinutes(config.dailyStudyMinutes).toString());
-  window.localStorage.setItem(STUDY_INTENSITY_KEY, config.intensity);
+  if (config.examDate) writeScopedStorageItem(EXAM_DATE_KEY, config.examDate);
+  else removeScopedStorageItem(EXAM_DATE_KEY);
+  writeScopedStorageItem(DAILY_STUDY_MINUTES_KEY, clampMinutes(config.dailyStudyMinutes).toString());
+  writeScopedStorageItem(STUDY_INTENSITY_KEY, config.intensity);
   clearStoredDailyPlans();
   window.dispatchEvent(new CustomEvent<StudyPlanConfig>(STUDY_PLAN_CHANGED, { detail: getStudyPlanConfig() }));
 }
@@ -147,15 +154,7 @@ export function getStudyPlanSignature(config: StudyPlanConfig = getStudyPlanConf
 }
 
 export function clearStoredDailyPlans(): void {
-  if (typeof window === "undefined") return;
-  const keysToRemove: string[] = [];
-  for (let index = 0; index < window.localStorage.length; index += 1) {
-    const key = window.localStorage.key(index);
-    if (key?.startsWith(DAILY_PLAN_KEY_PREFIX)) {
-      keysToRemove.push(key);
-    }
-  }
-  keysToRemove.forEach((key) => window.localStorage.removeItem(key));
+  clearScopedStorageByPrefix(DAILY_PLAN_KEY_PREFIX);
 }
 
 export function localTodayKey(date = new Date()): string {
@@ -306,18 +305,18 @@ function allocateByTime(
 
 function getStoredDate(key: string): string | null {
   if (typeof window === "undefined") return null;
-  const value = window.localStorage.getItem(key);
+  const value = readScopedStorageItem(key);
   return value && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : null;
 }
 
 function getStoredNumber(key: string, fallback: number): number {
   if (typeof window === "undefined") return fallback;
-  return clampMinutes(Number(window.localStorage.getItem(key)) || fallback);
+  return clampMinutes(Number(readScopedStorageItem(key)) || fallback);
 }
 
 function getStoredIntensity(): StudyIntensity {
   if (typeof window === "undefined") return "standard";
-  const value = window.localStorage.getItem(STUDY_INTENSITY_KEY);
+  const value = readScopedStorageItem(STUDY_INTENSITY_KEY);
   return value === "steady" || value === "standard" || value === "sprint" ? value : "standard";
 }
 

@@ -27,6 +27,7 @@ import {
   type NumericAnswer,
   type SimilarQuestionGroup,
 } from "../lib/imageQuiz";
+import { readScopedStorageItem, writeScopedStorageItem } from "../lib/userScopedStorage";
 import "../styles/similar-learning-v66.css";
 
 const ANSWERS: NumericAnswer[] = ["1", "2", "3", "4"];
@@ -44,11 +45,11 @@ async function loadSimilarPageData(): Promise<SimilarPageData> {
 }
 
 function loadMasteredGroups(): Set<string> {
-  try { return new Set(JSON.parse(localStorage.getItem(MASTERY_KEY) || "[]") as string[]); } catch { return new Set(); }
+  try { return new Set(JSON.parse(readScopedStorageItem(MASTERY_KEY) || "[]") as string[]); } catch { return new Set(); }
 }
 
 function loadGroupNotes(): GroupNotes {
-  try { return JSON.parse(localStorage.getItem(NOTES_KEY) || "{}") as GroupNotes; } catch { return {}; }
+  try { return JSON.parse(readScopedStorageItem(NOTES_KEY) || "{}") as GroupNotes; } catch { return {}; }
 }
 
 export function SimilarQuestionsPage() {
@@ -85,8 +86,8 @@ export function SimilarQuestionsPage() {
   const masteredCount = filteredGroups.filter((group) => masteredGroups.has(group.id)).length;
 
   useEffect(() => { setFocusIndex(0); }, [selectedBankId, showMastered]);
-  useEffect(() => { localStorage.setItem(MASTERY_KEY, JSON.stringify(Array.from(masteredGroups))); }, [masteredGroups]);
-  useEffect(() => { localStorage.setItem(NOTES_KEY, JSON.stringify(groupNotes)); }, [groupNotes]);
+  useEffect(() => { writeScopedStorageItem(MASTERY_KEY, JSON.stringify(Array.from(masteredGroups))); }, [masteredGroups]);
+  useEffect(() => { writeScopedStorageItem(NOTES_KEY, JSON.stringify(groupNotes)); }, [groupNotes]);
 
   if (loading) return <LoadingState label="載入相似題學習" />;
   if (error) return <ErrorState message={error} />;

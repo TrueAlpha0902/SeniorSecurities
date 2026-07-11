@@ -9,6 +9,7 @@ import {
   setAutoNextCorrectEnabled,
 } from "../lib/appSettings";
 import { getStudyPlanConfig, localTodayKey, setStudyPlanConfig, type StudyIntensity } from "../lib/studyPlan";
+import { removeScopedStorageItem } from "../lib/userScopedStorage";
 import { loadImageQuizBanks, type ImageQuizBank, type ImageQuizChapter } from "../lib/imageQuiz";
 import { GlassButton } from "./GlassButton";
 import { GlassCard } from "./GlassCard";
@@ -262,7 +263,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
       clearLegacyQuizSessions: selectedChapters.length === clearChapterOptions.length,
     });
     if (selectedParts.has("progress") && selectedGlobalScopeIds.has(dailyPracticeScopeId())) {
-      window.localStorage.removeItem(dailyPlanStorageKey());
+      removeScopedStorageItem(dailyPlanStorageKey());
     }
     setMessage(T.clearDone);
     window.dispatchEvent(new Event("records:changed"));

@@ -43,6 +43,10 @@ import {
   type StudyIntensity,
   type StudyPlanConfig,
 } from "../lib/studyPlan";
+import {
+  readScopedStorageItem,
+  USER_STORAGE_SCOPE_CHANGED,
+} from "../lib/userScopedStorage";
 import type { UserAnswer, WrongQuestionRecord } from "../types";
 
 const T = {
@@ -154,9 +158,11 @@ export function HomePage() {
     const refreshPracticeTime = () =>
       setTotalPracticeSeconds(getTotalPracticeSeconds());
     window.addEventListener(PRACTICE_TIME_CHANGED, refreshPracticeTime);
+    window.addEventListener(USER_STORAGE_SCOPE_CHANGED, refreshPracticeTime);
     window.addEventListener("storage", refreshPracticeTime);
     return () => {
       window.removeEventListener(PRACTICE_TIME_CHANGED, refreshPracticeTime);
+      window.removeEventListener(USER_STORAGE_SCOPE_CHANGED, refreshPracticeTime);
       window.removeEventListener("storage", refreshPracticeTime);
     };
   }, []);
@@ -170,9 +176,11 @@ export function HomePage() {
       setDraftIntensity(config.intensity);
     };
     window.addEventListener(STUDY_PLAN_CHANGED, refreshStudyPlan);
+    window.addEventListener(USER_STORAGE_SCOPE_CHANGED, refreshStudyPlan);
     window.addEventListener("storage", refreshStudyPlan);
     return () => {
       window.removeEventListener(STUDY_PLAN_CHANGED, refreshStudyPlan);
+      window.removeEventListener(USER_STORAGE_SCOPE_CHANGED, refreshStudyPlan);
       window.removeEventListener("storage", refreshStudyPlan);
     };
   }, []);
@@ -835,7 +843,7 @@ function readTodayDailyPlan(
   expectedPlanSignature: string,
 ): StoredDailyPlan | undefined {
   if (typeof window === "undefined") return undefined;
-  const raw = window.localStorage.getItem(
+  const raw = readScopedStorageItem(
     `quizpwa:daily-plan:${localTodayKey()}`,
   );
   if (!raw) return undefined;
