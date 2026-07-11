@@ -1,5 +1,5 @@
 import { BookOpen, Play } from "lucide-react";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
@@ -46,6 +46,11 @@ export function QuestionsPage() {
   }, [bankId, chapterId, location.pathname]);
 
   const { data: questions, error, loading } = useAsync(config.load, [config]);
+  const [visibleCount, setVisibleCount] = useState(48);
+
+  useEffect(() => {
+    setVisibleCount(48);
+  }, [config]);
 
   if (loading) {
     return <LoadingState label="載入題目" />;
@@ -77,7 +82,7 @@ export function QuestionsPage() {
       </GlassCard>
 
       <section className="question-list" aria-label="All questions">
-        {questions.map((question, index) => (
+        {questions.slice(0, visibleCount).map((question, index) => (
           <GlassCard key={question.id} className="question-list-item" as="article">
             <div className="question-list-head">
               <span className="glass-badge">第 {index + 1} 題</span>
@@ -109,6 +114,18 @@ export function QuestionsPage() {
           </GlassCard>
         ))}
       </section>
+
+      {visibleCount < questions.length ? (
+        <button
+          type="button"
+          className="question-list-load-more"
+          onClick={() =>
+            setVisibleCount((count) => Math.min(questions.length, count + 48))
+          }
+        >
+          顯示更多（剩餘 {questions.length - visibleCount} 題）
+        </button>
+      ) : null}
     </div>
   );
 }

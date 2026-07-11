@@ -4495,3 +4495,35 @@ p {
 .answer-confidence-panel {
   display: none !important;
 }
+
+/* v74 final performance pass: skip offscreen rendering for long content lists. */
+@supports (content-visibility: auto) {
+  .chapter-card,
+  .question-list-item,
+  .record-card,
+  .review-item,
+  .similar-learning-group,
+  .admin-premium-card {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 240px;
+  }
+}
+
+.question-list-load-more {
+  width: min(100%, 520px);
+  min-height: 52px;
+  justify-self: center;
+  margin: 2px auto 14px;
+  border: 1px solid var(--glass-border-low);
+  border-radius: 18px;
+  color: var(--primary-strong);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: var(--soft-shadow), var(--inner-highlight);
+  font: inherit;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.question-list-load-more:active {
+  transform: translateY(1px);
+}

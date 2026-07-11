@@ -39,6 +39,8 @@ function excludePublicBackupsFromBuild(): Plugin {
 export default defineConfig({
   base,
   build: {
+    target: "es2022",
+    modulePreload: { polyfill: false },
     rollupOptions: {
       output: {
         manualChunks(id) {
@@ -56,6 +58,14 @@ export default defineConfig({
 
           if (moduleId.includes("/node_modules/@supabase/")) {
             return "supabase-vendor";
+          }
+
+          if (moduleId.includes("/node_modules/ts-fsrs/")) {
+            return "learning-vendor";
+          }
+
+          if (moduleId.includes("/node_modules/@vercel/analytics/")) {
+            return "analytics-vendor";
           }
 
           return undefined;
@@ -118,12 +128,12 @@ export default defineConfig({
         globPatterns: ["**/*.{js,css,html,ico,svg,json,webmanifest}"],
         globIgnores: [
           "**/pdf-pages/**",
-          "**/animation/**",
           "**/data/backups/**",
           "**/data/pdf-image-quiz.json",
         ],
         maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
         navigateFallback: "index.html",
+        navigationPreload: true,
         skipWaiting: true,
         clientsClaim: true,
         cleanupOutdatedCaches: true,
@@ -149,20 +159,6 @@ export default defineConfig({
               cacheName: "question-bank-assets",
               expiration: {
                 maxEntries: 1200,
-                maxAgeSeconds: 60 * 60 * 24 * 365,
-              },
-              cacheableResponse: {
-                statuses: [0, 200],
-              },
-            },
-          },
-          {
-            urlPattern: ({ url }) => url.pathname.includes("/animation/"),
-            handler: "CacheFirst",
-            options: {
-              cacheName: "home-animation-assets",
-              expiration: {
-                maxEntries: 60,
                 maxAgeSeconds: 60 * 60 * 24 * 365,
               },
               cacheableResponse: {

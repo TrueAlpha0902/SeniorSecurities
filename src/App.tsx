@@ -1,7 +1,7 @@
-import { Analytics } from "@vercel/analytics/react";
 import { lazy, Suspense, type ReactNode } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AppLayout } from "./components/AppLayout";
+import { DeferredAnalytics } from "./components/DeferredAnalytics";
 import { LoadingState } from "./components/LoadingState";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
 import { ProtectedRoute } from "./auth/ProtectedRoute";
@@ -86,7 +86,7 @@ export function App() {
           </Routes>
         </Suspense>
       </AppLayout>
-      <Analytics />
+      <DeferredAnalytics />
     </AuthProvider>
   );
 }

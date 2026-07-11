@@ -1,5 +1,17 @@
 ﻿# AI Change Log
 
+## 2026-07-11 — v74 Final Performance
+
+- 首頁每日規劃改讀約 268 KB 的 compact question index，不再載入約 4.3 MB 完整 crop payload。
+- 新增規劃索引自動生成與 freshness check，並驗證 compact／full question object 產生完全相同題列。
+- 計算機、設定視窗、Analytics 與 `ts-fsrs` 改為延遲載入；學習狀態讀取拆成不依賴排程引擎的輕量模組。
+- learning-state localStorage 加入 session memory cache，避免重複 JSON parse。
+- Service Worker 延後到首屏後註冊，下一題 PDF 預抓改用實際版本化 URL。
+- 首頁透明芙莉蓮由 PNG 改為 WebP，約從 1.02 MB 降至 126 KB。
+- 全題目清單改為 48 題漸進呈現，長列表加入 `content-visibility`。
+- Vite 改用 ES2022、移除 module-preload polyfill、刪除舊動畫 cache，新增 bundle-size budget。
+- 無新增 migration、無新增 npm 套件。
+
 ## 2026-07-11 — v73 Phase 2.1 驗證相容性修正
 
 - 移除 `ImageQuizPage.tsx` 未使用的 `WrongQuestionRecord` 型別 import。

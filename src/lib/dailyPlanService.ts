@@ -1,8 +1,7 @@
-import type { ImageQuizQuestion } from "./imageQuiz";
 import {
   listLocalLearningStates,
   type QuestionLearningState,
-} from "./learningEngine";
+} from "./learningStateStore";
 import {
   calculateSmartStudyPlanStats,
   DAILY_PLAN_STORAGE_VERSION,
@@ -30,6 +29,11 @@ const DAILY_PLAN_CATEGORIES: DailyPlanCategory[] = [
   "mixed",
 ];
 
+export type DailyPlanQuestion = {
+  id: string;
+  bankId: string;
+};
+
 type StoredDailyPlan = {
   version: number;
   date: string;
@@ -43,8 +47,8 @@ type StoredDailyPlan = {
   planSnapshot: SmartStudyPlanStats;
 };
 
-export type DailyPlanResult = {
-  questions: ImageQuizQuestion[];
+export type DailyPlanResult<TQuestion extends DailyPlanQuestion = DailyPlanQuestion> = {
+  questions: TQuestion[];
   planQuestionIds: string[];
   categoryCounts: Record<DailyPlanCategory, number>;
   categoryQuestionIds: Record<DailyPlanCategory, string[]>;
@@ -58,8 +62,8 @@ export type DailyPlanResult = {
   generatedFromCache: boolean;
 };
 
-export type BuildDailyPlanArgs = {
-  allQuestions: ImageQuizQuestion[];
+export type BuildDailyPlanArgs<TQuestion extends DailyPlanQuestion = DailyPlanQuestion> = {
+  allQuestions: TQuestion[];
   storedAnswers: UserAnswer[];
   wrongRecords: WrongQuestionRecord[];
   userId: string | null;
@@ -74,7 +78,7 @@ export type BuildDailyPlanArgs = {
  * The first caller creates today's immutable queue; all later callers read the
  * same question ids and only subtract questions completed today.
  */
-export function buildOrReadDailyPlan({
+export function buildOrReadDailyPlan<TQuestion extends DailyPlanQuestion>({
   allQuestions,
   storedAnswers,
   wrongRecords,
@@ -83,7 +87,7 @@ export function buildOrReadDailyPlan({
   now = new Date(),
   learningStates = listLocalLearningStates(userId),
   useStoredPlan = true,
-}: BuildDailyPlanArgs): DailyPlanResult {
+}: BuildDailyPlanArgs<TQuestion>): DailyPlanResult<TQuestion> {
   const dateKey = localTodayKey(now);
   const allQuestionIds = new Set(allQuestions.map((question) => question.id));
   const todayAnsweredIds = getTodayAnsweredIds(
@@ -119,7 +123,7 @@ export function buildOrReadDailyPlan({
         right.lastWrongAt.localeCompare(left.lastWrongAt),
     )
     .map((record) => byQuestionId.get(record.questionId))
-    .filter((question): question is ImageQuizQuestion => Boolean(question));
+    .filter((question): question is TQuestion => Boolean(question));
   const learningStateById = new Map(
     learningStates.map((state) => [state.questionId, state]),
   );
@@ -141,7 +145,7 @@ export function buildOrReadDailyPlan({
       return leftDue.localeCompare(rightDue);
     })
     .map((answer) => byQuestionId.get(answer.questionId))
-    .filter((question): question is ImageQuizQuestion => Boolean(question));
+    .filter((question): question is TQuestion => Boolean(question));
   const reviewDueIds = new Set(
     reviewDueQuestions.map((question) => question.id),
   );
@@ -194,7 +198,7 @@ export function buildOrReadDailyPlan({
   );
   // Mixed questions were removed from the daily plan. Keep the field so old
   // UI/data contracts remain forward compatible.
-  const mixedQuestions: ImageQuizQuestion[] = [];
+  const mixedQuestions: TQuestion[] = [];
   const categoryQuestionIds: Record<DailyPlanCategory, string[]> = {
     new: newQuestions.map((question) => question.id),
     wrong: wrongQuestions.map((question) => question.id),
@@ -239,22 +243,22 @@ export function buildDailySummary(
   ].join(" / ");
 }
 
-function materializeDailyPlan(args: {
-  allQuestions: ImageQuizQuestion[];
+function materializeDailyPlan<TQuestion extends DailyPlanQuestion>(args: {
+  allQuestions: TQuestion[];
   storedAnswers: UserAnswer[];
   dateKey: string;
   questionIds: string[];
   categoryQuestionIds: Record<DailyPlanCategory, string[]>;
   plan: SmartStudyPlanStats;
   generatedFromCache: boolean;
-}): DailyPlanResult {
+}): DailyPlanResult<TQuestion> {
   const byId = new Map(
     args.allQuestions.map((question) => [question.id, question]),
   );
   const allQuestionIds = new Set(byId.keys());
   const validPlanQuestions = args.questionIds
     .map((questionId) => byId.get(questionId))
-    .filter((question): question is ImageQuizQuestion => Boolean(question));
+    .filter((question): question is TQuestion => Boolean(question));
   const todayAnsweredIds = getTodayAnsweredIds(
     args.storedAnswers,
     allQuestionIds,
@@ -300,14 +304,14 @@ function materializeDailyPlan(args: {
   };
 }
 
-function readStoredDailyPlan(args: {
-  allQuestions: ImageQuizQuestion[];
+function readStoredDailyPlan<TQuestion extends DailyPlanQuestion>(args: {
+  allQuestions: TQuestion[];
   storedAnswers: UserAnswer[];
   dateKey: string;
   expectedPlanSignature: string;
   expectedQuestionUniverseSignature: string;
   fallbackPlan: SmartStudyPlanStats;
-}): DailyPlanResult | undefined {
+}): DailyPlanResult<TQuestion> | undefined {
   if (typeof window === "undefined") return undefined;
   const raw = readScopedStorageItem(dailyPlanStorageKey(args.dateKey));
   if (!raw) return undefined;
@@ -342,7 +346,7 @@ function readStoredDailyPlan(args: {
 }
 
 function writeStoredDailyPlan(args: {
-  result: DailyPlanResult;
+  result: DailyPlanResult<DailyPlanQuestion>;
   dateKey: string;
   config: StudyPlanConfig;
   questionUniverseSignature: string;
@@ -453,16 +457,16 @@ function buildRemainingAllocations(
   ) as Record<DailyPlanCategory, DailyPlanAllocation>;
 }
 
-function interleaveDailyQuestions(
-  categories: Record<DailyPlanCategory, ImageQuizQuestion[]>,
+function interleaveDailyQuestions<TQuestion extends DailyPlanQuestion>(
+  categories: Record<DailyPlanCategory, TQuestion[]>,
   intensity: StudyIntensity,
-): ImageQuizQuestion[] {
+): TQuestion[] {
   const queues = Object.fromEntries(
     DAILY_PLAN_CATEGORIES.map((category) => [
       category,
       [...categories[category]],
     ]),
-  ) as Record<DailyPlanCategory, ImageQuizQuestion[]>;
+  ) as Record<DailyPlanCategory, TQuestion[]>;
   const patternByIntensity: Record<
     StudyIntensity,
     DailyPlanCategory[]
@@ -472,7 +476,7 @@ function interleaveDailyQuestions(
     sprint: ["wrong", "review", "new", "new", "new", "mixed"],
   };
   const pattern = patternByIntensity[intensity];
-  const result: ImageQuizQuestion[] = [];
+  const result: TQuestion[] = [];
 
   while (Object.values(queues).some((queue) => queue.length > 0)) {
     let added = false;
@@ -487,11 +491,11 @@ function interleaveDailyQuestions(
   return result;
 }
 
-function takeBalancedByExamSubject(
-  source: ImageQuizQuestion[],
+function takeBalancedByExamSubject<TQuestion extends DailyPlanQuestion>(
+  source: TQuestion[],
   count: number,
   selectedIds: Set<string>,
-): ImageQuizQuestion[] {
+): TQuestion[] {
   if (count <= 0 || source.length === 0) return [];
   const available = source.filter(
     (question) => !selectedIds.has(question.id),
@@ -512,7 +516,7 @@ function takeBalancedByExamSubject(
     { key: "financial", available: buckets.financial.length, weight: 1 },
     { key: "trading", available: buckets.trading.length, weight: 1 },
   ]);
-  const selected: ImageQuizQuestion[] = [];
+  const selected: TQuestion[] = [];
   selected.push(
     ...takeFromBucket(
       buckets.investment,
@@ -542,11 +546,11 @@ function takeBalancedByExamSubject(
   return selected;
 }
 
-function takeTradingQuestions(
-  source: ImageQuizQuestion[],
+function takeTradingQuestions<TQuestion extends DailyPlanQuestion>(
+  source: TQuestion[],
   count: number,
   selectedIds: Set<string>,
-): ImageQuizQuestion[] {
+): TQuestion[] {
   if (count <= 0) return [];
   const regulations = source.filter(
     (question) => question.bankId === "securities-trading-regulations",
@@ -578,12 +582,12 @@ function takeTradingQuestions(
   return selected;
 }
 
-function takeFromBucket(
-  source: ImageQuizQuestion[],
+function takeFromBucket<TQuestion extends DailyPlanQuestion>(
+  source: TQuestion[],
   count: number,
   selectedIds: Set<string>,
-): ImageQuizQuestion[] {
-  const selected: ImageQuizQuestion[] = [];
+): TQuestion[] {
+  const selected: TQuestion[] = [];
   for (const question of source) {
     if (selected.length >= count) break;
     if (selectedIds.has(question.id)) continue;
@@ -632,7 +636,7 @@ function distributeCount<K extends string>(
 }
 
 function examSubjectKey(
-  question: ImageQuizQuestion,
+  question: DailyPlanQuestion,
 ): "investment" | "financial" | "trading" {
   if (question.bankId === "investment") return "investment";
   if (question.bankId === "financial-analysis") return "financial";
@@ -640,7 +644,7 @@ function examSubjectKey(
 }
 
 function buildQuestionUniverseSignature(
-  questions: ImageQuizQuestion[],
+  questions: readonly DailyPlanQuestion[],
 ): string {
   let hash = 2166136261;
   for (const question of questions) {

@@ -1,46 +1,47 @@
 ﻿# SeniorSecurities Current State
 
 更新日期：2026-07-11
-目前版本：v73 Phase 2.1 DailyPlanService 單一來源
+目前版本：v74 Final Performance — 首頁輕量規劃、延遲載入與效能預算
 
-## v73 Phase 2.1 已完成
+## v74 已完成
 
-- 新增 `src/lib/dailyPlanService.ts`，首頁與每日練習頁不再各自計算今日題數與題目清單。
-- 首頁載入時會建立或讀取當日不可變題列；進入每日練習後直接沿用完全相同的 `questionIds`、分類與規劃快照。
-- 今日完成題目後，只從既有題列扣除已完成項目，不會因重新整理、返回首頁或切換頁面而重抽題目。
-- 每日計畫快取加入題庫 universe signature；題庫 release 在同一天變更時會自動失效重建。
-- 快取保存完整 `SmartStudyPlanStats` 快照，避免作答後首頁倒數說明與練習頁的目標數量發生漂移。
-- `DAILY_PLAN_STORAGE_VERSION` 提升至 42，舊版重複規劃快取會安全失效。
-- 移除 `HomePage.tsx` 與 `ImageQuizPage.tsx` 內重複的選題、FSRS 到期判斷、科目平衡與快取解析程式。
-- 新增 `test:daily-plan`，驗證首頁／每日練習題列一致、今日完成扣除、快取穩定及設定變更失效。
-- 修正 Phase 2 初版的未使用型別 import、DailyPlan 測試索引型別，以及 Node 測試環境的 Vite `ImportMeta` 型別。
-- ESLint 忽略本機 `update-backups`，避免備份檔干擾正式驗證。
+- 首頁不再下載與解析約 4.3 MB 的完整 PDF 題庫資料；每日規劃改讀只含 `id`／`bankId` 的 `pdf-image-quiz-plan-index.json`。
+- 規劃索引目前約 268 KB，題列結果仍由同一個 `DailyPlanService` 產生；新增測試確認輕量索引與完整題目物件產生相同 `questionIds`。
+- 新增 `scripts/generate-daily-plan-index.ts`，開發與建置前會自動產生索引；CI 會檢查索引是否與正式題庫一致。
+- 計算機與設定視窗改為互動前預載、開啟時才下載；不再放進首次載入的主程式碼。
+- Vercel Analytics 改為瀏覽器閒置後才載入。
+- `ts-fsrs` 學習排程引擎改為第一次作答／同步時才動態載入；首頁只讀輕量的 learning-state store。
+- learning-state store 加入記憶體快取，避免同一次瀏覽期間重複解析大型 localStorage JSON。
+- Service Worker 改為首屏完成後再註冊，避免首次渲染與更新檢查競爭主執行緒與網路。
+- 首頁芙莉蓮透明圖由約 1.02 MB PNG 改為約 126 KB WebP，並補上固有尺寸避免版面位移。
+- 題目頁預抓下一題時使用與實際顯示相同的版本化圖片 URL，避免無效的重複下載。
+- 全題目清單改為每批 48 題漸進呈現；長列表卡片使用 `content-visibility` 跳過畫面外渲染。
+- Vite 目標提升至 ES2022，移除不必要的 module-preload polyfill，並把 learning／analytics 分離為延遲 chunk。
+- 新增 `test:bundle`，限制首頁初始資源 gzip、最大 JS chunk 與最大 CSS，防止日後效能回退。
+- 移除已不存在的首頁動畫 runtime cache 規則。
 
 ## 前一階段仍有效
 
 - FSRS／排行榜事件使用持久 cloud mutation queue。
 - 練習時間、考試設定、每日計畫、相似題資料與 App 設定均依登入帳號隔離。
+- 首頁與每日練習使用同一份不可變 DailyPlanService 題列。
 - GitHub Actions `Verify` 會在 PR 與 main push 執行完整驗證。
 
 ## 驗證
 
 執行：`npm run verify`
 
-驗證範圍：
+驗證範圍新增：
 
-- 前端 TypeScript
-- API TypeScript
-- ESLint
-- 計算機測試
-- FSRS 學習引擎與 deadline plan 測試
-- 多帳號 storage 隔離測試
-- DailyPlanService 單一來源與快取一致性測試
-- 題庫資料驗證
-- Production build 與 PWA generation
+- Daily-plan compact index freshness
+- 輕量索引與完整題庫的題列一致性
+- Production bundle-size budget
 
-## 資料庫
+其餘仍包含前端／API TypeScript、ESLint、計算機、FSRS、多帳號隔離、DailyPlan、題庫資料、Production build 與 PWA generation。
 
-v73 Phase 2 沒有新增 Supabase migration，也沒有新增 npm 套件。
+## 資料庫與相依套件
+
+v74 沒有新增 Supabase migration，也沒有新增 npm 套件。
 
 ## Codex／AI 下次開始方式
 
@@ -48,5 +49,5 @@ v73 Phase 2 沒有新增 Supabase migration，也沒有新增 npm 套件。
 2. 執行 `git log -1 --oneline`。
 3. 閱讀本文件。
 4. 只讀取 `docs/AI_CHANGELOG.md` 最後一筆。
-5. 架構任務再讀取 `docs/OPTIMIZATION_ROADMAP.md`。
-6. 每日計畫相關修改必須從 `src/lib/dailyPlanService.ts` 開始，不得在頁面重新建立第二套選題邏輯。
+5. 效能修改必須保留 `test:bundle` 與 compact daily-plan index，不得讓首頁重新載入完整 `pdf-image-quiz.json`。
+6. 每日計畫演算法仍只能從 `src/lib/dailyPlanService.ts` 修改。

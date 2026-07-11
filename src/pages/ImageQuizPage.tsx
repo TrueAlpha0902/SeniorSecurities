@@ -8,7 +8,7 @@ import { EncouragementNote } from "../components/EncouragementNote";
 import { GlassButton, GlassLinkButton } from "../components/GlassButton";
 import { GlassCard } from "../components/GlassCard";
 import { LoadingState } from "../components/LoadingState";
-import { PdfSegmentStack } from "../components/PdfSegmentStack";
+import { PdfSegmentStack, pdfImageUrl } from "../components/PdfSegmentStack";
 import { ProgressBar } from "../components/ProgressBar";
 import { useAsync } from "../hooks/useAsync";
 import {
@@ -28,7 +28,6 @@ import {
   type ImageQuizSessionRecord,
 } from "../lib/db";
 import {
-  assetUrl,
   formatImageQuizQuestionSource,
   loadAllImageQuestions,
   loadImageBankQuestions,
@@ -1037,7 +1036,7 @@ function preloadNeighborQuestionAssets(questions: readonly ImageQuizQuestion[], 
       const image = new Image();
       image.decoding = "async";
       image.fetchPriority = "low";
-      image.src = assetUrl(source);
+      image.src = pdfImageUrl(source);
     });
   };
 

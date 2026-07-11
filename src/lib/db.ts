@@ -9,14 +9,11 @@ import type {
 } from "../types";
 import type { ImageQuizQuestion, NumericAnswer } from "./imageQuiz";
 import { supabase } from "./supabase";
-import {
-  createAttemptId,
-  recordLocalLearningAttempt,
-  syncLearningAttempt,
-  type AnswerConfidence,
-  type LearningAttemptInput,
-  type QuestionLearningState,
-} from "./learningEngine";
+import type {
+  AnswerConfidence,
+  LearningAttemptInput,
+  QuestionLearningState,
+} from "./learningStateStore";
 
 export type StoredImageAnswer = {
   selected: NumericAnswer;
@@ -907,7 +904,10 @@ async function executeCloudMutation(userId: string, mutation: CloudMutation): Pr
     case "upsert-progress": return upsertCloudProgress(userId, mutation.record);
     case "delete-progress": return deleteCloudProgress(userId, mutation.scopeId);
     case "upsert-session": return upsertCloudSession(userId, mutation.record);
-    case "sync-learning-attempt": return syncLearningAttempt(mutation.attempt, mutation.state);
+    case "sync-learning-attempt": {
+      const { syncLearningAttempt } = await import("./learningEngine");
+      return syncLearningAttempt(mutation.attempt, mutation.state);
+    }
     case "record-leaderboard-answer": return updateLeaderboardAfterAnswer(mutation.isCorrect, mutation.eventId);
     case "delete-many": return deleteCloudRecords(userId, mutation.table, mutation.column, mutation.values);
     case "clear-table": return clearCloudTable(userId, mutation.table);
@@ -1086,6 +1086,7 @@ async function recordLearningAndLeaderboard(args: {
   answeredAt: string;
   options?: RecordAnswerOptions;
 }): Promise<void> {
+  const { createAttemptId, recordLocalLearningAttempt } = await import("./learningEngine");
   const eventId = args.options?.eventId || createAttemptId();
   const attempt: LearningAttemptInput = {
     eventId,

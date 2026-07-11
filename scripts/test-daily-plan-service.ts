@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
-import { buildOrReadDailyPlan } from "../src/lib/dailyPlanService";
-import type { ImageQuizQuestion } from "../src/lib/imageQuiz";
-import type { QuestionLearningState } from "../src/lib/learningEngine";
+import { buildOrReadDailyPlan, type DailyPlanQuestion } from "../src/lib/dailyPlanService";
+import type { QuestionLearningState } from "../src/lib/learningStateStore";
 import { setActiveUserStorageScope } from "../src/lib/userScopedStorage";
 import type { UserAnswer, WrongQuestionRecord } from "../src/types";
 
@@ -49,27 +48,17 @@ const config = {
   intensity: "standard" as const,
 };
 
+type FullQuestion = DailyPlanQuestion & { number: number; payload: string };
+
 function question(
   id: string,
   bankId: string,
   number: number,
-): ImageQuizQuestion {
-  return {
-    id,
-    bankId,
-    bankTitle: bankId,
-    chapterId: "ch01",
-    chapterTitle: "第一章",
-    number,
-    answer: "1",
-    sourceFile: `${bankId}.pdf`,
-    questionSegments: [],
-    explanationSegments: [],
-    answerMask: null,
-  };
+): FullQuestion {
+  return { id, bankId, number, payload: `${bankId}:${number}` };
 }
 
-const questions: ImageQuizQuestion[] = [
+const questions: FullQuestion[] = [
   question("q1", "investment", 1),
   question("q2", "financial-analysis", 2),
   question("q3", "securities-trading-regulations", 3),
@@ -214,4 +203,20 @@ assert.equal(
   "Changing the study-plan signature must invalidate today's cached queue",
 );
 
-console.log("DailyPlanService single-source and cache consistency tests passed.");
+const lightweightPlan = buildOrReadDailyPlan({
+  allQuestions: questions.map(({ id, bankId }) => ({ id, bankId })),
+  storedAnswers: answers,
+  wrongRecords,
+  userId: "daily-plan-test-user",
+  config,
+  now,
+  learningStates,
+  useStoredPlan: false,
+});
+assert.deepEqual(
+  lightweightPlan.planQuestionIds,
+  homepagePlan.planQuestionIds,
+  "The compact home-page index must produce the same queue as full question objects",
+);
+
+console.log("DailyPlanService single-source, compact-index, and cache consistency tests passed.");

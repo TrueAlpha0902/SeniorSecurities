@@ -25,3 +25,11 @@
 - 首頁與每日練習只能透過 `src/lib/dailyPlanService.ts` 建立或讀取今日題列。
 - 不得在 `HomePage.tsx`、`ImageQuizPage.tsx` 或其他頁面複製 FSRS 到期判斷、錯題排序、科目平衡或 daily-plan localStorage 解析。
 - 修改每日計畫演算法時必須同步更新 `scripts/test-daily-plan-service.ts`。
+
+## v74 效能護欄
+
+- 首頁只能用 `loadImageQuizPlanningIndex()` 建立 Daily Plan，不得改回 `loadAllImageQuestions()`。
+- `public/data/pdf-image-quiz.json` 變更後必須執行 `npm run generate:plan-index`，並提交產生的 compact index。
+- 計算機、設定、Analytics 與 FSRS scheduler 必須維持 lazy／dynamic import，不得重新放回初始 bundle。
+- 修改 Vite chunk、全域 CSS 或首頁相依模組後，必須通過 `npm run test:bundle`。
+- 大型列表不得一次掛載全部資料；優先使用 progressive rendering、virtualization 或 `content-visibility`。

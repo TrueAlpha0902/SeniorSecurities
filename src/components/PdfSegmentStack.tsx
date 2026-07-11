@@ -62,7 +62,7 @@ function PdfCrop({ segment, priority }: { segment: PdfCropSegment; priority: "hi
   );
 }
 
-function pdfImageUrl(path: string, retryToken: number): string {
+export function pdfImageUrl(path: string, retryToken = 0): string {
   const url = assetUrl(path);
   const separator = url.includes("?") ? "&" : "?";
   const retry = retryToken > 0 ? `&retry=${retryToken}` : "";

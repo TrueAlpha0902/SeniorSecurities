@@ -1,15 +1,22 @@
 import { ArrowLeft, Calculator, Home, Settings, UserRound } from "lucide-react";
-import type { ReactNode } from "react";
-import { useState } from "react";
+import { lazy, Suspense, type ReactNode, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { SettingsPanel } from "./SettingsPanel";
-import { CalculatorModal } from "./CalculatorModal";
 import { useAuth } from "../auth/AuthContext";
 
 import "../styles/premium-liquid-v67.css";
 import "../styles/premium-navy-v68.css";
 import "../styles/premium-navy-v69.css";
 import "../styles/premium-navy-v70.css";
+
+const loadSettingsPanel = () => import("./SettingsPanel");
+const loadCalculatorModal = () => import("./CalculatorModal");
+
+const LazySettingsPanel = lazy(() =>
+  loadSettingsPanel().then((module) => ({ default: module.SettingsPanel })),
+);
+const LazyCalculatorModal = lazy(() =>
+  loadCalculatorModal().then((module) => ({ default: module.CalculatorModal })),
+);
 
 type AppLayoutProps = {
   children: ReactNode;
@@ -22,7 +29,9 @@ export function AppLayout({ children }: AppLayoutProps) {
   const [calculatorOpen, setCalculatorOpen] = useState(false);
   const isHome = location.pathname === "/";
   const { isConfigured, user } = useAuth();
-  const isImageQuiz = location.pathname.startsWith("/image-quiz") || location.pathname === "/trial";
+  const isImageQuiz =
+    location.pathname.startsWith("/image-quiz") ||
+    location.pathname === "/trial";
 
   function navigateWithQuizGuard(continueNavigation: () => void): void {
     const event = new CustomEvent("quiz:navigation-attempt", {
@@ -30,9 +39,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       detail: { continueNavigation },
     });
     const shouldContinue = window.dispatchEvent(event);
-    if (shouldContinue) {
-      continueNavigation();
-    }
+    if (shouldContinue) continueNavigation();
   }
 
   return (
@@ -44,8 +51,8 @@ export function AppLayout({ children }: AppLayoutProps) {
               type="button"
               className="nav-icon-button"
               onClick={() => navigateWithQuizGuard(() => navigate(-1))}
-              aria-label={"\u4e0a\u4e00\u9801"}
-              title={"\u4e0a\u4e00\u9801"}
+              aria-label="上一頁"
+              title="上一頁"
             >
               <ArrowLeft aria-hidden="true" size={22} />
             </button>
@@ -54,14 +61,16 @@ export function AppLayout({ children }: AppLayoutProps) {
             type="button"
             className="nav-icon-button"
             onClick={() => navigateWithQuizGuard(() => navigate("/"))}
-            aria-label={"\u9996\u9801"}
-            title={"\u9996\u9801"}
+            aria-label="首頁"
+            title="首頁"
           >
             <Home aria-hidden="true" size={22} />
           </button>
           <button
             type="button"
             className="nav-icon-button"
+            onPointerEnter={() => void loadCalculatorModal()}
+            onFocus={() => void loadCalculatorModal()}
             onClick={() => setCalculatorOpen(true)}
             aria-label="計算機"
             title="計算機"
@@ -71,9 +80,11 @@ export function AppLayout({ children }: AppLayoutProps) {
           <button
             type="button"
             className="nav-icon-button"
+            onPointerEnter={() => void loadSettingsPanel()}
+            onFocus={() => void loadSettingsPanel()}
             onClick={() => setSettingsOpen(true)}
-            aria-label={"\u8a2d\u5b9a"}
-            title={"\u8a2d\u5b9a"}
+            aria-label="設定"
+            title="設定"
           >
             <Settings aria-hidden="true" size={22} />
           </button>
@@ -81,7 +92,11 @@ export function AppLayout({ children }: AppLayoutProps) {
             <button
               type="button"
               className="nav-icon-button nav-member-button"
-              onClick={() => navigateWithQuizGuard(() => navigate(user ? "/account" : "/auth"))}
+              onClick={() =>
+                navigateWithQuizGuard(() =>
+                  navigate(user ? "/account" : "/auth"),
+                )
+              }
               aria-label={user ? "會員中心" : "會員登入"}
               title={user ? "會員中心" : "會員登入"}
             >
@@ -89,13 +104,33 @@ export function AppLayout({ children }: AppLayoutProps) {
             </button>
           ) : null}
         </div>
-        <button type="button" className="brand-link" onClick={() => navigateWithQuizGuard(() => navigate("/"))}>
-          {"\u8b49\u5238\u9ad8\u696d"}
+        <button
+          type="button"
+          className="brand-link"
+          onClick={() => navigateWithQuizGuard(() => navigate("/"))}
+        >
+          證券高業
         </button>
       </header>
-      <main className={`glass-shell ${isImageQuiz ? "image-shell" : ""}`}>{children}</main>
-      <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
-      <CalculatorModal open={calculatorOpen} onClose={() => setCalculatorOpen(false)} />
+      <main className={`glass-shell ${isImageQuiz ? "image-shell" : ""}`}>
+        {children}
+      </main>
+      {settingsOpen ? (
+        <Suspense fallback={null}>
+          <LazySettingsPanel
+            open={settingsOpen}
+            onClose={() => setSettingsOpen(false)}
+          />
+        </Suspense>
+      ) : null}
+      {calculatorOpen ? (
+        <Suspense fallback={null}>
+          <LazyCalculatorModal
+            open={calculatorOpen}
+            onClose={() => setCalculatorOpen(false)}
+          />
+        </Suspense>
+      ) : null}
     </div>
   );
 }

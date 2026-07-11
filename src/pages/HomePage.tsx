@@ -20,10 +20,10 @@ import { useAsync } from "../hooks/useAsync";
 import { useAuth } from "../auth/AuthContext";
 import { listUserAnswers, listWrongQuestions } from "../lib/db";
 import {
-  loadAllImageQuestions,
   loadImageQuizBankSummaries,
+  loadImageQuizPlanningIndex,
   type ImageQuizBank,
-  type ImageQuizQuestion,
+  type ImageQuizPlanningQuestion,
 } from "../lib/imageQuiz";
 import { calculateAccuracy } from "../lib/quiz";
 import {
@@ -83,7 +83,7 @@ const T = {
   wrongCorrection: "錯題訂正",
 };
 
-const HOMEPAGE_FRIEREN_IMAGE = `${import.meta.env.BASE_URL}frieren-cheer-home.png`;
+const HOMEPAGE_FRIEREN_IMAGE = `${import.meta.env.BASE_URL}frieren-cheer-home.webp`;
 
 const STUDY_TIME_OPTIONS = [30, 60, 90, 120, 240] as const;
 const INTENSITY_OPTIONS: {
@@ -119,8 +119,8 @@ async function loadHomeData(
   const [banks, allQuestions, answers, wrongRecords] = await Promise.all([
     loadImageQuizBankSummaries(),
     includePrivateData
-      ? loadAllImageQuestions()
-      : Promise.resolve([] as ImageQuizQuestion[]),
+      ? loadImageQuizPlanningIndex()
+      : Promise.resolve([] as ImageQuizPlanningQuestion[]),
     includePrivateData ? listUserAnswers() : Promise.resolve([]),
     includePrivateData ? listWrongQuestions() : Promise.resolve([]),
   ]);
@@ -569,6 +569,8 @@ export function HomePage() {
                 className="homepage-frieren-image"
                 src={HOMEPAGE_FRIEREN_IMAGE}
                 alt="Q版芙莉蓮握拳加油插圖"
+                width={983}
+                height={973}
                 loading="lazy"
                 decoding="async"
               />

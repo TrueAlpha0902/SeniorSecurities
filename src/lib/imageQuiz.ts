@@ -85,10 +85,18 @@ type SimilarQuestionData = {
   groups: SimilarQuestionGroup[];
 };
 
+export type ImageQuizPlanningQuestion = Pick<ImageQuizQuestion, "id" | "bankId">;
+
+type ImageQuizPlanningIndexData = {
+  version: 1;
+  questions: ImageQuizPlanningQuestion[];
+};
+
 const dataCache: { promise?: Promise<ImageQuizData> } = {};
 const similarGroupsCache: { promise?: Promise<SimilarQuestionGroup[]> } = {};
 const trialQuestionsCache: { promise?: Promise<ImageQuizQuestion[]> } = {};
 const summaryBanksCache: { promise?: Promise<ImageQuizBank[]> } = {};
+const planningIndexCache: { promise?: Promise<ImageQuizPlanningQuestion[]> } = {};
 const questionOverridesCache: { promise?: Promise<Map<string, ImageQuizQuestionOverride>> } = {};
 const IMAGE_DATA_CACHE_VERSION = "20260705-crop-fix";
 const SECURITIES_COMBINED_BANK_ID = "securities-laws-practice";
@@ -161,6 +169,14 @@ async function fetchJson<T>(path: string): Promise<T> {
   return (await response.json()) as T;
 }
 
+async function fetchPrecachedJson<T>(path: string): Promise<T> {
+  const response = await fetch(assetUrl(path));
+  if (!response.ok) {
+    throw new Error(`\u7121\u6cd5\u8f09\u5165 ${path}: ${response.status} ${response.statusText}`);
+  }
+  return (await response.json()) as T;
+}
+
 export async function loadImageQuizData(): Promise<ImageQuizData> {
   dataCache.promise ??= Promise.all([
     fetchJson<ImageQuizData>("data/pdf-image-quiz.json"),
@@ -179,6 +195,18 @@ export async function loadImageQuizBankSummaries(): Promise<ImageQuizBank[]> {
     .then(normalizeImageQuizData)
     .then((data) => data.banks);
   return summaryBanksCache.promise;
+}
+
+/**
+ * Lightweight question universe used by the home-page planner. It avoids
+ * downloading and parsing the multi-megabyte crop/segment payload until a
+ * quiz route actually needs it.
+ */
+export async function loadImageQuizPlanningIndex(): Promise<ImageQuizPlanningQuestion[]> {
+  planningIndexCache.promise ??= fetchPrecachedJson<ImageQuizPlanningIndexData>(
+    "data/pdf-image-quiz-plan-index.json",
+  ).then((data) => data.questions);
+  return planningIndexCache.promise;
 }
 
 export async function loadImageQuizBank(bankId: string): Promise<ImageQuizBank | undefined> {

@@ -2,27 +2,34 @@
 
 更新日期：2026-07-11
 
-目前進度：v73 Phase 2 已完成 DailyPlanService 單一來源；下一項為統一管理員授權與 AAL2。
+目前進度：v74 已完成前端關鍵路徑與 bundle 最終效能階段；後續工作以安全、管理端規模與自動化測試為主。
 
-## Phase 1 — Reliability stabilization
+## Reliability stabilization
 
 - [x] Durable FSRS／leaderboard event outbox
 - [x] User-scoped local storage and conservative legacy migration
 - [x] GitHub Actions full verification
-- [x] Single-source `DailyPlanService` shared by Home and ImageQuiz pages
+- [x] Single-source `DailyPlanService`
 - [ ] Transaction-safe question release publish／rollback RPC
 - [ ] Unified admin authorization and AAL2 enforcement
 
-## Phase 2 — Regression prevention
+## Performance and regression prevention
 
+- [x] Compact daily-plan question index; homepage avoids full crop payload
+- [x] Lazy calculator, settings, analytics and FSRS scheduler chunks
+- [x] Homepage WebP asset and stable image dimensions
+- [x] Deferred service-worker registration and exact next-question prefetch URL
+- [x] Progressive long-list rendering and `content-visibility`
+- [x] ES2022 build target and bundle-size budgets in `npm run verify`
+- [x] In-memory learning-state read cache
 - [ ] Playwright smoke tests for login, home, bank, chapter, quiz and admin entry
 - [ ] Visual regression snapshots for desktop, tablet and mobile
 - [ ] Consolidate v67–v70 theme overrides into one design-token layer
-- [ ] Add bundle-size budget and post-deploy health check
+- [ ] Post-deploy health check
 
-## Phase 3 — Performance and scale
+## Scale and maintainability
 
-- [ ] Move FSRS state and attempt history from one large localStorage JSON to IndexedDB
+- [ ] Move FSRS state and attempt history from one large localStorage snapshot to IndexedDB
 - [ ] Server-side admin pagination and search
-- [ ] Versioned PWA asset caches and safe update activation
-- [ ] Split large question-bank payloads by subject and chapter
+- [ ] Split full crop payload by subject/chapter for non-daily quiz routes
+- [ ] Transactional release publication and immutable release manifest
