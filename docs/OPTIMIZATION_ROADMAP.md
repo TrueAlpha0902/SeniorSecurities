@@ -1,4 +1,4 @@
-# SeniorSecurities Optimization Roadmap
+﻿# SeniorSecurities Optimization Roadmap
 
 更新日期：2026-07-11
 
@@ -33,3 +33,11 @@
 - [ ] Server-side admin pagination and search
 - [ ] Split full crop payload by subject/chapter for non-daily quiz routes
 - [ ] Transactional release publication and immutable release manifest
+
+## v74.1 穩定性護欄
+
+- [x] Service Worker 不在操作途中強制接管舊分頁。
+- [x] Lazy chunk 失敗自動復原一次。
+- [x] Root Error Boundary 避免全白頁。
+- [x] 使用者可主動套用準備完成的新版本。
+- [x] Recovery detection 納入 CI。

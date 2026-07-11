@@ -1,5 +1,14 @@
 ﻿# AI Change Log
 
+## 2026-07-11 — v74.1 Blank-Screen Recovery
+
+- 將 PWA 更新從背景強制接管改為提示式更新，避免新版 Service Worker 接管仍執行舊版 lazy chunks 的分頁。
+- 新增 `lazyWithRetry`，動態 import／chunk 載入失敗時安全自動重新載入一次。
+- 新增 `AppErrorBoundary` 與全域 promise／script error recovery，錯誤時顯示可操作的復原畫面。
+- 新增更新通知，使用者可在安全時機主動更新 App。
+- 補上 Vercel HTML／Service Worker cache headers，hash assets 使用 immutable cache。
+- 新增 `test:recovery` 並納入完整驗證；無 migration、無新增 npm 套件。
+
 ## 2026-07-11 — v74 Final Performance
 
 - 首頁每日規劃改讀約 268 KB 的 compact question index，不再載入約 4.3 MB 完整 crop payload。

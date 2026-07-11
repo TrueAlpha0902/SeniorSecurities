@@ -33,3 +33,11 @@
 - 計算機、設定、Analytics 與 FSRS scheduler 必須維持 lazy／dynamic import，不得重新放回初始 bundle。
 - 修改 Vite chunk、全域 CSS 或首頁相依模組後，必須通過 `npm run test:bundle`。
 - 大型列表不得一次掛載全部資料；優先使用 progressive rendering、virtualization 或 `content-visibility`。
+
+## v74.1 穩定性護欄
+
+- Route-level lazy import 必須使用 `lazyWithRetry()`，不得直接新增未保護的 `React.lazy()`。
+- Service Worker 更新不得在使用者操作途中自動 `skipWaiting`／`clientsClaim` 接管舊分頁。
+- App 根層必須保留 `AppErrorBoundary`；不可移除全域 chunk-load recovery。
+- `index.html` 與 `sw.js` 不得設定 immutable 長快取；hash assets 才能使用 immutable cache。
+- 修改 PWA 更新策略、lazy routes 或 Vercel cache headers 後必須執行 `npm run test:recovery` 與完整 `npm run verify`。

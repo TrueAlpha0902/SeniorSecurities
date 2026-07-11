@@ -4527,3 +4527,134 @@ p {
 .question-list-load-more:active {
   transform: translateY(1px);
 }
+
+/* v74.1 app-update and crash-recovery safeguards */
+.app-update-notice {
+  position: fixed;
+  right: max(18px, env(safe-area-inset-right));
+  bottom: max(18px, env(safe-area-inset-bottom));
+  z-index: 2000;
+  display: flex;
+  width: min(520px, calc(100vw - 36px));
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 16px 18px;
+  border: 1px solid rgba(29, 111, 138, 0.2);
+  border-radius: 20px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.96) !important;
+  box-shadow: 0 18px 48px rgba(17, 41, 58, 0.18);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.app-update-notice > div:first-child {
+  display: grid;
+  gap: 4px;
+}
+
+.app-update-notice strong {
+  font-size: 0.98rem;
+}
+
+.app-update-notice span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.app-update-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
+}
+
+.app-update-actions button {
+  min-height: 42px;
+  padding: 0 14px;
+  border: 1px solid rgba(20, 43, 59, 0.11);
+  border-radius: 14px;
+  color: var(--text);
+  background: #ffffff !important;
+  font: inherit;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.app-update-actions button.is-primary {
+  border-color: var(--primary);
+  color: #ffffff;
+  background: var(--primary) !important;
+}
+
+.app-update-actions button:disabled {
+  cursor: wait;
+  opacity: 0.66;
+}
+
+.app-recovery-shell {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: var(--page-bg, #f4f6f8);
+}
+
+.app-recovery-card {
+  display: grid;
+  width: min(620px, 100%);
+  gap: 16px;
+  padding: clamp(24px, 5vw, 42px);
+  border: 1px solid rgba(20, 43, 59, 0.1);
+  border-radius: 28px;
+  background: #ffffff;
+  box-shadow: 0 22px 60px rgba(17, 41, 58, 0.12);
+}
+
+.app-recovery-card h1,
+.app-recovery-card p {
+  margin: 0;
+}
+
+.app-recovery-card > p:not(.eyebrow) {
+  color: var(--muted, #6c7888);
+  line-height: 1.75;
+}
+
+.app-recovery-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.app-recovery-card details {
+  color: var(--muted, #6c7888);
+  font-size: 0.78rem;
+}
+
+.app-recovery-card pre {
+  max-height: 160px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 620px) {
+  .app-update-notice {
+    left: 12px;
+    right: 12px;
+    bottom: max(12px, env(safe-area-inset-bottom));
+    width: auto;
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .app-update-actions button {
+    flex: 1 1 0;
+  }
+
+  .app-recovery-actions {
+    display: grid;
+  }
+}

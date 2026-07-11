@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { registerSW } from "virtual:pwa-register";
 import { App } from "./App";
+import { announceAppUpdate, recoverFromChunkLoadError } from "./lib/appRecovery";
 import "./styles/glass.css";
 
 type IdleWindow = Window & {
@@ -12,12 +13,23 @@ type IdleWindow = Window & {
   ) => number;
 };
 
+function installGlobalRecoveryHandlers(): void {
+  window.addEventListener("error", (event) => {
+    const error = event.error ?? event.message;
+    if (recoverFromChunkLoadError(error)) event.preventDefault();
+  });
+
+  window.addEventListener("unhandledrejection", (event) => {
+    if (recoverFromChunkLoadError(event.reason)) event.preventDefault();
+  });
+}
+
 function registerServiceWorkerAfterFirstPaint(): void {
   const startRegistration = () => {
     const updateServiceWorker = registerSW({
       immediate: true,
       onNeedRefresh() {
-        void updateServiceWorker(true);
+        announceAppUpdate(() => updateServiceWorker(true));
       },
       onRegisteredSW(_swUrl, registration) {
         if (!registration) return;
@@ -26,6 +38,7 @@ function registerServiceWorkerAfterFirstPaint(): void {
           void registration.update();
         };
 
+        checkForUpdate();
         window.addEventListener("focus", checkForUpdate, { passive: true });
         document.addEventListener("visibilitychange", () => {
           if (document.visibilityState === "visible") checkForUpdate();
@@ -47,6 +60,8 @@ function registerServiceWorkerAfterFirstPaint(): void {
   if (document.readyState === "complete") schedule();
   else window.addEventListener("load", schedule, { once: true, passive: true });
 }
+
+installGlobalRecoveryHandlers();
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

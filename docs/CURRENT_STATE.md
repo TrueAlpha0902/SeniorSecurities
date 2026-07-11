@@ -1,7 +1,19 @@
 ﻿# SeniorSecurities Current State
 
 更新日期：2026-07-11
-目前版本：v74 Final Performance — 首頁輕量規劃、延遲載入與效能預算
+目前版本：v74.1 Blank-Screen Recovery — 安全更新、懶載入復原與錯誤邊界
+
+## v74.1 已完成
+
+- 修正部署後舊分頁與新 Service Worker 交錯時，點擊懶載入頁面可能因舊 chunk 不存在而變成空白的問題。
+- PWA 更新策略由自動強制接管改為使用者確認更新；新 Service Worker 不再於操作途中接管舊分頁。
+- 所有 route lazy imports 改用 `lazyWithRetry`；偵測 chunk／dynamic import 錯誤時自動重新載入一次，並以 60 秒冷卻避免無限循環。
+- 新增根層 `AppErrorBoundary`，非 chunk runtime error 也會顯示復原畫面，不再只留下全白頁。
+- 復原畫面提供一般重新載入及「只清除 Service Worker／Cache Storage 後重載」；不清除 IndexedDB 或 localStorage 學習資料。
+- 新增全域 `error`／`unhandledrejection` chunk recovery。
+- 新增 App 更新通知，使用者可在完成當前操作後主動套用新版本。
+- `index.html`、`sw.js` 與 manifest 改為重新驗證，hash assets 維持 immutable 長快取。
+- 新增 `test:recovery` 並納入 `npm run verify`。
 
 ## v74 已完成
 

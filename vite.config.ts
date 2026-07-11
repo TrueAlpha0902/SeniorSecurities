@@ -77,7 +77,7 @@ export default defineConfig({
     react(),
     excludePublicBackupsFromBuild(),
     VitePWA({
-      registerType: "autoUpdate",
+      registerType: "prompt",
       includeAssets: [
         "icons/icon-180.png",
         "icons/icon-192.png",
@@ -134,8 +134,8 @@ export default defineConfig({
         maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
         navigateFallback: "index.html",
         navigationPreload: true,
-        skipWaiting: true,
-        clientsClaim: true,
+        skipWaiting: false,
+        clientsClaim: false,
         cleanupOutdatedCaches: true,
         runtimeCaching: [
           {
