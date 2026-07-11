@@ -1,4 +1,15 @@
-import { ClipboardList, History, Play, RotateCcw, Trash2 } from "lucide-react";
+import {
+  BookOpenCheck,
+  CheckCircle2,
+  ClipboardList,
+  History,
+  ListFilter,
+  Play,
+  RotateCcw,
+  Sparkles,
+  Target,
+  Trash2,
+} from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ErrorState } from "../components/ErrorState";
@@ -16,6 +27,7 @@ import {
 import { loadImageBankQuestions, loadImageQuizBanks, type ImageQuizBank, type ImageQuizQuestion } from "../lib/imageQuiz";
 import { buildSessionId, calculateAccuracy, shuffleQuestions } from "../lib/quiz";
 import type { UserAnswer } from "../types";
+import "../styles/learner-experience-v65.css";
 
 const DEFAULT_RANDOM_SIZE = 50;
 const MIN_RANDOM_SIZE = 1;
@@ -82,7 +94,7 @@ export function RandomPracticePage() {
   const navigate = useNavigate();
   const [refreshKey, setRefreshKey] = useState(0);
   const [avoidAnswered, setAvoidAnswered] = useState(true);
-  const [questionCount, setQuestionCount] = useState(DEFAULT_RANDOM_SIZE);
+  const [questionCount, setQuestionCount] = useState<number | "">(DEFAULT_RANDOM_SIZE);
   const [deleteMode, setDeleteMode] = useState(false);
   const [selectedSessionIds, setSelectedSessionIds] = useState<Set<string>>(new Set());
   const { data, error, loading } = useAsync(loadRandomPracticeData, [refreshKey]);
@@ -97,7 +109,7 @@ export function RandomPracticePage() {
   async function handleStart(bank: ImageQuizBank): Promise<void> {
     const allQuestions = await loadImageBankQuestions(bank.bankId);
     const answeredIds = new Set((data?.answers ?? []).map((answer) => answer.questionId));
-    const targetCount = normalizeQuestionCount(questionCount);
+    const targetCount = normalizeQuestionCount(questionCount === "" ? DEFAULT_RANDOM_SIZE : questionCount);
     const questions = buildProportionalMockExamQuestions({
       bank,
       allQuestions,
@@ -169,82 +181,132 @@ export function RandomPracticePage() {
   const sessions = data?.sessions ?? [];
   const answers = data?.answers ?? [];
   const answeredIds = new Set(answers.map((answer) => answer.questionId));
-  const normalizedQuestionCount = normalizeQuestionCount(questionCount);
+  const normalizedQuestionCount = normalizeQuestionCount(questionCount === "" ? DEFAULT_RANDOM_SIZE : questionCount);
+  const bankQuestionIds = new Set(
+    banks.flatMap((bank) => bank.chapters.flatMap((chapter) => chapter.questions.map((question) => question.id))),
+  );
+  const totalQuestionCount = banks.reduce(
+    (bankSum, bank) => bankSum + bank.chapters.reduce((chapterSum, chapter) => chapterSum + chapter.questionCount, 0),
+    0,
+  );
+  const completedQuestionCount = Array.from(answeredIds).filter((questionId) => bankQuestionIds.has(questionId)).length;
+  const remainingQuestionCount = Math.max(0, totalQuestionCount - completedQuestionCount);
+  const overallProgress = calculateAccuracy(completedQuestionCount, totalQuestionCount);
 
   return (
-    <div className="page-stack">
-      <GlassCard className="bank-hero random-practice-hero">
-        <div>
-          <p className="eyebrow">Mock Exam</p>
-          <h1>{T.title}</h1>
-          <p>{T.description}</p>
+    <div className="page-stack learner-page random-practice-page">
+      <GlassCard className="learner-hero random-practice-hero">
+        <div className="learner-hero-copy">
+          <div className="learner-title-icon" aria-hidden="true">
+            <Sparkles size={22} />
+          </div>
+          <div>
+            <p className="eyebrow">Mock Exam</p>
+            <h1>{T.title}</h1>
+            <p>{T.description}</p>
+          </div>
         </div>
 
-        <div className="random-quiz-options" aria-label="單科隨機測驗設定">
-          <div className="random-count-panel">
-            <div>
-              <h2>{T.questionCount}</h2>
-              <p>{T.questionCountHint}</p>
-            </div>
-            <div className="random-count-quick-actions" role="group" aria-label="快速選擇題數">
+        <div className="learner-kpi-grid" aria-label="練習進度摘要">
+          <div className="learner-kpi">
+            <span><BookOpenCheck aria-hidden="true" size={17} /> 題庫總量</span>
+            <strong>{totalQuestionCount.toLocaleString("zh-TW")} <small>題</small></strong>
+          </div>
+          <div className="learner-kpi">
+            <span><CheckCircle2 aria-hidden="true" size={17} /> 已練習</span>
+            <strong>{completedQuestionCount.toLocaleString("zh-TW")} <small>題</small></strong>
+            <progress value={completedQuestionCount} max={Math.max(totalQuestionCount, 1)} aria-label={`整體練習進度 ${overallProgress}%`} />
+          </div>
+          <div className="learner-kpi is-accent">
+            <span><Target aria-hidden="true" size={17} /> 本次目標</span>
+            <strong>{normalizedQuestionCount} <small>題</small></strong>
+            <small>尚有 {remainingQuestionCount.toLocaleString("zh-TW")} 題待練習</small>
+          </div>
+        </div>
+      </GlassCard>
+
+      <GlassCard className="random-builder-card" as="section" aria-labelledby="random-builder-title">
+        <div className="random-builder-heading">
+          <div className="learner-section-icon" aria-hidden="true"><ListFilter size={20} /></div>
+          <div>
+            <h2 id="random-builder-title">設定本次練習</h2>
+            <p>{T.questionCountHint}</p>
+          </div>
+        </div>
+
+        <div className="random-quiz-options">
+          <fieldset className="random-count-panel">
+            <legend>{T.questionCount}</legend>
+            <div className="random-count-quick-actions" aria-label="快速選擇題數">
               {QUICK_RANDOM_SIZES.map((size) => (
                 <button
                   key={size}
                   type="button"
                   className={`random-count-chip ${normalizedQuestionCount === size ? "is-active" : ""}`}
+                  aria-pressed={normalizedQuestionCount === size}
                   onClick={() => setQuestionCount(size)}
                 >
-                  {size} {T.question}
+                  <strong>{size}</strong>
+                  <span>{T.question}</span>
                 </button>
               ))}
             </div>
-            <label className="random-count-input-label">
-              <span>{T.customQuestionCount}</span>
+          </fieldset>
+
+          <label className="random-count-input-label">
+            <span>{T.customQuestionCount}</span>
+            <span className="random-number-input">
               <input
                 type="number"
                 min={MIN_RANDOM_SIZE}
                 max={MAX_RANDOM_SIZE}
                 inputMode="numeric"
                 value={questionCount}
-                onChange={(event) => setQuestionCount(normalizeQuestionCount(Number(event.currentTarget.value)))}
+                aria-describedby="random-count-range"
+                onChange={(event) => {
+                  const value = event.currentTarget.value;
+                  setQuestionCount(value === "" ? "" : normalizeQuestionCount(Number(value)));
+                }}
+                onBlur={() => setQuestionCount(normalizedQuestionCount)}
               />
-            </label>
-          </div>
+              <span aria-hidden="true">題</span>
+            </span>
+            <small id="random-count-range">可設定 {MIN_RANDOM_SIZE}–{MAX_RANDOM_SIZE} 題</small>
+          </label>
 
-          <label className="setting-toggle">
+          <label className="random-answer-toggle">
             <input
               type="checkbox"
               checked={avoidAnswered}
               onChange={(event) => setAvoidAnswered(event.currentTarget.checked)}
             />
-            <span>{T.avoidAnswered}</span>
+            <span className="random-toggle-copy">
+              <strong>{T.avoidAnswered}</strong>
+              <small>{avoidAnswered ? "優先探索尚未練過的題目" : "已作答題目也可能再次出現"}</small>
+            </span>
+            <span className="random-switch" aria-hidden="true" />
           </label>
         </div>
       </GlassCard>
 
-      <GlassCard className="exam-rules-card" as="section" aria-label={T.examRules}>
-        <div className="section-heading exam-rules-heading">
+      <section className="random-subject-section" aria-labelledby="random-subject-title">
+        <div className="learner-section-heading">
           <div>
-            <p className="eyebrow">Exam Rules</p>
-            <h2>{T.examRules}</h2>
-            <p>{T.examRulesNote}</p>
+            <p className="eyebrow">Choose a subject</p>
+            <h2 id="random-subject-title">選擇練習科目</h2>
+            <p>每科都會依章節題量自動分配，選好後即可開始。</p>
           </div>
-          <span className="glass-badge">{T.totalRules}</span>
+          <span className="learner-count-pill">{banks.length} 科</span>
         </div>
-        <div className="exam-rule-grid">
-          {SENIOR_SECURITIES_EXAM_RULES.map((rule) => (
-            <div key={rule.subject} className="exam-rule-item">
-              <ClipboardList aria-hidden="true" size={22} />
-              <div>
-                <h3>{rule.subject}</h3>
-                <p>{rule.questions} {T.questionsUnit} / {rule.minutes} {T.minutesUnit}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </GlassCard>
 
-      <section className="card-grid" aria-label={T.subject}>
+        {banks.length === 0 ? (
+          <GlassCard className="learner-empty-state">
+            <BookOpenCheck aria-hidden="true" size={28} />
+            <h3>目前沒有可用科目</h3>
+            <p>題庫完成載入後，科目會顯示在這裡。</p>
+          </GlassCard>
+        ) : (
+          <div className="random-bank-grid">
         {banks.map((bank) => {
           const total = bank.chapters.reduce((sum, chapter) => sum + chapter.questionCount, 0);
           const availableCount = bank.chapters
@@ -255,31 +317,66 @@ export function RandomPracticePage() {
           const progress = calculateBankProgress(bank, answers);
           return (
             <GlassCard key={bank.bankId} className="bank-card random-bank-card" interactive as="article">
-              <div>
-                <h2>{bank.bankTitle}</h2>
-                <div className="metric-row">
-                  <span className="glass-badge">{total} {T.question}</span>
-                  <span className="glass-badge">{bank.chapters.length} {T.chapter}</span>
-                  <span className="glass-badge">{T.progress} {progress}%</span>
-                  {avoidAnswered ? <span className="glass-badge">{T.remaining} {availableCount} {T.question}</span> : null}
-                  <span className="glass-badge">{T.proportionalHint}</span>
-                  <span className="glass-badge">本次 {sessionQuestionCount} {T.question}</span>
+              <div className="random-bank-header">
+                <div className="learner-section-icon" aria-hidden="true"><BookOpenCheck size={20} /></div>
+                <div>
+                  <h3>{bank.bankTitle}</h3>
+                  <p>{bank.chapters.length} 個章節 · {T.proportionalHint}</p>
                 </div>
+                <span className="random-progress-badge">{progress}%</span>
               </div>
+
+              <div className="random-bank-progress">
+                <span><strong>{T.progress}</strong><small>{progress > 0 ? "持續累積中" : "從第一題開始"}</small></span>
+                <progress value={progress} max={100} aria-label={`${bank.bankTitle}練習進度 ${progress}%`} />
+              </div>
+
+              <dl className="random-bank-stats">
+                <div><dt>題庫</dt><dd>{total.toLocaleString("zh-TW")} 題</dd></div>
+                <div><dt>{avoidAnswered ? T.remaining : "可抽題數"}</dt><dd>{drawableCount.toLocaleString("zh-TW")} 題</dd></div>
+                <div className="is-primary"><dt>本次</dt><dd>{sessionQuestionCount} 題</dd></div>
+              </dl>
+
               <GlassButton variant="primary" className="random-start-button" onClick={() => void handleStart(bank)} disabled={sessionQuestionCount <= 0}>
                 <Play aria-hidden="true" size={18} />
-                <span>{T.start}</span>
+                <span>{sessionQuestionCount > 0 ? `${T.start} · ${sessionQuestionCount} 題` : T.noAvailable}</span>
               </GlassButton>
             </GlassCard>
           );
         })}
+          </div>
+        )}
       </section>
 
-      <section className="review-section">
-        <div className="section-heading">
-          <h2>{T.records}</h2>
+      <GlassCard className="exam-rules-card learner-exam-rules" as="section" aria-label={T.examRules}>
+        <div className="exam-rules-heading">
+          <div className="learner-section-icon" aria-hidden="true"><ClipboardList size={20} /></div>
+          <div>
+            <p className="eyebrow">Exam Rules</p>
+            <h2>{T.examRules}</h2>
+            <p>{T.examRulesNote}</p>
+          </div>
+          <span className="learner-count-pill">{T.totalRules}</span>
+        </div>
+        <div className="exam-rule-grid">
+          {SENIOR_SECURITIES_EXAM_RULES.map((rule) => (
+            <div key={rule.subject} className="exam-rule-item">
+              <strong>{rule.subject}</strong>
+              <span>{rule.questions} {T.questionsUnit}</span>
+              <span>{rule.minutes} {T.minutesUnit}</span>
+            </div>
+          ))}
+        </div>
+      </GlassCard>
+
+      <section className="review-section random-record-section" aria-labelledby="random-record-title">
+        <div className="learner-section-heading">
+          <div>
+            <p className="eyebrow">Recent sessions</p>
+            <h2 id="random-record-title">{T.records}</h2>
+          </div>
           <div className="section-actions">
-            <span className="glass-badge">{sessions.length}</span>
+            <span className="learner-count-pill">{sessions.length} 筆</span>
             {deleteMode ? (
               <>
                 <GlassButton variant="secondary" onClick={() => {
@@ -304,9 +401,10 @@ export function RandomPracticePage() {
           </div>
         </div>
         {sessions.length === 0 ? (
-          <GlassCard className="state-card">
+          <GlassCard className="learner-empty-state">
             <History aria-hidden="true" size={28} />
-            <p>{T.noRecords}</p>
+            <h3>{T.noRecords}</h3>
+            <p>完成或暫停一場測驗後，進度會自動保留在這裡。</p>
           </GlassCard>
         ) : (
           <div className="record-list">
@@ -345,6 +443,7 @@ function SessionRecordCard({
   }).format(new Date(session.finishedAt ?? session.startedAt));
   const answeredCount = Object.keys(session.answers).length;
   const isCompleted = Boolean(session.finishedAt) || answeredCount >= session.totalQuestions;
+  const completionRate = calculateAccuracy(answeredCount, session.totalQuestions);
 
   return (
     <GlassCard className={`record-card ${showSelection ? "is-selecting" : ""}`} as="article">
@@ -358,18 +457,30 @@ function SessionRecordCard({
           />
         </label>
       ) : null}
-      <div>
-        <p className="eyebrow">{date}</p>
-        <h3>{session.bankTitle}</h3>
+      <div className="random-record-main">
+        <div className="random-record-heading">
+          <div>
+            <p className="eyebrow">{date}</p>
+            <h3>{session.bankTitle}</h3>
+          </div>
+          <span className={`random-session-status ${isCompleted ? "is-completed" : "is-pending"}`}>
+            {isCompleted ? T.completed : T.unfinished}
+          </span>
+        </div>
+        <div className="random-session-progress">
+          <span>{T.answered} <strong>{answeredCount} / {session.totalQuestions}</strong></span>
+          <span>{completionRate}%</span>
+          <progress value={answeredCount} max={Math.max(session.totalQuestions, 1)} aria-label={`${session.bankTitle} 作答進度 ${completionRate}%`} />
+        </div>
       </div>
-      <div className="record-metrics">
-        <span className="glass-badge">{isCompleted ? T.completed : T.unfinished}</span>
-        <span className="glass-badge">{T.answered} {answeredCount} / {session.totalQuestions}</span>
-        <span className="glass-badge">{T.accuracy} {session.accuracy}%</span>
-        <span className="glass-badge">{T.correct} {session.correctCount}</span>
-        <span className="glass-badge">{T.wrong} {session.wrongCount}</span>
-      </div>
-      <div className="button-row">
+
+      <dl className="record-metrics">
+        <div><dt>{T.accuracy}</dt><dd>{session.accuracy}%</dd></div>
+        <div><dt>{T.correct}</dt><dd>{session.correctCount}</dd></div>
+        <div><dt>{T.wrong}</dt><dd>{session.wrongCount}</dd></div>
+      </dl>
+
+      <div className="button-row random-record-actions">
         {!isCompleted ? (
           <GlassLinkButton to={`/image-quiz/random/${session.bankId}/${session.sessionId}`} variant="primary">
             <RotateCcw aria-hidden="true" size={18} />

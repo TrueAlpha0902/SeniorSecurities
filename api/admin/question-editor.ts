@@ -8,6 +8,7 @@ import {
   requireAdminUser,
   sendError,
   sendJson,
+  writeAdminAudit,
   type ApiRequest,
   type ApiResponse,
 } from "../_adminClient.js";
@@ -76,6 +77,13 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
 
     if (action === "delete") {
       await deleteQuestionOverride(supabase, questionId);
+      await writeAdminAudit({
+        supabase,
+        actor: user,
+        req,
+        action: "question_override.delete",
+        metadata: { questionId },
+      });
       sendJson(res, 200, { ok: true, message: "已移除線上修改，題目將恢復部署版本。" });
       return;
     }
@@ -89,6 +97,18 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       updatedBy: user.email?.toLowerCase() || user.id,
     };
     await saveQuestionOverride(supabase, override);
+    await writeAdminAudit({
+      supabase,
+      actor: user,
+      req,
+      action: "question_override.save",
+      metadata: {
+        questionId,
+        answer: override.answer,
+        questionSegments: override.questionSegments.length,
+        explanationSegments: override.explanationSegments.length,
+      },
+    });
     sendJson(res, 200, { ok: true, override, message: "題目修改已儲存並立即提供給 App。" });
   } catch (error) {
     console.error("/api/admin/question-editor failed:", error);

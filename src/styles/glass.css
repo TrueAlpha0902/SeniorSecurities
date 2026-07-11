@@ -531,66 +531,6 @@ p {
   background: transparent;
 }
 
-.frieren-walker {
-  position: absolute;
-  bottom: 2px;
-  left: 0;
-  width: 260px;
-  height: 285px;
-  transform: translate3d(0, 0, 0);
-  will-change: opacity, transform;
-}
-
-.frieren-sprite {
-  position: absolute;
-  inset: 0;
-  transform-origin: 50% 100%;
-  filter: drop-shadow(0 16px 16px rgba(43, 57, 84, 0.16));
-  will-change: contents;
-}
-
-.frieren-poster,
-.frieren-canvas {
-  position: absolute;
-  inset: 0;
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-.frieren-poster {
-  object-fit: contain;
-  object-position: center bottom;
-  opacity: 1;
-}
-
-.frieren-canvas {
-  opacity: 0;
-}
-
-.frieren-walker.is-ready .frieren-poster {
-  opacity: 0;
-}
-
-.frieren-walker.is-ready .frieren-canvas {
-  opacity: 1;
-}
-
-.frieren-shadow {
-  position: absolute;
-  right: 66px;
-  bottom: 4px;
-  left: 66px;
-  height: 18px;
-  border-radius: 999px;
-  background: rgba(43, 57, 84, 0.13);
-  filter: blur(9px);
-  opacity: 0.68;
-  transform: scaleX(1.08);
-  will-change: opacity, transform;
-  pointer-events: none;
-}
-
 .overview-panel .metric-row {
   justify-content: flex-end;
 }
@@ -1738,18 +1678,6 @@ p {
     transition-duration: 0.01ms !important;
   }
 
-  .frieren-walker {
-    transform: translate3d(24px, 0, 0);
-  }
-
-  .frieren-poster {
-    opacity: 1;
-  }
-
-  .frieren-canvas,
-  .frieren-shadow {
-    display: none;
-  }
 }
 
 /* Smart deadline-aware daily plan */

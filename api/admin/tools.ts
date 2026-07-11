@@ -5,6 +5,7 @@ import {
   requireAdminUser,
   sendError,
   sendJson,
+  writeAdminAudit,
   type ApiRequest,
   type ApiResponse,
 } from "../_adminClient.js";
@@ -96,6 +97,13 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
         note,
       });
       if (error) throw error;
+      await writeAdminAudit({
+        supabase,
+        actor: user,
+        req,
+        action: "activation_code.create",
+        metadata: { maxUses, hasNote: Boolean(note), customCode: Boolean(customCode) },
+      });
       sendJson(res, 200, { ok: true, code: code.formatted, message: "啟用碼已建立。" });
       return;
     }
@@ -114,6 +122,14 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
         created_by: currentEmail || "admin-web-tools",
       }, { onConflict: "email" });
       if (error) throw error;
+      await writeAdminAudit({
+        supabase,
+        actor: user,
+        req,
+        action: "admin_account.upsert",
+        targetEmail,
+        metadata: { hasNote: Boolean(note) },
+      });
       sendJson(res, 200, { ok: true, message: `已加入或恢復管理員：${targetEmail}` });
       return;
     }
@@ -127,6 +143,13 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
         ? await query.update({ is_active: false, note: `disabled by ${currentEmail}` }).eq("email", targetEmail)
         : await query.delete().eq("email", targetEmail);
       if (error) throw error;
+      await writeAdminAudit({
+        supabase,
+        actor: user,
+        req,
+        action: action === "disable-admin" ? "admin_account.disable" : "admin_account.delete",
+        targetEmail,
+      });
       sendJson(res, 200, {
         ok: true,
         message: action === "disable-admin" ? `已停用管理員：${targetEmail}` : `已刪除管理員：${targetEmail}`,

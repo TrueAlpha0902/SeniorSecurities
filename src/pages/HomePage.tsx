@@ -289,12 +289,12 @@ export function HomePage() {
           <GlassLinkButton to="/leaderboard" variant="secondary"><Trophy aria-hidden="true" size={19} /><span>{T.leaderboard}</span></GlassLinkButton>
         </div>
       </section>
-        </>
-      )}
 
-      <section className="cat-playground" aria-hidden="true">
+      <section className="cat-playground" aria-label="芙莉蓮的讀書與晚安動畫">
         <FrierenAnimation />
       </section>
+        </>
+      )}
     </div>
   );
 }

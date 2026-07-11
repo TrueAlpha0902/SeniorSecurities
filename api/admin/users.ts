@@ -7,7 +7,7 @@ interface AdminDataRow {
 }
 
 const DEFAULT_ADMIN_EMAILS = "true.alpha0902@gmail.com";
-const ONLINE_WINDOW_SECONDS = 120;
+const ONLINE_WINDOW_SECONDS = 90;
 type AdminClient = ReturnType<typeof getAdminClient>;
 
 function getEnv(name: string): string {
@@ -50,6 +50,7 @@ async function isDatabaseAdmin(supabase: AdminClient, email: string): Promise<bo
 function sendJson(res: ApiResponse, statusCode: number, payload: unknown): void {
   res.statusCode = statusCode;
   res.setHeader("Content-Type", "application/json; charset=utf-8");
+  res.setHeader("Cache-Control", "private, no-store, max-age=0");
   res.end(JSON.stringify(payload));
 }
 
@@ -123,6 +124,17 @@ function normalizeDate(value: unknown): string | null {
   return typeof value === "string" && value ? value : null;
 }
 
+function newestDate(...values: unknown[]): string | null {
+  let newest: { value: string; time: number } | null = null;
+  for (const value of values) {
+    const normalized = normalizeDate(value);
+    if (!normalized) continue;
+    const time = new Date(normalized).getTime();
+    if (!Number.isNaN(time) && (!newest || time > newest.time)) newest = { value: normalized, time };
+  }
+  return newest?.value || null;
+}
+
 async function safeSelect<T>(promise: PromiseLike<{ data: T | null; error: unknown }>, fallback: T): Promise<T> {
   const { data, error } = await promise;
   if (error) {
@@ -181,7 +193,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       safeSelect(
         supabase
           .from("user_answer_records")
-          .select("user_id, question_id")
+          .select("user_id, question_id, is_correct, answered_at")
           .in("user_id", userIds)
           .limit(50000),
         [],
@@ -189,7 +201,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       safeSelect(
         supabase
           .from("user_leaderboard_stats")
-          .select("user_id, total_practice_seconds")
+          .select("user_id, current_correct_streak, best_correct_streak, total_answered, total_correct, total_practice_seconds, updated_at")
           .in("user_id", userIds),
         [],
       ),
@@ -208,10 +220,16 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     const presenceByUser = toMapByUserId(presenceRows as AdminDataRow[]);
     const logRows = (logs || []) as AdminDataRow[];
     const practicedByUser = new Map<string, Set<string>>();
+    const lastAnswerByUser = new Map<string, string>();
     for (const answer of (answerRows || []) as AdminDataRow[]) {
       if (!answer.user_id) continue;
       if (!practicedByUser.has(answer.user_id)) practicedByUser.set(answer.user_id, new Set<string>());
       practicedByUser.get(answer.user_id)?.add(String(answer.question_id || ""));
+      const answeredAt = normalizeDate(answer.answered_at);
+      const current = lastAnswerByUser.get(answer.user_id);
+      if (answeredAt && (!current || new Date(answeredAt).getTime() > new Date(current).getTime())) {
+        lastAnswerByUser.set(answer.user_id, answeredAt);
+      }
     }
 
     const sourceCodeHashes = Array.from(new Set((entitlements as AdminDataRow[])
@@ -237,6 +255,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       const lastLog = lastLogByUser.get(user.id);
       const presence = presenceByUser.get(user.id);
       const lastSeenAt = normalizeDate(presence?.last_seen_at);
+      const leaderboard = leaderboardByUser.get(user.id);
       const sourceCodeHash = String(entitlement?.source_code_hash || "");
 
       return {
@@ -254,8 +273,13 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
         lastIp: lastLog?.ip_address || null,
         loginEventCount: userLogs.length,
         practicedQuestionCount: practicedByUser.get(user.id)?.size || 0,
-        totalPracticeSeconds: Number(leaderboardByUser.get(user.id)?.total_practice_seconds ?? 0),
+        totalPracticeSeconds: Number(leaderboard?.total_practice_seconds ?? 0),
+        totalAnswered: Number(leaderboard?.total_answered ?? 0),
+        totalCorrect: Number(leaderboard?.total_correct ?? 0),
+        currentCorrectStreak: Number(leaderboard?.current_correct_streak ?? 0),
+        bestCorrectStreak: Number(leaderboard?.best_correct_streak ?? 0),
         lastSeenAt,
+        lastActivityAt: newestDate(lastSeenAt, lastLog?.created_at, lastAnswerByUser.get(user.id), leaderboard?.updated_at, user.last_sign_in_at),
         isOnline: isOnline(lastSeenAt),
       };
     });

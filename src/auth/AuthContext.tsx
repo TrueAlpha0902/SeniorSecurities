@@ -248,8 +248,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let heartbeatInFlight = false;
     let lastHeartbeatAt = 0;
     const heartbeat = (force = false) => {
+      if (!navigator.onLine) return;
       const now = Date.now();
-      if (heartbeatInFlight || (!force && now - lastHeartbeatAt < 15_000)) return;
+      if (heartbeatInFlight || (!force && now - lastHeartbeatAt < 12_000)) return;
       heartbeatInFlight = true;
       lastHeartbeatAt = now;
       void sendPresenceHeartbeat(user.id).finally(() => {
@@ -262,7 +263,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (document.visibilityState === "visible") {
         heartbeat();
       }
-    }, 30_000);
+    }, 25_000);
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
@@ -272,11 +273,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
     window.addEventListener("focus", handleVisibilityChange);
+    window.addEventListener("online", handleVisibilityChange);
+    window.addEventListener("pageshow", handleVisibilityChange);
 
     return () => {
       window.clearInterval(heartbeatTimer);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("focus", handleVisibilityChange);
+      window.removeEventListener("online", handleVisibilityChange);
+      window.removeEventListener("pageshow", handleVisibilityChange);
     };
   }, [user?.id]);
 

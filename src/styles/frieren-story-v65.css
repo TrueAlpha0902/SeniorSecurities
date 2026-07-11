@@ -1,0 +1,324 @@
+.frieren-story-stage {
+  --frieren-story-duration: 22s;
+  position: relative;
+  width: 100%;
+  min-height: clamp(270px, 30vw, 410px);
+  overflow: hidden;
+  isolation: isolate;
+  background: transparent;
+  opacity: 0;
+  transition: opacity 320ms ease;
+  contain: layout paint;
+}
+
+.frieren-story-stage.is-ready {
+  opacity: 1;
+}
+
+.frieren-story-stage.is-paused *,
+.frieren-story-stage:not(.is-story-ready) * {
+  animation-play-state: paused !important;
+}
+
+.frieren-story-layer {
+  position: absolute;
+  z-index: 2;
+  bottom: 0;
+  margin: 0;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate3d(0, 0, 0);
+  transform-origin: 50% 100%;
+  backface-visibility: hidden;
+}
+
+.frieren-story-layer img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center bottom;
+  background: transparent;
+  image-rendering: auto;
+  user-select: none;
+}
+
+.frieren-story-study,
+.frieren-story-study-page,
+.frieren-story-glasses-mid,
+.frieren-story-tired {
+  left: max(-1%, calc(50% - 660px));
+  width: clamp(350px, 45vw, 590px);
+  height: 100%;
+}
+
+.frieren-story-stage.is-ready:not(.is-story-ready) .frieren-story-study {
+  opacity: 1;
+}
+
+.frieren-story-stage.is-story-ready .frieren-story-study {
+  animation: frieren-study-scene var(--frieren-story-duration) linear infinite;
+}
+
+.frieren-story-stage.is-story-ready .frieren-story-study-page {
+  animation: frieren-page-scene var(--frieren-story-duration) linear infinite;
+}
+
+.frieren-story-stage.is-story-ready .frieren-story-glasses-mid {
+  animation: frieren-glasses-scene var(--frieren-story-duration) linear infinite;
+}
+
+.frieren-story-stage.is-story-ready .frieren-story-tired {
+  animation: frieren-tired-scene var(--frieren-story-duration) linear infinite;
+}
+
+.frieren-story-walk {
+  z-index: 3;
+  left: 29%;
+  bottom: 0;
+  width: clamp(180px, 24vw, 310px);
+  height: 88%;
+}
+
+.frieren-story-stage.is-story-ready .frieren-story-walk {
+  animation: frieren-walk-across var(--frieren-story-duration) linear infinite;
+}
+
+.frieren-story-walk-cycle {
+  position: absolute;
+  inset: 0;
+  animation: frieren-walk-bob 360ms cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+.frieren-story-walk .walk-frame {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  animation: frieren-walk-frame 360ms steps(1, end) infinite;
+}
+
+.frieren-story-walk .walk-frame-two { animation-delay: 90ms; }
+.frieren-story-walk .walk-frame-three { animation-delay: 180ms; }
+.frieren-story-walk .walk-frame-four { animation-delay: 270ms; }
+
+.frieren-story-sleep {
+  z-index: 2;
+  right: max(-1.5%, calc(50% - 680px));
+  width: clamp(390px, 52vw, 680px);
+  height: 82%;
+}
+
+.frieren-story-stage.is-story-ready .frieren-story-sleep {
+  animation: frieren-sleep-scene var(--frieren-story-duration) linear infinite;
+}
+
+.frieren-story-sleep img {
+  transform-origin: 67% 55%;
+  animation: frieren-sleep-breathe 3.8s ease-in-out infinite;
+}
+
+.frieren-story-spark {
+  position: absolute;
+  z-index: 5;
+  left: 46%;
+  top: 47%;
+  width: 18px;
+  aspect-ratio: 1;
+  opacity: 0;
+  pointer-events: none;
+  background: linear-gradient(45deg, transparent 42%, #ffd980 43% 57%, transparent 58%),
+    linear-gradient(-45deg, transparent 42%, #fff5c9 43% 57%, transparent 58%);
+  filter: drop-shadow(0 0 7px rgba(255, 211, 112, 0.5));
+  animation: frieren-change-spark var(--frieren-story-duration) ease-in-out infinite;
+}
+
+.spark-two {
+  left: 51%;
+  top: 31%;
+  width: 12px;
+  animation-delay: -21.72s;
+}
+
+.spark-three {
+  left: 55%;
+  top: 58%;
+  width: 10px;
+  animation-delay: -21.43s;
+}
+
+.frieren-story-zzz {
+  position: absolute;
+  z-index: 5;
+  right: clamp(8%, 12vw, 17%);
+  top: 22%;
+  color: #8d83aa;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(18px, 2vw, 28px);
+  font-weight: 800;
+  line-height: 1;
+  opacity: 0;
+  pointer-events: none;
+  animation: frieren-dream-letter var(--frieren-story-duration) ease-out infinite;
+}
+
+.zzz-two {
+  right: clamp(6%, 9vw, 13%);
+  top: 17%;
+  font-size: clamp(15px, 1.65vw, 23px);
+  animation-delay: -21.25s;
+}
+
+.zzz-three {
+  right: clamp(4%, 6vw, 9%);
+  top: 13%;
+  font-size: clamp(12px, 1.35vw, 19px);
+  animation-delay: -20.5s;
+}
+
+@keyframes frieren-study-scene {
+  0%, 11% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+  14%, 17% { opacity: 0; transform: translate3d(0, -1px, 0) scale(1.002); }
+  20%, 23% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+  26%, 94% { opacity: 0; transform: translate3d(-1%, 0, 0) scale(0.995); }
+  98%, 100% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+
+@keyframes frieren-page-scene {
+  0%, 11%, 20%, 100% { opacity: 0; transform: translate3d(0, 1px, 0) scale(0.998); }
+  14%, 17% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+
+@keyframes frieren-glasses-scene {
+  0%, 21%, 32%, 100% { opacity: 0; transform: translate3d(1%, 1px, 0) scale(0.997); }
+  24%, 29% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+
+@keyframes frieren-tired-scene {
+  0%, 27% { opacity: 0; transform: translate3d(1%, 1px, 0) scale(0.995); }
+  31%, 42% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+  43.5%, 100% { opacity: 0; transform: translate3d(-4%, 1px, 0) scale(0.98); }
+}
+
+@keyframes frieren-walk-across {
+  0%, 42% { opacity: 0; transform: translate3d(-45%, 0, 0) scale(0.97); }
+  43.5% { opacity: 1; transform: translate3d(-38%, 0, 0) scale(1); }
+  66% { opacity: 1; transform: translate3d(142%, 0, 0) scale(1); }
+  67.5%, 100% { opacity: 0; transform: translate3d(158%, 0, 0) scale(0.98); }
+}
+
+@keyframes frieren-sleep-scene {
+  0%, 66% { opacity: 0; transform: translate3d(2%, 4px, 0) scale(0.985); }
+  68%, 93% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+  98%, 100% { opacity: 0; transform: translate3d(1%, 2px, 0) scale(0.992); }
+}
+
+@keyframes frieren-walk-frame {
+  0%, 24.999% { opacity: 1; }
+  25%, 100% { opacity: 0; }
+}
+
+@keyframes frieren-walk-bob {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(-0.25deg); }
+  50% { transform: translate3d(0, -5px, 0) rotate(0.25deg); }
+}
+
+@keyframes frieren-sleep-breathe {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(0, -1.5px, 0) scale(1.004, 1.008); }
+}
+
+@keyframes frieren-change-spark {
+  0%, 38%, 50%, 100% {
+    opacity: 0;
+    transform: translate3d(-12px, 8px, 0) scale(0.2) rotate(0deg);
+  }
+  43% { opacity: 0.96; }
+  47% {
+    opacity: 0.48;
+    transform: translate3d(18px, -22px, 0) scale(1.4) rotate(135deg);
+  }
+}
+
+@keyframes frieren-dream-letter {
+  0%, 68%, 95%, 100% {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0) scale(0.72) rotate(-9deg);
+  }
+  72% { opacity: 0.82; }
+  87% {
+    opacity: 0.38;
+    transform: translate3d(14px, -20px, 0) scale(1.08) rotate(5deg);
+  }
+}
+
+@media (max-width: 760px) {
+  .frieren-story-stage { min-height: clamp(235px, 63vw, 330px); }
+
+  .frieren-story-study,
+  .frieren-story-study-page,
+  .frieren-story-glasses-mid,
+  .frieren-story-tired {
+    left: -7%;
+    width: clamp(300px, 65vw, 450px);
+  }
+
+  .frieren-story-walk {
+    left: 30%;
+    width: clamp(150px, 34vw, 230px);
+    height: 90%;
+  }
+
+  .frieren-story-sleep {
+    right: -7%;
+    width: clamp(330px, 72vw, 500px);
+    height: 84%;
+  }
+}
+
+@media (max-width: 480px) {
+  .frieren-story-stage { min-height: 225px; }
+
+  .frieren-story-study,
+  .frieren-story-study-page,
+  .frieren-story-glasses-mid,
+  .frieren-story-tired {
+    left: -12%;
+    width: 72vw;
+  }
+
+  .frieren-story-walk {
+    left: 31%;
+    width: 37vw;
+    height: 92%;
+  }
+
+  .frieren-story-sleep {
+    right: -12%;
+    width: 80vw;
+    height: 86%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .frieren-story-stage *,
+  .frieren-story-stage::before,
+  .frieren-story-stage::after {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .frieren-story-stage.is-ready .frieren-story-study {
+    opacity: 1;
+    transform: none;
+  }
+
+  .frieren-story-study-page,
+  .frieren-story-glasses-mid,
+  .frieren-story-tired,
+  .frieren-story-walk,
+  .frieren-story-sleep,
+  .frieren-story-spark,
+  .frieren-story-zzz {
+    display: none;
+  }
+}

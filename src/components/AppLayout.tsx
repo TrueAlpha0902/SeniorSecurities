@@ -1,8 +1,9 @@
-import { ArrowLeft, Home, Settings, UserRound } from "lucide-react";
+import { ArrowLeft, Calculator, Home, Settings, UserRound } from "lucide-react";
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { SettingsPanel } from "./SettingsPanel";
+import { CalculatorModal } from "./CalculatorModal";
 import { useAuth } from "../auth/AuthContext";
 
 type AppLayoutProps = {
@@ -13,6 +14,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [calculatorOpen, setCalculatorOpen] = useState(false);
   const isHome = location.pathname === "/";
   const { isConfigured, user } = useAuth();
   const isImageQuiz = location.pathname.startsWith("/image-quiz") || location.pathname === "/trial";
@@ -55,6 +57,15 @@ export function AppLayout({ children }: AppLayoutProps) {
           <button
             type="button"
             className="nav-icon-button"
+            onClick={() => setCalculatorOpen(true)}
+            aria-label="工程財務計算機"
+            title="工程財務計算機"
+          >
+            <Calculator aria-hidden="true" size={22} />
+          </button>
+          <button
+            type="button"
+            className="nav-icon-button"
             onClick={() => setSettingsOpen(true)}
             aria-label={"\u8a2d\u5b9a"}
             title={"\u8a2d\u5b9a"}
@@ -79,6 +90,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       </header>
       <main className={`glass-shell ${isImageQuiz ? "image-shell" : ""}`}>{children}</main>
       <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <CalculatorModal open={calculatorOpen} onClose={() => setCalculatorOpen(false)} />
     </div>
   );
 }

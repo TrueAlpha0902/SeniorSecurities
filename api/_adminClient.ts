@@ -108,3 +108,31 @@ export function sendError(res: ApiResponse, error: unknown): void {
   const message = error instanceof Error ? error.message : "未知錯誤。";
   sendJson(res, statusCode, { error: message });
 }
+
+function requestIpAddress(req: ApiRequest): string | null {
+  const forwarded = String(req.headers?.["x-forwarded-for"] || "").split(",")[0]?.trim();
+  return forwarded || req.socket?.remoteAddress || null;
+}
+
+export async function writeAdminAudit(args: {
+  supabase: ReturnType<typeof getAdminClient>;
+  actor: { id: string; email?: string | null };
+  req: ApiRequest;
+  action: string;
+  targetUserId?: string | null;
+  targetEmail?: string | null;
+  metadata?: Record<string, unknown>;
+}): Promise<void> {
+  const { error } = await args.supabase.from("admin_audit_events").insert({
+    actor_user_id: args.actor.id,
+    actor_email: args.actor.email?.trim().toLowerCase() || args.actor.id,
+    target_user_id: args.targetUserId || null,
+    target_email: args.targetEmail?.trim().toLowerCase() || null,
+    action: args.action.slice(0, 120),
+    metadata: args.metadata || {},
+    ip_address: requestIpAddress(args.req),
+  });
+  if (error) {
+    console.warn("Failed to write admin audit event:", error.message);
+  }
+}

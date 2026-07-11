@@ -37,18 +37,6 @@ export default tseslint.config(
     }
   },
   {
-    files: ["public/calculator-restore.js"],
-    languageOptions: {
-      globals: globals.browser
-    },
-    rules: {
-      "@typescript-eslint/no-unused-vars": ["error", {
-        caughtErrors: "all",
-        caughtErrorsIgnorePattern: "^err$"
-      }]
-    }
-  },
-  {
     files: ["src/auth/AuthContext.tsx"],
     rules: {
       "react-refresh/only-export-components": "off"

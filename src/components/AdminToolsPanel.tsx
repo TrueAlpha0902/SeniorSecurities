@@ -1,4 +1,4 @@
-import { Clipboard, KeyRound, RefreshCcw, Save, ShieldCheck, Trash2, UsersRound } from "lucide-react";
+import { Clipboard, KeyRound, RefreshCcw, Save, ShieldCheck, Trash2, UsersRound, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type {
   ImageQuizBank,
@@ -74,18 +74,31 @@ async function adminRequest(accessToken: string, url: string, init: RequestInit 
   return payload;
 }
 
-export function AdminToolsPanel({ accessToken }: { accessToken: string }) {
+export function AdminToolsPanel({ accessToken, onClose }: { accessToken: string; onClose?: () => void }) {
   const [activeTool, setActiveTool] = useState<ToolId>("activation");
 
   return (
-    <GlassCard className="admin-tools-card" as="section">
+    <GlassCard
+      className={`admin-tools-card${onClose ? " is-modal" : ""}`}
+      as="section"
+      role={onClose ? "dialog" : undefined}
+      aria-modal={onClose ? true : undefined}
+      aria-labelledby="admin-tools-title"
+    >
       <div className="admin-tools-header">
         <div>
           <p className="eyebrow">Unified Admin App</p>
-          <h2>管理工具工作台</h2>
+          <h2 id="admin-tools-title">管理工具工作台</h2>
           <p>原本三個 Windows EXE 已整合為同一個線上管理介面，所有已授權管理員皆可使用。</p>
         </div>
-        <span className="admin-tools-security"><ShieldCheck size={18} aria-hidden="true" />伺服器端權限保護</span>
+        <div className="admin-tools-header-actions">
+          <span className="admin-tools-security"><ShieldCheck size={18} aria-hidden="true" />伺服器端權限保護</span>
+          {onClose ? (
+            <button type="button" className="admin-modal-close" onClick={onClose} aria-label="關閉管理工具" autoFocus>
+              <X size={22} aria-hidden="true" />
+            </button>
+          ) : null}
+        </div>
       </div>
 
       <div className="admin-tools-tabs" role="tablist" aria-label="管理工具">

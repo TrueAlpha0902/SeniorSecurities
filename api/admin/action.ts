@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { getErrorStatusCode, HttpError, type ApiRequest, type ApiResponse } from "../_adminClient.js";
+import { getErrorStatusCode, HttpError, type ApiRequest, type ApiResponse, writeAdminAudit } from "../_adminClient.js";
 
 const DEFAULT_ADMIN_EMAILS = "true.alpha0902@gmail.com";
 const DEFAULT_PASSWORD_RESET_URL = "https://senior-securities.vercel.app/reset-password";
@@ -190,20 +190,32 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
   }
 
   try {
-    const { supabase } = await requireAdminUser(req);
+    const { supabase, user } = await requireAdminUser(req);
     const body = parseBody(req);
     const action = String(body.action || "");
     const email = String(body.email || "").trim();
+    const deviceId = String(body.deviceId || "").trim();
     const userId = body.userId ? String(body.userId) : email ? await findUserIdByEmail(supabase, email) : "";
 
     if (!userId) throw new Error("缺少 userId 或 email。 ");
 
     if (action === "revoke") {
-      const { error: entitlementError } = await supabase
+      const { data: updatedEntitlements, error: entitlementError } = await supabase
         .from("user_entitlements")
         .update({ status: "revoked" })
-        .eq("user_id", userId);
+        .eq("user_id", userId)
+        .select("user_id");
       if (entitlementError) throw entitlementError;
+      if (!updatedEntitlements?.length) throw new HttpError("找不到可取消的有效授權。", 404);
+
+      await writeAdminAudit({
+        supabase,
+        actor: user,
+        req,
+        action: "user.entitlement.revoke",
+        targetUserId: userId,
+        targetEmail: email,
+      });
 
       sendJson(res, 200, { ok: true, message: "已取消完整題庫權限。" });
       return;
@@ -219,7 +231,65 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       });
       if (upsertError) throw upsertError;
 
+      await writeAdminAudit({
+        supabase,
+        actor: user,
+        req,
+        action: "user.entitlement.restore",
+        targetUserId: userId,
+        targetEmail: email,
+      });
+
       sendJson(res, 200, { ok: true, message: "已恢復永久完整題庫權限。" });
+      return;
+    }
+
+    if (action === "reset-devices") {
+      const { data: revokedDevices, error: resetDevicesError } = await supabase
+        .from("user_devices")
+        .update({ revoked_at: new Date().toISOString() })
+        .eq("user_id", userId)
+        .is("revoked_at", null)
+        .select("id");
+      if (resetDevicesError) throw resetDevicesError;
+
+      await writeAdminAudit({
+        supabase,
+        actor: user,
+        req,
+        action: "user.devices.archive_all",
+        targetUserId: userId,
+        targetEmail: email,
+        metadata: { affectedDevices: revokedDevices?.length || 0 },
+      });
+
+      sendJson(res, 200, { ok: true, message: `已封存 ${revokedDevices?.length || 0} 台有效裝置；這不會強制登出現有工作階段。` });
+      return;
+    }
+
+    if (action === "revoke-device") {
+      if (!deviceId) throw new HttpError("缺少 deviceId。", 400);
+      const { data: revokedDevice, error: revokeDeviceError } = await supabase
+        .from("user_devices")
+        .update({ revoked_at: new Date().toISOString() })
+        .eq("id", deviceId)
+        .eq("user_id", userId)
+        .is("revoked_at", null)
+        .select("id");
+      if (revokeDeviceError) throw revokeDeviceError;
+      if (!revokedDevice?.length) throw new HttpError("找不到這台有效裝置，可能已經封存。", 404);
+
+      await writeAdminAudit({
+        supabase,
+        actor: user,
+        req,
+        action: "user.device.archive",
+        targetUserId: userId,
+        targetEmail: email,
+        metadata: { deviceId },
+      });
+
+      sendJson(res, 200, { ok: true, message: "已封存指定裝置紀錄；這不會強制登出現有工作階段。" });
       return;
     }
 
@@ -232,6 +302,15 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       ]);
       if (statsError) throw statsError;
       if (profileError) throw profileError;
+
+      await writeAdminAudit({
+        supabase,
+        actor: user,
+        req,
+        action: "leaderboard.entry.delete",
+        targetUserId: userId,
+        targetEmail: email,
+      });
 
       sendJson(res, 200, { ok: true, message: "已刪除該使用者的排行榜紀錄。" });
       return;
@@ -262,6 +341,14 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       }
 
       await recordPasswordResetRequest(supabase, { email: normalizedEmail, status: "sent" });
+      await writeAdminAudit({
+        supabase,
+        actor: user,
+        req,
+        action: "user.password_reset.send",
+        targetUserId: userId,
+        targetEmail: normalizedEmail,
+      });
       sendJson(res, 200, { ok: true, message: "已寄出重設密碼信。" });
       return;
     }

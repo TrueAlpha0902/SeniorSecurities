@@ -1,17 +1,24 @@
-import { type PointerEvent, useEffect, useMemo, useRef, useState } from "react";
-import { Calculator, GripHorizontal, Landmark, Percent, Sigma, X } from "lucide-react";
-import { GlassButton } from "./GlassButton";
-import { GlassCard } from "./GlassCard";
-import "../styles/calculator-finance-v46.css";
+import { type KeyboardEvent, type PointerEvent, useEffect, useRef, useState } from "react";
+import {
+  Calculator,
+  Delete,
+  GripHorizontal,
+  Landmark,
+  RotateCcw,
+  Sigma,
+  Sparkles,
+  X,
+} from "lucide-react";
+import "../styles/calculator-pro-v65.css";
 
 const T = {
-  title: "計算機",
-  description: "可計算現值、終值、殖利率，也可解簡單未知數 x。",
+  title: "工程財務計算機",
+  description: "一般運算、方程式與常用財務模型，所有算式都在裝置端安全計算。",
   close: "關閉計算機",
-  clear: "清除",
-  delete: "刪除",
+  clear: "AC",
+  delete: "刪除一字元",
   calculate: "=",
-  error: "算式格式不正確",
+  invalidExpression: "算式格式不正確，請檢查括號與運算符號。",
 };
 
 type CalculatorModalProps = {
@@ -24,157 +31,366 @@ type Position = {
   y: number;
 };
 
-type Mode = "basic" | "finance" | "solve";
-type FinanceMode = "pv" | "fv" | "yield";
-
-type FinanceFields = {
-  pv: string;
-  fv: string;
-  rate: string;
-  periods: string;
-};
+type Mode = "basic" | "solve" | "finance";
+type SolveMode = "single" | "system";
+type FinanceMode = "yield" | "capm" | "wacc";
 
 type FractionResult = {
   numerator: number;
   denominator: number;
 };
 
-const FUNCTION_KEYS = [
-  { label: "√", value: "sqrt(" },
-  { label: "x²", value: "^2" },
-  { label: "xʸ", value: "^" },
-  { label: "x", value: "x" },
-  { label: "(", value: "(" },
-  { label: ")", value: ")" },
-];
+type CalculationSummary = {
+  label: string;
+  value: string;
+  detail: string;
+};
 
-const KEY_ROWS = [
-  ["清除", "刪除", "%", "÷"],
-  ["7", "8", "9", "×"],
-  ["4", "5", "6", "-"],
-  ["1", "2", "3", "+"],
-  ["0", ".", "="],
+type YieldFields = {
+  faceValue: string;
+  marketPrice: string;
+  annualCoupon: string;
+  years: string;
+};
+
+type CapmFields = {
+  riskFreeRate: string;
+  beta: string;
+  marketReturn: string;
+};
+
+type WaccFields = {
+  equityValue: string;
+  debtValue: string;
+  costOfEquity: string;
+  costOfDebt: string;
+  taxRate: string;
+};
+
+const FUNCTION_KEYS = [
+  { label: "√", value: "sqrt(", title: "平方根" },
+  { label: "x²", value: "^2", title: "平方" },
+  { label: "xʸ", value: "^", title: "次方" },
+  { label: "π", value: "π", title: "圓周率" },
+  { label: "(", value: "(", title: "左括號" },
+  { label: ")", value: ")", title: "右括號" },
 ] as const;
+
+const KEYPAD_KEYS = [
+  { label: "AC", value: "clear", kind: "command" },
+  { label: "⌫", value: "delete", kind: "command", ariaLabel: T.delete },
+  { label: "%", value: "%", kind: "operator" },
+  { label: "÷", value: "/", kind: "operator" },
+  { label: "7", value: "7" },
+  { label: "8", value: "8" },
+  { label: "9", value: "9" },
+  { label: "×", value: "*", kind: "operator" },
+  { label: "4", value: "4" },
+  { label: "5", value: "5" },
+  { label: "6", value: "6" },
+  { label: "−", value: "-", kind: "operator" },
+  { label: "1", value: "1" },
+  { label: "2", value: "2" },
+  { label: "3", value: "3" },
+  { label: "+", value: "+", kind: "operator" },
+  { label: "0", value: "0", kind: "zero" },
+  { label: ".", value: "." },
+  { label: "=", value: "calculate", kind: "equals" },
+] as const;
+
+const DEFAULT_YIELD_FIELDS: YieldFields = {
+  faceValue: "1000",
+  marketPrice: "950",
+  annualCoupon: "50",
+  years: "5",
+};
+
+const DEFAULT_CAPM_FIELDS: CapmFields = {
+  riskFreeRate: "2",
+  beta: "1.1",
+  marketReturn: "8",
+};
+
+const DEFAULT_WACC_FIELDS: WaccFields = {
+  equityValue: "600",
+  debtValue: "400",
+  costOfEquity: "10",
+  costOfDebt: "5",
+  taxRate: "20",
+};
 
 export function CalculatorModal({ open, onClose }: CalculatorModalProps) {
   const [mode, setMode] = useState<Mode>("basic");
   const [expression, setExpression] = useState("");
-  const [result, setResult] = useState("");
+  const [basicResult, setBasicResult] = useState("");
   const [fractionResult, setFractionResult] = useState<FractionResult | null>(null);
-  const [solveEquation, setSolveEquation] = useState("2x + 3 = 11");
-  const [solveResult, setSolveResult] = useState("");
-  const [financeMode, setFinanceMode] = useState<FinanceMode>("pv");
-  const [financeFields, setFinanceFields] = useState<FinanceFields>({ pv: "", fv: "", rate: "", periods: "" });
-  const [financeResult, setFinanceResult] = useState("");
+  const [solveMode, setSolveMode] = useState<SolveMode>("single");
+  const [singleEquation, setSingleEquation] = useState("2x + 3 = 11");
+  const [systemEquations, setSystemEquations] = useState<[string, string]>(["2x + y = 7", "x - y = 2"]);
+  const [solveSummary, setSolveSummary] = useState<CalculationSummary | null>(null);
+  const [financeMode, setFinanceMode] = useState<FinanceMode>("yield");
+  const [yieldFields, setYieldFields] = useState<YieldFields>(DEFAULT_YIELD_FIELDS);
+  const [capmFields, setCapmFields] = useState<CapmFields>(DEFAULT_CAPM_FIELDS);
+  const [waccFields, setWaccFields] = useState<WaccFields>(DEFAULT_WACC_FIELDS);
+  const [financeSummary, setFinanceSummary] = useState<CalculationSummary | null>(null);
   const [error, setError] = useState("");
   const [position, setPosition] = useState<Position>(() => ({ x: 24, y: 92 }));
-  const dragStartRef = useRef<{ pointerId: number; startX: number; startY: number; originX: number; originY: number } | null>(null);
-
-  const financeFormula = useMemo(() => {
-    if (financeMode === "pv") {
-      return { title: "現值 PV", label: "PV", numerator: "FV", denominator: "(1 + r)^n", suffix: "" };
-    }
-    if (financeMode === "fv") {
-      return { title: "終值 FV", label: "FV", numerator: "PV × (1 + r)^n", denominator: "", suffix: "" };
-    }
-    return { title: "殖利率 r", label: "r", numerator: "FV", denominator: "PV", suffix: "^(1/n) - 1" };
-  }, [financeMode]);
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+  const expressionInputRef = useRef<HTMLInputElement | null>(null);
+  const dragStartRef = useRef<{
+    pointerId: number;
+    startX: number;
+    startY: number;
+    originX: number;
+    originY: number;
+  } | null>(null);
 
   useEffect(() => {
     if (!open) return;
-    setPosition((current) => clampPosition(current));
+
+    const keepDialogOnScreen = () => {
+      setPosition((current) => clampPosition(current, dialogRef.current));
+    };
+
+    keepDialogOnScreen();
+    window.addEventListener("resize", keepDialogOnScreen);
+    return () => window.removeEventListener("resize", keepDialogOnScreen);
   }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    function calculateFromKeyboard(): void {
+      if (!expression.trim()) {
+        setBasicResult("");
+        setFractionResult(null);
+        setError("");
+        return;
+      }
+
+      try {
+        const calculated = evaluateCalculatorExpression(expression);
+        setBasicResult(formatCalculatorResult(calculated));
+        setFractionResult(toReasonableFraction(calculated));
+        setError("");
+        successFeedback();
+      } catch {
+        setBasicResult("");
+        setFractionResult(null);
+        setError(T.invalidExpression);
+      }
+    }
+
+    function handleGlobalKeyDown(event: globalThis.KeyboardEvent): void {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onClose();
+        return;
+      }
+
+      if (mode !== "basic" || event.ctrlKey || event.metaKey || event.altKey) return;
+      const target = event.target as HTMLElement | null;
+      const isExpressionInput = target === expressionInputRef.current;
+
+      if (isExpressionInput) return;
+
+      if (target?.matches("input, textarea, [contenteditable='true']")) return;
+
+      if (event.key === "Enter" || event.key === "=") {
+        event.preventDefault();
+        calculateFromKeyboard();
+      } else if (event.key === "Backspace") {
+        event.preventDefault();
+        setExpression((current) => current.slice(0, -1));
+        setBasicResult("");
+        setFractionResult(null);
+        setError("");
+        softFeedback();
+      } else if (event.key === "Delete") {
+        event.preventDefault();
+        setExpression("");
+        setBasicResult("");
+        setFractionResult(null);
+        setError("");
+        softFeedback();
+      } else if (/^[0-9.+\-*/%^()]$/.test(event.key)) {
+        event.preventDefault();
+        setExpression((current) => `${current}${event.key}`.slice(0, 160));
+        setBasicResult("");
+        setFractionResult(null);
+        setError("");
+        softFeedback();
+      }
+    }
+
+    window.addEventListener("keydown", handleGlobalKeyDown);
+    return () => window.removeEventListener("keydown", handleGlobalKeyDown);
+  }, [expression, mode, onClose, open]);
+
+  useEffect(() => {
+    if (open && mode === "basic") {
+      window.requestAnimationFrame(() => expressionInputRef.current?.focus({ preventScroll: true }));
+    }
+  }, [mode, open]);
 
   if (!open) return null;
 
   function switchMode(nextMode: Mode): void {
     setMode(nextMode);
     setError("");
+    softFeedback();
   }
 
   function appendValue(value: string): void {
-    setExpression((current) => current + value);
-    setError("");
-  }
-
-  function handleDelete(): void {
-    setExpression((current) => current.slice(0, -1));
-    setError("");
-  }
-
-  function handleClear(): void {
-    setExpression("");
-    setResult("");
+    setExpression((current) => `${current}${value}`.slice(0, 160));
+    setBasicResult("");
     setFractionResult(null);
-    setSolveResult("");
-    setFinanceResult("");
     setError("");
+    softFeedback();
   }
 
-  function handleCalculate(): void {
+  function deleteLastCharacter(): void {
+    setExpression((current) => current.slice(0, -1));
+    setBasicResult("");
+    setFractionResult(null);
+    setError("");
+    softFeedback();
+  }
+
+  function clearBasicExpression(): void {
+    setExpression("");
+    setBasicResult("");
+    setFractionResult(null);
+    setError("");
+    softFeedback();
+  }
+
+  function calculateBasicExpression(): void {
     if (!expression.trim()) {
-      setResult("");
-      setFractionResult(null);
-      setError("");
+      clearBasicExpression();
       return;
     }
 
     try {
       const calculated = evaluateCalculatorExpression(expression);
-      setResult(formatCalculatorResult(calculated));
+      setBasicResult(formatCalculatorResult(calculated));
       setFractionResult(toReasonableFraction(calculated));
       setError("");
+      successFeedback();
     } catch {
-      setResult("");
+      setBasicResult("");
       setFractionResult(null);
-      setError(T.error);
+      setError(T.invalidExpression);
     }
   }
 
-  function handleFinanceCalculate(): void {
-    setError("");
-    setFinanceResult("");
-
-    try {
-      const pv = parseOptionalNumber(financeFields.pv);
-      const fv = parseOptionalNumber(financeFields.fv);
-      const rate = parseOptionalNumber(financeFields.rate);
-      const periods = parseOptionalNumber(financeFields.periods);
-
-      if (financeMode === "pv") {
-        if (fv === null || rate === null || periods === null) throw new Error("missing");
-        const value = fv / Math.pow(1 + rate / 100, periods);
-        setFinanceResult(`PV = ${formatMoneyLike(value)}`);
-        return;
-      }
-
-      if (financeMode === "fv") {
-        if (pv === null || rate === null || periods === null) throw new Error("missing");
-        const value = pv * Math.pow(1 + rate / 100, periods);
-        setFinanceResult(`FV = ${formatMoneyLike(value)}`);
-        return;
-      }
-
-      if (pv === null || fv === null || periods === null || pv <= 0 || fv <= 0 || periods <= 0) {
-        throw new Error("missing");
-      }
-      const y = (Math.pow(fv / pv, 1 / periods) - 1) * 100;
-      setFinanceResult(`殖利率 = ${formatCalculatorResult(y)}%`);
-    } catch {
-      setError("請確認欄位皆已輸入，且數值大於 0。");
+  function handleExpressionKeyDown(event: KeyboardEvent<HTMLInputElement>): void {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      calculateBasicExpression();
     }
   }
 
-  function handleSolveX(): void {
+  function handleKeypadAction(value: string): void {
+    if (value === "clear") {
+      clearBasicExpression();
+    } else if (value === "delete") {
+      deleteLastCharacter();
+    } else if (value === "calculate") {
+      calculateBasicExpression();
+    } else {
+      appendValue(value);
+    }
+  }
+
+  function calculateEquation(): void {
     setError("");
-    setSolveResult("");
+    setSolveSummary(null);
 
     try {
-      const solved = solveEquationForX(solveEquation);
-      setSolveResult(`x = ${formatCalculatorResult(solved)}`);
-    } catch {
-      setError("目前可解簡單一元方程式，例如 2x + 3 = 11、100/(1+x)^2 = 90。");
+      if (solveMode === "single") {
+        const solved = solveEquationForX(singleEquation);
+        const residual = equationResidual(singleEquation, { x: solved });
+        setSolveSummary({
+          label: "一元方程式解",
+          value: `x = ${formatCalculatorResult(solved)}`,
+          detail: `代回原式的誤差 ${formatResidual(residual)}`,
+        });
+      } else {
+        const solved = solveLinearSystem(systemEquations[0], systemEquations[1]);
+        setSolveSummary({
+          label: "二元聯立方程式解",
+          value: `x = ${formatCalculatorResult(solved.x)} / y = ${formatCalculatorResult(solved.y)}`,
+          detail: `兩式代回誤差皆小於 ${formatResidual(solved.maxResidual)}`,
+        });
+      }
+      successFeedback();
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : "目前無法解出這組方程式。");
     }
+  }
+
+  function calculateFinance(): void {
+    setError("");
+    setFinanceSummary(null);
+
+    try {
+      if (financeMode === "yield") {
+        const faceValue = requirePositiveNumber(yieldFields.faceValue, "票面金額");
+        const marketPrice = requirePositiveNumber(yieldFields.marketPrice, "市價");
+        const annualCoupon = requireNonNegativeNumber(yieldFields.annualCoupon, "年息");
+        const years = requirePositiveNumber(yieldFields.years, "剩餘年期");
+        const approximateYield = (
+          (annualCoupon + (faceValue - marketPrice) / years)
+          / ((faceValue + marketPrice) / 2)
+        ) * 100;
+        const currentYield = (annualCoupon / marketPrice) * 100;
+        setFinanceSummary({
+          label: "近似到期殖利率（YTM）",
+          value: formatPercent(approximateYield),
+          detail: `當期殖利率 ${formatPercent(currentYield)} · 此為年付息債券近似值`,
+        });
+      } else if (financeMode === "capm") {
+        const riskFreeRate = requireNumber(capmFields.riskFreeRate, "無風險利率");
+        const beta = requireNumber(capmFields.beta, "Beta");
+        const marketReturn = requireNumber(capmFields.marketReturn, "市場報酬率");
+        const marketRiskPremium = marketReturn - riskFreeRate;
+        const expectedReturn = riskFreeRate + beta * marketRiskPremium;
+        setFinanceSummary({
+          label: "CAPM 必要報酬率",
+          value: formatPercent(expectedReturn),
+          detail: `市場風險溢酬 ${formatPercent(marketRiskPremium)} · β ${formatCalculatorResult(beta)}`,
+        });
+      } else {
+        const equityValue = requireNonNegativeNumber(waccFields.equityValue, "權益市值");
+        const debtValue = requireNonNegativeNumber(waccFields.debtValue, "負債市值");
+        const costOfEquity = requireNumber(waccFields.costOfEquity, "權益成本");
+        const costOfDebt = requireNumber(waccFields.costOfDebt, "負債成本");
+        const taxRate = requireRate(waccFields.taxRate, "稅率");
+        const capital = equityValue + debtValue;
+        if (capital <= 0) throw new Error("權益市值與負債市值不可同時為 0。");
+        const equityWeight = equityValue / capital;
+        const debtWeight = debtValue / capital;
+        const wacc = equityWeight * costOfEquity + debtWeight * costOfDebt * (1 - taxRate / 100);
+        setFinanceSummary({
+          label: "加權平均資金成本（WACC）",
+          value: formatPercent(wacc),
+          detail: `權益權重 ${formatPercent(equityWeight * 100)} · 負債權重 ${formatPercent(debtWeight * 100)}`,
+        });
+      }
+      successFeedback();
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : "請檢查輸入欄位。");
+    }
+  }
+
+  function resetFinanceExample(): void {
+    if (financeMode === "yield") setYieldFields(DEFAULT_YIELD_FIELDS);
+    if (financeMode === "capm") setCapmFields(DEFAULT_CAPM_FIELDS);
+    if (financeMode === "wacc") setWaccFields(DEFAULT_WACC_FIELDS);
+    setFinanceSummary(null);
+    setError("");
+    softFeedback();
   }
 
   function handleDragStart(event: PointerEvent<HTMLDivElement>): void {
@@ -196,230 +412,435 @@ export function CalculatorModal({ open, onClose }: CalculatorModalProps) {
     setPosition(clampPosition({
       x: dragStart.originX + event.clientX - dragStart.startX,
       y: dragStart.originY + event.clientY - dragStart.startY,
-    }));
+    }, dialogRef.current));
   }
 
   function handleDragEnd(event: PointerEvent<HTMLDivElement>): void {
     const dragStart = dragStartRef.current;
     if (!dragStart || dragStart.pointerId !== event.pointerId) return;
     dragStartRef.current = null;
-    event.currentTarget.releasePointerCapture(event.pointerId);
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
   }
 
   return (
-    <GlassCard
-      className="calculator-floating-dialog calculator-finance-dialog"
-      as="div"
+    <div
+      ref={dialogRef}
+      className="glass-card calculator-floating-dialog calculator-pro-dialog"
       role="dialog"
       aria-label={T.title}
-      style={{ transform: `translate(${position.x}px, ${position.y}px)` }}
+      aria-modal="false"
+      style={{ transform: `translate3d(${position.x}px, ${position.y}px, 0)` }}
     >
       <div
-        className="calculator-drag-header"
+        className="calculator-drag-header calculator-pro-header"
         onPointerDown={handleDragStart}
         onPointerMove={handleDragMove}
         onPointerUp={handleDragEnd}
         onPointerCancel={handleDragEnd}
       >
-        <div>
-          <p className="eyebrow">Calculator</p>
-          <h2>{T.title}</h2>
-          <p>{T.description}</p>
+        <div className="calculator-pro-heading">
+          <span className="calculator-pro-mark" aria-hidden="true"><Calculator size={20} /></span>
+          <div>
+            <p className="calculator-pro-eyebrow">FINANCE CALCULATOR <span>PRO</span></p>
+            <h2>{T.title}</h2>
+            <p>{T.description}</p>
+          </div>
         </div>
         <div className="calculator-header-actions">
-          <GripHorizontal aria-hidden="true" size={22} />
-          <button type="button" className="nav-icon-button" aria-label={T.close} title={T.close} onClick={onClose}>
+          <GripHorizontal className="calculator-drag-icon" aria-hidden="true" size={22} />
+          <button type="button" className="calculator-close-button" aria-label={T.close} title={T.close} onClick={onClose}>
             <X aria-hidden="true" size={20} />
           </button>
         </div>
       </div>
 
-      <div className="calculator-mode-tabs" aria-label="計算機模式">
-        <button type="button" className={mode === "basic" ? "active" : ""} onClick={() => switchMode("basic")}>
-          <Calculator size={16} />一般
-        </button>
-        <button type="button" className={mode === "finance" ? "active" : ""} onClick={() => switchMode("finance")}>
-          <Landmark size={16} />財務
-        </button>
-        <button type="button" className={mode === "solve" ? "active" : ""} onClick={() => switchMode("solve")}>
-          <Sigma size={16} />解 x
-        </button>
-      </div>
+      <div className="calculator-pro-body">
+        <div className="calculator-mode-tabs" aria-label="計算機模式">
+          <ModeButton active={mode === "basic"} onClick={() => switchMode("basic")} icon={<Calculator size={17} />} label="工程運算" />
+          <ModeButton active={mode === "solve"} onClick={() => switchMode("solve")} icon={<Sigma size={17} />} label="解方程式" />
+          <ModeButton active={mode === "finance"} onClick={() => switchMode("finance")} icon={<Landmark size={17} />} label="財務公式" />
+        </div>
 
-      {mode === "basic" ? (
-        <>
-          <div className="calculator-display calculator-natural-display" aria-live="polite">
-            <div className="calculator-expression">{expression || "0"}</div>
-            <div className="calculator-output">
-              {error || (result ? <CalculatorResult value={result} fraction={fractionResult} /> : " ")}
+        {mode === "basic" ? (
+          <section className="calculator-mode-panel" aria-label="工程運算">
+            <div className={`calculator-display calculator-natural-display${error ? " has-error" : ""}`} aria-live="polite">
+              <label className="sr-only" htmlFor="calculator-expression-input">輸入算式</label>
+              <input
+                id="calculator-expression-input"
+                ref={expressionInputRef}
+                className="calculator-expression-input"
+                value={expression}
+                onChange={(event) => {
+                  setExpression(event.target.value.slice(0, 160));
+                  setBasicResult("");
+                  setFractionResult(null);
+                  setError("");
+                }}
+                onKeyDown={handleExpressionKeyDown}
+                placeholder="例如：(1250 × 1.08) + √144"
+                autoComplete="off"
+                spellCheck="false"
+                inputMode="text"
+              />
+              <div className="calculator-output">
+                {error ? <span className="calculator-error-text">{error}</span> : null}
+                {!error && basicResult ? <CalculatorResult value={basicResult} fraction={fractionResult} /> : null}
+                {!error && !basicResult ? <span className="calculator-idle-result">按 Enter 或 = 計算</span> : null}
+              </div>
             </div>
-          </div>
 
-          <div className="calculator-function-row" aria-label="進階功能">
-            {FUNCTION_KEYS.map((key) => (
-              <button key={key.label} type="button" onClick={() => appendValue(key.value)}>
-                {key.label}
-              </button>
-            ))}
-          </div>
+            <div className="calculator-keyboard-hint">支援實體鍵盤：Enter 計算、Backspace 刪除、Delete 清除</div>
 
-          <div className="calculator-keypad" aria-label="計算機鍵盤">
-            {KEY_ROWS.flat().map((key) => {
-              if (key === T.clear) {
-                return <button key={key} type="button" className="calculator-command-key" onClick={handleClear}>{T.clear}</button>;
-              }
-              if (key === T.delete) {
-                return <button key={key} type="button" className="calculator-command-key" onClick={handleDelete}>{T.delete}</button>;
-              }
-              if (key === T.calculate) {
-                return (
-                  <GlassButton key={key} variant="primary" className="calculator-equals-key" onClick={handleCalculate}>
-                    {T.calculate}
-                  </GlassButton>
-                );
-              }
-              return (
-                <button key={key} type="button" onClick={() => appendValue(normalizeKeyValue(key))}>
-                  {key}
+            <div className="calculator-function-row" aria-label="工程函數">
+              {FUNCTION_KEYS.map((key) => (
+                <button key={key.label} type="button" title={key.title} onClick={() => appendValue(key.value)}>
+                  {key.label}
                 </button>
-              );
-            })}
-          </div>
-        </>
-      ) : null}
-
-      {mode === "finance" ? (
-        <div className="finance-calculator-panel">
-          <div className="finance-subtabs" aria-label="財務計算模式">
-            <button type="button" className={financeMode === "pv" ? "active" : ""} onClick={() => setFinanceMode("pv")}>現值</button>
-            <button type="button" className={financeMode === "fv" ? "active" : ""} onClick={() => setFinanceMode("fv")}>終值</button>
-            <button type="button" className={financeMode === "yield" ? "active" : ""} onClick={() => setFinanceMode("yield")}>殖利率</button>
-          </div>
-
-          <div className="calculator-display calculator-natural-display finance-formula-display" aria-live="polite">
-            <div className="calculator-expression">{financeFormula.title}</div>
-            <div className="calculator-output finance-formula">
-              {financeMode === "fv" ? (
-                <span>FV = PV × (1 + r)<sup>n</sup></span>
-              ) : financeMode === "yield" ? (
-                <span>r = (<StackedFraction numerator={financeFormula.numerator} denominator={financeFormula.denominator} />)<sup>1/n</sup> - 1</span>
-              ) : (
-                <span>PV = <StackedFraction numerator={financeFormula.numerator} denominator={financeFormula.denominator} /></span>
-              )}
+              ))}
             </div>
-            <div className="calculator-output finance-result-line">{error || financeResult || " "}</div>
-          </div>
 
-          <div className="finance-input-grid">
-            <FinanceInput label="現值 PV" value={financeFields.pv} onChange={(value) => setFinanceFields((current) => ({ ...current, pv: value }))} disabled={financeMode === "pv"} />
-            <FinanceInput label="終值 FV" value={financeFields.fv} onChange={(value) => setFinanceFields((current) => ({ ...current, fv: value }))} disabled={financeMode === "fv"} />
-            <FinanceInput label="利率 r (%)" value={financeFields.rate} onChange={(value) => setFinanceFields((current) => ({ ...current, rate: value }))} disabled={financeMode === "yield"} />
-            <FinanceInput label="期數 n" value={financeFields.periods} onChange={(value) => setFinanceFields((current) => ({ ...current, periods: value }))} />
-          </div>
+            <div className="calculator-keypad" aria-label="計算機鍵盤">
+              {KEYPAD_KEYS.map((key) => (
+                <button
+                  key={key.label}
+                  type="button"
+                  aria-label={"ariaLabel" in key ? key.ariaLabel : key.label}
+                  className={`calculator-key calculator-key-${"kind" in key ? key.kind : "number"}`}
+                  onClick={() => handleKeypadAction(key.value)}
+                >
+                  {key.value === "delete" ? <Delete aria-hidden="true" size={20} /> : key.label}
+                </button>
+              ))}
+            </div>
+          </section>
+        ) : null}
 
-          <div className="finance-actions">
-            <GlassButton variant="primary" onClick={handleFinanceCalculate}>
-              <Percent size={18} />計算
-            </GlassButton>
-            <button type="button" className="calculator-command-key" onClick={handleClear}>清除</button>
-          </div>
-        </div>
-      ) : null}
+        {mode === "solve" ? (
+          <section className="calculator-mode-panel solve-equation-panel" aria-label="解方程式">
+            <div className="calculator-subtabs" aria-label="方程式類型">
+              <button type="button" className={solveMode === "single" ? "active" : ""} onClick={() => { setSolveMode("single"); setError(""); setSolveSummary(null); }}>
+                一元 x
+              </button>
+              <button type="button" className={solveMode === "system" ? "active" : ""} onClick={() => { setSolveMode("system"); setError(""); setSolveSummary(null); }}>
+                二元 x / y
+              </button>
+            </div>
 
-      {mode === "solve" ? (
-        <div className="solve-x-panel">
-          <div className="calculator-display calculator-natural-display" aria-live="polite">
-            <div className="calculator-expression">解未知數 x</div>
-            <div className="calculator-output">{error || solveResult || "輸入例如：2x + 3 = 11"}</div>
-          </div>
-          <label className="solve-input-label">
-            方程式
-            <input value={solveEquation} onChange={(event) => setSolveEquation(event.target.value)} placeholder="2x + 3 = 11" />
-          </label>
-          <p className="calculator-hint">支援簡單 +、-、×、÷、次方與括號，例如：100/(1+x)^2 = 90。</p>
-          <div className="finance-actions">
-            <GlassButton variant="primary" onClick={handleSolveX}>解 x</GlassButton>
-            <button type="button" className="calculator-command-key" onClick={handleClear}>清除</button>
-          </div>
-        </div>
-      ) : null}
-    </GlassCard>
+            <div className="calculator-guide-card">
+              <div>
+                <span className="calculator-guide-icon" aria-hidden="true"><Sparkles size={18} /></span>
+                <div>
+                  <strong>{solveMode === "single" ? "一元方程式" : "二元一次聯立方程式"}</strong>
+                  <p>{solveMode === "single" ? "可解線性與常見財務型非線性算式。" : "每一式都需使用 =，支援省略乘號，如 2x + y。"}</p>
+                </div>
+              </div>
+            </div>
+
+            {solveMode === "single" ? (
+              <>
+                <EquationInput
+                  label="方程式"
+                  value={singleEquation}
+                  onChange={(value) => { setSingleEquation(value); setSolveSummary(null); setError(""); }}
+                  onEnter={calculateEquation}
+                  placeholder="2x + 3 = 11"
+                />
+                <div className="calculator-example-row" aria-label="一元方程式範例">
+                  <span>快速範例</span>
+                  <button type="button" onClick={() => setSingleEquation("2x + 3 = 11")}>2x + 3 = 11</button>
+                  <button type="button" onClick={() => setSingleEquation("100/(1+x)^2 = 90")}>殖利率型</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <EquationInput
+                  label="方程式 ①"
+                  value={systemEquations[0]}
+                  onChange={(value) => { setSystemEquations((current) => [value, current[1]]); setSolveSummary(null); setError(""); }}
+                  onEnter={calculateEquation}
+                  placeholder="2x + y = 7"
+                />
+                <EquationInput
+                  label="方程式 ②"
+                  value={systemEquations[1]}
+                  onChange={(value) => { setSystemEquations((current) => [current[0], value]); setSolveSummary(null); setError(""); }}
+                  onEnter={calculateEquation}
+                  placeholder="x - y = 2"
+                />
+                <div className="calculator-example-row" aria-label="聯立方程式範例">
+                  <span>快速範例</span>
+                  <button type="button" onClick={() => setSystemEquations(["2x + y = 7", "x - y = 2"])}>載入範例</button>
+                </div>
+              </>
+            )}
+
+            <ResultSummary summary={solveSummary} error={error} idleText="輸入方程式後即可求解" />
+
+            <div className="calculator-panel-actions">
+              <button type="button" className="calculator-primary-action" onClick={calculateEquation}>
+                <Sigma aria-hidden="true" size={18} />求解
+              </button>
+              <button type="button" className="calculator-secondary-action" onClick={() => { setSolveSummary(null); setError(""); }}>
+                <RotateCcw aria-hidden="true" size={17} />清除結果
+              </button>
+            </div>
+          </section>
+        ) : null}
+
+        {mode === "finance" ? (
+          <section className="calculator-mode-panel finance-calculator-panel" aria-label="財務公式">
+            <div className="calculator-subtabs finance-subtabs" aria-label="財務計算模式">
+              <button type="button" className={financeMode === "yield" ? "active" : ""} onClick={() => { setFinanceMode("yield"); setFinanceSummary(null); setError(""); }}>殖利率</button>
+              <button type="button" className={financeMode === "capm" ? "active" : ""} onClick={() => { setFinanceMode("capm"); setFinanceSummary(null); setError(""); }}>CAPM</button>
+              <button type="button" className={financeMode === "wacc" ? "active" : ""} onClick={() => { setFinanceMode("wacc"); setFinanceSummary(null); setError(""); }}>WACC</button>
+            </div>
+
+            <FinanceFormulaGuide mode={financeMode} onReset={resetFinanceExample} />
+
+            {financeMode === "yield" ? (
+              <div className="finance-input-grid">
+                <FinanceInput label="票面金額 F" suffix="元" value={yieldFields.faceValue} onChange={(value) => setYieldFields((current) => ({ ...current, faceValue: value }))} onEnter={calculateFinance} />
+                <FinanceInput label="債券市價 P" suffix="元" value={yieldFields.marketPrice} onChange={(value) => setYieldFields((current) => ({ ...current, marketPrice: value }))} onEnter={calculateFinance} />
+                <FinanceInput label="每年利息 C" suffix="元" value={yieldFields.annualCoupon} onChange={(value) => setYieldFields((current) => ({ ...current, annualCoupon: value }))} onEnter={calculateFinance} />
+                <FinanceInput label="剩餘年期 n" suffix="年" value={yieldFields.years} onChange={(value) => setYieldFields((current) => ({ ...current, years: value }))} onEnter={calculateFinance} />
+              </div>
+            ) : null}
+
+            {financeMode === "capm" ? (
+              <div className="finance-input-grid finance-input-grid-three">
+                <FinanceInput label="無風險利率 Rf" suffix="%" value={capmFields.riskFreeRate} onChange={(value) => setCapmFields((current) => ({ ...current, riskFreeRate: value }))} onEnter={calculateFinance} />
+                <FinanceInput label="Beta β" value={capmFields.beta} onChange={(value) => setCapmFields((current) => ({ ...current, beta: value }))} onEnter={calculateFinance} />
+                <FinanceInput label="市場報酬率 Rm" suffix="%" value={capmFields.marketReturn} onChange={(value) => setCapmFields((current) => ({ ...current, marketReturn: value }))} onEnter={calculateFinance} />
+              </div>
+            ) : null}
+
+            {financeMode === "wacc" ? (
+              <div className="finance-input-grid">
+                <FinanceInput label="權益市值 E" value={waccFields.equityValue} onChange={(value) => setWaccFields((current) => ({ ...current, equityValue: value }))} onEnter={calculateFinance} />
+                <FinanceInput label="負債市值 D" value={waccFields.debtValue} onChange={(value) => setWaccFields((current) => ({ ...current, debtValue: value }))} onEnter={calculateFinance} />
+                <FinanceInput label="權益成本 Re" suffix="%" value={waccFields.costOfEquity} onChange={(value) => setWaccFields((current) => ({ ...current, costOfEquity: value }))} onEnter={calculateFinance} />
+                <FinanceInput label="稅前負債成本 Rd" suffix="%" value={waccFields.costOfDebt} onChange={(value) => setWaccFields((current) => ({ ...current, costOfDebt: value }))} onEnter={calculateFinance} />
+                <FinanceInput label="公司稅率 T" suffix="%" value={waccFields.taxRate} onChange={(value) => setWaccFields((current) => ({ ...current, taxRate: value }))} onEnter={calculateFinance} />
+              </div>
+            ) : null}
+
+            <ResultSummary summary={financeSummary} error={error} idleText="欄位已載入範例值，可直接計算" />
+
+            <div className="calculator-panel-actions">
+              <button type="button" className="calculator-primary-action" onClick={calculateFinance}>
+                <Calculator aria-hidden="true" size={18} />計算結果
+              </button>
+              <button type="button" className="calculator-secondary-action" onClick={resetFinanceExample}>
+                <RotateCcw aria-hidden="true" size={17} />還原範例
+              </button>
+            </div>
+          </section>
+        ) : null}
+      </div>
+    </div>
   );
 }
 
-function FinanceInput({ label, value, onChange, disabled }: { label: string; value: string; onChange: (value: string) => void; disabled?: boolean }) {
+function ModeButton({ active, onClick, icon, label }: { active: boolean; onClick: () => void; icon: React.ReactNode; label: string }) {
   return (
-    <label className="finance-input-label">
-      {label}
+    <button type="button" className={active ? "active" : ""} aria-pressed={active} onClick={onClick}>
+      {icon}<span>{label}</span>
+    </button>
+  );
+}
+
+function EquationInput({
+  label,
+  value,
+  onChange,
+  onEnter,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  onEnter: () => void;
+  placeholder: string;
+}) {
+  return (
+    <label className="solve-input-label">
+      <span>{label}</span>
       <input
         value={value}
-        disabled={disabled}
-        inputMode="decimal"
-        onChange={(event) => onChange(event.target.value)}
-        placeholder={disabled ? "待計算" : "輸入數值"}
+        onChange={(event) => onChange(event.target.value.slice(0, 180))}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            onEnter();
+          }
+        }}
+        placeholder={placeholder}
+        autoComplete="off"
+        spellCheck="false"
       />
     </label>
   );
 }
 
+function FinanceInput({
+  label,
+  value,
+  suffix,
+  onChange,
+  onEnter,
+}: {
+  label: string;
+  value: string;
+  suffix?: string;
+  onChange: (value: string) => void;
+  onEnter: () => void;
+}) {
+  return (
+    <label className="finance-input-label">
+      <span>{label}</span>
+      <span className="finance-input-control">
+        <input
+          value={value}
+          inputMode="decimal"
+          onChange={(event) => onChange(event.target.value.slice(0, 30))}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              onEnter();
+            }
+          }}
+          placeholder="輸入數值"
+          autoComplete="off"
+        />
+        {suffix ? <span>{suffix}</span> : null}
+      </span>
+    </label>
+  );
+}
+
+function FinanceFormulaGuide({ mode, onReset }: { mode: FinanceMode; onReset: () => void }) {
+  const content = mode === "yield"
+    ? { title: "近似到期殖利率", formula: "[ C + (F − P) ÷ n ] ÷ [ (F + P) ÷ 2 ]", note: "適合快速估算年付息債券；實際 YTM 仍以現金流折現求解為準。" }
+    : mode === "capm"
+      ? { title: "資本資產定價模型", formula: "Re = Rf + β × (Rm − Rf)", note: "以無風險利率、市場風險溢酬與 Beta 推估必要報酬率。" }
+      : { title: "加權平均資金成本", formula: "WACC = E/V × Re + D/V × Rd × (1 − T)", note: "V = E + D；負債成本使用稅後成本，權重採市場價值。" };
+
+  return (
+    <div className="calculator-guide-card finance-formula-guide">
+      <div>
+        <span className="calculator-guide-icon" aria-hidden="true"><Landmark size={18} /></span>
+        <div>
+          <strong>{content.title}</strong>
+          <code>{content.formula}</code>
+          <p>{content.note}</p>
+        </div>
+      </div>
+      <button type="button" onClick={onReset}>套用範例</button>
+    </div>
+  );
+}
+
+function ResultSummary({ summary, error, idleText }: { summary: CalculationSummary | null; error: string; idleText: string }) {
+  return (
+    <div className={`calculator-result-card${error ? " has-error" : ""}`} aria-live="polite">
+      {error ? (
+        <>
+          <span>請檢查輸入</span>
+          <strong>{error}</strong>
+        </>
+      ) : summary ? (
+        <>
+          <span>{summary.label}</span>
+          <strong>{summary.value}</strong>
+          <small>{summary.detail}</small>
+        </>
+      ) : (
+        <>
+          <span>計算結果</span>
+          <strong className="calculator-result-idle">{idleText}</strong>
+        </>
+      )}
+    </div>
+  );
+}
+
 function CalculatorResult({ value, fraction }: { value: string; fraction: FractionResult | null }) {
   if (!fraction || fraction.denominator === 1) {
-    return <span>= {value}</span>;
+    return <span className="calculator-result-number">= {value}</span>;
   }
   return (
     <span className="calculator-result-with-fraction">
-      <span>= {value}</span>
-      <span className="calculator-fraction-chip"><StackedFraction numerator={fraction.numerator} denominator={fraction.denominator} /></span>
+      <span className="calculator-result-number">= {value}</span>
+      <span className="calculator-fraction-chip" title="分數近似值">
+        ≈ <StackedFraction numerator={fraction.numerator} denominator={fraction.denominator} />
+      </span>
     </span>
   );
 }
 
 function StackedFraction({ numerator, denominator }: { numerator: string | number; denominator: string | number }) {
   return (
-    <span className="stacked-fraction" aria-label={`${numerator} over ${denominator}`}>
+    <span className="stacked-fraction" aria-label={`${numerator} 除以 ${denominator}`}>
       <span>{numerator}</span>
       <span>{denominator}</span>
     </span>
   );
 }
 
-function normalizeKeyValue(key: string): string {
-  if (key === "×") return "*";
-  if (key === "÷") return "/";
-  return key;
-}
-
-function clampPosition(position: Position): Position {
+function clampPosition(position: Position, dialog: HTMLElement | null): Position {
   if (typeof window === "undefined") return position;
-  const dialogWidth = Math.min(460, Math.max(320, window.innerWidth - 24));
-  const dialogHeight = 680;
+  const dialogWidth = dialog?.offsetWidth ?? Math.min(620, Math.max(320, window.innerWidth - 24));
+  const dialogHeight = dialog?.offsetHeight ?? Math.min(760, Math.max(360, window.innerHeight - 68));
   const maxX = Math.max(8, window.innerWidth - dialogWidth - 8);
-  const maxY = Math.max(56, window.innerHeight - dialogHeight);
+  const maxY = Math.max(56, window.innerHeight - dialogHeight - 8);
   return {
     x: Math.min(Math.max(8, position.x), maxX),
     y: Math.min(Math.max(56, position.y), maxY),
   };
 }
 
-function parseOptionalNumber(value: string): number | null {
-  const normalized = value.trim().replace(/,/g, "");
-  if (!normalized) return null;
-  const number = Number(normalized);
-  return Number.isFinite(number) ? number : null;
+function softFeedback(): void {
+  if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
+    navigator.vibrate(5);
+  }
+}
+
+function successFeedback(): void {
+  if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
+    navigator.vibrate([7, 20, 7]);
+  }
+}
+
+function tokenizeExpression(rawExpression: string): string[] {
+  const normalized = normalizeExpression(rawExpression);
+  if (!normalized || normalized.length > 240 || /[^0-9.xypi+\-*/%^()sqrt]/.test(normalized)) {
+    throw new Error("Invalid calculator expression");
+  }
+
+  const rawTokens = normalized.match(/sqrt|pi|[xy]|(?:\d+\.?\d*|\.\d+)|[()+\-*/%^]/g);
+  if (!rawTokens || rawTokens.join("") !== normalized || rawTokens.length > 180) {
+    throw new Error("Invalid calculator expression");
+  }
+
+  const tokens: string[] = [];
+  for (const token of rawTokens) {
+    const previous = tokens[tokens.length - 1];
+    if (previous && needsImplicitMultiplication(previous, token)) tokens.push("*");
+    tokens.push(token);
+  }
+  return tokens;
+}
+
+function needsImplicitMultiplication(previous: string, current: string): boolean {
+  const previousCanEndValue = previous === ")" || previous === "x" || previous === "y" || previous === "pi" || isNumberToken(previous) || previous === "%";
+  const currentCanStartValue = current === "(" || current === "sqrt" || current === "x" || current === "y" || current === "pi" || isNumberToken(current);
+  return previousCanEndValue && currentCanStartValue;
 }
 
 function evaluateCalculatorExpression(rawExpression: string, variables: Record<string, number> = {}): number {
-  const normalized = normalizeExpression(rawExpression);
-  if (!normalized || /[^0-9.x+\-*/%^()sqrt]/.test(normalized)) {
-    throw new Error("Invalid calculator expression");
-  }
-
-  const matchedTokens = normalized.match(/sqrt|x|\d*\.?\d+|[()+\-*/%^]/g);
-  if (!matchedTokens || matchedTokens.join("") !== normalized) {
-    throw new Error("Invalid calculator expression");
-  }
-
-  const tokens: string[] = matchedTokens;
+  const tokens = tokenizeExpression(rawExpression);
   let position = 0;
 
   function parseExpression(): number {
@@ -429,60 +850,72 @@ function evaluateCalculatorExpression(rawExpression: string, variables: Record<s
       position += 1;
       const right = parseTerm();
       value = operator === "+" ? value + right : value - right;
+      ensureFinite(value);
     }
     return value;
   }
 
   function parseTerm(): number {
-    let value = parsePower();
+    let value = parseUnary();
     while (tokens[position] === "*" || tokens[position] === "/") {
       const operator = tokens[position];
       position += 1;
-      const right = parsePower();
-      if (operator === "/" && right === 0) throw new Error("Division by zero");
+      const right = parseUnary();
+      if (operator === "/" && Math.abs(right) < Number.EPSILON) throw new Error("Division by zero");
       value = operator === "*" ? value * right : value / right;
+      ensureFinite(value);
     }
     return value;
+  }
+
+  function parseUnary(): number {
+    if (tokens[position] === "+") {
+      position += 1;
+      return parseUnary();
+    }
+    if (tokens[position] === "-") {
+      position += 1;
+      return -parseUnary();
+    }
+    return parsePower();
   }
 
   function parsePower(): number {
-    let value = parseFactor();
+    let value = parsePrimary();
     if (tokens[position] === "^") {
       position += 1;
-      value = Math.pow(value, parsePower());
+      value = Math.pow(value, parseUnary());
+      ensureFinite(value);
     }
-    if (!Number.isFinite(value)) throw new Error("Invalid calculator expression");
     return value;
   }
 
-  function parseFactor(): number {
-    let value: number;
+  function parsePrimary(): number {
     const token = tokens[position];
+    let value: number;
 
-    if (token === "+") {
+    if (token === "sqrt") {
       position += 1;
-      value = parseFactor();
-    } else if (token === "-") {
+      if (tokens[position] !== "(") throw new Error("Square root needs parentheses");
       position += 1;
-      value = -parseFactor();
-    } else if (token === "sqrt") {
+      const radicand = parseExpression();
+      if (tokens[position] !== ")" || radicand < 0) throw new Error("Invalid square root");
       position += 1;
-      if (tokens[position] !== "(") throw new Error("Invalid calculator expression");
-      position += 1;
-      value = parseExpression();
-      if (tokens[position] !== ")" || value < 0) throw new Error("Invalid calculator expression");
-      position += 1;
-      value = Math.sqrt(value);
+      value = Math.sqrt(radicand);
     } else if (token === "(") {
       position += 1;
       value = parseExpression();
-      if (tokens[position] !== ")") throw new Error("Invalid calculator expression");
+      if (tokens[position] !== ")") throw new Error("Missing closing parenthesis");
       position += 1;
-    } else if (token === "x") {
+    } else if (token === "pi") {
       position += 1;
-      if (typeof variables.x !== "number") throw new Error("Missing variable");
-      value = variables.x;
-    } else if (token && /\d/.test(token)) {
+      value = Math.PI;
+    } else if (token === "x" || token === "y") {
+      position += 1;
+      const variableValue = variables[token];
+      if (typeof variableValue !== "number" || !Number.isFinite(variableValue)) throw new Error("Missing variable");
+      value = variableValue;
+    } else if (token && isNumberToken(token)) {
       position += 1;
       value = Number(token);
     } else {
@@ -493,99 +926,216 @@ function evaluateCalculatorExpression(rawExpression: string, variables: Record<s
       position += 1;
       value /= 100;
     }
-
-    if (!Number.isFinite(value)) throw new Error("Invalid calculator expression");
+    ensureFinite(value);
     return value;
   }
 
   const evaluated = parseExpression();
-  if (position !== tokens.length || !Number.isFinite(evaluated)) {
-    throw new Error("Invalid calculator expression");
-  }
+  if (position !== tokens.length) throw new Error("Invalid calculator expression");
+  ensureFinite(evaluated);
   return evaluated;
 }
 
 function normalizeExpression(rawExpression: string): string {
   return rawExpression
-    .replace(/×/g, "*")
+    .toLowerCase()
+    .replace(/[×✕]/g, "*")
     .replace(/÷/g, "/")
+    .replace(/[−–—]/g, "-")
     .replace(/％/g, "%")
+    .replace(/√\s*(\d+(?:\.\d+)?|π|pi|[xy])/gi, "sqrt($1)")
     .replace(/√/g, "sqrt")
-    .replace(/，/g, ",")
-    .replace(/,/g, "")
-    .replace(/\s+/g, "")
-    .replace(/(\d)(x|\()/g, "$1*$2")
-    .replace(/(x|\))(\d|x|\()/g, "$1*$2");
+    .replace(/π/g, "pi")
+    .replace(/[，,]/g, "")
+    .replace(/\s+/g, "");
+}
+
+function isNumberToken(token: string): boolean {
+  return /^(?:\d+\.?\d*|\.\d+)$/.test(token);
+}
+
+function ensureFinite(value: number): void {
+  if (!Number.isFinite(value)) throw new Error("Invalid calculator result");
+}
+
+function splitEquation(equation: string): [string, string] {
+  const parts = equation.split("=");
+  if (parts.length !== 2 || !parts[0]?.trim() || !parts[1]?.trim()) {
+    throw new Error("每個方程式必須包含一個等號 =。");
+  }
+  return [parts[0], parts[1]];
+}
+
+function equationResidual(equation: string, variables: Record<string, number>): number {
+  const [left, right] = splitEquation(equation);
+  return Math.abs(evaluateCalculatorExpression(left, variables) - evaluateCalculatorExpression(right, variables));
 }
 
 function solveEquationForX(equation: string): number {
-  const parts = equation.split("=");
-  if (parts.length !== 2) throw new Error("Equation must contain one equals sign");
+  if (!/(?:^|[^a-z])x(?:[^a-z]|$)/i.test(equation) || /(?:^|[^a-z])y(?:[^a-z]|$)/i.test(equation)) {
+    throw new Error("一元模式請輸入只含未知數 x 的方程式。");
+  }
+  const [leftExpression, rightExpression] = splitEquation(equation);
+  const f = (x: number): number => (
+    evaluateCalculatorExpression(leftExpression, { x })
+    - evaluateCalculatorExpression(rightExpression, { x })
+  );
 
-  const leftExpression = parts[0] ?? "";
-  const rightExpression = parts[1] ?? "";
-  const f = (x: number): number => evaluateCalculatorExpression(leftExpression, { x }) - evaluateCalculatorExpression(rightExpression, { x });
   const f0 = f(0);
   const f1 = f(1);
-
-  if (Number.isFinite(f0) && Number.isFinite(f1) && Math.abs(f1 - f0) > 1e-12) {
-    const linearCandidate = -f0 / (f1 - f0);
-    if (Number.isFinite(linearCandidate) && Math.abs(f(linearCandidate)) < 1e-7) {
+  const slope = f1 - f0;
+  if (Math.abs(slope) > 1e-12) {
+    const linearCandidate = -f0 / slope;
+    if (Number.isFinite(linearCandidate) && Math.abs(f(linearCandidate)) < 1e-7 && isLinearFunction(f, f0, slope)) {
       return linearCandidate;
     }
   }
 
-  const ranges: Array<[number, number]> = [
-    [-1_000_000, -100_000],
-    [-100_000, -10_000],
-    [-10_000, -1_000],
-    [-1_000, -100],
-    [-100, -10],
-    [-10, -1],
-    [-1, 0],
-    [0, 1],
-    [1, 10],
-    [10, 100],
-    [100, 1_000],
-    [1_000, 10_000],
-    [10_000, 100_000],
-    [100_000, 1_000_000],
+  const scanPoints = [
+    -1_000_000, -100_000, -10_000, -1_000, -100, -20, -10, -5, -2, -1.5, -1.1,
+    -0.99, -0.9, -0.75, -0.5, -0.25, -0.1, 0, 0.01, 0.05, 0.1, 0.25, 0.5, 0.75,
+    1, 1.5, 2, 5, 10, 20, 100, 1_000, 10_000, 100_000, 1_000_000,
   ];
 
-  for (const [initialLeft, initialRight] of ranges) {
-    let left = initialLeft;
-    let right = initialRight;
-    let leftValue = f(left);
-    let rightValue = f(right);
-
-    if (Math.abs(leftValue) < 1e-7) return left;
-    if (Math.abs(rightValue) < 1e-7) return right;
-    if (!Number.isFinite(leftValue) || !Number.isFinite(rightValue) || leftValue * rightValue > 0) continue;
-
-    for (let step = 0; step < 90; step += 1) {
-      const mid = (left + right) / 2;
-      const midValue = f(mid);
-      if (Math.abs(midValue) < 1e-9) return mid;
-      if (leftValue * midValue <= 0) {
-        right = mid;
-        rightValue = midValue;
-      } else {
-        left = mid;
-        leftValue = midValue;
-      }
+  let previousPoint: number | null = null;
+  let previousValue: number | null = null;
+  for (const point of scanPoints) {
+    const value = safelyEvaluateAt(f, point);
+    if (value === null) {
+      previousPoint = null;
+      previousValue = null;
+      continue;
     }
-    return (left + right) / 2;
+    if (Math.abs(value) < 1e-9) return point;
+    if (previousPoint !== null && previousValue !== null && previousValue * value < 0) {
+      return bisectRoot(f, previousPoint, point, previousValue);
+    }
+    previousPoint = point;
+    previousValue = value;
   }
 
-  throw new Error("No root found");
+  throw new Error("找不到實數解；請確認方程式有解，或縮短算式範圍。");
 }
 
-function formatMoneyLike(value: number): string {
-  return Number(value.toFixed(4)).toLocaleString("zh-TW", { maximumFractionDigits: 4 });
+function isLinearFunction(f: (x: number) => number, intercept: number, slope: number): boolean {
+  for (const sample of [-3, -0.5, 2, 7]) {
+    const expected = intercept + slope * sample;
+    const actual = safelyEvaluateAt(f, sample);
+    if (actual === null || Math.abs(actual - expected) > 1e-7 * Math.max(1, Math.abs(expected))) return false;
+  }
+  return true;
+}
+
+function safelyEvaluateAt(f: (x: number) => number, x: number): number | null {
+  try {
+    const value = f(x);
+    return Number.isFinite(value) ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+function bisectRoot(f: (x: number) => number, initialLeft: number, initialRight: number, initialLeftValue: number): number {
+  let left = initialLeft;
+  let right = initialRight;
+  let leftValue = initialLeftValue;
+  for (let step = 0; step < 100; step += 1) {
+    const mid = (left + right) / 2;
+    const midValue = f(mid);
+    if (Math.abs(midValue) < 1e-11 || Math.abs(right - left) < 1e-12) return mid;
+    if (leftValue * midValue <= 0) {
+      right = mid;
+    } else {
+      left = mid;
+      leftValue = midValue;
+    }
+  }
+  return (left + right) / 2;
+}
+
+function solveLinearSystem(firstEquation: string, secondEquation: string): { x: number; y: number; maxResidual: number } {
+  if (!/[xy]/i.test(`${firstEquation}${secondEquation}`)) {
+    throw new Error("聯立方程式必須包含未知數 x 或 y。");
+  }
+  const first = linearCoefficients(firstEquation);
+  const second = linearCoefficients(secondEquation);
+  const determinant = first.a * second.b - second.a * first.b;
+  if (Math.abs(determinant) < 1e-12) {
+    throw new Error("兩條方程式無唯一解，可能互相平行或是同一條線。");
+  }
+
+  const x = (-first.c * second.b + second.c * first.b) / determinant;
+  const y = (-first.a * second.c + second.a * first.c) / determinant;
+  ensureFinite(x);
+  ensureFinite(y);
+  const maxResidual = Math.max(
+    equationResidual(firstEquation, { x, y }),
+    equationResidual(secondEquation, { x, y }),
+  );
+  if (maxResidual > 1e-7) throw new Error("方程式不是二元一次式，請移除 x²、xy 或其他非線性項。");
+  return { x, y, maxResidual };
+}
+
+function linearCoefficients(equation: string): { a: number; b: number; c: number } {
+  const [left, right] = splitEquation(equation);
+  const f = (x: number, y: number) => (
+    evaluateCalculatorExpression(left, { x, y })
+    - evaluateCalculatorExpression(right, { x, y })
+  );
+  const c = f(0, 0);
+  const a = f(1, 0) - c;
+  const b = f(0, 1) - c;
+  for (const [x, y] of [[2, -1], [-3, 2], [0.5, 4]] as const) {
+    const expected = a * x + b * y + c;
+    if (Math.abs(f(x, y) - expected) > 1e-7 * Math.max(1, Math.abs(expected))) {
+      throw new Error("二元模式目前支援一次聯立方程式，請移除 x²、xy 或分母中的未知數。");
+    }
+  }
+  return { a, b, c };
+}
+
+function requireNumber(value: string, label: string): number {
+  const normalized = value.trim().replace(/,/g, "");
+  if (!normalized) throw new Error(`請輸入${label}。`);
+  const parsed = Number(normalized);
+  if (!Number.isFinite(parsed)) throw new Error(`${label}必須是有效數字。`);
+  return parsed;
+}
+
+function requirePositiveNumber(value: string, label: string): number {
+  const parsed = requireNumber(value, label);
+  if (parsed <= 0) throw new Error(`${label}必須大於 0。`);
+  return parsed;
+}
+
+function requireNonNegativeNumber(value: string, label: string): number {
+  const parsed = requireNumber(value, label);
+  if (parsed < 0) throw new Error(`${label}不可小於 0。`);
+  return parsed;
+}
+
+function requireRate(value: string, label: string): number {
+  const parsed = requireNumber(value, label);
+  if (parsed < 0 || parsed > 100) throw new Error(`${label}必須介於 0% 到 100%。`);
+  return parsed;
 }
 
 function formatCalculatorResult(value: number): string {
-  return Number.isInteger(value) ? value.toString() : Number(value.toFixed(10)).toString();
+  const normalized = Math.abs(value) < 1e-12 ? 0 : value;
+  if (Math.abs(normalized) >= 1e12 || (Math.abs(normalized) > 0 && Math.abs(normalized) < 1e-8)) {
+    return normalized.toExponential(8).replace(/\.?(?:0+)e/, "e");
+  }
+  return Number.isInteger(normalized)
+    ? normalized.toLocaleString("zh-TW")
+    : Number(normalized.toFixed(10)).toLocaleString("zh-TW", { maximumFractionDigits: 10 });
+}
+
+function formatPercent(value: number): string {
+  return `${Number(value.toFixed(4)).toLocaleString("zh-TW", { maximumFractionDigits: 4 })}%`;
+}
+
+function formatResidual(value: number): string {
+  return value < 1e-10 ? "1 × 10⁻¹⁰" : formatCalculatorResult(value);
 }
 
 function toReasonableFraction(value: number): FractionResult | null {
@@ -608,7 +1158,6 @@ function toReasonableFraction(value: number): FractionResult | null {
   }
 
   if (bestDenominator === 1 || bestError > 1e-8) return null;
-
   const divisor = gcd(bestNumerator, bestDenominator);
   return {
     numerator: sign * (bestNumerator / divisor),
