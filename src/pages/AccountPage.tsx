@@ -7,12 +7,8 @@ import { GlassButton, GlassLinkButton } from "../components/GlassButton";
 import { GlassCard } from "../components/GlassCard";
 import { LoadingState } from "../components/LoadingState";
 import {
-  discardCloudSyncDeadLetters,
   getSyncedRecordSummary,
-  listCloudSyncDeadLetters,
-  retryCloudSyncDeadLetters,
   syncLocalRecordsToCloud,
-  type CloudDeadLetterSummary,
   type CloudSyncSummary,
 } from "../lib/db";
 import { supabase } from "../lib/supabase";
@@ -30,27 +26,6 @@ function formatDate(value: string | null | undefined): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return DATE_FORMATTER.format(date);
-}
-
-const MUTATION_LABELS: Record<string, string> = {
-  "upsert-answer": "作答紀錄",
-  "upsert-wrong": "錯題紀錄",
-  "delete-wrong": "錯題刪除",
-  "upsert-favorite": "收藏紀錄",
-  "delete-favorite": "收藏刪除",
-  "upsert-progress": "練習進度",
-  "delete-progress": "進度刪除",
-  "upsert-session": "測驗紀錄",
-  "upsert-image-session": "圖片測驗紀錄",
-  "delete-image-session": "圖片測驗刪除",
-  "sync-learning-attempt": "學習排程",
-  "record-leaderboard-answer": "排行榜事件",
-  "delete-many": "批次刪除",
-  "clear-table": "資料清除",
-};
-
-function mutationLabel(kind: string): string {
-  return MUTATION_LABELS[kind] ?? "同步事件";
 }
 
 export function AccountPage() {
@@ -76,19 +51,13 @@ function AccountContent() {
   const [syncBusy, setSyncBusy] = useState(false);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
   const [syncSummary, setSyncSummary] = useState<CloudSyncSummary | null>(null);
-  const [deadLetterRows, setDeadLetterRows] = useState<CloudDeadLetterSummary[]>([]);
 
   const loadSyncSummary = useCallback(async () => {
     if (!user) {
       setSyncSummary(null);
       return;
     }
-    const [summary, failedRows] = await Promise.all([
-      getSyncedRecordSummary(),
-      listCloudSyncDeadLetters(5),
-    ]);
-    setSyncSummary(summary);
-    setDeadLetterRows(failedRows);
+    setSyncSummary(await getSyncedRecordSummary());
   }, [user]);
 
   useEffect(() => {
@@ -143,39 +112,6 @@ function AccountContent() {
     }
   }
 
-  async function handleRetryDeadLetters(): Promise<void> {
-    setSyncBusy(true);
-    setError(null);
-    setSyncMessage(null);
-    try {
-      const count = await retryCloudSyncDeadLetters();
-      const summary = await syncLocalRecordsToCloud();
-      setSyncSummary(summary);
-      setDeadLetterRows(await listCloudSyncDeadLetters(5));
-      setSyncMessage(count > 0 ? `已重新嘗試 ${count} 筆同步事件。` : "沒有需要重試的同步事件。");
-    } catch (retryError: unknown) {
-      setError(retryError instanceof Error ? retryError.message : "重新嘗試同步事件失敗。");
-    } finally {
-      setSyncBusy(false);
-    }
-  }
-
-  async function handleDiscardDeadLetters(): Promise<void> {
-    if (!window.confirm("確定要清除所有無法同步的失敗紀錄嗎？這不會刪除本機作答資料，但這些事件之後不會再自動上傳。")) return;
-    setSyncBusy(true);
-    setError(null);
-    setSyncMessage(null);
-    try {
-      const count = await discardCloudSyncDeadLetters();
-      await loadSyncSummary();
-      setSyncMessage(`已清除 ${count} 筆失敗同步事件。`);
-    } catch (discardError: unknown) {
-      setError(discardError instanceof Error ? discardError.message : "清除失敗同步事件失敗。");
-    } finally {
-      setSyncBusy(false);
-    }
-  }
-
   async function handleSyncRecords(): Promise<void> {
     setSyncBusy(true);
     setError(null);
@@ -183,7 +119,7 @@ function AccountContent() {
     try {
       const summary = await syncLocalRecordsToCloud();
       setSyncSummary(summary);
-      setSyncMessage("學習紀錄已同步。你在其他裝置登入同一帳號後，會自動帶入錯題、收藏、作答與進度紀錄。 ");
+      setSyncMessage("學習紀錄已完成同步。");
     } catch (syncError: unknown) {
       setError(syncError instanceof Error ? syncError.message : "同步學習紀錄失敗。請確認已執行 Supabase SQL。 ");
     } finally {
@@ -218,51 +154,22 @@ function AccountContent() {
 
         <MfaSecuritySection />
 
-        <section className="account-device-section" aria-labelledby="account-sync-title">
+        <section className="account-device-section account-sync-compact" aria-labelledby="account-sync-title">
           <div className="account-section-header">
             <div>
               <p className="eyebrow">Cloud Sync</p>
               <h2 id="account-sync-title">學習紀錄同步</h2>
-              <p>登入同一帳號時，錯題、收藏、作答紀錄、測驗進度與測驗結果會同步到其他裝置。</p>
             </div>
             <GlassButton variant="secondary" disabled={syncBusy} onClick={() => void handleSyncRecords()}>
               <Cloud aria-hidden="true" size={18} />
               <span>{syncBusy ? "同步中" : "立即同步"}</span>
             </GlassButton>
           </div>
-          <div className="account-status-grid">
+          <div className="account-status-grid account-sync-status-grid">
             <StatusItem icon={<Cloud aria-hidden="true" size={24} />} label="雲端狀態" value={syncSummary?.cloudAvailable ? "已啟用" : "尚未啟用"} />
-            <StatusItem icon={<ShieldCheck aria-hidden="true" size={24} />} label="錯題 / 收藏" value={`${syncSummary?.cloud.wrong ?? 0} / ${syncSummary?.cloud.favorites ?? 0}`} />
-            <StatusItem icon={<Cloud aria-hidden="true" size={24} />} label="等待同步" value={`${syncSummary?.pendingMutations ?? 0} 筆`} />
-            <StatusItem icon={<Shield aria-hidden="true" size={24} />} label="需人工處理" value={`${syncSummary?.deadLetters ?? 0} 筆`} />
-            <StatusItem icon={<Clock aria-hidden="true" size={24} />} label="圖片測驗" value={`${syncSummary?.cloud.imageSessions ?? 0} 筆`} />
             <StatusItem icon={<Clock aria-hidden="true" size={24} />} label="最後同步" value={formatDate(syncSummary?.syncedAt)} />
           </div>
           {syncSummary?.error ? <p className="form-error">{syncSummary.error}</p> : null}
-          {deadLetterRows.length > 0 ? (
-            <div className="account-sync-recovery" role="status" aria-live="polite">
-              <div>
-                <strong>有同步事件需要處理</strong>
-                <p>可先重新嘗試；若事件持續失敗且本機資料已確認正常，再清除失敗事件。</p>
-                <ul>
-                  {deadLetterRows.map((row) => (
-                    <li key={row.id}>
-                      <span>{mutationLabel(row.kind)} · {formatDate(row.failedAt)}</span>
-                      {row.lastError ? <small>{row.lastError.slice(0, 160)}</small> : null}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div className="button-row">
-                <GlassButton variant="secondary" disabled={syncBusy} onClick={() => void handleRetryDeadLetters()}>
-                  重新嘗試
-                </GlassButton>
-                <GlassButton variant="danger" disabled={syncBusy} onClick={() => void handleDiscardDeadLetters()}>
-                  清除失敗事件
-                </GlassButton>
-              </div>
-            </div>
-          ) : null}
         </section>
 
         <div className="button-row">

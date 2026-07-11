@@ -1329,3 +1329,27 @@
   .admin-pagination { display: grid; grid-template-columns: 1fr; text-align: center; }
   .admin-pagination .glass-button { width: 100%; }
 }
+
+/* v79.6 administration hierarchy and member intelligence polish */
+.admin-premium-command { display:grid; justify-items:end; gap:10px; }
+.admin-control-status { display:inline-flex; align-items:center; gap:8px; padding:7px 11px; border:1px solid rgba(29,111,138,.14); border-radius:999px; color:#1d6f8a; background:#edf6f8; font-size:.76rem; font-weight:900; }
+.admin-control-status>span { width:8px; height:8px; border-radius:50%; background:#22b77c; box-shadow:0 0 0 4px rgba(34,183,124,.12); }
+.admin-premium-kpis>.admin-kpi-card { grid-template-columns:auto minmax(0,1fr); align-items:center; gap:13px; min-height:108px!important; }
+.admin-premium-kpis .admin-kpi-icon { display:grid!important; width:43px; height:43px; place-items:center; border-radius:14px; color:var(--admin-teal)!important; background:#eaf3f5; }
+.admin-kpi-card.is-live .admin-premium-kpis .admin-kpi-icon { color:#137552!important; background:#e4f5ee; }
+.admin-premium-kpis .admin-kpi-copy { display:grid!important; gap:3px; min-width:0; }
+.admin-premium-kpis .admin-kpi-copy>small { color:#718094!important; font-size:.76rem; font-weight:850; }
+.admin-premium-kpis .admin-kpi-copy>strong { color:var(--admin-ink)!important; font-size:clamp(1.7rem,3vw,2.15rem); line-height:1; }
+.admin-premium-kpis .admin-kpi-copy>em { overflow:hidden; color:#8a95a4; font-size:.72rem; font-style:normal; font-weight:750; text-overflow:ellipsis; white-space:nowrap; }
+.admin-premium-session { display:flex; align-items:center; gap:7px; }
+.admin-directory-heading-meta { display:flex; align-items:center; justify-content:flex-end; gap:8px; flex-wrap:wrap; }
+.admin-directory-count { display:inline-flex; align-items:center; gap:7px; padding:8px 11px; border:1px solid rgba(20,43,59,.1); border-radius:999px; color:#526477; background:#f7f9fa; font-size:.79rem; font-weight:850; }
+.admin-premium-user-row { min-height:94px; border-radius:22px; background:#fff; }
+.admin-row-metric { align-content:center; }
+.admin-row-metric-main { display:flex; align-items:center; gap:7px; min-width:0; color:#2c4055; }
+.admin-row-metric-main svg { flex:0 0 auto; color:var(--admin-teal); }
+.admin-row-progress { display:block; width:min(112px,100%); height:5px; overflow:hidden; border-radius:999px; background:#e9eef1; }
+.admin-row-progress>i { display:block; height:100%; border-radius:inherit; background:#2b8aa2; }
+.admin-row-statuses { justify-content:flex-start; }
+@media (max-width:900px) { .admin-premium-command{justify-items:start}.admin-directory-heading-meta{justify-content:flex-start}.admin-premium-kpis>.admin-kpi-card{min-height:96px!important} }
+@media (max-width:680px) { .admin-control-status{display:none}.admin-directory-heading{align-items:flex-start;flex-direction:column}.admin-directory-heading-meta{width:100%}.admin-row-progress{width:100%} }

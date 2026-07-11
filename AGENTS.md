@@ -21,7 +21,7 @@
 - 不得提交 `.env`、私鑰、service-role key、Vercel token、`.vercel`、`supabase/.temp`、`node_modules`、`dist`、log 或 Playwright artifacts。
 - 題庫說明必須保留完整原文；OCR 內容只能標示為未校對、已逐字校對或需複查。
 - 管理權限只能透過 `api/_adminClient.ts` 的 `requireAdminUser()`；不得在個別 API 自建驗證。
-- 高風險操作必須要求 primary admin 與 AAL2。
+- 高風險操作原則上要求 primary admin 與 AAL2；唯一例外是已完成雙人核准的題庫正式發布，可由 primary admin 在 AAL1 執行。回滾與管理員破壞性異動仍必須 AAL2。
 - 已發布 release 不得直接修改，只能建立新版本或 transaction rollback。
 - Production question API 不得讀取 draft override。
 - Activation code 不得保存或查詢 plaintext。

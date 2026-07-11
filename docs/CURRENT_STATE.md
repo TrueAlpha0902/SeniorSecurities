@@ -1,3 +1,11 @@
+## v79.6 管理體驗與學習榮耀介面
+
+- 主要管理員正式發布已核准題庫時不再要求 MFA；第二人核准與回滾仍維持既有安全驗證。
+- 帳號頁學習同步縮減為雲端狀態、最後同步時間與立即同步按鈕。
+- 管理控制中心重新整理資訊層級、營運 KPI、會員學習指標與正確率進度。
+- 移除「90 秒內有心跳」實作文字，改為使用者可理解的即時狀態。
+- 學習排行榜新增個人成就提示、前段百分比、榮耀殿堂與前三名獎台。
+
 ## v79.5 裁切專注工作區
 
 - 題目編輯器改為單畫面雙欄工作區，左側只保留高頻裁切操作，右側使用可獨立捲動的大型即時預覽。
@@ -55,7 +63,7 @@
 
 - 移除程式內硬編碼主要管理員 Email，只接受 `ADMIN_EMAILS` 環境設定及資料庫角色。
 - Inactive user-id assignment 直接 fail closed，不再 fallback 到 legacy Email access。
-- Configured primary admin 與敏感工具操作要求 MFA／AAL2。
+- Configured primary admin 與敏感工具操作原則上要求 MFA／AAL2；已完成雙人核准的正式發布可由 primary admin 直接執行。
 - 管理員新增、停用、刪除，以及啟用碼建立／刪除，改用 transaction RPC，mutation 與 audit event 原子完成。
 - Public question override API 只回傳 published release，使用 500 筆分頁、ETag 與 CDN cache；沒有 active release 時使用 bundled stable data。
 - Client telemetry 不傳 query string；後端加入 body limit、來源雜湊、rate limit 與敏感值清理。
@@ -66,7 +74,7 @@
 - Production health check 不再固定等待 90 秒，改為最多 8 分鐘輪詢，並驗證 CSP、cache headers、manifest schema、hashed asset、chapter shard，以及 raw editor source 未公開。
 - CSS 移除 5 個未使用的歷史計算機樣式與舊 `.bak` 元件。
 - 新增 CSS maintenance budget：最多 10 個 CSS 檔、9,800 行、215 個 `!important`、`glass.css` 4,900 行。
-- 現況為 10 個 CSS 檔、9,574 行、204 個 `!important`。
+- 現況為 10 個 CSS 檔、9,730 行、214 個 `!important`。
 
 ## 完整驗證結果
 

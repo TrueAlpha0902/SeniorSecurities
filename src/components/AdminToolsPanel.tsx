@@ -911,7 +911,7 @@ function QuestionReleaseControls({ accessToken, isPrimaryAdmin }: { accessToken:
         <div>
           <p className="eyebrow">Publish</p>
           <h3 id="question-release-title">題庫發布</h3>
-          <p>工作草稿建立快照並完成覆核後，由主要管理員發布。</p>
+          <p>工作草稿建立快照並完成覆核後，由主要管理員直接發布。</p>
         </div>
         {activeRelease ? <span className="release-live-badge">線上：{activeRelease.version}</span> : null}
       </div>
@@ -956,7 +956,7 @@ function QuestionReleaseControls({ accessToken, isPrimaryAdmin }: { accessToken:
       <div className="question-publish-footer">
         <div>
           <strong>{publishableRelease ? `${publishableRelease.version} 已可發布` : "尚無已核准版本"}</strong>
-          <span>{isPrimaryAdmin ? "發布後將立即成為線上題庫版本。" : "只有主要管理員可以執行正式發布。"}</span>
+          <span>{isPrimaryAdmin ? "主要管理員可直接發布，完成後立即成為線上題庫版本。" : "只有主要管理員可以執行正式發布。"}</span>
         </div>
         <div className="question-publish-actions">
           {activeRelease && pointer?.previous_release_id && isPrimaryAdmin ? (

@@ -100,6 +100,15 @@ export function LeaderboardPage() {
     const next = activeTab === "streak" ? nextEntry.bestCorrectStreak : nextEntry.totalPracticeSeconds;
     return next <= 0 ? 100 : Math.min(100, Math.max(0, current / next * 100));
   }, [activeTab, currentEntry, nextEntry]);
+  const podiumEntries = entries.slice(0, 3);
+  const podiumOrder = [1, 0, 2].filter((index) => index < podiumEntries.length);
+  const currentRank = currentIndex >= 0 ? currentIndex + 1 : null;
+  const currentPercentile = currentRank && entries.length ? Math.max(1, Math.ceil(currentRank / entries.length * 100)) : null;
+  const achievementMessage = currentRank === 1
+    ? "你正在領先榜單，繼續守住自己的學習節奏。"
+    : currentRank
+      ? `你已進入前 ${currentPercentile}%，再累積一點就能向上一名靠近。`
+      : "完成一場練習後，你的努力就會出現在榜單上。";
 
   if (loading) return <LoadingState label="載入排行榜" />;
 
@@ -108,7 +117,7 @@ export function LeaderboardPage() {
       <GlassCard className="leaderboard-v66-hero" as="section">
         <div className="leaderboard-v66-heading">
           <span className="leaderboard-v66-icon"><Trophy size={24} /></span>
-          <div><p className="eyebrow">Learning League</p><h1>學習排行榜</h1><p>把排名當成節奏提示，不只比名次，也看持續練習與穩定進步。</p></div>
+          <div><p className="eyebrow">Learning League</p><h1>學習榮耀榜</h1><p>每一次答題與每一分鐘投入，都會累積成看得見的成就。</p></div>
         </div>
         <div className="leaderboard-v66-actions">
           <div className="leaderboard-v66-tabs" role="tablist" aria-label="排行榜類型">
@@ -123,16 +132,46 @@ export function LeaderboardPage() {
 
       <section className="leaderboard-v66-overview" aria-label="排行榜摘要">
         <GlassCard className="leaderboard-v66-my-card">
-          <div className="leaderboard-v66-card-label"><Target size={18} />我的進度</div>
-          <div className="leaderboard-v66-my-main"><strong>{currentIndex >= 0 ? `#${currentIndex + 1}` : "尚未上榜"}</strong><span>{currentEntry ? metricValue(currentEntry, activeTab) : "完成一場測驗即可開始累積"}</span></div>
-          {currentEntry && nextEntry ? <><div className="leaderboard-v66-progress-copy"><span>距離上一名</span><strong>{activeTab === "streak" ? `${Math.max(0, nextEntry.bestCorrectStreak - currentEntry.bestCorrectStreak)} 題` : formatTotalPracticeTime(Math.max(0, nextEntry.totalPracticeSeconds - currentEntry.totalPracticeSeconds))}</strong></div><progress value={progressToNext} max={100} /></> : <p>{currentEntry ? "你目前位於榜首，繼續維持節奏。" : "先完成題目，系統會自動建立排名。"}</p>}
+          <div className="leaderboard-v796-my-top">
+            <div className="leaderboard-v66-card-label"><Target size={18} />我的成就</div>
+            {currentRank ? <span className="leaderboard-v796-achievement-badge"><Award size={15} />{currentRank === 1 ? "榜首" : `前 ${currentPercentile}%`}</span> : null}
+          </div>
+          <div className="leaderboard-v66-my-main"><strong>{currentRank ? `#${currentRank}` : "尚未上榜"}</strong><span>{currentEntry ? metricValue(currentEntry, activeTab) : "完成一場練習即可開始累積"}</span></div>
+          <p className="leaderboard-v796-motivation">{achievementMessage}</p>
+          {currentEntry && nextEntry ? <><div className="leaderboard-v66-progress-copy"><span>距離上一名</span><strong>{activeTab === "streak" ? `${Math.max(0, nextEntry.bestCorrectStreak - currentEntry.bestCorrectStreak)} 題` : formatTotalPracticeTime(Math.max(0, nextEntry.totalPracticeSeconds - currentEntry.totalPracticeSeconds))}</strong></div><progress value={progressToNext} max={100} /></> : null}
         </GlassCard>
 
-        <GlassCard className="leaderboard-v66-stat-card"><span><UsersRound size={18} />本榜人數</span><strong>{entries.length}</strong><small>位學習者</small></GlassCard>
-        <GlassCard className="leaderboard-v66-stat-card"><span><Sparkles size={18} />榜首成績</span><strong>{entries[0] ? metricValue(entries[0], activeTab) : "—"}</strong><small>{entries[0]?.displayName ?? "等待第一筆紀錄"}</small></GlassCard>
+        <GlassCard className="leaderboard-v66-stat-card"><span><UsersRound size={18} />參與學習者</span><strong>{entries.length}</strong><small>一起累積進步</small></GlassCard>
+        <GlassCard className="leaderboard-v66-stat-card"><span><Sparkles size={18} />本期標竿</span><strong>{entries[0] ? metricValue(entries[0], activeTab) : "—"}</strong><small>{entries[0]?.displayName ?? "等待第一筆紀錄"}</small></GlassCard>
       </section>
 
-
+      {podiumEntries.length ? (
+        <GlassCard className={`leaderboard-v796-podium count-${podiumEntries.length}`} as="section">
+          <div className="leaderboard-v796-podium-head">
+            <div><p className="eyebrow">Hall of Achievement</p><h2>本期榮耀殿堂</h2><p>穩定累積比一次衝高更值得肯定，向每一位持續練習的人致敬。</p></div>
+            <span><Trophy size={17} />Top {podiumEntries.length}</span>
+          </div>
+          <div className="leaderboard-v796-podium-grid">
+            {podiumOrder.map((entryIndex) => {
+              const entry = podiumEntries[entryIndex];
+              if (!entry) return null;
+              const rank = entryIndex + 1;
+              return (
+                <article key={entry.userId} className={`rank-${rank}${entry.isCurrentUser ? " is-current" : ""}`}>
+                  <span className="leaderboard-v796-medal"><Award size={20} />{rank}</span>
+                  <span className="leaderboard-v796-avatar">{entry.displayName.slice(0, 1).toUpperCase()}</span>
+                  <div className="leaderboard-v796-podium-player">
+                    <small>{rank === 1 ? "本期冠軍" : rank === 2 ? "榮耀第二名" : "榮耀第三名"}</small>
+                    <strong>{entry.displayName}{entry.isCurrentUser ? <em>你</em> : null}</strong>
+                    <span>{secondaryMetric(entry, activeTab)}</span>
+                  </div>
+                  <div className="leaderboard-v796-podium-score"><strong>{metricValue(entry, activeTab)}</strong><small>{formatDate(entry.updatedAt)}</small></div>
+                </article>
+              );
+            })}
+          </div>
+        </GlassCard>
+      ) : null}
 
       <GlassCard className="leaderboard-v66-name-editor" as="section">
         <div><span className="leaderboard-v66-section-icon"><UserRound size={20} /></span><div><p className="eyebrow">Display Name</p><h2>排行榜顯示名稱</h2><p>使用不含個資、容易辨識的暱稱，最多 24 個字。</p></div></div>
@@ -146,7 +185,7 @@ export function LeaderboardPage() {
           {!visibleEntries.length ? <div className="leaderboard-v66-empty"><Trophy size={26} /><strong>目前還沒有排名資料</strong><span>完成一場測驗後會自動加入排行榜。</span></div> : null}
           {visibleEntries.map((entry, index) => {
             const rank = (currentPage - 1) * PAGE_SIZE + index + 1;
-            return <article key={entry.userId} className={entry.isCurrentUser ? "is-current" : ""}>
+            return <article key={entry.userId} className={`${entry.isCurrentUser ? "is-current " : ""}${rank <= 3 ? `is-podium rank-${rank}` : ""}`.trim()}>
               <span className={`leaderboard-v66-row-rank rank-${rank <= 3 ? rank : "other"}`}>{rank <= 3 ? <Award size={17} /> : null}{rank}</span>
               <div className="leaderboard-v66-player"><strong>{entry.displayName}{entry.isCurrentUser ? <em>你</em> : null}</strong><small>{secondaryMetric(entry, activeTab)}</small></div>
               <div className="leaderboard-v66-row-score"><strong>{metricValue(entry, activeTab)}</strong><small>{formatDate(entry.updatedAt)}</small></div>

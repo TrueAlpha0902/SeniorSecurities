@@ -82,7 +82,8 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     const action = String(body.action || "");
     const admin = await requireAdminUser(req, {
       roles: ["primary_admin", "admin"],
-      requireAal2: ["approve", "publish", "rollback"].includes(action),
+      requireAal2: ["approve", "rollback"].includes(action),
+      allowPrimaryAdminWithoutAal2: action === "publish",
     });
     const { supabase, user, isPrimaryAdmin } = admin;
 

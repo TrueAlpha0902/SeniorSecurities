@@ -600,36 +600,39 @@ function AdminContent() {
             <div>
               <p className="eyebrow">Operations Center</p>
               <h1>管理控制中心</h1>
-              <p>掌握帳號狀態、即時活動與學習成效</p>
+              <p>用一個畫面掌握會員、授權、學習活動與營運狀態。</p>
             </div>
           </div>
-          <div className="admin-premium-actions">
-            <GlassButton variant="primary" onClick={() => setToolsOpen(true)}>
-              <Wrench size={18} aria-hidden="true" />
-              <span>管理工具</span>
-            </GlassButton>
-            <GlassButton variant="secondary" disabled={auditLoading} onClick={openAuditLog}>
-              <ClipboardList size={18} aria-hidden="true" />
-              <span>操作紀錄</span>
-            </GlassButton>
-            <GlassButton variant="secondary" disabled={leaderboardLoading} onClick={openLeaderboardManager}>
-              <Trophy size={18} aria-hidden="true" />
-              <span>排行榜</span>
-            </GlassButton>
-            <GlassButton variant="secondary" disabled={refreshing} onClick={() => void loadUsers(true)}>
-              <RefreshCcw className={refreshing ? "is-spinning" : ""} size={18} aria-hidden="true" />
-              <span>{refreshing ? "同步中" : "同步資料"}</span>
-            </GlassButton>
+          <div className="admin-premium-command">
+            <span className="admin-control-status"><span aria-hidden="true" />系統運作中</span>
+            <div className="admin-premium-actions">
+              <GlassButton variant="primary" onClick={() => setToolsOpen(true)}>
+                <Wrench size={18} aria-hidden="true" />
+                <span>管理工具</span>
+              </GlassButton>
+              <GlassButton variant="secondary" disabled={auditLoading} onClick={openAuditLog}>
+                <ClipboardList size={18} aria-hidden="true" />
+                <span>操作紀錄</span>
+              </GlassButton>
+              <GlassButton variant="secondary" disabled={leaderboardLoading} onClick={openLeaderboardManager}>
+                <Trophy size={18} aria-hidden="true" />
+                <span>排行榜</span>
+              </GlassButton>
+              <GlassButton variant="secondary" disabled={refreshing} onClick={() => void loadUsers(true)}>
+                <RefreshCcw className={refreshing ? "is-spinning" : ""} size={18} aria-hidden="true" />
+                <span>{refreshing ? "同步中" : "同步資料"}</span>
+              </GlassButton>
+            </div>
           </div>
         </div>
 
         <div className="admin-premium-kpis">
-          <div><span><UsersRound size={17} />全部帳號</span><strong>{summary.total}</strong><small>目前管理範圍</small></div>
-          <div className="is-live"><span><Activity size={17} />目前在線</span><strong>{summary.online}</strong><small>90 秒內有心跳</small></div>
-          <div><span><KeyRound size={17} />有效授權</span><strong>{summary.active}</strong><small>{summary.total ? Math.round(summary.active / summary.total * 100) : 0}% 已開通</small></div>
-          <div><span><BookOpenCheck size={17} />累積作答</span><strong>{summary.practiced.toLocaleString("zh-TW")}</strong><small>全體學習活動</small></div>
+          <div className="admin-kpi-card"><span className="admin-kpi-icon"><UsersRound size={19} /></span><span className="admin-kpi-copy"><small>全部帳號</small><strong>{summary.total}</strong><em>目前管理範圍</em></span></div>
+          <div className="admin-kpi-card is-live"><span className="admin-kpi-icon"><Activity size={19} /></span><span className="admin-kpi-copy"><small>目前在線</small><strong>{summary.online}</strong><em>正在使用服務</em></span></div>
+          <div className="admin-kpi-card"><span className="admin-kpi-icon"><KeyRound size={19} /></span><span className="admin-kpi-copy"><small>有效授權</small><strong>{summary.active}</strong><em>{summary.total ? Math.round(summary.active / summary.total * 100) : 0}% 已開通</em></span></div>
+          <div className="admin-kpi-card"><span className="admin-kpi-icon"><BookOpenCheck size={19} /></span><span className="admin-kpi-copy"><small>累積作答</small><strong>{summary.practiced.toLocaleString("zh-TW")}</strong><em>全體學習活動</em></span></div>
         </div>
-        <p className="admin-premium-session">登入管理員：<strong>{user?.email}</strong></p>
+        <p className="admin-premium-session"><ShieldCheck size={15} aria-hidden="true" />登入管理員 <strong>{user?.email}</strong></p>
       </GlassCard>
 
       <GlassCard className="admin-premium-directory">
@@ -637,9 +640,12 @@ function AdminContent() {
           <div>
             <p className="eyebrow">Member Intelligence</p>
             <h2>使用者與活動</h2>
-            <p>點選任一列查看登入、裝置、授權與近期作答明細。</p>
+            <p>快速比較學習成效、練習投入與最近使用狀態，點選會員可查看完整明細。</p>
           </div>
-          <span className="admin-live-sync"><span /> 每 30 秒同步</span>
+          <div className="admin-directory-heading-meta">
+            <span className="admin-directory-count"><UsersRound size={16} />{filteredUsers.length} 位會員</span>
+            <span className="admin-live-sync"><span /> 每 30 秒同步</span>
+          </div>
         </div>
 
         <div className="admin-premium-toolbar">
@@ -711,16 +717,17 @@ function AdminContent() {
                     <small>#{row.id.slice(0, 8).toUpperCase()} · IP {row.lastIp || "未記錄"}</small>
                   </span>
                 </span>
-                <span className="admin-row-metric">
-                  <strong>{answered.toLocaleString("zh-TW")} 題</strong>
+                <span className="admin-row-metric admin-row-learning">
+                  <span className="admin-row-metric-main"><BookOpenCheck size={16} aria-hidden="true" /><strong>{answered.toLocaleString("zh-TW")} 題</strong></span>
+                  <span className="admin-row-progress" aria-label={`正確率 ${accuracy}%`}><i style={{ width: `${accuracy}%` }} /></span>
                   <small>{row.totalAnswered > 0 ? accuracy + "% 正確率" : "尚無完整統計"}</small>
                 </span>
                 <span className="admin-row-metric">
-                  <strong>{formatTotalPracticeTime(row.totalPracticeSeconds || 0)}</strong>
+                  <span className="admin-row-metric-main"><Clock3 size={16} aria-hidden="true" /><strong>{formatTotalPracticeTime(row.totalPracticeSeconds || 0)}</strong></span>
                   <small>最高連對 {row.bestCorrectStreak || 0} 題</small>
                 </span>
                 <span className="admin-row-metric">
-                  <strong>{row.isOnline ? "正在使用" : relativeActivity(row.lastActivityAt)}</strong>
+                  <span className="admin-row-metric-main"><Activity size={16} aria-hidden="true" /><strong>{row.isOnline ? "正在使用" : relativeActivity(row.lastActivityAt)}</strong></span>
                   <small>{formatShortDate(row.lastActivityAt || row.lastEventAt || row.lastSignInAt)}</small>
                 </span>
                 <span className="admin-row-statuses">
