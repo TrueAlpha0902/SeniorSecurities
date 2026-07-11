@@ -314,22 +314,31 @@ export function HomePage() {
                 <GlassCard className="daily-compact-card">
                   <div className="daily-compact-copy">
                     <p className="eyebrow">Daily Practice</p>
-                    <h2>
-                      今日應做 <strong>{dailyDisplayPlan.count}</strong>{" "}
-                      {T.question}
-                    </h2>
-                    <p>依目前進度安排，完成後即可結束今日練習。</p>
+                    <div className="daily-compact-title-row">
+                      <h2>
+                        今日應做 <strong>{dailyDisplayPlan.count}</strong>{" "}
+                        {T.question}
+                      </h2>
+                      <button
+                        type="button"
+                        className="daily-info-button"
+                        aria-label="查看今日練習安排說明"
+                        title="查看今日練習安排"
+                        aria-expanded={dailyDetailsOpen}
+                        onClick={() => setDailyDetailsOpen(true)}
+                      >
+                        <Info aria-hidden="true" size={18} />
+                      </button>
+                      {studyPlan.daysLeft !== null ? (
+                        <span className="daily-countdown-pill">
+                          <CalendarDays aria-hidden="true" size={16} />
+                          {studyPlan.daysLeft === 0
+                            ? T.examToday
+                            : `${T.countdown} ${studyPlan.daysLeft} ${T.days}`}
+                        </span>
+                      ) : null}
+                    </div>
                   </div>
-                  <button
-                    type="button"
-                    className="daily-info-button"
-                    aria-label="查看今日練習安排說明"
-                    aria-expanded={dailyDetailsOpen}
-                    onClick={() => setDailyDetailsOpen(true)}
-                  >
-                    <Info aria-hidden="true" size={18} />
-                    <span>說明</span>
-                  </button>
                   <GlassLinkButton
                     to="/image-quiz/daily"
                     variant="primary"

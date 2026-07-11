@@ -8,6 +8,7 @@ import { useAuth } from "../auth/AuthContext";
 
 import "../styles/premium-liquid-v67.css";
 import "../styles/premium-navy-v68.css";
+import "../styles/premium-navy-v69.css";
 
 type AppLayoutProps = {
   children: ReactNode;
@@ -61,8 +62,8 @@ export function AppLayout({ children }: AppLayoutProps) {
             type="button"
             className="nav-icon-button"
             onClick={() => setCalculatorOpen(true)}
-            aria-label="工程財務計算機"
-            title="工程財務計算機"
+            aria-label="計算機"
+            title="計算機"
           >
             <Calculator aria-hidden="true" size={22} />
           </button>

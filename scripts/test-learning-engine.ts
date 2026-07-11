@@ -60,3 +60,24 @@ assert.ok(Number.isFinite(recovered.stability));
 assert.ok(Number.isFinite(recovered.difficulty));
 
 console.log("Learning engine FSRS tests passed.");
+
+import { calculateSmartStudyPlanStats } from "../src/lib/studyPlan";
+
+const deadlinePlan = calculateSmartStudyPlanStats({
+  totalQuestions: 3526,
+  unattemptedQuestions: 3020,
+  wrongDueQuestions: 15,
+  reviewDueQuestions: 17,
+  mixedPoolQuestions: 474,
+  examDate: "2026-07-14",
+  dailyStudyMinutes: 240,
+  intensity: "standard",
+  now: new Date(2026, 6, 11, 12, 0, 0),
+});
+assert.equal(deadlinePlan.daysLeft, 3);
+assert.equal(deadlinePlan.requiredNewPerDay, 1007);
+assert.equal(deadlinePlan.allocations.new.count, 1007);
+assert.equal(deadlinePlan.suggestedDailyCount, 1039);
+assert.equal(deadlinePlan.reserveDays, 0);
+
+console.log("Deadline-aware daily-plan tests passed.");

@@ -1,0 +1,111 @@
+/* v69 — deadline-aware daily plan, visible admin hierarchy and one navy theme. */
+
+.daily-plan-section .daily-compact-card {
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+}
+.daily-compact-title-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+.daily-compact-title-row h2 {
+  margin: 0;
+}
+.daily-info-button {
+  width: 36px;
+  min-height: 36px;
+  padding: 0;
+  border-radius: 50%;
+}
+.daily-countdown-pill {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 11px;
+  border: 1px solid rgba(29, 111, 138, .14);
+  border-radius: 999px;
+  color: var(--primary-strong);
+  background: #edf3f5 !important;
+  font-size: .8rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+.daily-primary-action { min-width: 190px; }
+
+/* The original admin hero depended on gradients. v68 removed all gradients,
+   leaving white text on a white card. Restore a solid, high-contrast admin
+   identity and keep destructive/session actions visibly red. */
+.admin-premium-page {
+  --admin-red: #9b3340;
+  --admin-red-dark: #7f2632;
+  --admin-red-soft: #f8ecee;
+}
+.admin-premium-hero {
+  color: #fff !important;
+  border-color: rgba(127, 38, 50, .22) !important;
+  background: var(--admin-red) !important;
+  box-shadow: 0 22px 55px rgba(92, 27, 36, .20) !important;
+}
+.admin-premium-hero::after { display: none !important; }
+.admin-premium-emblem {
+  color: #fff !important;
+  border-color: rgba(255,255,255,.28) !important;
+  background: rgba(255,255,255,.12) !important;
+}
+.admin-premium-title .eyebrow,
+.admin-premium-title h1,
+.admin-premium-title p:last-child,
+.admin-premium-kpis span,
+.admin-premium-kpis strong,
+.admin-premium-kpis small,
+.admin-premium-session,
+.admin-premium-session strong {
+  color: #fff !important;
+}
+.admin-premium-title p:last-child,
+.admin-premium-kpis span,
+.admin-premium-kpis small,
+.admin-premium-session { opacity: .78; }
+.admin-premium-kpis > div,
+.admin-premium-kpis > div.is-live {
+  border-color: rgba(255,255,255,.18) !important;
+  background: rgba(255,255,255,.10) !important;
+}
+.admin-premium-actions .glass-button-primary {
+  color: var(--admin-red-dark) !important;
+  border-color: #fff !important;
+  background: #fff !important;
+  box-shadow: 0 10px 24px rgba(71, 17, 26, .15) !important;
+}
+.admin-premium-actions .glass-button-secondary {
+  color: #fff !important;
+  border-color: rgba(255,255,255,.26) !important;
+  background: rgba(255,255,255,.10) !important;
+}
+.admin-premium-actions .glass-button-secondary:hover:not(:disabled) {
+  background: rgba(255,255,255,.18) !important;
+}
+.account-page .button-row .glass-button-danger,
+.glass-button-danger {
+  color: #fff !important;
+  border-color: var(--danger, #9b3340) !important;
+  background: var(--danger, #9b3340) !important;
+}
+.account-page .button-row .glass-button-danger:hover:not(:disabled),
+.glass-button-danger:hover:not(:disabled) {
+  background: #7f2632 !important;
+}
+
+@media (max-width: 820px) {
+  .daily-plan-section .daily-compact-card { grid-template-columns: 1fr; }
+  .daily-primary-action { width: 100%; }
+}
+
+@media (max-width: 560px) {
+  .daily-compact-title-row { gap: 7px; }
+  .daily-countdown-pill { min-height: 32px; padding-inline: 9px; }
+}

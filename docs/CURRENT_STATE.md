@@ -42,3 +42,12 @@ v68 沒有新增 Supabase migration，不需再次執行 `supabase db push`。
 3. 閱讀本文件。
 4. 只讀取 `docs/AI_CHANGELOG.md` 最後一筆。
 5. 不要先掃描整個儲存庫。
+
+
+## v69 最新狀態
+
+- 每日題數改用考試期限覆蓋算法；v68 舊計畫會因 storage version 41 自動重建。
+- 首頁考試倒數保留，說明縮為資訊圖示。
+- 計算機為單一自動模式，可拖曳並在答題頁保持題目可見。
+- 管理區使用實心紅色高對比，修復消失的登出按鈕。
+- `npm run verify` 已通過；不需 Supabase migration。
