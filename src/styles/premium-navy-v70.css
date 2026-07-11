@@ -16,8 +16,8 @@
   gap: 9px;
   min-height: 220px;
   padding: 26px;
-  border-right: 1px solid rgba(20, 43, 59, .08);
-  background: #f5f8f9 !important;
+  border-right: 0;
+  background: #fff !important;
 }
 .daily-countdown-panel-v70 .eyebrow { margin: 0; }
 .daily-countdown-panel-v70 .smart-countdown-number {
@@ -271,7 +271,7 @@
     min-height: 0;
     padding: 20px;
     border-right: 0;
-    border-bottom: 1px solid rgba(20, 43, 59, .08);
+    border-bottom: 0;
   }
   .daily-compact-main-v70 { padding: 20px; }
   .admin-premium-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -285,4 +285,26 @@
   .admin-premium-actions .glass-button { width: 100%; }
   .question-publish-actions { width: 100%; }
   .question-publish-actions .glass-button { flex: 1 1 auto; }
+}
+
+
+/* v71 — seamless white deadline card and calmer spacing. */
+.daily-plan-section .daily-compact-card.daily-deadline-card-v70 {
+  grid-template-columns: minmax(210px, .62fr) minmax(0, 1.38fr);
+  background: #fff !important;
+}
+.daily-countdown-panel-v70 {
+  position: relative;
+  background: #fff !important;
+}
+.daily-countdown-panel-v70::after {
+  content: none !important;
+}
+.daily-compact-main-v70 {
+  position: relative;
+  background: #fff !important;
+}
+@media (min-width: 761px) {
+  .daily-countdown-panel-v70 { padding-right: 34px; }
+  .daily-compact-main-v70 { padding-left: 34px; }
 }

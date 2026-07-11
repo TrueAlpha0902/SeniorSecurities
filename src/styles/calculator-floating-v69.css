@@ -62,35 +62,54 @@
 }
 
 .floating-calculator-toolbar {
-  justify-content: flex-end;
-  min-height: 34px;
+  align-items: stretch;
+  justify-content: space-between;
+  min-height: 38px;
   margin-bottom: 8px;
+}
+.floating-calculator-toolbar-left {
+  display: flex;
+  align-items: stretch;
+  gap: 7px;
 }
 .floating-calculator-toolbar button {
   min-width: 54px;
-  min-height: 32px;
-  padding: 0 10px;
+  min-height: 36px;
+  padding: 0 11px;
   border: 1px solid rgba(20, 43, 59, .10);
-  border-radius: 9px;
+  border-radius: 10px;
   color: var(--calc-primary-dark);
   background: #fff !important;
+  box-shadow: 0 2px 0 rgba(12, 30, 44, .07);
   font: inherit;
   font-size: .78rem;
   font-weight: 850;
   cursor: pointer;
+  transition: transform .08s ease, box-shadow .08s ease, background-color .12s ease;
+}
+.floating-calculator-toolbar button:active {
+  transform: translateY(2px) scale(.985);
+  box-shadow: none;
+}
+.floating-calculator-toolbar .floating-calculator-equals {
+  min-width: 76px;
+  color: #fff;
+  border-color: var(--calc-primary-dark);
+  background: var(--calc-primary-dark) !important;
+  font-size: 1.05rem;
 }
 
 .floating-calculator-screen {
   padding: 13px 15px;
   border: 1px solid rgba(15, 69, 87, .16);
   border-radius: 15px;
-  background: #eef2e9 !important;
-  box-shadow: inset 0 2px 7px rgba(17, 37, 28, .12);
+  background: #fff !important;
+  box-shadow: inset 0 1px 3px rgba(16, 41, 58, .08), 0 1px 0 rgba(255, 255, 255, .9);
 }
 .floating-screen-status {
   display: flex;
   gap: 10px;
-  color: #536358;
+  color: #6f7c88;
   font: 750 .68rem/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 .floating-calculator-screen textarea {
@@ -101,7 +120,7 @@
   padding: 4px 0;
   border: 0;
   outline: 0;
-  color: #203127;
+  color: var(--calc-ink);
   background: transparent !important;
   font: 750 1.02rem/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
@@ -111,7 +130,7 @@
   align-items: center;
   justify-content: flex-end;
   overflow-wrap: anywhere;
-  color: #15291e;
+  color: var(--calc-ink);
   font: 850 1.28rem/1.3 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   text-align: right;
 }

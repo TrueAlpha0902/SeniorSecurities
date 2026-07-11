@@ -45,7 +45,6 @@ const FUNCTION_KEYS: KeySpec[] = [
   { label: "x", value: "x", tone: "function" },
   { label: "(", value: "(", tone: "function" },
   { label: ")", value: ")", tone: "function" },
-  { label: "=", value: "=", tone: "operator" },
   { label: "x²", value: "^2", tone: "function" },
   { label: "xʸ", value: "^", tone: "function" },
   { label: "√", value: "sqrt(", tone: "function" },
@@ -334,12 +333,22 @@ export function CalculatorModal({ open, onClose }: CalculatorModalProps) {
         </header>
 
         <div className="floating-calculator-toolbar">
-          <button type="button" onClick={() => { setAngleUnit((unit) => unit === "deg" ? "rad" : "deg"); softFeedback(); }}>
-            {angleUnit.toUpperCase()}
+          <div className="floating-calculator-toolbar-left">
+            <button type="button" onClick={() => { setAngleUnit((unit) => unit === "deg" ? "rad" : "deg"); softFeedback(); }}>
+              {angleUnit.toUpperCase()}
+            </button>
+            {resultValue !== null && fractionResult ? (
+              <button type="button" onClick={() => setShowFractionResult((current) => !current)}>S⇔D</button>
+            ) : null}
+          </div>
+          <button
+            type="button"
+            className="floating-calculator-equals"
+            onClick={() => insertAtCursor("=")}
+            aria-label="插入等號"
+          >
+            =
           </button>
-          {resultValue !== null && fractionResult ? (
-            <button type="button" onClick={() => setShowFractionResult((current) => !current)}>S⇔D</button>
-          ) : null}
         </div>
 
         <div className="floating-calculator-screen">
