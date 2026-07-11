@@ -33,6 +33,16 @@ const yieldRoot = solveEquationForX("100/(1+x)^2 = 90");
 assert.ok(yieldRoot >= 0, "The finance-style equation should prefer its non-negative root");
 assertApproximately(yieldRoot, Math.sqrt(100 / 90) - 1);
 
+const compoundFinanceRoot = solveEquationForX("(1+x)^2*(1.0613)=1.081");
+assertApproximately(compoundFinanceRoot, Math.sqrt(1.081 / 1.0613) - 1);
+assert.ok(equationResidual("(1+x)^2*(1.0613)=1.081", { x: compoundFinanceRoot }) < 1e-8);
+
+const weightedEquationRoot = solveEquationForX("0.16=0.1*0.2+0.9*(1-0.35)*x");
+assertApproximately(weightedEquationRoot, (0.16 - 0.1 * 0.2) / (0.9 * (1 - 0.35)));
+assert.ok(equationResidual("0.16=0.1*0.2+0.9*(1-0.35)*x", { x: weightedEquationRoot }) < 1e-8);
+
+assertApproximately(evaluateCalculatorExpression("((1)/(2))/((3)/(4))"), 2 / 3);
+
 const repeatedRoot = solveEquationForX("(x - 3.14)^2 = 0");
 assertApproximately(repeatedRoot, 3.14);
 

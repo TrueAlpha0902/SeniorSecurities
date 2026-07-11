@@ -1,44 +1,44 @@
 # SeniorSecurities Current State
 
 更新日期：2026-07-11
-目前版本：v67 Premium Liquid
-升級基準：GitHub `main` commit `5e7dece`
+目前版本：v68 深藍極簡介面與練習流程修正版
 
-## v67 已完成
+## v68 已完成
 
-- 全站視覺收斂為簡約、金融感一致的 Liquid Glass 設計系統。
-- 主色統一為深海軍藍與鈷藍，降低漸層、陰影、裝飾與卡片噪音。
-- 首頁移除「長期記憶進度」大型區塊；FSRS 學習引擎與今日複習入口仍保留在既有流程。
-- 修復計算機開啟後可能離開可視區域的問題：改為固定置中的 modal overlay。
-- 計算機改為 991EX／ClassWiz inspired 單一機身介面，包含 LCD、太陽能板、方向盤、五欄鍵盤與統一模式抽屜。
-- 模擬考建立頁改為清楚的模式、題數、批改方式與科目選擇流程，修正寬螢幕排版擠壓。
-- 排行榜移除大型前三名展示牆，保留個人進度、榜首摘要、名稱設定與單一榜單。
-- 相似題辨識訓練降低資訊密度，保留主動作答、差異線索、錯題重做與掌握標記。
-
-## 仍保留的核心功能
-
-- 150 題／210 分鐘完整模擬考。
-- AnswerAttempt、QuestionLearningState 與 FSRS 排程。
-- user-id RBAC、TOTP MFA、主要管理員刪除啟用碼。
-- 題庫 Draft → Review → 雙人核准 → Publish → Rollback。
+- 全站主色統一為原始深藍 `#1d6f8a`，移除鈷藍與所有裝飾性 CSS 漸層。
+- 首頁每日練習縮成「今日應做題數 + 說明 + 開始」；日期、負荷、題目分配與錯題入口改放說明視窗。
+- 計算機完整重做為單一簡約介面，支援一般計算、DEG/RAD、Ans、科學函數、歷史與觸覺回饋。
+- 計算機新增視覺化上下分子／分母輸入器，插入後以安全算式計算。
+- 一元方程式解算已驗證：
+  - `(1+x)^2*(1.0613)=1.081`
+  - `0.16=0.1*0.2+0.9*(1-0.35)*x`
+- 模擬考僅保留單科自訂題數 1–300 題；移除快速題數與三科完整模考。
+- 模擬考規則置頂，移除頁首題庫量／已練習／本次目標統計。
+- 模擬考取消倒數與時間到自動交卷，只顯示並累積實際練習時間。
 
 ## 驗證
 
 執行：`npm run verify`
 
-v67 已通過：
+已通過：
 
 - 前端 TypeScript
 - API TypeScript
 - ESLint
-- 計算機核心與進階模式測試
+- 計算機核心與進階測試
 - FSRS 學習引擎測試
 - 題庫資料驗證
-- Production build 與 PWA 產生
+- Production build
+- PWA generation
 
-## Codex／AI 下一次開始方式
+## 資料庫
 
-1. 執行 `git status --short` 與 `git log -1 --oneline`。
-2. 讀取本檔。
-3. 只讀取 `docs/AI_CHANGELOG.md` 最後一筆。
-4. 不必重新掃描整個專案。
+v68 沒有新增 Supabase migration，不需再次執行 `supabase db push`。
+
+## Codex／AI 下次開始方式
+
+1. 執行 `git status --short`。
+2. 執行 `git log -1 --oneline`。
+3. 閱讀本文件。
+4. 只讀取 `docs/AI_CHANGELOG.md` 最後一筆。
+5. 不要先掃描整個儲存庫。

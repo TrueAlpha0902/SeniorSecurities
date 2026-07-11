@@ -375,9 +375,6 @@ export function ImageQuizPage() {
   const [markedQuestionIds, setMarkedQuestionIds] = useState<Set<string>>(new Set());
   const [answerCardOpen, setAnswerCardOpen] = useState(false);
   const [autoNextCorrectEnabled, setAutoNextCorrectEnabled] = useState(() => getAutoNextCorrectEnabled());
-  const sessionDurationSeconds = mode === "random" && data?.session?.durationMinutes
-    ? data.session.durationMinutes * 60
-    : null;
 
   useEffect(() => {
     setElapsedSeconds(0);
@@ -420,22 +417,6 @@ export function ImageQuizPage() {
     }, 1000);
     return () => window.clearInterval(timer);
   }, [finished, progressKey, progressRestored, timerPaused]);
-
-  useEffect(() => {
-    if (sessionDurationSeconds === null || !progressRestored || finished || elapsedSeconds < sessionDurationSeconds) return;
-    let cancelled = false;
-    const submitExpiredExam = async () => {
-      if (mode === "random" && data?.session) {
-        await saveRandomSessionResult(data.session.sessionId, questions, answers);
-      }
-      if (cancelled) return;
-      setFinished(true);
-      void clearQuizProgress(progressKey);
-      window.alert("作答時間已結束，系統已自動交卷。");
-    };
-    void submitExpiredExam();
-    return () => { cancelled = true; };
-  }, [answers, data?.session, elapsedSeconds, finished, mode, progressKey, progressRestored, questions, sessionDurationSeconds]);
 
   useEffect(() => {
     let cancelled = false;
@@ -600,10 +581,6 @@ export function ImageQuizPage() {
   const currentAnswer = savedAnswer ?? answerModeRecord;
   const currentConfidence = confidenceByQuestion[currentQuestion.id] ?? "sure";
   const revealCurrentAnswer = !isDeferredExam;
-  const examDurationSeconds = sessionDurationSeconds;
-  const displayedTimerSeconds = examDurationSeconds === null
-    ? elapsedSeconds
-    : Math.max(0, examDurationSeconds - elapsedSeconds);
   const isFavorite = favoriteIds.has(currentQuestion.id);
   const displayedQuestionNumber =
     mode === "random" || mode === "sessionWrong" ? currentIndex + 1 : currentQuestion.number;
@@ -820,9 +797,9 @@ export function ImageQuizPage() {
                 {displayedQuestionNumber}
                 {" \u984c"}
               </h1>
-              <span className={`glass-badge quiz-timer-badge${examDurationSeconds !== null ? " is-countdown" : ""}`} aria-label={`${examDurationSeconds !== null ? "剩餘時間" : T.timer} ${formatElapsedTime(displayedTimerSeconds)}`}>
+              <span className="glass-badge quiz-timer-badge" aria-label={`練習時間 ${formatElapsedTime(elapsedSeconds)}`}>
                 <Clock3 aria-hidden="true" size={15} />
-                {examDurationSeconds !== null ? "剩餘 " : ""}{formatElapsedTime(displayedTimerSeconds)}
+                {formatElapsedTime(elapsedSeconds)}
                 {!isDeferredExam ? (
                   <button
                     type="button"
