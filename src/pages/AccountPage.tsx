@@ -135,6 +135,8 @@ function AccountContent() {
           <div className="account-status-grid">
             <StatusItem icon={<Cloud aria-hidden="true" size={24} />} label="雲端狀態" value={syncSummary?.cloudAvailable ? "已啟用" : "尚未啟用"} />
             <StatusItem icon={<ShieldCheck aria-hidden="true" size={24} />} label="錯題 / 收藏" value={`${syncSummary?.cloud.wrong ?? 0} / ${syncSummary?.cloud.favorites ?? 0}`} />
+            <StatusItem icon={<Cloud aria-hidden="true" size={24} />} label="等待同步" value={`${syncSummary?.pendingMutations ?? 0} 筆`} />
+            <StatusItem icon={<Shield aria-hidden="true" size={24} />} label="需人工處理" value={`${syncSummary?.deadLetters ?? 0} 筆`} />
             <StatusItem icon={<Clock aria-hidden="true" size={24} />} label="最後同步" value={formatDate(syncSummary?.syncedAt)} />
           </div>
           {syncSummary?.error ? <p className="form-error">{syncSummary.error}</p> : null}

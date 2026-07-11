@@ -130,6 +130,7 @@ export default defineConfig({
           "**/pdf-pages/**",
           "**/data/backups/**",
           "**/data/pdf-image-quiz.json",
+          "**/data/question-shards/**",
         ],
         maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
         navigateFallback: "index.html",

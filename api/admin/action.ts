@@ -1,102 +1,20 @@
-import { createClient } from "@supabase/supabase-js";
-import { getErrorStatusCode, HttpError, sendJson, type ApiRequest, type ApiResponse, writeAdminAudit } from "../_adminClient.js";
+import {
+  HttpError,
+  requireAdminUser,
+  sendError,
+  sendJson,
+  type ApiRequest,
+  type ApiResponse,
+  writeAdminAudit,
+} from "../_adminClient.js";
 
-const DEFAULT_ADMIN_EMAILS = "true.alpha0902@gmail.com";
 const DEFAULT_PASSWORD_RESET_URL = "https://senior-securities.vercel.app/reset-password";
 const EMAIL_LIMIT_PER_HOUR = Number(process.env.PASSWORD_RESET_EMAIL_LIMIT_PER_HOUR || 3);
-type AdminClient = ReturnType<typeof getAdminClient>;
+type AdminClient = Awaited<ReturnType<typeof requireAdminUser>>["supabase"];
 type JsonObject = Record<string, unknown>;
 
 function getEnv(name: string): string {
   return String(process.env[name] || "").trim();
-}
-
-function sendError(res: ApiResponse, error: unknown): void {
-  const statusCode = getErrorStatusCode(error);
-  const message = error instanceof Error ? error.message : String(error || "未知錯誤。");
-  sendJson(res, statusCode, { error: message });
-}
-
-function getAdminClient() {
-  const supabaseUrl = getEnv("SUPABASE_URL") || getEnv("VITE_SUPABASE_URL");
-  const serviceRoleKey = getEnv("SUPABASE_SERVICE_ROLE_KEY") || getEnv("SUPABASE_SECRET_KEY");
-
-  if (!supabaseUrl) {
-    throw new HttpError("缺少 Vercel 環境變數：VITE_SUPABASE_URL 或 SUPABASE_URL。", 500);
-  }
-
-  if (!serviceRoleKey) {
-    throw new HttpError("缺少 Vercel 環境變數：SUPABASE_SERVICE_ROLE_KEY。管理後台需要這個 server-only key。", 500);
-  }
-
-  return createClient(supabaseUrl, serviceRoleKey, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
-  });
-}
-
-function getConfiguredAdminEmails(): string[] {
-  return (getEnv("ADMIN_EMAILS") || DEFAULT_ADMIN_EMAILS)
-    .split(",")
-    .map((email) => email.trim().toLowerCase())
-    .filter(Boolean);
-}
-
-
-async function isDatabaseAdmin(supabase: AdminClient, email: string): Promise<boolean> {
-  const normalizedEmail = email.trim().toLowerCase();
-  if (!normalizedEmail) return false;
-
-  const { data, error } = await supabase
-    .from("admin_users")
-    .select("email, is_active")
-    .eq("email", normalizedEmail)
-    .eq("is_active", true)
-    .maybeSingle();
-
-  if (error) {
-    const message = String(error.message || "");
-    if (message.includes("admin_users") || message.includes("Could not find the table")) {
-      console.warn("admin_users table not found. Falling back to ADMIN_EMAILS only.");
-      return false;
-    }
-    console.error("Database admin lookup failed:", message || error);
-    return false;
-  }
-
-  return Boolean(data);
-}
-
-
-function extractBearerToken(req: ApiRequest): string | null {
-  const header = String(req.headers?.authorization || req.headers?.Authorization || "");
-  const match = header.match(/^Bearer\s+(.+)$/i);
-  return match?.[1] ?? null;
-}
-
-async function requireAdminUser(req: ApiRequest) {
-  const token = extractBearerToken(req);
-  if (!token) {
-    throw new HttpError("尚未登入，或登入狀態已過期。", 401);
-  }
-
-  const supabase = getAdminClient();
-  const { data, error } = await supabase.auth.getUser(token);
-  if (error || !data.user) {
-    throw new HttpError("無法驗證目前登入帳號，請重新登入管理員帳號。", 401);
-  }
-
-  const email = data.user.email?.toLowerCase() || "";
-  const isConfiguredAdmin = getConfiguredAdminEmails().includes(email);
-  const isDbAdmin = isConfiguredAdmin ? true : await isDatabaseAdmin(supabase, email);
-
-  if (!isDbAdmin) {
-    throw new HttpError(`這個帳號沒有管理員權限：${email}。請先用管理員帳號產生器加入 admin_users，或確認 Vercel 環境變數 ADMIN_EMAILS。`, 403);
-  }
-
-  return { supabase, user: data.user };
 }
 
 async function findUserIdByEmail(supabase: AdminClient, email: string): Promise<string> {
@@ -184,7 +102,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
   }
 
   try {
-    const { supabase, user } = await requireAdminUser(req);
+    const { supabase, user } = await requireAdminUser(req, { roles: ["primary_admin", "admin"], requireAal2: true });
     const body = parseBody(req);
     const action = String(body.action || "");
     const email = String(body.email || "").trim();

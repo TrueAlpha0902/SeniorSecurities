@@ -127,10 +127,10 @@ const homepagePlan = buildOrReadDailyPlan({
 assert.equal(homepagePlan.generatedFromCache, false);
 assert.equal(homepagePlan.categoryCounts.wrong, 1);
 assert.equal(homepagePlan.categoryCounts.review, 1);
-assert.equal(homepagePlan.categoryCounts.new, 2);
-assert.equal(homepagePlan.plannedCount, 4);
-assert.equal(homepagePlan.remainingCount, 4);
-assert.equal(homepagePlan.summary, "錯題 1 / 複習 1 / 新題 2");
+assert.equal(homepagePlan.categoryCounts.new, 3);
+assert.equal(homepagePlan.plannedCount, 5);
+assert.equal(homepagePlan.remainingCount, 5);
+assert.equal(homepagePlan.summary, "錯題 1 / 複習 1 / 新題 3");
 
 const practicePagePlan = buildOrReadDailyPlan({
   allQuestions: questions,
@@ -177,7 +177,7 @@ const progressedPlan = buildOrReadDailyPlan({
 
 assert.equal(progressedPlan.generatedFromCache, true);
 assert.deepEqual(progressedPlan.planQuestionIds, homepagePlan.planQuestionIds);
-assert.equal(progressedPlan.remainingCount, 3);
+assert.equal(progressedPlan.remainingCount, 4);
 assert.equal(progressedPlan.completedBeforePlanCount, 1);
 assert.ok(progressedPlan.initialCompletedQuestionIds.includes(completedQuestionId));
 assert.equal(
@@ -185,8 +185,30 @@ assert.equal(
     (sum, count) => sum + count,
     0,
   ),
-  3,
+  4,
 );
+
+const todayAnsweredBeforePlanning = buildOrReadDailyPlan({
+  allQuestions: questions,
+  storedAnswers: [
+    ...answers,
+    {
+      questionId: "q4",
+      bankId: "investment",
+      answeredAt: now.toISOString(),
+      isCorrect: true,
+      selectedAnswer: "A",
+    },
+  ] as UserAnswer[],
+  wrongRecords,
+  userId: "daily-plan-test-user",
+  config,
+  now,
+  learningStates,
+  useStoredPlan: false,
+});
+assert.ok(!todayAnsweredBeforePlanning.planQuestionIds.includes("q4"), "A question completed today must be excluded before quota selection.");
+assert.equal(todayAnsweredBeforePlanning.categoryCounts.new, 3, "Today-completed questions must not consume an executable new-question slot.");
 
 const changedConfigPlan = buildOrReadDailyPlan({
   allQuestions: questions,

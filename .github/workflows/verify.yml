@@ -17,19 +17,65 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 25
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-
       - name: Install dependencies
         run: npm ci
-
       - name: Verify application
         run: npm run verify
+
+  browser-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    needs: verify
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run browser, offline and accessibility tests
+        run: npm run test:e2e
+      - name: Upload browser artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ github.run_attempt }}
+          path: |
+            playwright-report
+            test-results
+          retention-days: 14
+
+  production-health:
+    if: github.event_name == 'push' && vars.POST_DEPLOY_BASE_URL != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [verify, browser-smoke]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Wait for Git deployment
+        run: sleep 90
+      - name: Check production deployment
+        env:
+          HEALTHCHECK_BASE_URL: ${{ vars.POST_DEPLOY_BASE_URL }}
+        run: npm run postdeploy:health

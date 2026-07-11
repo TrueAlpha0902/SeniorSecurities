@@ -137,7 +137,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       ? await optionalRows(
         supabase
           .from("activation_codes")
-          .select("code_plain, code_preview, max_uses, use_count, is_active, note, created_at, redeemed_at")
+          .select("code_preview, max_uses, use_count, is_active, note, created_at, redeemed_at")
           .eq("code_hash", sourceCodeHash)
           .maybeSingle(),
         null,

@@ -107,13 +107,14 @@ export function buildOrReadDailyPlan<TQuestion extends DailyPlanQuestion>({
   const wrongDueRecords = wrongRecords.filter(
     (record) =>
       allQuestionIds.has(record.questionId) &&
+      !todayAnsweredIds.has(record.questionId) &&
       answersById.get(record.questionId)?.isCorrect !== true,
   );
   const wrongIds = new Set(
     wrongDueRecords.map((record) => record.questionId),
   );
   const unattemptedQuestions = allQuestions.filter(
-    (question) => !answersById.has(question.id),
+    (question) => !todayAnsweredIds.has(question.id) && !answersById.has(question.id),
   );
   const wrongDueQuestions = wrongDueRecords
     .slice()

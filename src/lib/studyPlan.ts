@@ -11,7 +11,7 @@ const STUDY_INTENSITY_KEY = "quizpwa:study-intensity";
 const DAILY_PLAN_KEY_PREFIX = "quizpwa:daily-plan:";
 
 export const STUDY_PLAN_CHANGED = "quizpwa:study-plan-changed";
-export const DAILY_PLAN_STORAGE_VERSION = 42;
+export const DAILY_PLAN_STORAGE_VERSION = 43;
 export const DAY_MS = 24 * 60 * 60 * 1000;
 
 export type StudyIntensity = "steady" | "standard" | "sprint";
@@ -186,12 +186,16 @@ export function calculateSmartStudyPlanStats(args: {
   const dailyStudyMinutes = clampMinutes(args.dailyStudyMinutes ?? 60);
   const effectivePracticeMinutes = Math.max(1, Math.round(dailyStudyMinutes * profile.focusRate));
   const daysLeft = calculateDaysLeft(args.examDate, args.now ?? new Date());
-  // The number shown as "今日應做" must represent the pace required to
-  // finish the untouched bank before the exam.  A time-budget-only cap made a
-  // near exam date display an unrealistically small target (for example 82
-  // questions while more than 3,000 were still untouched).
-  const reserveDays = 0;
-  const progressDays = Math.max(1, daysLeft ?? 7);
+  // Preserve a small review buffer before the exam, while keeping at least
+  // one day available for first-pass progress.
+  const reserveDays = daysLeft === null || daysLeft <= 1
+    ? 0
+    : Math.min(
+        daysLeft - 1,
+        profile.maxReserveDays,
+        Math.max(profile.minReserveDays, Math.round(daysLeft * profile.reserveRate)),
+      );
+  const progressDays = Math.max(1, (daysLeft ?? 7) - reserveDays);
   const remainingQuestions = Math.max(0, args.unattemptedQuestions);
   const requiredNewPerDay = remainingQuestions === 0 ? 0 : Math.ceil(remainingQuestions / progressDays);
   const availability: Record<DailyPlanCategory, number> = {
@@ -200,26 +204,36 @@ export function calculateSmartStudyPlanStats(args: {
     review: Math.max(0, args.reviewDueQuestions),
     mixed: Math.max(0, args.mixedPoolQuestions),
   };
-  const timeCounts = allocateByTime(availability, effectivePracticeMinutes, profile);
-  const timeCapacityCount = Object.values(timeCounts).reduce((sum, count) => sum + count, 0);
-  const counts: Record<DailyPlanCategory, number> = {
+  const executableAvailability: Record<DailyPlanCategory, number> = {
+    ...availability,
     new: Math.min(remainingQuestions, requiredNewPerDay),
-    wrong: availability.wrong,
-    review: availability.review,
     mixed: 0,
   };
-
+  const counts = allocateByTime(executableAvailability, effectivePracticeMinutes, profile);
   const suggestedDailyCount = Object.values(counts).reduce((sum, count) => sum + count, 0);
+  const timeCapacityCount = suggestedDailyCount;
   const estimatedMinutes = Math.round(
     (Object.keys(counts) as DailyPlanCategory[]).reduce(
       (sum, category) => sum + counts[category] * profile.categories[category].minutesPerQuestion,
       0,
     ),
   );
-  const requiredMinutes = estimatedMinutes;
-  const overloadGap = Math.max(0, suggestedDailyCount - timeCapacityCount);
-  const isOverloaded = estimatedMinutes > effectivePracticeMinutes || overloadGap > 0;
-  const suggestedMinutes = Math.ceil(estimatedMinutes / profile.focusRate);
+  const theoreticalCounts: Record<DailyPlanCategory, number> = {
+    new: Math.min(remainingQuestions, requiredNewPerDay),
+    wrong: availability.wrong,
+    review: availability.review,
+    mixed: 0,
+  };
+  const theoreticalDailyCount = Object.values(theoreticalCounts).reduce((sum, count) => sum + count, 0);
+  const requiredMinutes = Math.round(
+    (Object.keys(theoreticalCounts) as DailyPlanCategory[]).reduce(
+      (sum, category) => sum + theoreticalCounts[category] * profile.categories[category].minutesPerQuestion,
+      0,
+    ),
+  );
+  const overloadGap = Math.max(0, theoreticalDailyCount - suggestedDailyCount);
+  const isOverloaded = requiredMinutes > effectivePracticeMinutes || overloadGap > 0;
+  const suggestedMinutes = Math.ceil(requiredMinutes / profile.focusRate);
   const allocations = Object.fromEntries(
     (Object.keys(counts) as DailyPlanCategory[]).map((category) => [
       category,
@@ -254,8 +268,8 @@ export function calculateSmartStudyPlanStats(args: {
     modeLabel: isOverloaded ? pressureMode : profile.label,
     warningTitle: isOverloaded ? "目前計畫時間不足" : "目前節奏可執行",
     warningMessage: isOverloaded
-      ? `距考試前共有 ${progressDays} 個完整練習日，尚未作答 ${remainingQuestions} 題，因此每天至少需完成 ${requiredNewPerDay} 題新題；今日另有 ${availability.wrong} 題錯題與 ${availability.review} 題到期複習，共 ${suggestedDailyCount} 題。依目前設定的 ${dailyStudyMinutes} 分鐘，時間可能不足。`
-      : `依距離考試的剩餘天數計算，今日完成 ${suggestedDailyCount} 題即可維持全題庫覆蓋進度。`,
+      ? `完整覆蓋速度需要每天 ${requiredNewPerDay} 題新題，另有 ${availability.wrong} 題錯題與 ${availability.review} 題到期複習；依目前 ${dailyStudyMinutes} 分鐘，今天安排可實際完成的 ${suggestedDailyCount} 題。建議增加讀書時間或採高分優先策略。`
+      : `已保留 ${reserveDays} 天總複習緩衝；依目前時間，今日完成 ${suggestedDailyCount} 題即可維持進度。`,
     allocations,
     wrongDueQuestions: availability.wrong,
     reviewDueQuestions: availability.review,

@@ -1,43 +1,67 @@
-﻿# SeniorSecurities AI 工作規則
+# SeniorSecurities AI 工作規則
 
 ## 最低讀取範圍
 
 1. 先執行 `git status --short` 與 `git log -1 --oneline`。
 2. 讀取 `docs/CURRENT_STATE.md`。
 3. 只讀取 `docs/AI_CHANGELOG.md` 最後一筆。
-4. 架構、同步、效能或安全任務再讀取 `docs/OPTIMIZATION_ROADMAP.md`。
-5. 除非任務需要，不要預先掃描整個儲存庫、舊版 README、備份 JSON、桌面 EXE 或建置產物。
+4. 架構、同步、效能或安全任務再讀取 `docs/OPTIMIZATION_ROADMAP.md` 與 `docs/STABILIZATION_FINAL_REPORT.md`。
+5. 除非任務需要，不要預先掃描舊版 README、備份 JSON、桌面 EXE、`dist`、`dev-dist` 或建置產物。
 
 ## 修改後必做
 
-執行 `npm run verify`，再更新 `docs/CURRENT_STATE.md` 與 `docs/AI_CHANGELOG.md`。PR 與 main push 必須通過 GitHub Actions `Verify`。
-涉及資料庫時，新增 migration，不可直接改寫已套用的 migration。
+- 執行 `npm run verify`。
+- UI、PWA、routing、modal、答案狀態或 CSS 變更另執行 `npm run test:e2e`。
+- 更新 `docs/CURRENT_STATE.md` 與 `docs/AI_CHANGELOG.md`。
+- PR 與 main push 必須通過 GitHub Actions Verify／browser-smoke。
+- 涉及資料庫時只能新增 migration，不得修改已在 production 套用的 migration。
 
 ## 資料與安全
 
-- 不得提交 `.env`、私鑰、service-role key、Vercel token、`.vercel`、`supabase/.temp`、`node_modules`、`dist` 或 log。
+- 不得提交 `.env`、私鑰、service-role key、Vercel token、`.vercel`、`supabase/.temp`、`node_modules`、`dist`、log 或 Playwright artifacts。
 - 題庫說明必須保留完整原文；OCR 內容只能標示為未校對、已逐字校對或需複查。
-- 管理權限以 `user_id` 角色為主，Email 僅保留主要管理員 bootstrap fallback。
-- 已發布題庫 release 不得直接修改，只能建立新版本或回滾。
+- 管理權限只能透過 `api/_adminClient.ts` 的 `requireAdminUser()`；不得在個別 API 自建驗證。
+- 高風險操作必須要求 primary admin 與 AAL2。
+- 已發布 release 不得直接修改，只能建立新版本或 transaction rollback。
+- Production question API 不得讀取 draft override。
+- Activation code 不得保存或查詢 plaintext。
+- Client telemetry 不得包含 Email、token、題目內容、答案或個人識別資料。
+
+## 同步與資料完整性護欄
+
+- 雲端清單查詢必須明確分頁；不得用「本次查詢沒出現」推斷刪除。
+- 刪除只能透過 `user_record_tombstones` 或明確伺服器事件 reconcile。
+- FSRS、attempts、cloud queue 與 dead-letter 必須保留在 `reliabilityStore` IndexedDB；不得搬回大型 localStorage snapshot。
+- Queue mutation 必須有 event id／coalescing／重試上限；新增 mutation 類型時同步更新 reliability tests。
+- 同一裝置的本機資料必須依 user id 隔離。
 
 ## 每日計畫單一來源
 
-- 首頁與每日練習只能透過 `src/lib/dailyPlanService.ts` 建立或讀取今日題列。
-- 不得在 `HomePage.tsx`、`ImageQuizPage.tsx` 或其他頁面複製 FSRS 到期判斷、錯題排序、科目平衡或 daily-plan localStorage 解析。
-- 修改每日計畫演算法時必須同步更新 `scripts/test-daily-plan-service.ts`。
+- 首頁與每日練習只能透過 `src/lib/dailyPlanService.ts` 建立或讀取題列。
+- 所有候選池在選題前排除 `todayAnsweredIds`。
+- UI 操作題數使用時間可執行值；理論覆蓋速度只能作提示，不可直接取代 quota。
+- 修改演算法必須同步更新 `scripts/test-learning-engine.ts` 與 `scripts/test-daily-plan-service.ts`。
 
-## v74 效能護欄
+## 題庫與離線內容
 
-- 首頁只能用 `loadImageQuizPlanningIndex()` 建立 Daily Plan，不得改回 `loadAllImageQuestions()`。
-- `public/data/pdf-image-quiz.json` 變更後必須執行 `npm run generate:plan-index`，並提交產生的 compact index。
-- 計算機、設定、Analytics 與 FSRS scheduler 必須維持 lazy／dynamic import，不得重新放回初始 bundle。
-- 修改 Vite chunk、全域 CSS 或首頁相依模組後，必須通過 `npm run test:bundle`。
-- 大型列表不得一次掛載全部資料；優先使用 progressive rendering、virtualization 或 `content-visibility`。
+- `public/data/pdf-image-quiz.json` 變更後必須執行 `npm run generate:shards` 與 `npm run generate:plan-index`，並提交 generated manifest、shards 與 release source。
+- Bank／chapter route 不得改回載入完整題庫。
+- Cache version 必須來自 release manifest／content hash，不得新增人工日期常數。
+- 離線下載只能快取該 App 的 `question-bank-*` cache。
 
-## v74.1 穩定性護欄
+## PWA 與空白頁護欄
 
-- Route-level lazy import 必須使用 `lazyWithRetry()`，不得直接新增未保護的 `React.lazy()`。
-- Service Worker 更新不得在使用者操作途中自動 `skipWaiting`／`clientsClaim` 接管舊分頁。
-- App 根層必須保留 `AppErrorBoundary`；不可移除全域 chunk-load recovery。
-- `index.html` 與 `sw.js` 不得設定 immutable 長快取；hash assets 才能使用 immutable cache。
-- 修改 PWA 更新策略、lazy routes 或 Vercel cache headers 後必須執行 `npm run test:recovery` 與完整 `npm run verify`。
+- 所有 `React.lazy()` 必須透過 `lazyWithRetry()`。
+- Analytics 或非核心 widget 必須有獨立 Error Boundary。
+- Service Worker 不得在使用者操作途中自動接管舊分頁。
+- Recovery cleanup 只能清除目前 App scope 與 app-owned cache；不得清除 IndexedDB／localStorage。
+- `index.html`、`sw.js` 與 manifest 不得使用 immutable 長快取；只有 hash assets 可 immutable。
+
+## CSS 與效能護欄
+
+- 不得新增 `premium-vXX.css` 或其他版本式覆蓋檔；現行主題只從 `theme-current.css` 載入。
+- 新樣式優先放入 component/page 對應檔，避免新增 `!important`。
+- 進度條、錯誤次數、正解／答錯顏色修改必須保留 integrity contract 與 Playwright 驗證。
+- 首頁不得載入完整 crop payload。
+- 大型列表使用 progressive rendering、virtualization 或 `content-visibility`。
+- 修改 Vite、主 bundle 或全域 CSS 後必須通過 `npm run test:bundle`。

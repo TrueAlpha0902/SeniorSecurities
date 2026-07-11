@@ -4,6 +4,7 @@ import { BrowserRouter } from "react-router-dom";
 import { registerSW } from "virtual:pwa-register";
 import { App } from "./App";
 import { announceAppUpdate, recoverFromChunkLoadError } from "./lib/appRecovery";
+import { reportClientError } from "./lib/telemetry";
 import "./styles/glass.css";
 
 type IdleWindow = Window & {
@@ -17,10 +18,12 @@ function installGlobalRecoveryHandlers(): void {
   window.addEventListener("error", (event) => {
     const error = event.error ?? event.message;
     if (recoverFromChunkLoadError(error)) event.preventDefault();
+    else reportClientError(error);
   });
 
   window.addEventListener("unhandledrejection", (event) => {
     if (recoverFromChunkLoadError(event.reason)) event.preventDefault();
+    else reportClientError(event.reason);
   });
 }
 

@@ -1,23 +1,15 @@
 import { useEffect, useState } from "react";
 import {
-  APP_UPDATE_AVAILABLE_EVENT,
-  type AppUpdateAvailableDetail,
+  dismissPendingAppUpdate,
+  getPendingAppUpdate,
+  subscribeToAppUpdate,
 } from "../lib/appRecovery";
 
 export function AppUpdateNotice() {
-  const [applyUpdate, setApplyUpdate] = useState<(() => Promise<void>) | null>(null);
+  const [applyUpdate, setApplyUpdate] = useState<(() => Promise<void>) | null>(() => getPendingAppUpdate());
   const [updating, setUpdating] = useState(false);
 
-  useEffect(() => {
-    const handleUpdateAvailable = (event: Event) => {
-      const customEvent = event as CustomEvent<AppUpdateAvailableDetail>;
-      if (!customEvent.detail?.applyUpdate) return;
-      setApplyUpdate(() => customEvent.detail.applyUpdate);
-    };
-
-    window.addEventListener(APP_UPDATE_AVAILABLE_EVENT, handleUpdateAvailable);
-    return () => window.removeEventListener(APP_UPDATE_AVAILABLE_EVENT, handleUpdateAvailable);
-  }, []);
+  useEffect(() => subscribeToAppUpdate(setApplyUpdate), []);
 
   if (!applyUpdate) return null;
 
@@ -38,7 +30,7 @@ export function AppUpdateNotice() {
         <span>完成目前操作後更新，可避免頁面在版本切換時變成空白。</span>
       </div>
       <div className="app-update-actions">
-        <button type="button" onClick={() => setApplyUpdate(null)} disabled={updating}>
+        <button type="button" onClick={dismissPendingAppUpdate} disabled={updating}>
           稍後
         </button>
         <button type="button" className="is-primary" onClick={() => void handleApplyUpdate()} disabled={updating}>

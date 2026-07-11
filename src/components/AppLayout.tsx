@@ -1,20 +1,18 @@
 import { ArrowLeft, Calculator, Home, Settings, UserRound } from "lucide-react";
-import { lazy, Suspense, type ReactNode, useState } from "react";
+import { Suspense, type ReactNode, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import "../styles/theme-current.css";
+import { lazyWithRetry } from "../lib/lazyWithRetry";
 
-import "../styles/premium-liquid-v67.css";
-import "../styles/premium-navy-v68.css";
-import "../styles/premium-navy-v69.css";
-import "../styles/premium-navy-v70.css";
 
 const loadSettingsPanel = () => import("./SettingsPanel");
 const loadCalculatorModal = () => import("./CalculatorModal");
 
-const LazySettingsPanel = lazy(() =>
+const LazySettingsPanel = lazyWithRetry(() =>
   loadSettingsPanel().then((module) => ({ default: module.SettingsPanel })),
 );
-const LazyCalculatorModal = lazy(() =>
+const LazyCalculatorModal = lazyWithRetry(() =>
   loadCalculatorModal().then((module) => ({ default: module.CalculatorModal })),
 );
 

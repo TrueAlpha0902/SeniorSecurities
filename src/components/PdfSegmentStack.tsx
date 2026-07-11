@@ -1,5 +1,6 @@
 import { useEffect, useState, type CSSProperties } from "react";
-import { assetUrl, type PdfCropSegment } from "../lib/imageQuiz";
+import type { PdfCropSegment } from "../lib/imageQuiz";
+import { pdfImageUrl } from "../lib/pdfAssets";
 
 type PdfSegmentStackProps = {
   label: string;
@@ -21,7 +22,6 @@ export function PdfSegmentStack({ label, segments, priority = "auto" }: PdfSegme
   );
 }
 
-const PDF_IMAGE_CACHE_VERSION = "20260707-v51-crop-fix";
 
 function PdfCrop({ segment, priority }: { segment: PdfCropSegment; priority: "high" | "auto" | "low" }) {
   const [retryToken, setRetryToken] = useState(0);
@@ -62,9 +62,3 @@ function PdfCrop({ segment, priority }: { segment: PdfCropSegment; priority: "hi
   );
 }
 
-export function pdfImageUrl(path: string, retryToken = 0): string {
-  const url = assetUrl(path);
-  const separator = url.includes("?") ? "&" : "?";
-  const retry = retryToken > 0 ? `&retry=${retryToken}` : "";
-  return `${url}${separator}v=${PDF_IMAGE_CACHE_VERSION}${retry}`;
-}

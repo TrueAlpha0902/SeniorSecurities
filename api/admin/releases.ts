@@ -6,6 +6,7 @@ import {
   sendError,
   sendJson,
   writeAdminAudit,
+  requestIpAddress,
   type ApiRequest,
   type ApiResponse,
 } from "../_adminClient.js";
@@ -66,12 +67,10 @@ async function listReleases(supabase: Awaited<ReturnType<typeof requireAdminUser
 
 export default async function handler(req: ApiRequest, res: ApiResponse) {
   try {
-    const admin = await requireAdminUser(req, { roles: ["primary_admin", "admin"] });
-    const { supabase, user, role, isPrimaryAdmin } = admin;
-
     if (req.method === "GET") {
-      const result = await listReleases(supabase);
-      sendJson(res, 200, { ...result, role, isPrimaryAdmin });
+      const admin = await requireAdminUser(req, { roles: ["primary_admin", "admin"] });
+      const result = await listReleases(admin.supabase);
+      sendJson(res, 200, { ...result, role: admin.role, isPrimaryAdmin: admin.isPrimaryAdmin });
       return;
     }
     if (req.method !== "POST") {
@@ -81,6 +80,11 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
 
     const body = parseBody(req);
     const action = String(body.action || "");
+    const admin = await requireAdminUser(req, {
+      roles: ["primary_admin", "admin"],
+      requireAal2: ["approve", "publish", "rollback"].includes(action),
+    });
+    const { supabase, user, isPrimaryAdmin } = admin;
 
     if (action === "create-draft") {
       const overrides = await listQuestionOverrides(supabase, { bypassCache: true });
@@ -125,32 +129,29 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     } else if (action === "publish") {
       if (!isPrimaryAdmin) throw new HttpError("只有主要管理員可以正式發布題庫。", 403);
       if (release.status !== "approved") throw new HttpError("發布前必須完成雙人核准。", 400);
-      const { data: pointer } = await supabase.from("question_release_pointer").select("active_release_id").eq("singleton", true).maybeSingle();
-      const { error: publishError } = await supabase.from("question_release_batches").update({ status: "published", published_by: user.id, published_at: new Date().toISOString() }).eq("id", releaseId).eq("status", "approved");
+      const { error: publishError } = await supabase.rpc("publish_question_release_v75", {
+        p_release_id: releaseId,
+        p_actor_user_id: user.id,
+        p_actor_email: user.email || user.id,
+        p_ip_address: requestIpAddress(req),
+      });
       if (publishError) throw publishError;
-      const { error: pointerError } = await supabase.from("question_release_pointer").upsert({
-        singleton: true,
-        active_release_id: releaseId,
-        previous_release_id: pointer?.active_release_id || null,
-        updated_by: user.id,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: "singleton" });
-      if (pointerError) throw pointerError;
     } else if (action === "rollback") {
       if (!isPrimaryAdmin) throw new HttpError("只有主要管理員可以回滾題庫。", 403);
-      const { data: pointer, error: pointerError } = await supabase.from("question_release_pointer").select("active_release_id, previous_release_id").eq("singleton", true).single();
-      if (pointerError) throw pointerError;
-      if (pointer.active_release_id !== releaseId) throw new HttpError("只能回滾目前線上的發布批次。", 400);
-      if (!pointer.previous_release_id) throw new HttpError("目前沒有可回滾的上一版。", 400);
-      const { error: rollbackError } = await supabase.from("question_release_batches").update({ status: "rolled_back", rolled_back_at: new Date().toISOString() }).eq("id", releaseId).eq("status", "published");
+      const { error: rollbackError } = await supabase.rpc("rollback_question_release_v75", {
+        p_release_id: releaseId,
+        p_actor_user_id: user.id,
+        p_actor_email: user.email || user.id,
+        p_ip_address: requestIpAddress(req),
+      });
       if (rollbackError) throw rollbackError;
-      const { error: updatePointerError } = await supabase.from("question_release_pointer").update({ active_release_id: pointer.previous_release_id, previous_release_id: null, updated_by: user.id, updated_at: new Date().toISOString() }).eq("singleton", true);
-      if (updatePointerError) throw updatePointerError;
     } else {
       throw new HttpError("未知的發布操作。", 400);
     }
 
-    await writeAdminAudit({ supabase, actor: user, req, action: `question_release.${action}`, metadata: { releaseId, version: release.version } });
+    if (action !== "publish" && action !== "rollback") {
+      await writeAdminAudit({ supabase, actor: user, req, action: `question_release.${action}`, metadata: { releaseId, version: release.version } });
+    }
     sendJson(res, 200, { ok: true, message: "發布流程狀態已更新。" });
   } catch (error) {
     console.error("/api/admin/releases failed:", error);

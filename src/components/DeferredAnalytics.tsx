@@ -1,6 +1,7 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { Component, Suspense, useEffect, useState, type ErrorInfo, type ReactNode } from "react";
+import { lazyWithRetry } from "../lib/lazyWithRetry";
 
-const LazyAnalytics = lazy(() =>
+const LazyAnalytics = lazyWithRetry(() =>
   import("@vercel/analytics/react").then((module) => ({
     default: module.Analytics,
   })),
@@ -13,6 +14,22 @@ type IdleWindow = Window & {
   ) => number;
   cancelIdleCallback?: (handle: number) => void;
 };
+
+class AnalyticsErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo): void {
+    console.warn("Analytics disabled after an isolated loading error", error, info.componentStack);
+  }
+
+  render() {
+    return this.state.failed ? null : this.props.children;
+  }
+}
 
 export function DeferredAnalytics() {
   const [enabled, setEnabled] = useState(false);
@@ -31,8 +48,10 @@ export function DeferredAnalytics() {
   }, []);
 
   return enabled ? (
-    <Suspense fallback={null}>
-      <LazyAnalytics />
-    </Suspense>
+    <AnalyticsErrorBoundary>
+      <Suspense fallback={null}>
+        <LazyAnalytics />
+      </Suspense>
+    </AnalyticsErrorBoundary>
   ) : null;
 }

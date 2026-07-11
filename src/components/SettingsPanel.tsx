@@ -1,4 +1,4 @@
-import { ArrowLeft, CalendarDays, Trash2, X } from "lucide-react";
+import { ArrowLeft, CalendarDays, HardDrive, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useAsync } from "../hooks/useAsync";
 import { clearSelectedUserRecords, type ClearRecordPart } from "../lib/db";
@@ -13,6 +13,7 @@ import { removeScopedStorageItem } from "../lib/userScopedStorage";
 import { loadImageQuizBanks, type ImageQuizBank, type ImageQuizChapter } from "../lib/imageQuiz";
 import { GlassButton } from "./GlassButton";
 import { GlassCard } from "./GlassCard";
+import { OfflineContentPanel } from "./OfflineContentPanel";
 
 const T = {
   settings: "\u8a2d\u5b9a",
@@ -27,6 +28,8 @@ const T = {
   sprint: "衝刺型",
   customMinutes: "自訂分鐘",
   saveStudyPlan: "儲存考試計畫",
+  offlineContent: "離線題庫",
+  offlineContentDescription: "按科目下載題目資料與 PDF 圖片，沒有網路時仍可練習。",
   correctAnswerMode: "正解模式",
   correctAnswerModeDescription: "開啟後，所有測驗都會直接顯示正解與解析。",
   answerModeOn: "已開啟正解模式",
@@ -98,7 +101,7 @@ type ClearChapterOption = {
   progressScopeIds: string[];
 };
 
-type SettingsView = "menu" | "clear" | "studyPlan";
+type SettingsView = "menu" | "clear" | "studyPlan" | "offline";
 
 export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
   const { data, error, loading } = useAsync(loadImageQuizBanks, [open]);
@@ -286,7 +289,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
         <div className="clear-record-header">
           <div>
             <p className="eyebrow">{T.settings}</p>
-            <h2 id="settings-title">{view === "menu" ? T.settings : view === "studyPlan" ? T.studyPlan : T.clearDialogTitle}</h2>
+            <h2 id="settings-title">{view === "menu" ? T.settings : view === "studyPlan" ? T.studyPlan : view === "offline" ? T.offlineContent : T.clearDialogTitle}</h2>
           </div>
           <button type="button" className="nav-icon-button" aria-label={T.cancel} title={T.cancel} onClick={handleClose}>
             <X aria-hidden="true" size={20} />
@@ -323,6 +326,18 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                 <GlassButton variant="secondary" onClick={() => setView("studyPlan")}>
                   <CalendarDays aria-hidden="true" size={19} />
                   <span>{T.studyPlan}</span>
+                </GlassButton>
+              </div>
+            </section>
+            <section className="settings-option-card" aria-label={T.offlineContent}>
+              <div className="settings-action-card-head">
+                <div>
+                  <strong>{T.offlineContent}</strong>
+                  <p>{T.offlineContentDescription}</p>
+                </div>
+                <GlassButton variant="secondary" onClick={() => setView("offline")}>
+                  <HardDrive aria-hidden="true" size={19} />
+                  <span>管理離線內容</span>
                 </GlassButton>
               </div>
             </section>
@@ -396,6 +411,16 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
               <GlassButton variant="primary" onClick={handleSaveStudyPlan}>
                 <CalendarDays aria-hidden="true" size={18} />
                 <span>{T.saveStudyPlan}</span>
+              </GlassButton>
+            </div>
+          </>
+        ) : view === "offline" ? (
+          <>
+            <OfflineContentPanel />
+            <div className="clear-record-actions">
+              <GlassButton variant="secondary" onClick={() => setView("menu")}>
+                <ArrowLeft aria-hidden="true" size={18} />
+                <span>{T.backSettings}</span>
               </GlassButton>
             </div>
           </>

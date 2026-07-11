@@ -9,11 +9,26 @@ import type {
 } from "../types";
 import type { ImageQuizQuestion, NumericAnswer } from "./imageQuiz";
 import { supabase } from "./supabase";
-import type {
-  AnswerConfidence,
-  LearningAttemptInput,
-  QuestionLearningState,
+import {
+  mergeCloudLearningStates,
+  type AnswerConfidence,
+  type LearningAttemptInput,
+  type QuestionLearningState,
 } from "./learningStateStore";
+import {
+  countReliabilityDeadLetters,
+  countReliabilityQueue,
+  deleteReliabilityQueueEntries,
+  enqueueReliabilityMutation,
+  getReliabilityMetadata,
+  listDueReliabilityQueue,
+  listReliabilityQueue,
+  moveReliabilityQueueEntryToDeadLetter,
+  replaceReliabilityQueue,
+  setReliabilityMetadata,
+  updateReliabilityQueueEntry,
+  type ReliabilityQueueEntry,
+} from "./reliabilityStore";
 
 export type StoredImageAnswer = {
   selected: NumericAnswer;
@@ -69,6 +84,8 @@ export type CloudSyncSummary = {
   };
   cloudAvailable: boolean;
   syncedAt: string | null;
+  pendingMutations: number;
+  deadLetters: number;
   error: string | null;
 };
 
@@ -132,7 +149,8 @@ const DB_VERSION = 3;
 const SYNC_READY_PREFIX = "quizpwa:cloud-sync-initialized";
 const LAST_SYNC_PREFIX = "quizpwa:last-cloud-sync";
 const LEGACY_MIGRATION_KEY = "quizpwa:legacy-db-migration:v2";
-const CLOUD_QUEUE_PREFIX = "quizpwa:cloud-write-queue:v2";
+const LEGACY_CLOUD_QUEUE_PREFIX = "quizpwa:cloud-write-queue:v2";
+const CLOUD_SYNC_CHECKPOINT_KEY = "cloud-records:last-successful-sync";
 
 export type QuizProgressRecord = {
   scopeId: string;
@@ -503,54 +521,138 @@ function chooseLatestSession(left: QuizSession, right: QuizSession): QuizSession
   return latestIso(left.finishedAt ?? left.startedAt, right.finishedAt ?? right.startedAt) === (left.finishedAt ?? left.startedAt) ? left : right;
 }
 
-async function mergeCloudRecordsToLocal(userId: string): Promise<void> {
-  if (!supabase) return;
+const CLOUD_PAGE_SIZE = 500;
+const CLOUD_UPLOAD_BATCH_SIZE = 250;
+const CLOUD_QUEUE_BATCH_SIZE = 50;
+const CLOUD_QUEUE_MAX_ATTEMPTS = 8;
+const CLOUD_QUEUE_BASE_RETRY_MS = 15_000;
+const CLOUD_QUEUE_MAX_RETRY_MS = 6 * 60 * 60_000;
+const CLOUD_QUEUE_OVERLAP_MS = 5 * 60_000;
 
-  if ((await getCurrentUserId()) !== userId) return;
+type CloudTombstone = {
+  record_type: string;
+  record_key: string;
+  deleted_at: string;
+  updated_at: string;
+};
+
+function subtractSyncOverlap(value: string | null): string | null {
+  if (!value) return null;
+  const timestamp = new Date(value).getTime();
+  if (!Number.isFinite(timestamp)) return null;
+  return new Date(Math.max(0, timestamp - CLOUD_QUEUE_OVERLAP_MS)).toISOString();
+}
+
+async function fetchPagedCloudRows(
+  tableName: string,
+  columns: string,
+  userId: string,
+  options: { since?: string | null; updatedColumn?: string; tieBreakers?: string[] } = {},
+): Promise<DatabaseRow[]> {
+  if (!supabase) return [];
+  const results: DatabaseRow[] = [];
+  const updatedColumn = options.updatedColumn ?? "updated_at";
+  let offset = 0;
+  while (true) {
+    let query = supabase
+      .from(tableName)
+      .select(columns)
+      .eq("user_id", userId)
+      .order(updatedColumn, { ascending: true });
+    for (const tieBreaker of options.tieBreakers ?? []) {
+      query = query.order(tieBreaker, { ascending: true });
+    }
+    query = query.range(offset, offset + CLOUD_PAGE_SIZE - 1);
+    if (options.since) query = query.gte(updatedColumn, options.since);
+    const { data, error } = await query;
+    if (error) throw error;
+    const rows = (data || []) as unknown as DatabaseRow[];
+    results.push(...rows);
+    if (rows.length < CLOUD_PAGE_SIZE) break;
+    offset += CLOUD_PAGE_SIZE;
+  }
+  return results;
+}
+
+function fromLearningStateRow(row: DatabaseRow): QuestionLearningState {
+  const lastAnsweredAt = String(row.last_answered_at || row.updated_at || new Date(0).toISOString());
+  return {
+    questionId: String(row.question_id),
+    bankId: String(row.bank_id || ""),
+    chapterId: String(row.chapter_id || ""),
+    box: Number(row.leitner_box ?? 0),
+    stage: String(row.stage || "new") as QuestionLearningState["stage"],
+    nextReviewAt: String(row.next_review_at || lastAnsweredAt),
+    successCount: Number(row.success_count ?? 0),
+    lapseCount: Number(row.lapse_count ?? 0),
+    lastConfidence: String(row.last_confidence || "sure") as AnswerConfidence,
+    lastAnsweredAt,
+    fsrsState: Number(row.fsrs_state ?? 0) as QuestionLearningState["fsrsState"],
+    difficulty: Number(row.difficulty ?? 0),
+    stability: Number(row.stability ?? 0),
+    elapsedDays: Number(row.elapsed_days ?? 0),
+    scheduledDays: Number(row.scheduled_days ?? 0),
+    learningSteps: Number(row.learning_steps ?? 0),
+    reps: Number(row.reps ?? 0),
+    lastReviewAt: row.last_review_at ? String(row.last_review_at) : lastAnsweredAt,
+    algorithmVersion: 2,
+  };
+}
+
+async function applyCloudTombstones(
+  db: IDBPDatabase<QuizPwaDatabase>,
+  tombstones: CloudTombstone[],
+): Promise<void> {
+  const grouped = new Map<string, string[]>();
+  for (const tombstone of tombstones) {
+    const values = grouped.get(tombstone.record_type) ?? [];
+    values.push(tombstone.record_key);
+    grouped.set(tombstone.record_type, values);
+  }
+  type LocalCloudStoreName = "userAnswers" | "wrongQuestions" | "favoriteQuestions" | "quizProgress" | "quizSessions";
+  const deleteKeys = async (storeName: LocalCloudStoreName, keys: string[]) => {
+    if (!keys.length) return;
+    const tx = db.transaction(storeName, "readwrite");
+    for (const key of keys) await tx.store.delete(key);
+    await tx.done;
+  };
+  await Promise.all([
+    deleteKeys("userAnswers", grouped.get("answer") ?? []),
+    deleteKeys("wrongQuestions", grouped.get("wrong") ?? []),
+    deleteKeys("favoriteQuestions", grouped.get("favorite") ?? []),
+    deleteKeys("quizProgress", grouped.get("progress") ?? []),
+    deleteKeys("quizSessions", grouped.get("session") ?? []),
+  ]);
+}
+
+async function mergeCloudRecordsToLocal(userId: string, since: string | null = null): Promise<boolean> {
+  if (!supabase || (await getCurrentUserId()) !== userId) return false;
   const db = await getDbForUser(userId);
-  const [answers, wrongQuestions, favoriteQuestions, progressRecords, sessions] = await Promise.all([
-    supabase.from("user_answer_records").select("question_id, selected_answer, correct_answer, is_correct, answered_at, bank_id, chapter").eq("user_id", userId),
-    supabase.from("user_wrong_records").select("question_id, bank_id, chapter, last_wrong_at, wrong_count").eq("user_id", userId),
-    supabase.from("user_favorite_records").select("question_id, bank_id, chapter, created_at").eq("user_id", userId),
-    supabase.from("user_quiz_progress").select("scope_id, current_index, total_questions, updated_at").eq("user_id", userId),
-    supabase.from("user_quiz_sessions").select("session_id, mode, started_at, finished_at, total_questions, correct_count, wrong_count, accuracy").eq("user_id", userId),
+  const effectiveSince = subtractSyncOverlap(since);
+  const [answerRows, wrongRows, favoriteRows, progressRows, sessionRows, learningRows, tombstoneRows] = await Promise.all([
+    fetchPagedCloudRows("user_answer_records", "question_id, selected_answer, correct_answer, is_correct, answered_at, bank_id, chapter, updated_at", userId, { since: effectiveSince, tieBreakers: ["question_id"] }),
+    fetchPagedCloudRows("user_wrong_records", "question_id, bank_id, chapter, last_wrong_at, wrong_count, updated_at", userId, { since: effectiveSince, tieBreakers: ["question_id"] }),
+    fetchPagedCloudRows("user_favorite_records", "question_id, bank_id, chapter, created_at, updated_at", userId, { since: effectiveSince, tieBreakers: ["question_id"] }),
+    fetchPagedCloudRows("user_quiz_progress", "scope_id, current_index, total_questions, updated_at", userId, { since: effectiveSince, tieBreakers: ["scope_id"] }),
+    fetchPagedCloudRows("user_quiz_sessions", "session_id, mode, started_at, finished_at, total_questions, correct_count, wrong_count, accuracy, updated_at", userId, { since: effectiveSince, tieBreakers: ["session_id"] }),
+    fetchPagedCloudRows("question_learning_states", "question_id, bank_id, chapter_id, leitner_box, stage, next_review_at, success_count, lapse_count, last_confidence, last_answered_at, fsrs_state, difficulty, stability, scheduled_days, elapsed_days, learning_steps, reps, last_review_at, algorithm_version, updated_at", userId, { since: effectiveSince, tieBreakers: ["question_id"] }),
+    fetchPagedCloudRows("user_record_tombstones", "record_type, record_key, deleted_at, updated_at", userId, { since: effectiveSince, tieBreakers: ["record_type", "record_key"] }),
   ]);
 
-  const firstError = answers.error || wrongQuestions.error || favoriteQuestions.error || progressRecords.error || sessions.error;
-  if (firstError) throw firstError;
-  if ((await getCurrentUserId()) !== userId) return;
-  if (hasPendingCloudMutations(userId)) return;
+  if ((await getCurrentUserId()) !== userId || await hasPendingCloudMutations(userId)) return false;
 
-  const cloudAnswers = (answers.data || []).map(fromAnswerRow);
-  const cloudWrong = (wrongQuestions.data || []).map(fromWrongRow);
-  const cloudFavorites = (favoriteQuestions.data || []).map(fromFavoriteRow);
-  const cloudProgress = (progressRecords.data || []).map(fromProgressRow);
-  const cloudSessions = (sessions.data || []).map(fromSessionRow);
-  const reconcileCloudDeletes = getLocalStorage()?.getItem(syncKey(SYNC_READY_PREFIX, userId)) === "true";
-
+  const cloudAnswers = answerRows.map(fromAnswerRow);
   const answerTx = db.transaction("userAnswers", "readwrite");
-  if (reconcileCloudDeletes) {
-    const cloudIds = new Set(cloudAnswers.map((record) => record.questionId));
-    for (const localRecord of await answerTx.store.getAll()) {
-      if (!cloudIds.has(localRecord.questionId)) await answerTx.store.delete(localRecord.questionId);
-    }
-  }
   for (const cloudRecord of cloudAnswers) {
     const localRecord = await answerTx.store.get(cloudRecord.questionId);
     await answerTx.store.put(localRecord ? chooseLatestAnswer(localRecord, cloudRecord) : cloudRecord);
   }
   await answerTx.done;
 
-  if (hasPendingCloudMutations(userId)) return;
+  const cloudWrong = wrongRows.map(fromWrongRow);
   const wrongTx = db.transaction(["userAnswers", "wrongQuestions"], "readwrite");
   const answerStore = wrongTx.objectStore("userAnswers");
   const wrongStore = wrongTx.objectStore("wrongQuestions");
-  if (reconcileCloudDeletes) {
-    const cloudIds = new Set(cloudWrong.map((record) => record.questionId));
-    for (const localRecord of await wrongStore.getAll()) {
-      if (!cloudIds.has(localRecord.questionId)) await wrongStore.delete(localRecord.questionId);
-    }
-  }
   for (const cloudRecord of cloudWrong) {
     const [localRecord, latestAnswer] = await Promise.all([
       wrongStore.get(cloudRecord.questionId),
@@ -569,47 +671,55 @@ async function mergeCloudRecordsToLocal(userId: string): Promise<void> {
   }
   await wrongTx.done;
 
-  if (hasPendingCloudMutations(userId)) return;
   const favoriteTx = db.transaction("favoriteQuestions", "readwrite");
-  if (reconcileCloudDeletes) {
-    const cloudIds = new Set(cloudFavorites.map((record) => record.questionId));
-    for (const localRecord of await favoriteTx.store.getAll()) {
-      if (!cloudIds.has(localRecord.questionId)) await favoriteTx.store.delete(localRecord.questionId);
-    }
-  }
-  for (const cloudRecord of cloudFavorites) {
+  for (const cloudRecord of favoriteRows.map(fromFavoriteRow)) {
     const localRecord = await favoriteTx.store.get(cloudRecord.questionId);
     await favoriteTx.store.put(localRecord && localRecord.createdAt >= cloudRecord.createdAt ? localRecord : cloudRecord);
   }
   await favoriteTx.done;
 
-  if (hasPendingCloudMutations(userId)) return;
   const progressTx = db.transaction("quizProgress", "readwrite");
-  if (reconcileCloudDeletes) {
-    const cloudIds = new Set(cloudProgress.map((record) => record.scopeId));
-    for (const localRecord of await progressTx.store.getAll()) {
-      if (!cloudIds.has(localRecord.scopeId)) await progressTx.store.delete(localRecord.scopeId);
-    }
-  }
-  for (const cloudRecord of cloudProgress) {
+  for (const cloudRecord of progressRows.map(fromProgressRow)) {
     const localRecord = await progressTx.store.get(cloudRecord.scopeId);
     await progressTx.store.put(localRecord ? chooseLatestProgress(localRecord, cloudRecord) : cloudRecord);
   }
   await progressTx.done;
 
-  if (hasPendingCloudMutations(userId)) return;
   const sessionTx = db.transaction("quizSessions", "readwrite");
-  if (reconcileCloudDeletes) {
-    const cloudIds = new Set(cloudSessions.map((record) => record.sessionId));
-    for (const localRecord of await sessionTx.store.getAll()) {
-      if (!cloudIds.has(localRecord.sessionId)) await sessionTx.store.delete(localRecord.sessionId);
-    }
-  }
-  for (const cloudRecord of cloudSessions) {
+  for (const cloudRecord of sessionRows.map(fromSessionRow)) {
     const localRecord = await sessionTx.store.get(cloudRecord.sessionId);
     await sessionTx.store.put(localRecord ? chooseLatestSession(localRecord, cloudRecord) : cloudRecord);
   }
   await sessionTx.done;
+
+  await mergeCloudLearningStates(userId, learningRows.map(fromLearningStateRow));
+
+  // A row can be recreated after an older deletion. Incremental overlap can return
+  // both records, so only apply a tombstone when it is at least as new as the
+  // corresponding live row observed in the same snapshot.
+  const liveUpdatedAt = new Map<string, string>();
+  const registerLiveRows = (recordType: string, rows: DatabaseRow[], keyColumn: string) => {
+    for (const row of rows) {
+      const key = String(row[keyColumn] ?? "");
+      const updatedAt = String(row.updated_at ?? "");
+      if (!key || !updatedAt) continue;
+      const compositeKey = `${recordType}:${key}`;
+      const current = liveUpdatedAt.get(compositeKey);
+      if (!current || updatedAt > current) liveUpdatedAt.set(compositeKey, updatedAt);
+    }
+  };
+  registerLiveRows("answer", answerRows, "question_id");
+  registerLiveRows("wrong", wrongRows, "question_id");
+  registerLiveRows("favorite", favoriteRows, "question_id");
+  registerLiveRows("progress", progressRows, "scope_id");
+  registerLiveRows("session", sessionRows, "session_id");
+
+  const effectiveTombstones = (tombstoneRows as unknown as CloudTombstone[]).filter((tombstone) => {
+    const liveTimestamp = liveUpdatedAt.get(`${tombstone.record_type}:${tombstone.record_key}`);
+    return !liveTimestamp || tombstone.deleted_at >= liveTimestamp;
+  });
+  await applyCloudTombstones(db, effectiveTombstones);
+  return true;
 }
 
 function notifyRecordChange(): void {
@@ -617,9 +727,35 @@ function notifyRecordChange(): void {
   window.dispatchEvent(new Event("records:changed"));
 }
 
-async function uploadLocalRecordsToCloud(userId: string): Promise<void> {
+function chunkRows<T>(rows: T[], size = CLOUD_UPLOAD_BATCH_SIZE): T[][] {
+  const chunks: T[][] = [];
+  for (let index = 0; index < rows.length; index += size) chunks.push(rows.slice(index, index + size));
+  return chunks;
+}
+
+async function deleteCloudTombstones(userId: string, recordType: string, keys: string[]): Promise<void> {
+  if (!supabase || !keys.length) return;
+  for (const chunk of chunkRows(keys)) {
+    const { error } = await supabase
+      .from("user_record_tombstones")
+      .delete()
+      .eq("user_id", userId)
+      .eq("record_type", recordType)
+      .in("record_key", chunk);
+    if (error) throw error;
+  }
+}
+
+async function upsertRowsBatched(table: string, rows: DatabaseRow[], onConflict: string): Promise<void> {
   if (!supabase) return;
-  if ((await getCurrentUserId()) !== userId) return;
+  for (const chunk of chunkRows(rows)) {
+    const { error } = await supabase.from(table).upsert(chunk, { onConflict });
+    if (error) throw error;
+  }
+}
+
+async function uploadLocalRecordsToCloud(userId: string): Promise<void> {
+  if (!supabase || (await getCurrentUserId()) !== userId) return;
   const db = await getDbForUser(userId);
   const [answers, wrongQuestions, favoriteQuestions, progressRecords, sessions] = await Promise.all([
     db.getAll("userAnswers"),
@@ -628,31 +764,25 @@ async function uploadLocalRecordsToCloud(userId: string): Promise<void> {
     db.getAll("quizProgress"),
     db.getAll("quizSessions"),
   ]);
-
-  if (answers.length > 0) {
-    const { error } = await supabase.from("user_answer_records").upsert(answers.map((answer) => toAnswerRow(userId, answer)), { onConflict: "user_id,question_id" });
-    if (error) throw error;
-  }
-  if (wrongQuestions.length > 0) {
-    const { error } = await supabase.from("user_wrong_records").upsert(wrongQuestions.map((record) => toWrongRow(userId, record)), { onConflict: "user_id,question_id" });
-    if (error) throw error;
-  }
-  if (favoriteQuestions.length > 0) {
-    const { error } = await supabase.from("user_favorite_records").upsert(favoriteQuestions.map((record) => toFavoriteRow(userId, record)), { onConflict: "user_id,question_id" });
-    if (error) throw error;
-  }
-  if (progressRecords.length > 0) {
-    const { error } = await supabase.from("user_quiz_progress").upsert(progressRecords.map((record) => toProgressRow(userId, record)), { onConflict: "user_id,scope_id" });
-    if (error) throw error;
-  }
-  if (sessions.length > 0) {
-    const { error } = await supabase.from("user_quiz_sessions").upsert(sessions.map((session) => toSessionRow(userId, session)), { onConflict: "user_id,session_id" });
-    if (error) throw error;
-  }
+  await upsertRowsBatched("user_answer_records", answers.map((answer) => toAnswerRow(userId, answer)), "user_id,question_id");
+  await upsertRowsBatched("user_wrong_records", wrongQuestions.map((record) => toWrongRow(userId, record)), "user_id,question_id");
+  await upsertRowsBatched("user_favorite_records", favoriteQuestions.map((record) => toFavoriteRow(userId, record)), "user_id,question_id");
+  await upsertRowsBatched("user_quiz_progress", progressRecords.map((record) => toProgressRow(userId, record)), "user_id,scope_id");
+  await upsertRowsBatched("user_quiz_sessions", sessions.map((session) => toSessionRow(userId, session)), "user_id,session_id");
+  await Promise.all([
+    deleteCloudTombstones(userId, "answer", answers.map((record) => record.questionId)),
+    deleteCloudTombstones(userId, "wrong", wrongQuestions.map((record) => record.questionId)),
+    deleteCloudTombstones(userId, "favorite", favoriteQuestions.map((record) => record.questionId)),
+    deleteCloudTombstones(userId, "progress", progressRecords.map((record) => record.scopeId)),
+    deleteCloudTombstones(userId, "session", sessions.map((record) => record.sessionId)),
+  ]);
 }
 
 async function importCloudRecordsToLocal(userId: string): Promise<void> {
-  await mergeCloudRecordsToLocal(userId);
+  const checkpoint = await getReliabilityMetadata<string>(userId, CLOUD_SYNC_CHECKPOINT_KEY);
+  const syncStartedAt = new Date().toISOString();
+  const merged = await mergeCloudRecordsToLocal(userId, checkpoint);
+  if (merged) await setReliabilityMetadata(userId, CLOUD_SYNC_CHECKPOINT_KEY, syncStartedAt);
 }
 
 const cloudImportPromises = new Map<string, Promise<void>>();
@@ -662,23 +792,17 @@ async function tryImportCloudRecordsToLocal(): Promise<void> {
   const userId = await getCurrentUserId();
   if (!userId) return;
   await flushQueuedCloudWritesForUser(userId);
-  if (hasPendingCloudMutations(userId)) return;
+  if (await hasPendingCloudMutations(userId)) return;
   const activeImport = cloudImportPromises.get(userId);
   if (activeImport) return activeImport;
   if (Date.now() - (lastCloudImportAt.get(userId) ?? 0) < 30_000) return;
 
   const importPromise = importCloudRecordsToLocal(userId)
-    .then(() => {
-      lastCloudImportAt.set(userId, Date.now());
-    })
+    .then(() => { lastCloudImportAt.set(userId, Date.now()); })
     .catch((error: unknown) => {
-      if (!isCloudSyncTableMissing(error)) {
-        console.warn("Cloud record import failed", error);
-      }
+      if (!isCloudSyncTableMissing(error)) console.warn("Cloud record import failed", error);
     })
-    .finally(() => {
-      cloudImportPromises.delete(userId);
-    });
+    .finally(() => cloudImportPromises.delete(userId));
   cloudImportPromises.set(userId, importPromise);
   return importPromise;
 }
@@ -687,18 +811,32 @@ async function upsertCloudAnswer(userId: string, userAnswer: UserAnswer): Promis
   if (!supabase) return;
   const { error } = await supabase.from("user_answer_records").upsert(toAnswerRow(userId, userAnswer), { onConflict: "user_id,question_id" });
   if (error) throw error;
+  await deleteCloudTombstones(userId, "answer", [userAnswer.questionId]);
 }
 
 async function upsertCloudWrong(userId: string, record: WrongQuestionRecord): Promise<void> {
   if (!supabase) return;
   const { error } = await supabase.from("user_wrong_records").upsert(toWrongRow(userId, record), { onConflict: "user_id,question_id" });
   if (error) throw error;
+  await deleteCloudTombstones(userId, "wrong", [record.questionId]);
+}
+
+async function writeCloudTombstones(userId: string, tableName: CloudTableName, keys: string[]): Promise<void> {
+  if (!supabase || !keys.length) return;
+  const recordType = recordTypeForTable(tableName);
+  const now = new Date().toISOString();
+  await upsertRowsBatched(
+    "user_record_tombstones",
+    keys.map((recordKey) => ({ user_id: userId, record_type: recordType, record_key: recordKey, deleted_at: now, updated_at: now })),
+    "user_id,record_type,record_key",
+  );
 }
 
 async function deleteCloudWrong(userId: string, questionId: string): Promise<void> {
   if (!supabase) return;
   const { error } = await supabase.from("user_wrong_records").delete().eq("user_id", userId).eq("question_id", questionId);
   if (error) throw error;
+  await writeCloudTombstones(userId, "user_wrong_records", [questionId]);
 }
 
 async function getCloudFavorite(userId: string, questionId: string): Promise<FavoriteQuestionRecord | undefined> {
@@ -717,18 +855,21 @@ async function upsertCloudFavorite(userId: string, record: FavoriteQuestionRecor
   if (!supabase) return;
   const { error } = await supabase.from("user_favorite_records").upsert(toFavoriteRow(userId, record), { onConflict: "user_id,question_id" });
   if (error) throw error;
+  await deleteCloudTombstones(userId, "favorite", [record.questionId]);
 }
 
 async function deleteCloudFavorite(userId: string, questionId: string): Promise<void> {
   if (!supabase) return;
   const { error } = await supabase.from("user_favorite_records").delete().eq("user_id", userId).eq("question_id", questionId);
   if (error) throw error;
+  await writeCloudTombstones(userId, "user_favorite_records", [questionId]);
 }
 
 async function upsertCloudProgress(userId: string, record: QuizProgressRecord): Promise<void> {
   if (!supabase) return;
   const { error } = await supabase.from("user_quiz_progress").upsert(toProgressRow(userId, record), { onConflict: "user_id,scope_id" });
   if (error) throw error;
+  await deleteCloudTombstones(userId, "progress", [record.scopeId]);
 }
 
 async function getCloudProgress(userId: string, scopeId: string): Promise<QuizProgressRecord | undefined> {
@@ -747,24 +888,36 @@ async function deleteCloudProgress(userId: string, scopeId: string): Promise<voi
   if (!supabase) return;
   const { error } = await supabase.from("user_quiz_progress").delete().eq("user_id", userId).eq("scope_id", scopeId);
   if (error) throw error;
+  await writeCloudTombstones(userId, "user_quiz_progress", [scopeId]);
 }
 
 async function upsertCloudSession(userId: string, session: QuizSession): Promise<void> {
   if (!supabase) return;
   const { error } = await supabase.from("user_quiz_sessions").upsert(toSessionRow(userId, session), { onConflict: "user_id,session_id" });
   if (error) throw error;
+  await deleteCloudTombstones(userId, "session", [session.sessionId]);
 }
 
-async function deleteCloudRecords(userId: string, tableName: string, columnName: string, values: string[]): Promise<void> {
+async function deleteCloudRecords(userId: string, tableName: CloudTableName, columnName: string, values: string[]): Promise<void> {
   if (!supabase || values.length === 0) return;
-  const { error } = await supabase.from(tableName).delete().eq("user_id", userId).in(columnName, values);
-  if (error) throw error;
+  for (const chunk of chunkRows(values)) {
+    const { error } = await supabase.from(tableName).delete().eq("user_id", userId).in(columnName, chunk);
+    if (error) throw error;
+  }
+  await writeCloudTombstones(userId, tableName, values);
 }
 
-async function clearCloudTable(userId: string, tableName: string): Promise<void> {
+async function fetchCloudKeys(userId: string, tableName: CloudTableName): Promise<string[]> {
+  const keyColumn = keyColumnForTable(tableName);
+  return (await fetchPagedCloudRows(tableName, `${keyColumn}, updated_at`, userId, { tieBreakers: [keyColumn] })).map((row) => String(row[keyColumn]));
+}
+
+async function clearCloudTable(userId: string, tableName: CloudTableName): Promise<void> {
   if (!supabase) return;
+  const keys = await fetchCloudKeys(userId, tableName);
   const { error } = await supabase.from(tableName).delete().eq("user_id", userId);
   if (error) throw error;
+  await writeCloudTombstones(userId, tableName, keys);
 }
 
 type CloudTableName =
@@ -788,46 +941,31 @@ type CloudMutation =
   | { kind: "delete-many"; table: CloudTableName; column: string; values: string[] }
   | { kind: "clear-table"; table: CloudTableName };
 
-type QueuedCloudMutation = {
-  id: string;
-  userId: string;
-  createdAt: string;
-  mutation: CloudMutation;
-};
+type QueuedCloudMutation = ReliabilityQueueEntry<CloudMutation>;
 
 const CLOUD_WRITE_DEBOUNCE_MS = 650;
-const CLOUD_WRITE_RETRY_MS = 15_000;
 const cloudWriteTimers = new Map<string, ReturnType<typeof setTimeout>>();
 const activeCloudWriteFlushes = new Map<string, Promise<void>>();
+const legacyQueueMigrationPromises = new Map<string, Promise<void>>();
 
-function queueStorageKey(userId: string): string {
-  return `${CLOUD_QUEUE_PREFIX}:${userId}`;
-}
-
-function readCloudMutationQueue(userId: string): QueuedCloudMutation[] {
-  const storage = getLocalStorage();
-  if (!storage) return [];
-  try {
-    const parsed = JSON.parse(storage.getItem(queueStorageKey(userId)) ?? "[]") as unknown;
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter((entry): entry is QueuedCloudMutation => {
-      if (typeof entry !== "object" || entry === null) return false;
-      const candidate = entry as Partial<QueuedCloudMutation>;
-      return candidate.userId === userId && typeof candidate.id === "string" && typeof candidate.mutation === "object";
-    });
-  } catch {
-    return [];
+function recordTypeForTable(table: CloudTableName): "answer" | "wrong" | "favorite" | "progress" | "session" {
+  switch (table) {
+    case "user_answer_records": return "answer";
+    case "user_wrong_records": return "wrong";
+    case "user_favorite_records": return "favorite";
+    case "user_quiz_progress": return "progress";
+    case "user_quiz_sessions": return "session";
   }
 }
 
-function writeCloudMutationQueue(userId: string, queue: QueuedCloudMutation[]): void {
-  const storage = getLocalStorage();
-  if (!storage) {
-    console.warn("Cloud record queue could not be persisted because localStorage is unavailable");
-    return;
+function keyColumnForTable(table: CloudTableName): string {
+  switch (table) {
+    case "user_answer_records":
+    case "user_wrong_records":
+    case "user_favorite_records": return "question_id";
+    case "user_quiz_progress": return "scope_id";
+    case "user_quiz_sessions": return "session_id";
   }
-  if (queue.length === 0) storage.removeItem(queueStorageKey(userId));
-  else storage.setItem(queueStorageKey(userId), JSON.stringify(queue));
 }
 
 function mutationTable(mutation: CloudMutation): CloudTableName | null {
@@ -864,63 +1002,179 @@ function mutationCoalesceKey(mutation: CloudMutation): string | null {
   }
 }
 
-function hasPendingCloudMutations(userId: string): boolean {
-  return readCloudMutationQueue(userId).length > 0;
-}
-
 function createMutationId(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID();
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-function enqueueCloudMutation(userId: string | null, mutation: CloudMutation): void {
-  if (!userId) return;
-  let queue = readCloudMutationQueue(userId);
-  if (mutation.kind === "clear-table") {
-    queue = queue.filter((entry) => mutationTable(entry.mutation) !== mutation.table);
-  } else {
-    const coalesceKey = mutationCoalesceKey(mutation);
-    if (coalesceKey) {
-      queue = queue.filter((entry) => mutationCoalesceKey(entry.mutation) !== coalesceKey);
+async function migrateLegacyCloudQueue(userId: string): Promise<void> {
+  const active = legacyQueueMigrationPromises.get(userId);
+  if (active) return active;
+  const migration = (async () => {
+    if ((await countReliabilityQueue(userId)) > 0) return;
+    const storage = getLocalStorage();
+    const key = `${LEGACY_CLOUD_QUEUE_PREFIX}:${userId}`;
+    if (!storage) return;
+    try {
+      const parsed = JSON.parse(storage.getItem(key) ?? "[]") as Array<{ id?: string; userId?: string; createdAt?: string; mutation?: CloudMutation }>;
+      if (!Array.isArray(parsed) || !parsed.length) return;
+      const now = new Date().toISOString();
+      const entries: QueuedCloudMutation[] = parsed
+        .filter((entry) => entry?.userId === userId && entry.mutation)
+        .map((entry) => ({
+          id: entry.id || createMutationId(),
+          userId,
+          createdAt: entry.createdAt || now,
+          updatedAt: now,
+          coalesceKey: mutationCoalesceKey(entry.mutation as CloudMutation),
+          attemptCount: 0,
+          nextAttemptAt: now,
+          lastError: null,
+          payload: entry.mutation as CloudMutation,
+        }));
+      await replaceReliabilityQueue(userId, entries);
+      storage.removeItem(key);
+    } catch (error) {
+      console.warn("Unable to migrate legacy cloud queue", error);
     }
+  })().finally(() => legacyQueueMigrationPromises.delete(userId));
+  legacyQueueMigrationPromises.set(userId, migration);
+  return migration;
+}
+
+async function hasPendingCloudMutations(userId: string): Promise<boolean> {
+  await migrateLegacyCloudQueue(userId);
+  return (await countReliabilityQueue(userId)) > 0;
+}
+
+async function enqueueCloudMutation(userId: string | null, mutation: CloudMutation): Promise<void> {
+  if (!userId) return;
+  await migrateLegacyCloudQueue(userId);
+  const now = new Date().toISOString();
+  if (mutation.kind === "clear-table") {
+    const existing = await listReliabilityQueue<CloudMutation>(userId, 10_000);
+    const retained = existing.filter((entry) => mutationTable(entry.payload) !== mutation.table);
+    await replaceReliabilityQueue(userId, retained);
   }
-  queue.push({
+  await enqueueReliabilityMutation(userId, {
     id: createMutationId(),
     userId,
-    createdAt: new Date().toISOString(),
-    mutation,
+    createdAt: now,
+    updatedAt: now,
+    coalesceKey: mutationCoalesceKey(mutation),
+    attemptCount: 0,
+    nextAttemptAt: now,
+    lastError: null,
+    payload: mutation,
   });
-  writeCloudMutationQueue(userId, queue);
   scheduleCloudWriteFlush(userId);
 }
 
-async function executeCloudMutation(userId: string, mutation: CloudMutation): Promise<void> {
-  switch (mutation.kind) {
-    case "upsert-answer": return upsertCloudAnswer(userId, mutation.record);
-    case "upsert-wrong": return upsertCloudWrong(userId, mutation.record);
-    case "delete-wrong": return deleteCloudWrong(userId, mutation.questionId);
-    case "upsert-favorite": return upsertCloudFavorite(userId, mutation.record);
-    case "delete-favorite": return deleteCloudFavorite(userId, mutation.questionId);
-    case "upsert-progress": return upsertCloudProgress(userId, mutation.record);
-    case "delete-progress": return deleteCloudProgress(userId, mutation.scopeId);
-    case "upsert-session": return upsertCloudSession(userId, mutation.record);
-    case "sync-learning-attempt": {
+async function syncLearningAttemptsBatch(entries: QueuedCloudMutation[]): Promise<void> {
+  if (!supabase || !entries.length) return;
+  const items = entries.map((entry) => {
+    const mutation = entry.payload;
+    if (mutation.kind !== "sync-learning-attempt") throw new Error("Invalid learning batch entry");
+    return { ...mutation.attempt, state: mutation.state };
+  });
+  const { error } = await supabase.rpc("record_learning_attempts_batch_v75", { p_items: items });
+  if (!error) return;
+  if (!isMissingRpc(error, "record_learning_attempts_batch_v75")) throw error;
+  for (const entry of entries) {
+    const mutation = entry.payload;
+    if (mutation.kind === "sync-learning-attempt") {
       const { syncLearningAttempt } = await import("./learningEngine");
-      return syncLearningAttempt(mutation.attempt, mutation.state);
+      await syncLearningAttempt(mutation.attempt, mutation.state);
     }
-    case "record-leaderboard-answer": return updateLeaderboardAfterAnswer(mutation.isCorrect, mutation.eventId);
-    case "delete-many": return deleteCloudRecords(userId, mutation.table, mutation.column, mutation.values);
-    case "clear-table": return clearCloudTable(userId, mutation.table);
   }
 }
 
+async function syncLeaderboardBatch(entries: QueuedCloudMutation[]): Promise<void> {
+  if (!supabase || !entries.length) return;
+  const items = entries.map((entry) => {
+    const mutation = entry.payload;
+    if (mutation.kind !== "record-leaderboard-answer") throw new Error("Invalid leaderboard batch entry");
+    return { event_id: mutation.eventId, is_correct: mutation.isCorrect };
+  });
+  const { error } = await supabase.rpc("record_leaderboard_answer_events_batch_v75", { p_items: items });
+  if (!error) return;
+  if (!isMissingRpc(error, "record_leaderboard_answer_events_batch_v75")) throw error;
+  for (const entry of entries) {
+    const mutation = entry.payload;
+    if (mutation.kind === "record-leaderboard-answer") await updateLeaderboardAfterAnswer(mutation.isCorrect, mutation.eventId);
+  }
+}
+
+async function executeCloudMutationGroup(userId: string, entries: QueuedCloudMutation[]): Promise<void> {
+  if (!entries.length) return;
+  const first = entries[0]!.payload;
+  if (first.kind === "sync-learning-attempt") return syncLearningAttemptsBatch(entries);
+  if (first.kind === "record-leaderboard-answer") return syncLeaderboardBatch(entries);
+  if (first.kind === "upsert-answer") {
+    const records = entries.map((entry) => (entry.payload as Extract<CloudMutation, { kind: "upsert-answer" }>).record);
+    await upsertRowsBatched("user_answer_records", records.map((record) => toAnswerRow(userId, record)), "user_id,question_id");
+    return deleteCloudTombstones(userId, "answer", records.map((record) => record.questionId));
+  }
+  if (first.kind === "upsert-wrong") {
+    const records = entries.map((entry) => (entry.payload as Extract<CloudMutation, { kind: "upsert-wrong" }>).record);
+    await upsertRowsBatched("user_wrong_records", records.map((record) => toWrongRow(userId, record)), "user_id,question_id");
+    return deleteCloudTombstones(userId, "wrong", records.map((record) => record.questionId));
+  }
+  if (first.kind === "upsert-favorite") {
+    const records = entries.map((entry) => (entry.payload as Extract<CloudMutation, { kind: "upsert-favorite" }>).record);
+    await upsertRowsBatched("user_favorite_records", records.map((record) => toFavoriteRow(userId, record)), "user_id,question_id");
+    return deleteCloudTombstones(userId, "favorite", records.map((record) => record.questionId));
+  }
+  if (first.kind === "upsert-progress") {
+    const records = entries.map((entry) => (entry.payload as Extract<CloudMutation, { kind: "upsert-progress" }>).record);
+    await upsertRowsBatched("user_quiz_progress", records.map((record) => toProgressRow(userId, record)), "user_id,scope_id");
+    return deleteCloudTombstones(userId, "progress", records.map((record) => record.scopeId));
+  }
+  if (first.kind === "upsert-session") {
+    const records = entries.map((entry) => (entry.payload as Extract<CloudMutation, { kind: "upsert-session" }>).record);
+    await upsertRowsBatched("user_quiz_sessions", records.map((record) => toSessionRow(userId, record)), "user_id,session_id");
+    return deleteCloudTombstones(userId, "session", records.map((record) => record.sessionId));
+  }
+  for (const entry of entries) {
+    const mutation = entry.payload;
+    switch (mutation.kind) {
+      case "delete-wrong": await deleteCloudWrong(userId, mutation.questionId); break;
+      case "delete-favorite": await deleteCloudFavorite(userId, mutation.questionId); break;
+      case "delete-progress": await deleteCloudProgress(userId, mutation.scopeId); break;
+      case "delete-many": await deleteCloudRecords(userId, mutation.table, mutation.column, mutation.values); break;
+      case "clear-table": await clearCloudTable(userId, mutation.table); break;
+      case "upsert-answer": await upsertCloudAnswer(userId, mutation.record); break;
+      case "upsert-wrong": await upsertCloudWrong(userId, mutation.record); break;
+      case "upsert-favorite": await upsertCloudFavorite(userId, mutation.record); break;
+      case "upsert-progress": await upsertCloudProgress(userId, mutation.record); break;
+      case "upsert-session": await upsertCloudSession(userId, mutation.record); break;
+      case "sync-learning-attempt":
+      case "record-leaderboard-answer": break;
+    }
+  }
+}
+
+function retryDelayMs(attemptCount: number): number {
+  const exponential = Math.min(CLOUD_QUEUE_MAX_RETRY_MS, CLOUD_QUEUE_BASE_RETRY_MS * 2 ** Math.max(0, attemptCount - 1));
+  return Math.round(exponential * (0.8 + Math.random() * 0.4));
+}
+
 function scheduleCloudWriteFlush(userId: string, delayMs = CLOUD_WRITE_DEBOUNCE_MS): void {
-  if (cloudWriteTimers.has(userId) || activeCloudWriteFlushes.has(userId)) return;
+  const current = cloudWriteTimers.get(userId);
+  if (current) clearTimeout(current);
+  if (activeCloudWriteFlushes.has(userId)) return;
   const timer = setTimeout(() => {
     cloudWriteTimers.delete(userId);
     void flushQueuedCloudWritesForUser(userId);
-  }, delayMs);
+  }, Math.max(0, delayMs));
   cloudWriteTimers.set(userId, timer);
+}
+
+async function scheduleNextCloudFlush(userId: string): Promise<void> {
+  const queue = await listReliabilityQueue<CloudMutation>(userId, 1);
+  if (!queue.length) return;
+  const delay = Math.max(250, new Date(queue[0]!.nextAttemptAt).getTime() - Date.now());
+  scheduleCloudWriteFlush(userId, Math.min(delay, CLOUD_QUEUE_MAX_RETRY_MS));
 }
 
 async function flushQueuedCloudWritesForUser(userId: string): Promise<void> {
@@ -933,29 +1187,46 @@ async function flushQueuedCloudWritesForUser(userId: string): Promise<void> {
   }
   if (!supabase || (typeof navigator !== "undefined" && !navigator.onLine)) return;
   if ((await getCurrentUserId()) !== userId) return;
+  await migrateLegacyCloudQueue(userId);
 
-  let shouldRetry = false;
   const flush = (async () => {
-    while (true) {
-      const next = readCloudMutationQueue(userId)[0];
-      if (!next) return;
+    const due = await listDueReliabilityQueue<CloudMutation>(userId, new Date().toISOString(), CLOUD_QUEUE_BATCH_SIZE);
+    if (!due.length) return;
+    const groups = new Map<string, QueuedCloudMutation[]>();
+    for (const entry of due) {
+      const key = entry.payload.kind;
+      const group = groups.get(key) ?? [];
+      group.push(entry);
+      groups.set(key, group);
+    }
+    for (const entries of groups.values()) {
       if ((await getCurrentUserId()) !== userId) return;
       try {
-        await executeCloudMutation(userId, next.mutation);
+        await executeCloudMutationGroup(userId, entries);
+        await deleteReliabilityQueueEntries(userId, entries.map((entry) => entry.id));
       } catch (error) {
-        const tableMissing = isCloudSyncTableMissing(error);
-        if (!tableMissing) console.warn("Cloud record sync failed", error);
-        shouldRetry = !tableMissing;
-        return;
+        const message = toErrorMessage(error).slice(0, 800);
+        for (const entry of entries) {
+          const attemptCount = entry.attemptCount + 1;
+          const updated: QueuedCloudMutation = {
+            ...entry,
+            attemptCount,
+            updatedAt: new Date().toISOString(),
+            lastError: message,
+            nextAttemptAt: new Date(Date.now() + retryDelayMs(attemptCount)).toISOString(),
+          };
+          if (attemptCount >= CLOUD_QUEUE_MAX_ATTEMPTS) {
+            await moveReliabilityQueueEntryToDeadLetter(userId, updated);
+          } else {
+            await updateReliabilityQueueEntry(userId, updated);
+          }
+        }
+        if (!isCloudSyncTableMissing(error)) console.warn("Cloud record sync failed", error);
       }
-      const remaining = readCloudMutationQueue(userId).filter((entry) => entry.id !== next.id);
-      writeCloudMutationQueue(userId, remaining);
     }
-  })().finally(() => {
+  })().finally(async () => {
     activeCloudWriteFlushes.delete(userId);
-    if (shouldRetry && hasPendingCloudMutations(userId)) {
-      scheduleCloudWriteFlush(userId, CLOUD_WRITE_RETRY_MS);
-    }
+    await scheduleNextCloudFlush(userId);
   });
   activeCloudWriteFlushes.set(userId, flush);
   return flush;
@@ -967,10 +1238,9 @@ async function flushQueuedCloudWrites(): Promise<void> {
 }
 
 if (typeof window !== "undefined") {
-  window.addEventListener("online", () => {
-    void flushQueuedCloudWrites();
-  });
+  window.addEventListener("online", () => void flushQueuedCloudWrites());
 }
+
 
 async function getCloudCount(tableName: string, userId: string): Promise<number> {
   if (!supabase) return 0;
@@ -992,11 +1262,16 @@ export async function getSyncedRecordSummary(): Promise<CloudSyncSummary> {
     db.count("quizSessions"),
   ]);
 
+  const [pendingMutations, deadLetters] = userId
+    ? await Promise.all([countReliabilityQueue(userId), countReliabilityDeadLetters(userId)])
+    : [0, 0];
   const base: CloudSyncSummary = {
     local: { answers, wrong, favorites, progress, sessions },
     cloud: { answers: 0, wrong: 0, favorites: 0, progress: 0, sessions: 0 },
     cloudAvailable: false,
     syncedAt: null,
+    pendingMutations,
+    deadLetters,
     error: null,
   };
 
@@ -1014,7 +1289,9 @@ export async function getSyncedRecordSummary(): Promise<CloudSyncSummary> {
       local: base.local,
       cloud: { answers: cloudAnswers, wrong: cloudWrong, favorites: cloudFavorites, progress: cloudProgress, sessions: cloudSessions },
       cloudAvailable: true,
-      syncedAt: getLocalStorage()?.getItem(syncKey(LAST_SYNC_PREFIX, userId)) ?? null,
+      syncedAt: await getReliabilityMetadata<string>(userId, CLOUD_SYNC_CHECKPOINT_KEY),
+      pendingMutations,
+      deadLetters,
       error: null,
     };
   } catch (error) {
@@ -1038,7 +1315,7 @@ export async function syncLocalRecordsToCloud(options: { forceUpload?: boolean }
   const shouldUpload = options.forceUpload || storage?.getItem(initializedKey) !== "true";
 
   await flushQueuedCloudWritesForUser(userId);
-  if (hasPendingCloudMutations(userId)) return getSyncedRecordSummary();
+  if (await hasPendingCloudMutations(userId)) return getSyncedRecordSummary();
   if (shouldUpload) {
     await uploadLocalRecordsToCloud(userId);
   }
@@ -1048,6 +1325,7 @@ export async function syncLocalRecordsToCloud(options: { forceUpload?: boolean }
   const syncedAt = new Date().toISOString();
   storage?.setItem(initializedKey, "true");
   storage?.setItem(syncKey(LAST_SYNC_PREFIX, userId), syncedAt);
+  await setReliabilityMetadata(userId, CLOUD_SYNC_CHECKPOINT_KEY, syncedAt);
   return getSyncedRecordSummary();
 }
 
@@ -1101,14 +1379,14 @@ async function recordLearningAndLeaderboard(args: {
     sessionId: args.options?.sessionId ?? null,
     sessionMode: args.options?.sessionMode ?? null,
   };
-  const learningState = recordLocalLearningAttempt(args.userId, attempt);
+  const learningState = await recordLocalLearningAttempt(args.userId, attempt);
   if (!args.userId) return;
-  enqueueCloudMutation(args.userId, {
+  await enqueueCloudMutation(args.userId, {
     kind: "sync-learning-attempt",
     attempt,
     state: learningState,
   });
-  enqueueCloudMutation(args.userId, {
+  await enqueueCloudMutation(args.userId, {
     kind: "record-leaderboard-answer",
     eventId,
     isCorrect: args.isCorrect,
@@ -1152,8 +1430,8 @@ export async function recordUserAnswer(
     await wrongStore.delete(question.id);
   }
 
-  enqueueCloudMutation(userId, { kind: "upsert-answer", record: userAnswer });
-  enqueueCloudMutation(userId, wrongRecord
+  await enqueueCloudMutation(userId, { kind: "upsert-answer", record: userAnswer });
+  await enqueueCloudMutation(userId, wrongRecord
     ? { kind: "upsert-wrong", record: wrongRecord }
     : { kind: "delete-wrong", questionId: question.id });
   await tx.done;
@@ -1211,8 +1489,8 @@ export async function recordImageUserAnswer(
     await wrongStore.delete(question.id);
   }
 
-  enqueueCloudMutation(userId, { kind: "upsert-answer", record: userAnswer });
-  enqueueCloudMutation(userId, wrongRecord
+  await enqueueCloudMutation(userId, { kind: "upsert-answer", record: userAnswer });
+  await enqueueCloudMutation(userId, wrongRecord
     ? { kind: "upsert-wrong", record: wrongRecord }
     : { kind: "delete-wrong", questionId: question.id });
   await tx.done;
@@ -1246,13 +1524,13 @@ export async function listWrongQuestions(): Promise<WrongQuestionRecord[]> {
 
 export async function clearWrongQuestions(): Promise<void> {
   const { db, userId } = await getDbContext();
-  enqueueCloudMutation(userId, { kind: "clear-table", table: "user_wrong_records" });
+  await enqueueCloudMutation(userId, { kind: "clear-table", table: "user_wrong_records" });
   await db.clear("wrongQuestions");
 }
 
 export async function removeWrongQuestion(questionId: string): Promise<void> {
   const { db, userId } = await getDbContext();
-  enqueueCloudMutation(userId, { kind: "delete-wrong", questionId });
+  await enqueueCloudMutation(userId, { kind: "delete-wrong", questionId });
   await db.delete("wrongQuestions", questionId);
 }
 
@@ -1267,11 +1545,11 @@ export async function getFavoriteQuestion(questionId: string): Promise<FavoriteQ
   const { db, userId } = await getDbContext();
   const localFavorite = await db.get("favoriteQuestions", questionId);
   if (localFavorite) return localFavorite;
-  if (!userId || hasPendingCloudMutations(userId)) return undefined;
+  if (!userId || await hasPendingCloudMutations(userId)) return undefined;
   try {
     const cloudFavorite = await getCloudFavorite(userId, questionId);
     if (cloudFavorite) {
-      if (hasPendingCloudMutations(userId) || (await getCurrentUserId()) !== userId) return undefined;
+      if (await hasPendingCloudMutations(userId) || (await getCurrentUserId()) !== userId) return undefined;
       await db.put("favoriteQuestions", cloudFavorite);
       return cloudFavorite;
     }
@@ -1291,7 +1569,7 @@ export async function toggleFavoriteRef(ref: {
   const { db, userId } = await getDbContext();
   const existing = await db.get("favoriteQuestions", ref.questionId);
   if (existing) {
-    enqueueCloudMutation(userId, { kind: "delete-favorite", questionId: ref.questionId });
+    await enqueueCloudMutation(userId, { kind: "delete-favorite", questionId: ref.questionId });
     await db.delete("favoriteQuestions", ref.questionId);
     return false;
   }
@@ -1302,7 +1580,7 @@ export async function toggleFavoriteRef(ref: {
     chapter: ref.chapter,
     createdAt: new Date().toISOString()
   };
-  enqueueCloudMutation(userId, { kind: "upsert-favorite", record: favorite });
+  await enqueueCloudMutation(userId, { kind: "upsert-favorite", record: favorite });
   await db.put("favoriteQuestions", favorite);
   return true;
 }
@@ -1317,13 +1595,13 @@ export async function toggleFavoriteQuestion(question: Question): Promise<boolea
 
 export async function removeFavoriteQuestion(questionId: string): Promise<void> {
   const { db, userId } = await getDbContext();
-  enqueueCloudMutation(userId, { kind: "delete-favorite", questionId });
+  await enqueueCloudMutation(userId, { kind: "delete-favorite", questionId });
   await db.delete("favoriteQuestions", questionId);
 }
 
 export async function saveQuizSession(session: QuizSession): Promise<void> {
   const { db, userId } = await getDbContext();
-  enqueueCloudMutation(userId, { kind: "upsert-session", record: session });
+  await enqueueCloudMutation(userId, { kind: "upsert-session", record: session });
   await db.put("quizSessions", session);
 }
 
@@ -1331,11 +1609,11 @@ export async function getQuizProgress(scopeId: string): Promise<QuizProgressReco
   const { db, userId } = await getDbContext();
   const localProgress = await db.get("quizProgress", scopeId);
   if (localProgress) return localProgress;
-  if (!userId || hasPendingCloudMutations(userId)) return undefined;
+  if (!userId || await hasPendingCloudMutations(userId)) return undefined;
   try {
     const cloudProgress = await getCloudProgress(userId, scopeId);
     if (cloudProgress) {
-      if (hasPendingCloudMutations(userId) || (await getCurrentUserId()) !== userId) return undefined;
+      if (await hasPendingCloudMutations(userId) || (await getCurrentUserId()) !== userId) return undefined;
       await db.put("quizProgress", cloudProgress);
       return cloudProgress;
     }
@@ -1355,13 +1633,13 @@ export async function saveQuizProgress(scopeId: string, currentIndex: number, to
     updatedAt: new Date().toISOString()
   };
   const { db, userId } = await getDbContext();
-  enqueueCloudMutation(userId, { kind: "upsert-progress", record });
+  await enqueueCloudMutation(userId, { kind: "upsert-progress", record });
   await db.put("quizProgress", record);
 }
 
 export async function clearQuizProgress(scopeId: string): Promise<void> {
   const { db, userId } = await getDbContext();
-  enqueueCloudMutation(userId, { kind: "delete-progress", scopeId });
+  await enqueueCloudMutation(userId, { kind: "delete-progress", scopeId });
   await db.delete("quizProgress", scopeId);
 }
 
@@ -1488,13 +1766,13 @@ export async function clearChapterMemory(ref: {
     .filter((wrongQuestion) => wrongQuestion.bankId === ref.bankId && wrongQuestion.chapter === ref.chapter)
     .map((wrongQuestion) => wrongQuestion.questionId);
   if (answerIds.length > 0) {
-    enqueueCloudMutation(userId, { kind: "delete-many", table: "user_answer_records", column: "question_id", values: answerIds });
+    await enqueueCloudMutation(userId, { kind: "delete-many", table: "user_answer_records", column: "question_id", values: answerIds });
   }
   if (wrongIds.length > 0) {
-    enqueueCloudMutation(userId, { kind: "delete-many", table: "user_wrong_records", column: "question_id", values: wrongIds });
+    await enqueueCloudMutation(userId, { kind: "delete-many", table: "user_wrong_records", column: "question_id", values: wrongIds });
   }
   if (ref.progressScopeId) {
-    enqueueCloudMutation(userId, { kind: "delete-progress", scopeId: ref.progressScopeId });
+    await enqueueCloudMutation(userId, { kind: "delete-progress", scopeId: ref.progressScopeId });
   }
   await Promise.all([
     ...answerIds.map((questionId) => db.delete("userAnswers", questionId)),
@@ -1518,7 +1796,7 @@ export async function clearSelectedUserRecords(options: ClearSelectedUserRecords
     const answers = await db.getAll("userAnswers");
     const ids = answers.filter((answer) => questionIds.has(answer.questionId)).map((answer) => answer.questionId);
     if (ids.length > 0) {
-      enqueueCloudMutation(userId, { kind: "delete-many", table: "user_answer_records", column: "question_id", values: ids });
+      await enqueueCloudMutation(userId, { kind: "delete-many", table: "user_answer_records", column: "question_id", values: ids });
     }
     await Promise.all(ids.map((questionId) => db.delete("userAnswers", questionId)));
   }
@@ -1527,7 +1805,7 @@ export async function clearSelectedUserRecords(options: ClearSelectedUserRecords
     const wrongQuestions = await db.getAll("wrongQuestions");
     const ids = wrongQuestions.filter((wrongQuestion) => questionIds.has(wrongQuestion.questionId)).map((wrongQuestion) => wrongQuestion.questionId);
     if (ids.length > 0) {
-      enqueueCloudMutation(userId, { kind: "delete-many", table: "user_wrong_records", column: "question_id", values: ids });
+      await enqueueCloudMutation(userId, { kind: "delete-many", table: "user_wrong_records", column: "question_id", values: ids });
     }
     await Promise.all(ids.map((questionId) => db.delete("wrongQuestions", questionId)));
   }
@@ -1536,7 +1814,7 @@ export async function clearSelectedUserRecords(options: ClearSelectedUserRecords
     const favoriteQuestions = await db.getAll("favoriteQuestions");
     const ids = favoriteQuestions.filter((favoriteQuestion) => questionIds.has(favoriteQuestion.questionId)).map((favoriteQuestion) => favoriteQuestion.questionId);
     if (ids.length > 0) {
-      enqueueCloudMutation(userId, { kind: "delete-many", table: "user_favorite_records", column: "question_id", values: ids });
+      await enqueueCloudMutation(userId, { kind: "delete-many", table: "user_favorite_records", column: "question_id", values: ids });
     }
     await Promise.all(ids.map((questionId) => db.delete("favoriteQuestions", questionId)));
   }
@@ -1551,7 +1829,7 @@ export async function clearSelectedUserRecords(options: ClearSelectedUserRecords
       )
       .map((progress) => progress.scopeId);
     if (progressIds.length > 0) {
-      enqueueCloudMutation(userId, { kind: "delete-many", table: "user_quiz_progress", column: "scope_id", values: progressIds });
+      await enqueueCloudMutation(userId, { kind: "delete-many", table: "user_quiz_progress", column: "scope_id", values: progressIds });
     }
     await Promise.all(progressIds.map((scopeId) => db.delete("quizProgress", scopeId)));
   }
@@ -1568,7 +1846,7 @@ export async function clearSelectedUserRecords(options: ClearSelectedUserRecords
     );
 
     if (options.clearLegacyQuizSessions) {
-      enqueueCloudMutation(userId, { kind: "clear-table", table: "user_quiz_sessions" });
+      await enqueueCloudMutation(userId, { kind: "clear-table", table: "user_quiz_sessions" });
       await db.clear("quizSessions");
     }
   }
@@ -1576,11 +1854,11 @@ export async function clearSelectedUserRecords(options: ClearSelectedUserRecords
 
 export async function clearAllUserRecords(): Promise<void> {
   const { db, userId } = await getDbContext();
-  enqueueCloudMutation(userId, { kind: "clear-table", table: "user_answer_records" });
-  enqueueCloudMutation(userId, { kind: "clear-table", table: "user_wrong_records" });
-  enqueueCloudMutation(userId, { kind: "clear-table", table: "user_favorite_records" });
-  enqueueCloudMutation(userId, { kind: "clear-table", table: "user_quiz_progress" });
-  enqueueCloudMutation(userId, { kind: "clear-table", table: "user_quiz_sessions" });
+  await enqueueCloudMutation(userId, { kind: "clear-table", table: "user_answer_records" });
+  await enqueueCloudMutation(userId, { kind: "clear-table", table: "user_wrong_records" });
+  await enqueueCloudMutation(userId, { kind: "clear-table", table: "user_favorite_records" });
+  await enqueueCloudMutation(userId, { kind: "clear-table", table: "user_quiz_progress" });
+  await enqueueCloudMutation(userId, { kind: "clear-table", table: "user_quiz_sessions" });
   const tx = db.transaction(
     ["userAnswers", "wrongQuestions", "favoriteQuestions", "quizSessions", "quizProgress", "imageQuizSessions"],
     "readwrite"

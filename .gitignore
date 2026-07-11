@@ -20,3 +20,6 @@ supabase/.temp/
 *.tsbuildinfo
 
 update-backups/
+
+playwright-report/
+test-results/

@@ -87,7 +87,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       if (tool === "activation-codes") {
         const { data, error } = await supabase
           .from("activation_codes")
-          .select("id, code_plain, code_preview, max_uses, use_count, is_active, note, created_at, redeemed_at")
+          .select("id, code_preview, max_uses, use_count, is_active, note, created_at, redeemed_at")
           .order("created_at", { ascending: false })
           .limit(100);
         if (error) throw error;
@@ -148,7 +148,6 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       const { error } = await supabase.from("activation_codes").insert({
         code_hash: code.hash,
         code_preview: code.preview,
-        code_plain: code.formatted,
         max_uses: maxUses,
         note,
       });

@@ -140,7 +140,6 @@ type UserDetail = {
     grantedAt: string | null;
     expiresAt: string | null;
     activationCode: {
-      code_plain?: string | null;
       code_preview?: string | null;
       max_uses?: number;
       use_count?: number;
@@ -179,7 +178,7 @@ type AdminAuditEvent = {
   createdAt: string | null;
 };
 
-type UsersResponse = { users?: AdminUserRow[]; error?: string };
+type UsersResponse = { users?: AdminUserRow[]; pagination?: { page: number; perPage: number; hasMore: boolean }; error?: string };
 type UserDetailResponse = Partial<UserDetail> & { error?: string };
 type LeaderboardResponse = { entries?: LeaderboardAdminEntry[]; error?: string };
 type AuditResponse = { events?: AdminAuditEvent[]; error?: string };
@@ -294,6 +293,8 @@ function AdminContent() {
   const { session, user } = useAuth();
   const accessToken = session?.access_token || "";
   const [users, setUsers] = useState<AdminUserRow[]>([]);
+  const [userPage, setUserPage] = useState(1);
+  const [hasMoreUsers, setHasMoreUsers] = useState(false);
   const [leaderboardEntries, setLeaderboardEntries] = useState<LeaderboardAdminEntry[]>([]);
   const [auditEvents, setAuditEvents] = useState<AdminAuditEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -371,20 +372,21 @@ function AdminContent() {
     else setLoading(true);
     setError(null);
     try {
-      const response = await fetch("/api/admin/users", {
+      const response = await fetch(`/api/admin/users?page=${userPage}&perPage=50`, {
         cache: "no-store",
         headers: { Authorization: "Bearer " + accessToken },
       });
       const payload = await readJsonResponse<UsersResponse>(response);
       if (!response.ok) throw new Error(payload.error || "讀取使用者失敗。");
       setUsers(payload.users || []);
+      setHasMoreUsers(Boolean(payload.pagination?.hasMore));
     } catch (loadError: unknown) {
       setError(loadError instanceof Error ? loadError.message : "讀取使用者失敗。");
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [accessToken]);
+  }, [accessToken, userPage]);
 
   const loadUserDetail = useCallback(async (background = false) => {
     if (!accessToken || !selectedUserId) return;
@@ -733,6 +735,11 @@ function AdminContent() {
             );
           })}
         </div>
+        <div className="admin-pagination" aria-label="使用者分頁">
+          <GlassButton variant="secondary" disabled={userPage <= 1 || loading} onClick={() => setUserPage((page) => Math.max(1, page - 1))}>上一頁</GlassButton>
+          <span>第 {userPage} 頁 · 每頁最多 50 位</span>
+          <GlassButton variant="secondary" disabled={!hasMoreUsers || loading} onClick={() => setUserPage((page) => page + 1)}>下一頁</GlassButton>
+        </div>
       </GlassCard>
 
       {selectedUserId && selectedUser ? (
@@ -840,7 +847,7 @@ function AdminContent() {
                         <KeyRound size={18} />
                         <div>
                           <span>啟用碼</span>
-                          <strong>{userDetail.entitlement.activationCode.code_plain || userDetail.entitlement.activationCode.code_preview || "—"}</strong>
+                          <strong>{userDetail.entitlement.activationCode.code_preview || "—"}</strong>
                           <small>{userDetail.entitlement.activationCode.note || "無備註"} · 已使用 {userDetail.entitlement.activationCode.use_count || 0}/{userDetail.entitlement.activationCode.max_uses || 1}</small>
                         </div>
                       </div>

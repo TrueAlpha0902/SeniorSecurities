@@ -75,9 +75,15 @@ const deadlinePlan = calculateSmartStudyPlanStats({
   now: new Date(2026, 6, 11, 12, 0, 0),
 });
 assert.equal(deadlinePlan.daysLeft, 3);
-assert.equal(deadlinePlan.requiredNewPerDay, 1007);
-assert.equal(deadlinePlan.allocations.new.count, 1007);
-assert.equal(deadlinePlan.suggestedDailyCount, 1039);
-assert.equal(deadlinePlan.reserveDays, 0);
+assert.equal(deadlinePlan.reserveDays, 2);
+assert.equal(deadlinePlan.progressDays, 1);
+assert.equal(deadlinePlan.requiredNewPerDay, 3020);
+assert.equal(deadlinePlan.allocations.wrong.count, 15);
+assert.equal(deadlinePlan.allocations.review.count, 17);
+assert.ok(deadlinePlan.allocations.new.count > 0);
+assert.ok(deadlinePlan.suggestedDailyCount <= deadlinePlan.timeCapacityCount);
+assert.ok(deadlinePlan.estimatedMinutes <= deadlinePlan.effectivePracticeMinutes);
+assert.ok(deadlinePlan.requiredMinutes > deadlinePlan.effectivePracticeMinutes);
+assert.equal(deadlinePlan.isOverloaded, true);
 
 console.log("Deadline-aware daily-plan tests passed.");

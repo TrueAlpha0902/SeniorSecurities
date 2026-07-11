@@ -4,6 +4,7 @@ import { isSupabaseConfigured, supabase, type AuthUser } from "../lib/supabase";
 import { syncLocalRecordsToCloud } from "../lib/db";
 import { flushPracticeSecondsToCloud } from "../lib/practiceTime";
 import { setActiveUserStorageScope } from "../lib/userScopedStorage";
+import { initializeLearningStore } from "../lib/learningStateStore";
 
 export type AccessStatus = {
   hasEntitlement: boolean;
@@ -56,17 +57,27 @@ async function sendAuthAudit(session: Session | null, eventType: "sign_in" | "si
 
 
 
-async function triggerCloudRecordSync(): Promise<void> {
-  const results = await Promise.allSettled([
-    syncLocalRecordsToCloud(),
-    flushPracticeSecondsToCloud(true),
-  ]);
-  for (const result of results) {
-    if (result.status === "rejected") {
-      // Sync should never block login. The account page will show actionable errors if SQL is missing.
-      console.warn("Cloud learning-record sync failed", result.reason);
+let activeCloudSync: { userId: string; promise: Promise<void> } | null = null;
+
+async function triggerCloudRecordSync(userId: string): Promise<void> {
+  if (activeCloudSync?.userId === userId) return activeCloudSync.promise;
+  const promise = (async () => {
+    await initializeLearningStore(userId);
+    const results = await Promise.allSettled([
+      syncLocalRecordsToCloud(),
+      flushPracticeSecondsToCloud(true),
+    ]);
+    for (const result of results) {
+      if (result.status === "rejected") {
+        // Sync should never block login. The account page will show actionable errors if SQL is missing.
+        console.warn("Cloud learning-record sync failed", result.reason);
+      }
     }
-  }
+  })().finally(() => {
+    if (activeCloudSync?.userId === userId) activeCloudSync = null;
+  });
+  activeCloudSync = { userId, promise };
+  return promise;
 }
 
 async function sendPresenceHeartbeat(userId: string): Promise<void> {
@@ -151,9 +162,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setActiveUserStorageScope(nextSession?.user.id ?? null);
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
+      if (nextSession?.user) await initializeLearningStore(nextSession.user.id);
       await refreshAccessForUser(nextSession?.user ?? null);
       if (nextSession?.user) {
-        void triggerCloudRecordSync();
+        void triggerCloudRecordSync(nextSession.user.id);
       }
       if (nextSession && !hasLoggedSessionSeen.current) {
         hasLoggedSessionSeen.current = true;
@@ -178,7 +190,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(nextSession?.user ?? null);
       void refreshAccessForUser(nextSession?.user ?? null);
       if (nextSession?.user) {
-        void triggerCloudRecordSync();
+        void initializeLearningStore(nextSession.user.id).then(() => triggerCloudRecordSync(nextSession.user.id));
       }
     });
 
@@ -195,9 +207,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setActiveUserStorageScope(data.user?.id ?? null);
     setSession(data.session ?? null);
     setUser(data.user ?? null);
+    if (data.user) await initializeLearningStore(data.user.id);
     await refreshAccessForUser(data.user ?? null);
     if (data.user) {
-      void triggerCloudRecordSync();
+      void triggerCloudRecordSync(data.user.id);
     }
     void sendAuthAudit(data.session ?? null, "sign_in");
   }, [refreshAccessForUser]);
@@ -209,9 +222,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setActiveUserStorageScope(data.user?.id ?? null);
     setSession(data.session ?? null);
     setUser(data.user ?? null);
+    if (data.user) await initializeLearningStore(data.user.id);
     await refreshAccessForUser(data.user ?? null);
     if (data.user) {
-      void triggerCloudRecordSync();
+      void triggerCloudRecordSync(data.user.id);
     }
     void sendAuthAudit(data.session ?? null, "sign_up");
     return data.session ? null : "註冊成功。請先到信箱完成驗證，再回來登入。";
@@ -262,7 +276,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const heartbeat = (force = false) => {
       if (!navigator.onLine) return;
       const now = Date.now();
-      if (heartbeatInFlight || (!force && now - lastHeartbeatAt < 12_000)) return;
+      if (heartbeatInFlight || (!force && now - lastHeartbeatAt < 30_000)) return;
       heartbeatInFlight = true;
       lastHeartbeatAt = now;
       void sendPresenceHeartbeat(user.id).finally(() => {
@@ -275,7 +289,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (document.visibilityState === "visible") {
         heartbeat();
       }
-    }, 25_000);
+    }, 60_000);
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
@@ -309,7 +323,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     };
 
-    const revalidationTimer = window.setInterval(revalidateAccess, 2 * 60_000);
+    const revalidationTimer = window.setInterval(revalidateAccess, 5 * 60_000);
     document.addEventListener("visibilitychange", revalidateAccess);
     window.addEventListener("focus", revalidateAccess);
     return () => {

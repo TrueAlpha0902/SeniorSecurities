@@ -8,8 +8,8 @@ import {
 } from "ts-fsrs";
 import { supabase } from "./supabase";
 import {
-  readLearningStore,
-  writeLearningStore,
+  initializeLearningStore,
+  recordLearningStoreUpdate,
   type LearningAttemptInput,
   type LearningStage,
   type LearningSummary,
@@ -132,11 +132,11 @@ export function createAttemptId(): string {
   return `attempt-${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
 }
 
-export function recordLocalLearningAttempt(
+export async function recordLocalLearningAttempt(
   userId: string | null,
   attempt: LearningAttemptInput,
-): QuestionLearningState {
-  const store = readLearningStore(userId);
+): Promise<QuestionLearningState> {
+  const store = await initializeLearningStore(userId);
   if (store.attempts.some((row) => row.eventId === attempt.eventId)) {
     return (
       store.states[attempt.questionId] ??
@@ -149,7 +149,7 @@ export function recordLocalLearningAttempt(
   if (store.attempts.length > MAX_LOCAL_ATTEMPTS) {
     store.attempts.splice(0, store.attempts.length - MAX_LOCAL_ATTEMPTS);
   }
-  writeLearningStore(userId, store);
+  await recordLearningStoreUpdate(userId, state, attempt);
   return state;
 }
 

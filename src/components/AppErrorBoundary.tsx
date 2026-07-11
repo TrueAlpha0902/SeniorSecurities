@@ -1,5 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { clearRuntimeCachesAndReload, recoverFromChunkLoadError } from "../lib/appRecovery";
+import { reportClientError } from "../lib/telemetry";
 
 type AppErrorBoundaryProps = {
   children: ReactNode;
@@ -22,6 +23,7 @@ export class AppErrorBoundary extends Component<AppErrorBoundaryProps, AppErrorB
 
   componentDidCatch(error: Error, info: ErrorInfo): void {
     console.error("Unhandled application error", error, info);
+    reportClientError(error);
     recoverFromChunkLoadError(error);
   }
 

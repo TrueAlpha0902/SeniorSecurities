@@ -23,10 +23,17 @@
     "test:bundle": "tsx scripts/check-bundle-budget.ts",
     "activation:code": "tsx scripts/generate-activation-code.ts",
     "dev:admin": "npx vercel dev",
-    "predev": "npm run generate:plan-index",
-    "prebuild": "npm run generate:plan-index",
-    "verify": "npm run test:plan-index && npm run typecheck && npm run typecheck:api && npm run lint && npm run test:calculator && npm run test:learning && npm run test:storage && npm run test:daily-plan && npm run test:recovery && npm run validate:data && npm run build && npm run test:bundle",
-    "test:recovery": "tsx scripts/test-app-recovery.ts"
+    "predev": "npm run generate:shards && npm run generate:plan-index",
+    "prebuild": "npm run generate:shards && npm run generate:plan-index",
+    "verify": "npm run test:shards && npm run test:plan-index && npm run typecheck && npm run typecheck:api && npm run lint && npm run test:calculator && npm run test:learning && npm run test:storage && npm run test:reliability && npm run test:integrity && npm run test:daily-plan && npm run test:recovery && npm run validate:data && npm run build && npm run test:bundle",
+    "test:recovery": "tsx scripts/test-app-recovery.ts",
+    "generate:shards": "tsx scripts/generate-question-shards.ts",
+    "test:shards": "tsx scripts/generate-question-shards.ts --check",
+    "test:e2e": "playwright test",
+    "test:e2e:update": "playwright test --update-snapshots",
+    "postdeploy:health": "tsx scripts/post-deploy-health-check.ts",
+    "test:reliability": "tsx scripts/test-reliability-store.ts",
+    "test:integrity": "tsx scripts/test-integrity-contracts.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.53.0",
@@ -39,7 +46,9 @@
     "ts-fsrs": "5.4.1"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.12.1",
     "@eslint/js": "^9.29.0",
+    "@playwright/test": "^1.61.1",
     "@types/node": "^24.0.4",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
@@ -47,6 +56,7 @@
     "eslint": "^9.29.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
+    "fake-indexeddb": "^6.2.5",
     "globals": "^16.2.0",
     "mammoth": "^1.9.1",
     "tsx": "^4.20.3",

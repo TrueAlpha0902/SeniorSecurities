@@ -16,3 +16,6 @@ README-v*.txt
 *.ps1
 *.cmd
 *.zip
+playwright-report
+test-results
+tests

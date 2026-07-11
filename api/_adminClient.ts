@@ -116,7 +116,7 @@ function extractBearerToken(req: ApiRequest): string | null {
 
 export async function requireAdminUser(
   req: ApiRequest,
-  options: { roles?: AdminRole[] } = {},
+  options: { roles?: AdminRole[]; requireAal2?: boolean } = {},
 ) {
   const token = extractBearerToken(req);
   if (!token) throw new HttpError("尚未登入，或登入狀態已過期。", 401);
@@ -135,7 +135,7 @@ export async function requireAdminUser(
   const jwt = decodeJwtPayload(token);
   const aal = String(jwt.aal || "aal1");
   const globalMfaRequired = String(process.env.ADMIN_REQUIRE_MFA || "").toLowerCase() === "true";
-  const mfaRequired = globalMfaRequired || databaseAccess.mfaRequired;
+  const mfaRequired = globalMfaRequired || databaseAccess.mfaRequired || options.requireAal2 === true;
   if (mfaRequired && aal !== "aal2") {
     throw new HttpError("此管理員操作需要完成多因素驗證（MFA）。", 403);
   }
@@ -169,7 +169,7 @@ export function sendError(res: ApiResponse, error: unknown): void {
   sendJson(res, statusCode, { error: message });
 }
 
-function requestIpAddress(req: ApiRequest): string | null {
+export function requestIpAddress(req: ApiRequest): string | null {
   const forwarded = String(req.headers?.["x-forwarded-for"] || "").split(",")[0]?.trim();
   return forwarded || req.socket?.remoteAddress || null;
 }

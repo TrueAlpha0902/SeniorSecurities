@@ -1,5 +1,18 @@
 ﻿# AI Change Log
 
+## 2026-07-11 — Stabilization Final（v78）
+
+- 雲端同步改為明確分頁、增量 checkpoint、explicit tombstone、批次初始上傳與安全 reconciliation，消除 partial response 誤刪本機紀錄的風險。
+- FSRS state、attempt、cloud mutation queue、sync metadata 與 dead-letter 搬到 IndexedDB；加入 coalescing、指數退避、jitter、批次 RPC 及 3,500-row 測試。
+- Daily Plan 排除今日已完成題目後再選 quota，並將全題庫理論覆蓋速度與每日時間可執行題數分離。
+- 題庫改為 content-hashed release manifest 與 40 個章節 shard；設定頁新增按科目離線下載／清除。
+- Admin API 統一中央角色驗證，高風險操作強制 AAL2；publish／rollback 改為 transaction RPC；Production 禁止 draft fallback。
+- Activation code 只保存 hash／preview，舊明文由 migration 清空；新增 privacy-safe client telemetry 與管理工具系統健康檢查。
+- Calculator、Settings、Analytics 與 routes 全部使用 lazy chunk recovery；Service Worker update state 持久化並限制 cache cleanup scope。
+- 合併歷史主題 import，加入 CSP/HSTS 等標頭、Playwright desktop/iPad/mobile、offline、axe、production health check、bundle 與 integrity contracts。
+- `npm run verify` 全部通過；Desktop Chromium smoke／trial answer colors／offline reload 本地通過。
+- 新增 migration `20260712090000_stabilization_final.sql` 與 Playwright／axe／fake-indexeddb 開發相依套件。
+
 ## 2026-07-11 — v74.1 Blank-Screen Recovery
 
 - 將 PWA 更新從背景強制接管改為提示式更新，避免新版 Service Worker 接管仍執行舊版 lazy chunks 的分頁。

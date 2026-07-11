@@ -1,4 +1,4 @@
-import { Clipboard, KeyRound, RefreshCcw, Save, ShieldCheck, Trash2, UsersRound, X } from "lucide-react";
+import { Activity, Clipboard, KeyRound, RefreshCcw, Save, ShieldCheck, Trash2, UsersRound, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type {
   ImageQuizBank,
@@ -13,7 +13,7 @@ import { GlassCard } from "./GlassCard";
 import { PdfSegmentStack } from "./PdfSegmentStack";
 import "../styles/admin-tools.css";
 
-type ToolId = "activation" | "admins" | "questions";
+type ToolId = "activation" | "admins" | "questions" | "health";
 
 type AdminAccountRow = {
   id: string;
@@ -28,7 +28,6 @@ type AdminAccountRow = {
 
 type ActivationCodeRow = {
   id: string;
-  code_plain: string | null;
   code_preview: string;
   max_uses: number;
   use_count: number;
@@ -36,6 +35,17 @@ type ActivationCodeRow = {
   note: string | null;
   created_at: string;
   redeemed_at: string | null;
+};
+
+
+type SystemHealthPayload = {
+  releaseId: string;
+  environment: string;
+  expectedMigration: string;
+  role: string;
+  mfaVerified: boolean;
+  checkedAt: string;
+  checks: Array<{ id: string; ok: boolean; message: string }>;
 };
 
 type ApiPayload = {
@@ -51,6 +61,7 @@ type ApiPayload = {
   releases?: ReleaseRow[];
   pointer?: ReleasePointer | null;
   role?: string;
+  health?: SystemHealthPayload;
 };
 
 type SourceQuestionData = { banks: ImageQuizBank[] };
@@ -82,6 +93,7 @@ const TOOL_TABS: { id: ToolId; label: string; description: string; primaryOnly?:
   { id: "activation", label: "啟用碼", description: "建立與查看啟用碼" },
   { id: "admins", label: "管理員", description: "新增、恢復或停用管理員", primaryOnly: true },
   { id: "questions", label: "題目編輯", description: "編輯、覆核與發布題庫" },
+  { id: "health", label: "系統狀態", description: "版本、資料庫與安全檢查" },
 ];
 
 async function adminRequest(accessToken: string, url: string, init: RequestInit = {}): Promise<ApiPayload> {
@@ -165,7 +177,53 @@ export function AdminToolsPanel({ accessToken, onClose }: { accessToken: string;
       {activeTool === "activation" ? <ActivationCodeTool accessToken={accessToken} /> : null}
       {activeTool === "admins" && isPrimaryAdmin ? <AdminAccountTool accessToken={accessToken} /> : null}
       {activeTool === "questions" ? <QuestionEditorTool accessToken={accessToken} isPrimaryAdmin={isPrimaryAdmin} /> : null}
+      {activeTool === "health" ? <SystemHealthTool accessToken={accessToken} /> : null}
     </GlassCard>
+  );
+}
+
+function SystemHealthTool({ accessToken }: { accessToken: string }) {
+  const [health, setHealth] = useState<SystemHealthPayload | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  const load = useCallback(async () => {
+    setBusy(true);
+    setError("");
+    try {
+      const payload = await adminRequest(accessToken, "/api/admin/ping");
+      setHealth(payload.health || null);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "無法取得系統狀態。");
+    } finally {
+      setBusy(false);
+    }
+  }, [accessToken]);
+
+  useEffect(() => { void load(); }, [load]);
+
+  return (
+    <div className="admin-tool-pane system-health-pane" role="tabpanel">
+      <div className="admin-tool-section-head">
+        <div><strong><Activity size={19} aria-hidden="true" />系統健康檢查</strong><p>確認正式版本、資料完整性 migration、管理權限與核心資料表。</p></div>
+        <GlassButton variant="secondary" disabled={busy} onClick={() => void load()}><RefreshCcw size={17} />重新檢查</GlassButton>
+      </div>
+      {error ? <p className="form-error">{error}</p> : null}
+      {health ? (
+        <>
+          <div className="system-health-summary">
+            <div><span>Release</span><strong>{health.releaseId}</strong></div>
+            <div><span>環境</span><strong>{health.environment}</strong></div>
+            <div><span>預期 migration</span><strong>{health.expectedMigration}</strong></div>
+            <div><span>管理員驗證</span><strong>{health.role} · {health.mfaVerified ? "AAL2" : "AAL1"}</strong></div>
+          </div>
+          <div className="system-health-checks">
+            {health.checks.map((check) => <div key={check.id} className={check.ok ? "is-ok" : "is-error"}><span aria-hidden="true">{check.ok ? "✓" : "!"}</span><strong>{check.message}</strong></div>)}
+          </div>
+          <p className="system-health-time">最後檢查：{new Date(health.checkedAt).toLocaleString("zh-TW")}</p>
+        </>
+      ) : busy ? <p>檢查中…</p> : null}
+    </div>
   );
 }
 
@@ -224,7 +282,7 @@ function ActivationCodeTool({ accessToken }: { accessToken: string }) {
       setError("只有主要管理員可以刪除啟用碼。");
       return;
     }
-    const visibleCode = row.code_plain || row.code_preview;
+    const visibleCode = row.code_preview;
     if (!window.confirm(`確定永久刪除啟用碼 ${visibleCode}？已使用紀錄仍會保留，但無法復原此啟用碼。`)) return;
     setBusy(true);
     setMessage("");
@@ -235,7 +293,6 @@ function ActivationCodeTool({ accessToken }: { accessToken: string }) {
         body: JSON.stringify({ action: "delete-activation-code", activationCodeId: row.id }),
       });
       setMessage(payload.message || "啟用碼已刪除。");
-      if (createdCode && row.code_plain === createdCode) setCreatedCode("");
       await loadRows();
     } catch (deleteError) {
       setError(deleteError instanceof Error ? deleteError.message : "無法刪除啟用碼。");
@@ -256,18 +313,17 @@ function ActivationCodeTool({ accessToken }: { accessToken: string }) {
         <GlassButton variant="secondary" disabled={busy} onClick={() => void loadRows()}><RefreshCcw size={18} />重新整理</GlassButton>
       </div>
       {createdCode ? (
-        <div className="admin-created-code"><strong>{createdCode}</strong><GlassButton variant="secondary" onClick={() => void copyCode(createdCode)}><Clipboard size={16} />複製</GlassButton></div>
+        <div className="admin-created-code"><div><small>只顯示這一次，關閉後無法再次查看完整啟用碼。</small><strong>{createdCode}</strong></div><GlassButton variant="secondary" onClick={() => void copyCode(createdCode)}><Clipboard size={16} />複製</GlassButton></div>
       ) : null}
       <ToolMessages message={message} error={error} />
       <div className="admin-tool-list">
         {rows.map((row) => {
-          const visibleCode = row.code_plain || row.code_preview;
+          const visibleCode = row.code_preview;
           return (
             <article key={row.id}>
               <div><strong>{visibleCode}</strong><span>{row.note || "無備註"}</span></div>
               <div><span>{row.use_count} / {row.max_uses} 次</span><span>{row.is_active ? "啟用" : "停用"}</span></div>
               <div className="admin-inline-actions">
-                {row.code_plain ? <button type="button" onClick={() => void copyCode(row.code_plain || "")}>複製</button> : null}
                 {isPrimaryAdmin ? (
                   <button type="button" className="is-danger" disabled={busy} onClick={() => void deleteCode(row)}><Trash2 size={14} />刪除</button>
                 ) : null}

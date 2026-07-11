@@ -8,7 +8,8 @@ import { EncouragementNote } from "../components/EncouragementNote";
 import { GlassButton, GlassLinkButton } from "../components/GlassButton";
 import { GlassCard } from "../components/GlassCard";
 import { LoadingState } from "../components/LoadingState";
-import { PdfSegmentStack, pdfImageUrl } from "../components/PdfSegmentStack";
+import { PdfSegmentStack } from "../components/PdfSegmentStack";
+import { pdfImageUrl } from "../lib/pdfAssets";
 import { ProgressBar } from "../components/ProgressBar";
 import { useAsync } from "../hooks/useAsync";
 import {

@@ -92,13 +92,48 @@ type ImageQuizPlanningIndexData = {
   questions: ImageQuizPlanningQuestion[];
 };
 
+type QuestionShardManifestChapter = {
+  chapterId: string;
+  chapterTitle: string;
+  chapterSlug: string;
+  sourceFile: string;
+  questionCount: number;
+  path: string;
+  hash: string;
+  bytes: number;
+};
+
+type QuestionShardManifestBank = {
+  bankId: string;
+  bankTitle: string;
+  questionCount: number;
+  chapters: QuestionShardManifestChapter[];
+};
+
+export type QuestionReleaseManifest = {
+  schemaVersion: 1;
+  releaseId: string;
+  sourceHash: string;
+  generatedAt: string;
+  totalQuestions: number;
+  banks: QuestionShardManifestBank[];
+};
+
+type QuestionShardPayload = {
+  bankId: string;
+  bankTitle: string;
+  chapter: ImageQuizChapter;
+};
+
 const dataCache: { promise?: Promise<ImageQuizData> } = {};
+const manifestCache: { promise?: Promise<QuestionReleaseManifest> } = {};
+const sourceBankCache = new Map<string, Promise<ImageQuizBank | undefined>>();
+const sourceChapterCache = new Map<string, Promise<ImageQuizChapter>>();
 const similarGroupsCache: { promise?: Promise<SimilarQuestionGroup[]> } = {};
 const trialQuestionsCache: { promise?: Promise<ImageQuizQuestion[]> } = {};
 const summaryBanksCache: { promise?: Promise<ImageQuizBank[]> } = {};
 const planningIndexCache: { promise?: Promise<ImageQuizPlanningQuestion[]> } = {};
 const questionOverridesCache: { promise?: Promise<Map<string, ImageQuizQuestionOverride>> } = {};
-const IMAGE_DATA_CACHE_VERSION = "20260705-crop-fix";
 const SECURITIES_COMBINED_BANK_ID = "securities-laws-practice";
 const SECURITIES_COMBINED_BANK_TITLE = "\u8b49\u5238\u76f8\u95dc\u6cd5\u898f\u8207\u5be6\u52d9";
 
@@ -159,92 +194,137 @@ export function assetUrl(path: string): string {
   return encodeURI(`${normalizedBase}${path.replace(/^\/+/, "")}`);
 }
 
-async function fetchJson<T>(path: string): Promise<T> {
+async function fetchJson<T>(path: string, version?: string): Promise<T> {
   const url = assetUrl(path);
-  const separator = url.includes("?") ? "&" : "?";
-  const response = await fetch(`${url}${separator}v=${IMAGE_DATA_CACHE_VERSION}`);
+  const requestUrl = version ? `${url}${url.includes("?") ? "&" : "?"}v=${encodeURIComponent(version)}` : url;
+  const response = await fetch(requestUrl);
   if (!response.ok) {
     throw new Error(`\u7121\u6cd5\u8f09\u5165 ${path}: ${response.status} ${response.statusText}`);
   }
   return (await response.json()) as T;
 }
 
-async function fetchPrecachedJson<T>(path: string): Promise<T> {
-  const response = await fetch(assetUrl(path));
-  if (!response.ok) {
-    throw new Error(`\u7121\u6cd5\u8f09\u5165 ${path}: ${response.status} ${response.statusText}`);
+export async function loadQuestionReleaseManifest(): Promise<QuestionReleaseManifest> {
+  manifestCache.promise ??= fetchJson<QuestionReleaseManifest>("data/question-release-manifest.json");
+  return manifestCache.promise;
+}
+
+async function loadSourceChapter(
+  bank: QuestionShardManifestBank,
+  chapter: QuestionShardManifestChapter,
+): Promise<ImageQuizChapter> {
+  const key = `${bank.bankId}:${chapter.chapterId}:${chapter.hash}`;
+  let promise = sourceChapterCache.get(key);
+  if (!promise) {
+    promise = fetchJson<QuestionShardPayload>(chapter.path, chapter.hash).then((payload) => payload.chapter);
+    sourceChapterCache.set(key, promise);
   }
-  return (await response.json()) as T;
+  return promise;
+}
+
+async function loadSourceBank(bankId: string): Promise<ImageQuizBank | undefined> {
+  let promise = sourceBankCache.get(bankId);
+  if (!promise) {
+    promise = loadQuestionReleaseManifest().then(async (manifest) => {
+      const bank = manifest.banks.find((candidate) => candidate.bankId === bankId);
+      if (!bank) return undefined;
+      const chapters = await Promise.all(bank.chapters.map((chapter) => loadSourceChapter(bank, chapter)));
+      return enrichBankTopics({ bankId: bank.bankId, bankTitle: bank.bankTitle, chapters });
+    });
+    sourceBankCache.set(bankId, promise);
+  }
+  return promise;
 }
 
 export async function loadImageQuizData(): Promise<ImageQuizData> {
-  dataCache.promise ??= Promise.all([
-    fetchJson<ImageQuizData>("data/pdf-image-quiz.json"),
-    loadQuestionOverrides(),
-  ]).then(([data, overrides]) => normalizeImageQuizData(applyQuestionOverrides(data, overrides)));
+  dataCache.promise ??= Promise.all([loadQuestionReleaseManifest(), loadQuestionOverrides()])
+    .then(async ([manifest, overrides]) => {
+      const sourceBanks = (await Promise.all(manifest.banks.map((bank) => loadSourceBank(bank.bankId))))
+        .filter((bank): bank is ImageQuizBank => Boolean(bank));
+      return normalizeImageQuizData(applyQuestionOverrides({ banks: sourceBanks }, overrides));
+    });
   return dataCache.promise;
 }
 
 export async function loadImageQuizBanks(): Promise<ImageQuizBank[]> {
-  const data = await loadImageQuizData();
-  return data.banks;
+  return (await loadImageQuizData()).banks;
 }
 
 export async function loadImageQuizBankSummaries(): Promise<ImageQuizBank[]> {
-  summaryBanksCache.promise ??= fetchJson<ImageQuizData>("data/pdf-image-quiz-summary.json")
+  summaryBanksCache.promise ??= loadQuestionReleaseManifest()
+    .then((manifest) => fetchJson<ImageQuizData>("data/pdf-image-quiz-summary.json", manifest.releaseId))
     .then(normalizeImageQuizData)
     .then((data) => data.banks);
   return summaryBanksCache.promise;
 }
 
-/**
- * Lightweight question universe used by the home-page planner. It avoids
- * downloading and parsing the multi-megabyte crop/segment payload until a
- * quiz route actually needs it.
- */
 export async function loadImageQuizPlanningIndex(): Promise<ImageQuizPlanningQuestion[]> {
-  planningIndexCache.promise ??= fetchPrecachedJson<ImageQuizPlanningIndexData>(
-    "data/pdf-image-quiz-plan-index.json",
-  ).then((data) => data.questions);
+  planningIndexCache.promise ??= loadQuestionReleaseManifest()
+    .then((manifest) => fetchJson<ImageQuizPlanningIndexData>("data/pdf-image-quiz-plan-index.json", manifest.releaseId))
+    .then((data) => data.questions);
   return planningIndexCache.promise;
 }
 
 export async function loadImageQuizBank(bankId: string): Promise<ImageQuizBank | undefined> {
-  const banks = await loadImageQuizBanks();
-  return banks.find((bank) => bank.bankId === bankId);
+  if (bankId === SECURITIES_COMBINED_BANK_ID) {
+    const [regulations, practice] = await Promise.all([
+      loadSourceBank("securities-trading-regulations"),
+      loadSourceBank("securities-trading-practice"),
+    ]);
+    if (!regulations || !practice) return undefined;
+    return normalizeImageQuizData({ banks: [regulations, practice] }).banks.find((bank) => bank.bankId === bankId);
+  }
+  return loadSourceBank(bankId);
 }
 
 export async function loadImageQuizChapter(bankId: string, chapterId: string): Promise<ImageQuizChapter | undefined> {
+  if (bankId === SECURITIES_COMBINED_BANK_ID) {
+    const source = chapterId.startsWith("regulations-")
+      ? { bankId: "securities-trading-regulations", prefix: "regulations" }
+      : chapterId.startsWith("practice-")
+        ? { bankId: "securities-trading-practice", prefix: "practice" }
+        : null;
+    if (source) {
+      const slug = chapterId.slice(source.prefix.length + 1);
+      const manifest = await loadQuestionReleaseManifest();
+      const bank = manifest.banks.find((candidate) => candidate.bankId === source.bankId);
+      const chapter = bank?.chapters.find((candidate) => candidate.chapterSlug === slug);
+      if (bank && chapter) {
+        const loaded = await loadSourceChapter(bank, chapter);
+        const enriched = enrichBankTopics({ bankId: bank.bankId, bankTitle: bank.bankTitle, chapters: [loaded] }).chapters[0];
+        return enriched ? makeCombinedChapter(enriched, source.prefix === "regulations" ? "\u6cd5\u898f" : "\u5be6\u52d9", source.prefix) : undefined;
+      }
+    }
+  }
   const bank = await loadImageQuizBank(bankId);
   return bank?.chapters.find((chapter) => chapter.chapterId === chapterId);
 }
 
 export async function loadImageBankQuestions(bankId: string): Promise<ImageQuizQuestion[]> {
   const bank = await loadImageQuizBank(bankId);
-  if (!bank) {
-    throw new Error(`\u627e\u4e0d\u5230\u984c\u5eab\uff1a${bankId}`);
-  }
-  return bank.chapters.flatMap((chapter) => chapter.questions);
+  if (!bank) throw new Error(`\u627e\u4e0d\u5230\u984c\u5eab\uff1a${bankId}`);
+  const overrides = await loadQuestionOverrides();
+  return applyQuestionOverrides({ banks: [bank] }, overrides).banks[0]?.chapters.flatMap((chapter) => chapter.questions) ?? [];
 }
 
 export async function loadImageChapterQuestions(bankId: string, chapterId: string): Promise<ImageQuizQuestion[]> {
   const chapter = await loadImageQuizChapter(bankId, chapterId);
-  if (!chapter) {
-    throw new Error(`\u627e\u4e0d\u5230\u7ae0\u7bc0\uff1a${bankId} / ${chapterId}`);
-  }
-  return chapter.questions;
+  if (!chapter) throw new Error(`\u627e\u4e0d\u5230\u7ae0\u7bc0\uff1a${bankId} / ${chapterId}`);
+  const overrides = await loadQuestionOverrides();
+  const bank: ImageQuizBank = { bankId, bankTitle: chapter.bankTitle, chapters: [chapter] };
+  return applyQuestionOverrides({ banks: [bank] }, overrides).banks[0]?.chapters[0]?.questions ?? [];
 }
 
 export async function loadAllImageQuestions(): Promise<ImageQuizQuestion[]> {
-  const banks = await loadImageQuizBanks();
-  return banks.flatMap((bank) => bank.chapters.flatMap((chapter) => chapter.questions));
+  return (await loadImageQuizBanks()).flatMap((bank) => bank.chapters.flatMap((chapter) => chapter.questions));
 }
 
 export async function loadTrialImageQuestions(): Promise<ImageQuizQuestion[]> {
-  trialQuestionsCache.promise ??= Promise.all([
-    fetchJson<ImageQuizData>("data/pdf-image-quiz-trial.json"),
-    loadQuestionOverrides(),
-  ])
+  trialQuestionsCache.promise ??= Promise.all([loadQuestionReleaseManifest(), loadQuestionOverrides()])
+    .then(([manifest, overrides]) => Promise.all([
+      fetchJson<ImageQuizData>("data/pdf-image-quiz-trial.json", manifest.releaseId),
+      Promise.resolve(overrides),
+    ]))
     .then(([data, overrides]) => normalizeImageQuizData(applyQuestionOverrides(data, overrides)))
     .then((data) => data.banks.flatMap((bank) => bank.chapters.flatMap((chapter) => chapter.questions)).slice(0, 10));
   return trialQuestionsCache.promise;
@@ -290,7 +370,7 @@ function applyQuestionOverrides(
 }
 
 export async function loadSimilarQuestionGroups(): Promise<SimilarQuestionGroup[]> {
-  similarGroupsCache.promise ??= fetchJson<SimilarQuestionData>("data/similar-question-groups.json").then(
+  similarGroupsCache.promise ??= loadQuestionReleaseManifest().then((manifest) => fetchJson<SimilarQuestionData>("data/similar-question-groups.json", manifest.releaseId)).then(
     (data) => data.groups,
   );
   return similarGroupsCache.promise;
