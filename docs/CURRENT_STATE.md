@@ -1,42 +1,33 @@
 # SeniorSecurities Current State
 
-更新時間：2026-07-11 10:52:56 +08:00
-目前分支：`main`
-本次收尾前 commit：`4913192`
+更新日期：2026-07-11
+升級基準：`b65226e` 之後的 v66 功能升級
 
-## 本次已完成驗證
+## 已完成
 
-- `npm cache verify`
-- `npm ci`
-- `npm run lint`
-- `npm run test:calculator`
-- `npm run validate:data`
-- `npm run build`
+- 統一 ClassWiz 風格計算機：一般計算、三角／反三角、方程式、複數、進位制、矩陣、向量、統計、常態／二項分布、函數表、不等式、比例與財務公式。
+- 學習排行榜重新設計，支援連續答對與累積時數兩種榜單、前三名展示、進度與響應式排版。
+- 「單科隨機測驗」正名為「模擬考測驗」，並加入單科模式與 150 題／210 分鐘完整模考、延後批改、答題卡、標記待檢、交卷與錯題重練。
+- 相似題改為主動辨識訓練：先作答再揭示、信心標記、錯因歸納、筆記、重做錯題與熟練度篩選。
+- AnswerAttempt append-only 事件、QuestionLearningState、FSRS 排程、首頁新題／學習中／複習／已掌握摘要。
+- 排行榜改用不可重放 event id 聚合。
+- 管理員改用 user-id RBAC，支援 primary/admin/content reviewer/support 角色與 MFA 強制驗證。
+- 帳號頁提供 TOTP MFA 設定、驗證、AAL2 升級與移除流程。
+- 管理後台移除 Windows EXE 整合說明；主要管理員可永久刪除啟用碼。
+- 題庫 Draft → Review → 雙人核准 → Publish → Rollback，發布內容不可變更。
 
-## 已完成狀態
+## 必須套用的資料庫 migration
 
-- 最新前端與 API 可通過 production build。
-- Supabase 最新 migrations 已套用。
-- 管理員彙總與外鍵索引已完成。
-- 每日題列、離線同步、後台管理與計算機功能已存在。
-- 已建立 Codex 低 Token 交接文件。
+`supabase/migrations/20260711123000_learning_engine_and_governance_v66.sql`
 
-## 尚未開始的大型後續計畫
+尚未套用 migration 時，前端保留本機學習狀態，雲端 FSRS、不可重放排行榜、user-id RBAC 與 release workflow 會降級或不可用。
 
-- AnswerAttempt append-only 作答事件
-- QuestionLearningState
-- Leitner／FSRS 長期記憶排程
-- user_id RBAC 與 MFA
-- 題庫雙人核准與 immutable release
-- 三科 150 題／210 分鐘完整模擬考
-- 不可重放的伺服器端排行榜事件統計
+## 驗證命令
 
-除非使用者明確要求，不要自行開始上述大型功能。
+`npm run verify`
 
-## Codex 下次開始方式
+涵蓋前端 typecheck、API typecheck、ESLint、計算機測試、FSRS 測試、題庫驗證與 production build。
 
-1. 執行 `git status --short`
-2. 執行 `git log -1 --oneline`
-3. 閱讀本文件
-4. 閱讀 `docs/AI_CHANGELOG.md` 最後一筆
-5. 直接處理使用者指定的下一項工作
+## 下一步
+
+只有營運驗收：套用 migration、推送 GitHub、等待 Vercel production deployment，然後依 `docs/V66_UPGRADE_GUIDE.md` 執行 smoke test。沒有尚未實作的既定大型 Codex 計畫。

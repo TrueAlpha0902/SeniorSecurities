@@ -8,6 +8,8 @@ import {
   RotateCcw,
   Sparkles,
   Target,
+  TimerReset,
+  Layers3,
   Trash2,
 } from "lucide-react";
 import { useState } from "react";
@@ -24,10 +26,11 @@ import {
   listUserAnswers,
   type ImageQuizSessionRecord,
 } from "../lib/db";
-import { loadImageBankQuestions, loadImageQuizBanks, type ImageQuizBank, type ImageQuizQuestion } from "../lib/imageQuiz";
+import { loadAllImageQuestions, loadImageBankQuestions, loadImageQuizBanks, type ImageQuizBank, type ImageQuizQuestion } from "../lib/imageQuiz";
 import { buildSessionId, calculateAccuracy, shuffleQuestions } from "../lib/quiz";
 import type { UserAnswer } from "../types";
 import "../styles/learner-experience-v65.css";
+import "../styles/mock-exam-v66.css";
 
 const DEFAULT_RANDOM_SIZE = 50;
 const MIN_RANDOM_SIZE = 1;
@@ -35,23 +38,23 @@ const MAX_RANDOM_SIZE = 300;
 const QUICK_RANDOM_SIZES = [25, 50, 80, 100] as const;
 
 const T = {
-  loading: "載入單科隨機測驗",
-  title: "單科隨機測驗",
-  description: "每次從單一科目依各章節題庫比例抽題，預設 50 題，也可以依自己的時間自訂練習題數。退出或完成後會保留當次答對率與錯題複習。",
+  loading: "載入模擬考測驗",
+  title: "模擬考測驗",
+  description: "可選擇單科模考或完整 150 題正式模考。考試模式會在交卷後統一顯示成績與解析，作答進度會自動保存。",
   subject: "科目",
   chapter: "章",
   question: "題",
-  start: "測驗開始",
+  start: "開始模擬考",
   avoidAnswered: "避開已作答題目",
-  questionCount: "每次練習題數",
-  questionCountHint: "預設 50 題，系統會依各章節題庫比例分配抽題。若可用題目不足，會以目前可抽題數為準。",
+  questionCount: "單科模考題數",
+  questionCountHint: "預設 50 題，系統依各章節題庫比例抽題並自動換算建議作答時間。若題目不足，會以可抽題數為準。",
   proportionalHint: "依章節比例抽題",
   customQuestionCount: "自訂題數",
   remaining: "剩餘",
   noAvailable: "這個科目目前沒有可抽取的題目。",
   progress: "進度",
   records: "測驗紀錄",
-  noRecords: "目前還沒有單科隨機測驗紀錄",
+  noRecords: "目前還沒有模擬考測驗紀錄",
   accuracy: "答對率",
   correct: "答對",
   wrong: "答錯",
@@ -65,9 +68,9 @@ const T = {
   deleteMode: "刪除紀錄",
   deleteSelected: "刪除選取",
   cancelDelete: "取消",
-  deleteConfirm: "確定要刪除選取的單科隨機測驗紀錄嗎？",
+  deleteConfirm: "確定要刪除選取的模擬考測驗紀錄嗎？",
   examRules: "證券高業考試規定",
-  examRulesNote: "這裡是單科隨機測驗並會逐題回饋；完整三科、統一交卷後批改的正式模考將另行提供。",
+  examRulesNote: "完整模考依正式科目配置抽取 150 題，限時 210 分鐘，交卷後統一批改。",
   questionsUnit: "題",
   minutesUnit: "分鐘",
   totalRules: "合計 150 題 / 210 分鐘",
@@ -94,6 +97,8 @@ export function RandomPracticePage() {
   const navigate = useNavigate();
   const [refreshKey, setRefreshKey] = useState(0);
   const [avoidAnswered, setAvoidAnswered] = useState(true);
+  const [examKind, setExamKind] = useState<"single" | "full">("single");
+  const [deferredFeedback, setDeferredFeedback] = useState(true);
   const [questionCount, setQuestionCount] = useState<number | "">(DEFAULT_RANDOM_SIZE);
   const [deleteMode, setDeleteMode] = useState(false);
   const [selectedSessionIds, setSelectedSessionIds] = useState<Set<string>>(new Set());
@@ -136,8 +141,41 @@ export function RandomPracticePage() {
       correctCount: 0,
       wrongCount: 0,
       accuracy: 0,
+      durationMinutes: resolveSingleSubjectDuration(bank.bankId, questions.length),
+      feedbackMode: deferredFeedback ? "deferred" : "immediate",
+      markedQuestionIds: [],
     });
     navigate(`/image-quiz/random/${bank.bankId}/${sessionId}`);
+  }
+
+
+  async function handleStartFullMock(): Promise<void> {
+    const allQuestions = await loadAllImageQuestions();
+    const answeredIds = new Set((data?.answers ?? []).map((answer) => answer.questionId));
+    const questions = buildFullMockExamQuestions(allQuestions, answeredIds, avoidAnswered);
+    if (questions.length < 150) {
+      window.alert("目前可用題目不足 150 題，請關閉『避開已作答題目』後再試一次。");
+      return;
+    }
+    const sessionId = buildSessionId();
+    await createImageQuizSession({
+      sessionId,
+      mode: "fullMock",
+      bankId: "__full_exam__",
+      bankTitle: "證券高業完整模擬考",
+      questionIds: questions.map((question) => question.id),
+      answers: {},
+      wrongQuestionIds: [],
+      startedAt: new Date().toISOString(),
+      totalQuestions: questions.length,
+      correctCount: 0,
+      wrongCount: 0,
+      accuracy: 0,
+      durationMinutes: 210,
+      feedbackMode: "deferred",
+      markedQuestionIds: [],
+    });
+    navigate(`/image-quiz/random/__full_exam__/${sessionId}`);
   }
 
   async function handleDeleteSelected(): Promise<void> {
@@ -219,8 +257,8 @@ export function RandomPracticePage() {
           </div>
           <div className="learner-kpi is-accent">
             <span><Target aria-hidden="true" size={17} /> 本次目標</span>
-            <strong>{normalizedQuestionCount} <small>題</small></strong>
-            <small>尚有 {remainingQuestionCount.toLocaleString("zh-TW")} 題待練習</small>
+            <strong>{examKind === "full" ? 150 : normalizedQuestionCount} <small>題</small></strong>
+            <small>{examKind === "full" ? "210 分鐘正式配比" : `尚有 ${remainingQuestionCount.toLocaleString("zh-TW")} 題待練習`}</small>
           </div>
         </div>
       </GlassCard>
@@ -229,12 +267,17 @@ export function RandomPracticePage() {
         <div className="random-builder-heading">
           <div className="learner-section-icon" aria-hidden="true"><ListFilter size={20} /></div>
           <div>
-            <h2 id="random-builder-title">設定本次練習</h2>
-            <p>{T.questionCountHint}</p>
+            <h2 id="random-builder-title">設定模擬考</h2>
+            <p>{examKind === "single" ? T.questionCountHint : "完整模考固定 150 題、210 分鐘，依正式科目比例抽題並於交卷後批改。"}</p>
           </div>
         </div>
 
-        <div className="random-quiz-options">
+        <div className="mock-exam-kind-switch" role="tablist" aria-label="模擬考類型">
+          <button type="button" className={examKind === "single" ? "is-active" : ""} onClick={() => setExamKind("single")}><BookOpenCheck size={18} /><span><strong>單科模考</strong><small>自訂題數與科目</small></span></button>
+          <button type="button" className={examKind === "full" ? "is-active" : ""} onClick={() => setExamKind("full")}><Layers3 size={18} /><span><strong>完整模考</strong><small>150 題 · 210 分鐘</small></span></button>
+        </div>
+
+        {examKind === "single" ? <div className="random-quiz-options">
           <fieldset className="random-count-panel">
             <legend>{T.questionCount}</legend>
             <div className="random-count-quick-actions" aria-label="快速選擇題數">
@@ -286,15 +329,26 @@ export function RandomPracticePage() {
             </span>
             <span className="random-switch" aria-hidden="true" />
           </label>
-        </div>
+          <label className="random-answer-toggle">
+            <input type="checkbox" checked={deferredFeedback} onChange={(event) => setDeferredFeedback(event.currentTarget.checked)} />
+            <span className="random-toggle-copy"><strong>交卷後統一批改</strong><small>{deferredFeedback ? "作答時不顯示答案與解析" : "每題作答後立即顯示解析"}</small></span>
+            <span className="random-switch" aria-hidden="true" />
+          </label>
+        </div> : (
+          <div className="full-mock-launch-card">
+            <div><span className="full-mock-icon"><TimerReset size={26} /></span><div><strong>證券高業完整模擬考</strong><p>投資學 50 題、財務分析 50 題、法規與實務合計 50 題。交卷前不顯示正解。</p></div></div>
+            <dl><div><dt>總題數</dt><dd>150 題</dd></div><div><dt>作答時間</dt><dd>210 分鐘</dd></div><div><dt>批改方式</dt><dd>交卷後統一批改</dd></div></dl>
+            <GlassButton variant="primary" className="full-mock-start" onClick={() => void handleStartFullMock()}><Play size={19} />開始完整模考</GlassButton>
+          </div>
+        )}
       </GlassCard>
 
-      <section className="random-subject-section" aria-labelledby="random-subject-title">
+      {examKind === "single" ? <section className="random-subject-section" aria-labelledby="random-subject-title">
         <div className="learner-section-heading">
           <div>
             <p className="eyebrow">Choose a subject</p>
-            <h2 id="random-subject-title">選擇練習科目</h2>
-            <p>每科都會依章節題量自動分配，選好後即可開始。</p>
+            <h2 id="random-subject-title">選擇模考科目</h2>
+            <p>系統依章節題量比例抽題，題目分布更接近完整科目測驗。</p>
           </div>
           <span className="learner-count-pill">{banks.length} 科</span>
         </div>
@@ -346,7 +400,7 @@ export function RandomPracticePage() {
         })}
           </div>
         )}
-      </section>
+      </section> : null}
 
       <GlassCard className="exam-rules-card learner-exam-rules" as="section" aria-label={T.examRules}>
         <div className="exam-rules-heading">
@@ -495,6 +549,32 @@ function SessionRecordCard({
       </div>
     </GlassCard>
   );
+}
+
+
+function resolveSingleSubjectDuration(bankId: string, questionCount: number): number {
+  const fullDuration = bankId === "investment" ? 60 : bankId === "financial-analysis" ? 90 : 60;
+  return Math.max(10, Math.round(fullDuration * questionCount / 50));
+}
+
+function buildFullMockExamQuestions(
+  allQuestions: ImageQuizQuestion[],
+  answeredIds: Set<string>,
+  avoidAnswered: boolean,
+): ImageQuizQuestion[] {
+  const take = (bankIds: string[], count: number): ImageQuizQuestion[] => {
+    const pool = allQuestions.filter((question) => bankIds.includes(question.bankId));
+    const preferred = avoidAnswered ? pool.filter((question) => !answeredIds.has(question.id)) : pool;
+    const source = preferred.length >= count ? preferred : pool;
+    return shuffleQuestions(source).slice(0, count);
+  };
+  const investment = take(["investment"], 50);
+  const financial = take(["financial-analysis"], 50);
+  const lawPool = allQuestions.filter((question) => ["securities-trading-regulations", "securities-trading-practice"].includes(question.bankId));
+  const regulationCount = Math.round(50 * lawPool.filter((question) => question.bankId === "securities-trading-regulations").length / Math.max(1, lawPool.length));
+  const regulations = take(["securities-trading-regulations"], regulationCount);
+  const practice = take(["securities-trading-practice"], 50 - regulationCount);
+  return shuffleQuestions([...investment, ...financial, ...regulations, ...practice]);
 }
 
 function calculateBankProgress(bank: ImageQuizBank, answers: UserAnswer[]): number {

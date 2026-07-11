@@ -49,3 +49,45 @@ assertApproximately(system.y, 1);
 assert.ok(system.maxResidual < 1e-8);
 
 console.log("Calculator core self-test passed (expressions, x/y solving, poles, repeated roots). ");
+
+import {
+  binomialProbability,
+  calculateStatistics,
+  complexOperate,
+  matrixDeterminant,
+  matrixInverse,
+  matrixMultiply,
+  normalCdf,
+  parseIntegerForBase,
+  parseMatrix,
+  solveQuadraticInequality,
+  solveRatio,
+  vectorCross,
+  vectorDot,
+} from "../src/lib/calculatorAdvanced";
+
+assertApproximately(evaluateCalculatorExpression("sin(30)", {}, { angleUnit: "deg" }), 0.5);
+assertApproximately(evaluateCalculatorExpression("asin(0.5)", {}, { angleUnit: "deg" }), 30);
+assert.equal(evaluateCalculatorExpression("5!"), 120);
+assert.equal(evaluateCalculatorExpression("ncr(10,3)"), 120);
+assert.equal(evaluateCalculatorExpression("npr(5,2)"), 20);
+assertApproximately(evaluateCalculatorExpression("root(3,-8)"), -2);
+
+assert.deepEqual(complexOperate({ re: 2, im: 3 }, { re: 1, im: -4 }, "+"), { re: 3, im: -1 });
+assert.equal(parseIntegerForBase("FF", 16), 255);
+const matrixA = parseMatrix("1,2;3,4");
+assert.equal(matrixDeterminant(matrixA), -2);
+const inverse = matrixInverse(matrixA);
+assertApproximately(inverse[0]?.[0] ?? Number.NaN, -2);
+assert.deepEqual(matrixMultiply(matrixA, [[1], [0]]), [[1], [3]]);
+assert.equal(vectorDot([1, 2, 3], [4, 5, 6]), 32);
+assert.deepEqual(vectorCross([1, 0, 0], [0, 1, 0]), [0, 0, 1]);
+const stats = calculateStatistics("1,2,3,4");
+assertApproximately(stats.mean, 2.5);
+assertApproximately(stats.median, 2.5);
+assertApproximately(normalCdf(0), 0.5, 1e-7);
+assertApproximately(binomialProbability(10, 0.5, 5), 0.24609375);
+assertApproximately(solveRatio(2, 3, 8), 12);
+assert.equal(solveQuadraticInequality(1, -5, 6, ">="), "x ≤ 2 或 x ≥ 3");
+
+console.log("Advanced calculator mode self-test passed (complex/base/matrix/vector/statistics/distribution/ratio/inequality). ");

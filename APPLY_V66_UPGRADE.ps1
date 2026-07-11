@@ -1,0 +1,238 @@
+﻿$ErrorActionPreference = 'Stop'
+Set-StrictMode -Version Latest
+
+$ProjectRoot = $PSScriptRoot
+$LogPath = Join-Path ([Environment]::GetFolderPath('Desktop')) 'SeniorSecurities_v66_upgrade_log.txt'
+$CommitMessage = 'feat: complete adaptive learning, mock exam, and ClassWiz upgrade'
+$MigrationFile = 'supabase/migrations/20260711123000_learning_engine_and_governance_v66.sql'
+$TranscriptStarted = $false
+$env:GIT_PAGER = 'cat'
+$env:PAGER = 'cat'
+
+function Run-Step {
+    param(
+        [Parameter(Mandatory = $true)][string]$Name,
+        [Parameter(Mandatory = $true)][scriptblock]$Action
+    )
+
+    Write-Host "`n============================================================" -ForegroundColor DarkGray
+    Write-Host "▶ $Name" -ForegroundColor Cyan
+    Write-Host "============================================================" -ForegroundColor DarkGray
+    $global:LASTEXITCODE = 0
+    & $Action
+    if ($LASTEXITCODE -ne 0) {
+        throw "$Name 失敗，結束碼：$LASTEXITCODE"
+    }
+    Write-Host "✓ $Name 完成" -ForegroundColor Green
+}
+
+function Stop-ProjectProcesses {
+    $escapedRoot = [Regex]::Escape($ProjectRoot)
+    $processes = @(
+        Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+        Where-Object {
+            ($_.Name -ieq 'esbuild.exe' -and $_.ExecutablePath -and $_.ExecutablePath -match $escapedRoot) -or
+            ($_.Name -ieq 'node.exe' -and $_.CommandLine -and $_.CommandLine -match $escapedRoot)
+        }
+    )
+    foreach ($process in $processes) {
+        Write-Host "停止專案程序：$($process.Name) PID=$($process.ProcessId)"
+        Stop-Process -Id $process.ProcessId -Force -ErrorAction SilentlyContinue
+    }
+    if ($processes.Count -gt 0) { Start-Sleep -Seconds 2 }
+}
+
+function Repair-NpmRegistry {
+    $publicRegistry = 'https://registry.npmjs.org/'
+    $lockPath = Join-Path $ProjectRoot 'package-lock.json'
+
+    # The release artifact must never reference the private build-environment registry.
+    if (Test-Path -LiteralPath $lockPath) {
+        $utf8 = [System.Text.UTF8Encoding]::new($false)
+        $lockText = [System.IO.File]::ReadAllText($lockPath, $utf8)
+        $fixedText = $lockText -replace 'https://packages\.applied-caas-gateway1\.internal\.api\.openai\.org/artifactory/api/npm/npm-public/', $publicRegistry
+        if ($fixedText -ne $lockText) {
+            [System.IO.File]::WriteAllText($lockPath, $fixedText, $utf8)
+            Write-Host '已將 package-lock.json 的內部 registry 連結修正為 npm 官方 registry。' -ForegroundColor Yellow
+        }
+    }
+
+    & npm config delete proxy 2>$null
+    & npm config delete https-proxy 2>$null
+    & npm config set registry $publicRegistry
+    if ($LASTEXITCODE -ne 0) { throw '無法設定 npm 官方 registry。' }
+}
+
+function Invoke-NpmCi {
+    & npm ci --registry=https://registry.npmjs.org/ --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000
+}
+
+function Install-Dependencies {
+    Repair-NpmRegistry
+    Stop-ProjectProcesses
+    Invoke-NpmCi
+    if ($LASTEXITCODE -eq 0) { return }
+
+    Write-Host "npm ci 首次失敗，清除 node_modules 後重試一次。" -ForegroundColor Yellow
+    Stop-ProjectProcesses
+    $nodeModules = Join-Path $ProjectRoot 'node_modules'
+    if (Test-Path -LiteralPath $nodeModules) {
+        & cmd.exe /d /c "rmdir /s /q `"$nodeModules`""
+        if (Test-Path -LiteralPath $nodeModules) {
+            throw 'node_modules 仍被鎖定。請重新啟動 Windows，先不要開 Codex、VS Code 或 npm dev server，再重跑本指令。'
+        }
+    }
+    & npm cache verify
+    if ($LASTEXITCODE -ne 0) { throw 'npm cache verify 失敗。' }
+    Invoke-NpmCi
+}
+
+try {
+    try {
+        Start-Transcript -Path $LogPath -Append | Out-Null
+        $TranscriptStarted = $true
+    } catch {
+        Write-Host '無法啟動執行紀錄，但不影響升級。' -ForegroundColor Yellow
+    }
+
+    Set-Location -LiteralPath $ProjectRoot
+    Write-Host "`nSeniorSecurities v66 一鍵升級" -ForegroundColor Cyan
+    Write-Host "專案位置：$ProjectRoot"
+    Write-Host "執行紀錄：$LogPath"
+
+    foreach ($commandName in @('git', 'node', 'npm')) {
+        if (-not (Get-Command $commandName -ErrorAction SilentlyContinue)) {
+            throw "找不到 $commandName，請先安裝 Git 與 Node.js。"
+        }
+    }
+    if (-not (Test-Path -LiteralPath 'package-lock.json')) { throw '找不到 package-lock.json。' }
+    if (-not (Test-Path -LiteralPath $MigrationFile)) { throw "找不到 migration：$MigrationFile" }
+
+    Run-Step '確認 Git 儲存庫' { git rev-parse --is-inside-work-tree | Out-Null }
+    $Branch = (git branch --show-current).Trim()
+    if ([string]::IsNullOrWhiteSpace($Branch)) { throw '目前為 detached HEAD，請先切回 main。' }
+    Write-Host "目前分支：$Branch"
+    Write-Host "目前 commit：$((git --no-pager log -1 --oneline) -join '')"
+
+    Run-Step '取得 GitHub 最新資訊' { git fetch --prune origin }
+    git show-ref --verify --quiet "refs/remotes/origin/$Branch"
+    $RemoteExists = ($LASTEXITCODE -eq 0)
+    if ($RemoteExists) {
+        $counts = ((git rev-list --left-right --count "origin/$Branch...HEAD").Trim() -split '\s+')
+        $behind = [int]$counts[0]
+        $ahead = [int]$counts[1]
+        Write-Host "本機領先遠端：$ahead；落後遠端：$behind"
+        if ($behind -gt 0) {
+            throw "遠端 origin/$Branch 領先本機 $behind 個 commit。請先處理同步，避免覆蓋他人變更。"
+        }
+    }
+
+    Run-Step '安裝鎖定版本依賴' { Install-Dependencies }
+    Run-Step '執行完整驗證' { npm run verify }
+
+    $migrationStatus = '未套用（使用者選擇略過）'
+    Write-Host "`n此版本需要套用 Supabase migration：" -ForegroundColor Yellow
+    Write-Host "  $MigrationFile"
+    Write-Host '這會新增學習事件、FSRS、RBAC、release workflow 與不可重放排行榜資料結構。'
+    $applyMigration = (Read-Host '確認目前已連結正確的正式 Supabase project，現在套用？輸入 Y；略過請輸入 N').Trim().ToUpperInvariant()
+
+    if ($applyMigration -eq 'Y') {
+        if (-not (Get-Command npx -ErrorAction SilentlyContinue)) { throw '找不到 npx。' }
+        Run-Step 'Supabase migration dry-run' { npx --yes supabase db push --linked --dry-run }
+        Run-Step '套用 Supabase migration' { npx --yes supabase db push --linked --yes }
+        Run-Step '確認 Supabase migration 清單' { npx --yes supabase migration list --linked }
+        $migrationStatus = '已透過 supabase db push --linked 套用'
+    } elseif ($applyMigration -ne 'N') {
+        throw '請只輸入 Y 或 N。'
+    }
+
+    $receiptPath = 'docs/LOCAL_V66_UPGRADE_RECEIPT.md'
+    $timestamp = Get-Date -Format 'yyyy-MM-dd HH:mm:ss zzz'
+    @"
+# Local v66 Upgrade Receipt
+
+- 執行時間：$timestamp
+- 分支：$Branch
+- 執行前 commit：$((git rev-parse --short HEAD).Trim())
+- 完整驗證：通過
+- Supabase migration：$migrationStatus
+- Migration 檔案：``$MigrationFile``
+"@ | Set-Content -LiteralPath $receiptPath -Encoding UTF8
+
+    Run-Step '加入 Git 暫存區' { git add -A }
+
+    $stagedFiles = @(
+        git -c core.quotepath=false diff --cached --name-only --diff-filter=ACMRTUXB |
+        ForEach-Object { $_.TrimEnd("`r") } |
+        Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+    )
+    $blockedFiles = @(
+        $stagedFiles | Where-Object {
+            $path = $_.Replace('\', '/').ToLowerInvariant()
+            $leaf = ($path -split '/')[-1]
+            $isSecretEnv = $leaf -eq '.env' -or ($leaf.StartsWith('.env.') -and $leaf -ne '.env.example')
+            $isGenerated =
+                $path -match '(^|/)node_modules(/|$)' -or
+                $path -match '(^|/)dist(/|$)' -or
+                $path -match '(^|/)\.vercel(/|$)' -or
+                $path -match '(^|/)supabase/\.temp(/|$)' -or
+                $path -match '(^|/)coverage(/|$)' -or
+                $path -match '(^|/)\.cache(/|$)'
+            $isSensitive = $path -match '\.(pem|key|pfx|db|sqlite|sqlite3|log)$'
+            $isSecretEnv -or $isGenerated -or $isSensitive
+        }
+    )
+    if ($blockedFiles.Count -gt 0) {
+        Write-Host "`n發現不應提交的檔案：" -ForegroundColor Red
+        foreach ($file in $blockedFiles) {
+            Write-Host "  - $file" -ForegroundColor Red
+            git restore --staged -- "$file"
+        }
+        throw '敏感檔案或建置產物已移出暫存區。請檢查後重跑。'
+    }
+
+    Run-Step '檢查 Git diff 格式' { git diff --cached --check }
+    Write-Host "`n即將提交的變更摘要：" -ForegroundColor Yellow
+    git --no-pager diff --cached --stat
+
+    git diff --cached --quiet
+    $diffCode = $LASTEXITCODE
+    if ($diffCode -eq 1) {
+        Run-Step '建立 v66 commit' { git commit -m $CommitMessage }
+    } elseif ($diffCode -eq 0) {
+        Write-Host '沒有新的檔案需要 commit，將推送現有 commit。' -ForegroundColor Yellow
+    } else {
+        throw "無法檢查暫存區，結束碼：$diffCode"
+    }
+
+    git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>$null | Out-Null
+    $hasUpstream = ($LASTEXITCODE -eq 0)
+    if ($hasUpstream) {
+        Run-Step '推送 GitHub' { git push }
+    } else {
+        Run-Step '設定 upstream 並推送 GitHub' { git push -u origin $Branch }
+    }
+
+    Write-Host "`n============================================================" -ForegroundColor Green
+    Write-Host '✓ SeniorSecurities v66 已完成驗證、提交與推送' -ForegroundColor Green
+    Write-Host "分支：$Branch"
+    Write-Host "最新 commit：$((git rev-parse HEAD).Trim())"
+    Write-Host "Supabase：$migrationStatus"
+    Write-Host '============================================================' -ForegroundColor Green
+    Write-Host "`n最終 Git 狀態："
+    git status --short
+}
+catch {
+    Write-Host "`n============================================================" -ForegroundColor Red
+    Write-Host 'v66 升級在某個步驟停止' -ForegroundColor Red
+    Write-Host $_.Exception.Message -ForegroundColor Red
+    Write-Host "完整紀錄：$LogPath" -ForegroundColor Yellow
+    Write-Host '============================================================' -ForegroundColor Red
+}
+finally {
+    if ($TranscriptStarted) {
+        try { Stop-Transcript | Out-Null } catch {}
+    }
+    Write-Host "`nPowerShell 不會自動關閉。" -ForegroundColor Cyan
+    Read-Host '請按 Enter 鍵結束'
+}

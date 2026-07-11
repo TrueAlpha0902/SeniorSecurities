@@ -4257,3 +4257,126 @@ p {
     width: 100%;
   }
 }
+
+/* v66 deferred mock exam feedback */
+.deferred-exam-notice {
+  margin: 10px 0 4px;
+  padding: 10px 13px;
+  border: 1px solid rgba(28, 125, 148, .14);
+  border-radius: 14px;
+  color: #386779;
+  background: rgba(229, 246, 249, .78);
+  font-size: .78rem;
+  font-weight: 750;
+}
+.glass-answer-button.glass-answer-deferred {
+  border-color: rgba(24, 126, 149, .42);
+  color: #0f6679;
+  background: linear-gradient(145deg, rgba(223, 246, 249, .96), rgba(242, 252, 253, .96));
+  box-shadow: 0 0 0 3px rgba(24, 126, 149, .09), var(--inner-highlight);
+}
+.quiz-timer-badge.is-countdown { color: #0d6679; background: rgba(224, 246, 249, .9); }
+
+.answer-confidence-panel {
+  display: grid;
+  gap: 12px;
+  margin: 18px 0 14px;
+  padding: 15px;
+  border: 1px solid rgba(18, 132, 155, 0.18);
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(232, 248, 251, 0.82), rgba(255, 255, 255, 0.9));
+}
+
+.answer-confidence-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-strong, #15243a);
+}
+
+.answer-confidence-heading > span {
+  display: grid;
+  gap: 2px;
+}
+
+.answer-confidence-heading small {
+  color: var(--text-muted, #708096);
+  font-weight: 500;
+}
+
+.answer-confidence-options {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.answer-confidence-options button {
+  min-height: 62px;
+  display: grid;
+  place-content: center;
+  gap: 3px;
+  border: 1px solid rgba(31, 67, 89, 0.12);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.86);
+  color: #203148;
+  cursor: pointer;
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.answer-confidence-options button:hover { transform: translateY(-1px); border-color: rgba(17, 125, 149, 0.35); }
+.answer-confidence-options button.is-active { background: #157d94; color: #fff; border-color: #157d94; box-shadow: 0 10px 24px rgba(21, 125, 148, 0.2); }
+.answer-confidence-options small { font-size: 0.72rem; opacity: 0.78; }
+
+@media (max-width: 720px) {
+  .answer-confidence-options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+.retry-queued-badge {
+  background: rgba(255, 238, 201, .88) !important;
+  border-color: rgba(190, 131, 26, .25) !important;
+  color: #8b5b0b !important;
+}
+
+/* v66 deferred mock-exam answer card */
+.quiz-header-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}.quiz-exam-action{display:inline-flex;min-height:42px;align-items:center;gap:7px;padding:0 13px;border:1px solid rgba(26,91,110,.15);border-radius:14px;color:#31566a;background:rgba(255,255,255,.78);font-weight:800;cursor:pointer;box-shadow:0 8px 24px rgba(28,73,90,.07)}.quiz-exam-action:hover,.quiz-exam-action.is-active{border-color:rgba(21,126,149,.32);color:#0f7187;background:#eaf8fa}.quiz-exam-action.is-marked{border-color:rgba(214,142,35,.42);color:#925d0a;background:#fff5d9}.exam-answer-card{margin:16px 0 20px;padding:16px;border:1px solid rgba(26,111,132,.16);border-radius:20px;background:linear-gradient(145deg,rgba(250,254,255,.98),rgba(232,247,250,.9));box-shadow:0 14px 34px rgba(26,73,91,.08)}.exam-answer-card-head{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:12px}.exam-answer-card-head>div{display:grid;gap:3px}.exam-answer-card-head strong{font-size:1.05rem}.exam-answer-card-head span{color:#718093;font-size:.76rem}.exam-answer-card-head button{border:0;color:#176f83;background:transparent;font-weight:800;cursor:pointer}.exam-answer-card-legend{display:flex;gap:14px;margin-bottom:10px;color:#718093;font-size:.7rem}.exam-answer-card-legend span{display:inline-flex;align-items:center;gap:5px}.exam-answer-card-legend span::before{width:10px;height:10px;border:1px solid rgba(45,64,80,.16);border-radius:3px;background:#fff;content:""}.exam-answer-card-legend .is-answered::before{border-color:#21849a;background:#21849a}.exam-answer-card-legend .is-marked::before{border-color:#d4972e;background:#ffe6a6}.exam-answer-card-grid{display:grid;grid-template-columns:repeat(15,minmax(32px,1fr));gap:6px}.exam-answer-card-grid button{position:relative;display:flex;min-height:34px;align-items:center;justify-content:center;gap:2px;border:1px solid rgba(45,64,80,.12);border-radius:9px;color:#667487;background:#fff;font-size:.72rem;font-weight:850;cursor:pointer}.exam-answer-card-grid button.is-answered{border-color:rgba(22,125,148,.35);color:#fff;background:#20859b}.exam-answer-card-grid button.is-marked{border-color:#d59a35;color:#7b500e;background:#ffedba}.exam-answer-card-grid button.is-current{outline:3px solid rgba(21,101,120,.2);transform:translateY(-1px)}.exam-answer-card-grid button svg{position:absolute;top:2px;right:2px}@media(max-width:900px){.exam-answer-card-grid{grid-template-columns:repeat(10,minmax(30px,1fr))}}@media(max-width:620px){.quiz-header-actions{width:100%;justify-content:flex-start}.quiz-exam-action span{display:none}.exam-answer-card-grid{grid-template-columns:repeat(6,minmax(32px,1fr))}.exam-answer-card{padding:13px}.exam-answer-card-head{align-items:flex-start}}
+
+/* v66 MFA account security */
+.account-mfa-section { display: grid; gap: 18px; }
+.account-mfa-badge {
+  display: inline-flex; align-items: center; gap: 8px; align-self: flex-start;
+  padding: 10px 14px; border: 1px solid rgba(111, 136, 158, .22); border-radius: 999px;
+  background: rgba(255,255,255,.7); color: #607287; font-weight: 800; white-space: nowrap;
+}
+.account-mfa-badge.is-verified { color: #087b70; background: rgba(218, 247, 241, .86); border-color: rgba(8,123,112,.2); }
+.account-mfa-enrollment {
+  display: grid; grid-template-columns: minmax(180px, 240px) 1fr; gap: 24px; padding: 22px;
+  border: 1px solid rgba(30, 139, 164, .2); border-radius: 24px; background: rgba(245, 252, 253, .82);
+}
+.account-mfa-qr { display: grid; place-items: center; min-height: 210px; border-radius: 20px; background: #fff; box-shadow: inset 0 0 0 1px rgba(28, 71, 91, .08); }
+.account-mfa-qr img { display: block; width: min(210px, 100%); height: auto; }
+.account-mfa-steps { display: grid; gap: 12px; align-content: start; }
+.account-mfa-steps > strong { font-size: 1.08rem; color: #1b3448; }
+.account-mfa-steps ol { margin: 0; padding-left: 22px; display: grid; gap: 6px; color: #617487; line-height: 1.6; }
+.account-mfa-secret { display: grid; gap: 7px; font-size: .83rem; color: #6b7e90; font-weight: 700; }
+.account-mfa-secret input, .account-mfa-code-row input {
+  min-width: 0; min-height: 48px; border: 1px solid rgba(77, 111, 136, .2); border-radius: 14px;
+  background: rgba(255,255,255,.92); padding: 0 14px; color: #173047; font: inherit;
+}
+.account-mfa-code-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.account-mfa-code-row > input { flex: 1 1 190px; letter-spacing: .12em; font-weight: 800; }
+.account-mfa-factor, .account-mfa-empty {
+  display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 18px 20px;
+  border: 1px solid rgba(74, 107, 132, .14); border-radius: 20px; background: rgba(255,255,255,.68);
+}
+.account-mfa-factor > div:first-child, .account-mfa-empty > div { display: flex; align-items: center; gap: 12px; color: #267f96; }
+.account-mfa-factor > div:first-child > div { display: grid; gap: 3px; }
+.account-mfa-factor strong { color: #21394e; }
+.account-mfa-factor span, .account-mfa-empty span { color: #738497; font-size: .9rem; }
+@media (max-width: 720px) {
+  .account-mfa-enrollment { grid-template-columns: 1fr; padding: 16px; }
+  .account-mfa-qr { min-height: 180px; }
+  .account-mfa-factor, .account-mfa-empty { align-items: stretch; flex-direction: column; }
+  .account-mfa-code-row { align-items: stretch; flex-direction: column; }
+  .account-mfa-code-row > input, .account-mfa-code-row > .glass-button { width: 100%; flex-basis: auto; }
+  .account-mfa-badge { align-self: flex-start; }
+}

@@ -9,6 +9,13 @@ import type {
 } from "../types";
 import type { ImageQuizQuestion, NumericAnswer } from "./imageQuiz";
 import { supabase } from "./supabase";
+import {
+  createAttemptId,
+  recordLocalLearningAttempt,
+  syncLearningAttempt,
+  type AnswerConfidence,
+  type LearningAttemptInput,
+} from "./learningEngine";
 
 export type StoredImageAnswer = {
   selected: NumericAnswer;
@@ -19,7 +26,7 @@ export type StoredImageAnswer = {
 
 export type ImageQuizSessionRecord = {
   sessionId: string;
-  mode: "random80";
+  mode: "random80" | "fullMock";
   bankId: string;
   bankTitle: string;
   questionIds: string[];
@@ -32,6 +39,9 @@ export type ImageQuizSessionRecord = {
   correctCount: number;
   wrongCount: number;
   accuracy: number;
+  durationMinutes?: number;
+  feedbackMode?: "immediate" | "deferred";
+  markedQuestionIds?: string[];
 };
 
 export type ClearRecordPart = "answers" | "wrong" | "favorites" | "progress" | "sessions";
@@ -1043,13 +1053,70 @@ export async function syncLocalRecordsToCloud(options: { forceUpload?: boolean }
 }
 
 
-async function updateLeaderboardAfterAnswer(isCorrect: boolean): Promise<void> {
-  if (!supabase) return;
-  const { error } = await supabase.rpc("record_leaderboard_answer", { p_is_correct: isCorrect });
-  if (error) throw error;
+function isMissingRpc(error: { code?: string; message?: string }, functionName: string): boolean {
+  return error.code === "PGRST202" || error.code === "42883" || String(error.message || "").includes(functionName);
 }
 
-export async function recordUserAnswer(question: Question, selectedAnswer: AnswerKey): Promise<UserAnswer> {
+async function updateLeaderboardAfterAnswer(isCorrect: boolean, eventId: string): Promise<void> {
+  if (!supabase) return;
+  const { error } = await supabase.rpc("record_leaderboard_answer_event_v66", {
+    p_event_id: eventId,
+    p_is_correct: isCorrect,
+  });
+  if (!error) return;
+  if (!isMissingRpc(error, "record_leaderboard_answer_event_v66")) throw error;
+  const { error: legacyError } = await supabase.rpc("record_leaderboard_answer", { p_is_correct: isCorrect });
+  if (legacyError) throw legacyError;
+}
+
+export type RecordAnswerOptions = {
+  confidence?: AnswerConfidence;
+  sessionId?: string | null;
+  sessionMode?: string | null;
+  eventId?: string;
+};
+
+async function recordLearningAndLeaderboard(args: {
+  userId: string | null;
+  questionId: string;
+  bankId: string;
+  chapterId: string;
+  selectedAnswer: string;
+  correctAnswer: string;
+  isCorrect: boolean;
+  answeredAt: string;
+  options?: RecordAnswerOptions;
+}): Promise<void> {
+  const eventId = args.options?.eventId || createAttemptId();
+  const attempt: LearningAttemptInput = {
+    eventId,
+    questionId: args.questionId,
+    bankId: args.bankId,
+    chapterId: args.chapterId,
+    selectedAnswer: args.selectedAnswer,
+    correctAnswer: args.correctAnswer,
+    isCorrect: args.isCorrect,
+    confidence: args.options?.confidence ?? "sure",
+    answeredAt: args.answeredAt,
+    sessionId: args.options?.sessionId ?? null,
+    sessionMode: args.options?.sessionMode ?? null,
+  };
+  const learningState = recordLocalLearningAttempt(args.userId, attempt);
+  if (!args.userId) return;
+  void safeCloudWrite(async () => {
+    if ((await getCurrentUserId()) !== args.userId) return;
+    await Promise.all([
+      syncLearningAttempt(attempt, learningState),
+      updateLeaderboardAfterAnswer(args.isCorrect, eventId),
+    ]);
+  });
+}
+
+export async function recordUserAnswer(
+  question: Question,
+  selectedAnswer: AnswerKey,
+  options: RecordAnswerOptions = {},
+): Promise<UserAnswer> {
   const answeredAt = new Date().toISOString();
   const isCorrect = selectedAnswer === question.answer;
   const userAnswer: UserAnswer = {
@@ -1087,18 +1154,25 @@ export async function recordUserAnswer(question: Question, selectedAnswer: Answe
     ? { kind: "upsert-wrong", record: wrongRecord }
     : { kind: "delete-wrong", questionId: question.id });
   await tx.done;
-  if (userId) {
-    void safeCloudWrite(async () => {
-      if ((await getCurrentUserId()) === userId) await updateLeaderboardAfterAnswer(isCorrect);
-    });
-  }
+  await recordLearningAndLeaderboard({
+    userId,
+    questionId: question.id,
+    bankId: question.bankId,
+    chapterId: question.chapter,
+    selectedAnswer,
+    correctAnswer: question.answer,
+    isCorrect,
+    answeredAt,
+    options,
+  });
   notifyRecordChange();
   return userAnswer;
 }
 
 export async function recordImageUserAnswer(
   question: ImageQuizQuestion,
-  selectedAnswer: NumericAnswer
+  selectedAnswer: NumericAnswer,
+  options: RecordAnswerOptions = {},
 ): Promise<UserAnswer> {
   const answeredAt = new Date().toISOString();
   const selectedAnswerKey = numericToAnswerKey[selectedAnswer];
@@ -1139,11 +1213,17 @@ export async function recordImageUserAnswer(
     ? { kind: "upsert-wrong", record: wrongRecord }
     : { kind: "delete-wrong", questionId: question.id });
   await tx.done;
-  if (userId) {
-    void safeCloudWrite(async () => {
-      if ((await getCurrentUserId()) === userId) await updateLeaderboardAfterAnswer(isCorrect);
-    });
-  }
+  await recordLearningAndLeaderboard({
+    userId,
+    questionId: question.id,
+    bankId: question.bankId,
+    chapterId: question.chapterId,
+    selectedAnswer,
+    correctAnswer: question.answer,
+    isCorrect,
+    answeredAt,
+    options,
+  });
   notifyRecordChange();
   return userAnswer;
 }
@@ -1315,6 +1395,16 @@ function summarizeImageAnswers(
     accuracy: answeredCount ? Math.round((correctCount / answeredCount) * 1000) / 10 : 0,
     wrongQuestionIds,
   };
+}
+
+export async function saveImageQuizSessionMarks(sessionId: string, markedQuestionIds: string[]): Promise<void> {
+  const db = await getDb();
+  const session = await db.get("imageQuizSessions", sessionId);
+  if (!session) return;
+  await db.put("imageQuizSessions", {
+    ...session,
+    markedQuestionIds: Array.from(new Set(markedQuestionIds)),
+  });
 }
 
 export async function saveImageQuizSessionAnswer(

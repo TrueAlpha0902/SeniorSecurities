@@ -238,3 +238,9 @@ Draft → 自動驗證 → 人工校對 → 第二人核准 → immutable releas
 3. 題庫 immutable release、雙人核准與 rollback。
 4. 私有題庫或明確制定離線 entitlement lease 策略。
 5. 真正三科完整模考與可信 server-side event statistics。
+
+---
+
+## v66 實作更新（2026-07-11）
+
+本文件原列的 AnswerAttempt、QuestionLearningState、FSRS、同場錯題重練、信心標記、學習狀態摘要、主動式相似題、user-id RBAC／MFA、immutable release、150 題／210 分鐘完整模考與不可重放排行榜事件，已於 v66 實作。最新狀態以 `docs/CURRENT_STATE.md` 為準。

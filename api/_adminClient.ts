@@ -34,6 +34,24 @@ const configuredAdminEmails = (process.env.ADMIN_EMAILS || defaultAdminEmails)
   .map((email) => email.trim().toLowerCase())
   .filter(Boolean);
 
+export type AdminRole = "primary_admin" | "admin" | "content_reviewer" | "support_admin";
+
+type DatabaseAdminAccess = {
+  role: AdminRole;
+  mfaRequired: boolean;
+};
+
+function decodeJwtPayload(token: string): Record<string, unknown> {
+  try {
+    const payload = token.split(".")[1];
+    if (!payload) return {};
+    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+    return JSON.parse(Buffer.from(normalized, "base64").toString("utf8")) as Record<string, unknown>;
+  } catch {
+    return {};
+  }
+}
+
 export function getAdminClient() {
   if (!supabaseUrl || !serviceRoleKey) {
     throw new Error("Vercel server env missing: VITE_SUPABASE_URL/SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.");
@@ -51,50 +69,83 @@ export function getConfiguredAdminEmails(): string[] {
   return [...configuredAdminEmails];
 }
 
-async function isDatabaseAdmin(email: string): Promise<boolean> {
-  const normalizedEmail = email.trim().toLowerCase();
-  if (!normalizedEmail) return false;
+async function getDatabaseAdminAccess(userId: string, email: string): Promise<DatabaseAdminAccess | null> {
+  const client = getAdminClient();
+  const { data: assignment, error: assignmentError } = await client
+    .from("admin_role_assignments")
+    .select("role, is_active, mfa_required")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (!assignmentError && assignment?.is_active) {
+    return {
+      role: String(assignment.role || "admin") as AdminRole,
+      mfaRequired: Boolean(assignment.mfa_required),
+    };
+  }
+  if (assignmentError) {
+    const message = String(assignmentError.message || "");
+    if (!message.includes("admin_role_assignments") && !message.includes("Could not find the table")) throw assignmentError;
+  }
 
-  const { data, error } = await getAdminClient()
+  const normalizedEmail = email.trim().toLowerCase();
+  if (!normalizedEmail) return null;
+  const { data, error } = await client
     .from("admin_users")
-    .select("email, is_active")
+    .select("email, role, is_active")
     .eq("email", normalizedEmail)
     .eq("is_active", true)
     .maybeSingle();
-
   if (error) {
     const message = String(error.message || "");
-    if (message.includes("admin_users") || message.includes("Could not find the table")) return false;
+    if (message.includes("admin_users") || message.includes("Could not find the table")) return null;
     throw error;
   }
-  return Boolean(data);
+  if (!data) return null;
+  return { role: String(data.role || "admin") as AdminRole, mfaRequired: false };
 }
 
 function extractBearerToken(req: ApiRequest): string | null {
   const header = String(req.headers?.authorization || req.headers?.Authorization || "");
   const match = header.match(/^Bearer\s+(.+)$/i);
-  return match ? match[1] : null;
+  return match?.[1] ?? null;
 }
 
-export async function requireAdminUser(req: ApiRequest) {
+export async function requireAdminUser(
+  req: ApiRequest,
+  options: { roles?: AdminRole[] } = {},
+) {
   const token = extractBearerToken(req);
-  if (!token) {
-    throw new HttpError("尚未登入，或登入狀態已過期。", 401);
-  }
+  if (!token) throw new HttpError("尚未登入，或登入狀態已過期。", 401);
 
   const supabase = getAdminClient();
   const { data, error } = await supabase.auth.getUser(token);
-  if (error || !data.user) {
-    throw new HttpError("無法驗證目前登入帳號。", 401);
-  }
+  if (error || !data.user) throw new HttpError("無法驗證目前登入帳號。", 401);
 
   const email = data.user.email?.toLowerCase() || "";
-  const hasAdminAccess = configuredAdminEmails.includes(email) || await isDatabaseAdmin(email);
-  if (!hasAdminAccess) {
-    throw new HttpError("這個帳號沒有管理員權限。請設定 ADMIN_EMAILS。 ", 403);
+  const isPrimaryAdmin = configuredAdminEmails.includes(email);
+  const databaseAccess = isPrimaryAdmin
+    ? { role: "primary_admin" as AdminRole, mfaRequired: false }
+    : await getDatabaseAdminAccess(data.user.id, email);
+  if (!databaseAccess) throw new HttpError("這個帳號沒有管理員權限。", 403);
+
+  const jwt = decodeJwtPayload(token);
+  const aal = String(jwt.aal || "aal1");
+  const globalMfaRequired = String(process.env.ADMIN_REQUIRE_MFA || "").toLowerCase() === "true";
+  const mfaRequired = globalMfaRequired || databaseAccess.mfaRequired;
+  if (mfaRequired && aal !== "aal2") {
+    throw new HttpError("此管理員操作需要完成多因素驗證（MFA）。", 403);
+  }
+  if (options.roles?.length && !options.roles.includes(databaseAccess.role)) {
+    throw new HttpError("目前管理員角色沒有執行此操作的權限。", 403);
   }
 
-  return { supabase, user: data.user };
+  return {
+    supabase,
+    user: data.user,
+    role: databaseAccess.role,
+    isPrimaryAdmin,
+    mfaVerified: aal === "aal2",
+  };
 }
 
 function setAdminResponseHeaders(res: ApiResponse): void {

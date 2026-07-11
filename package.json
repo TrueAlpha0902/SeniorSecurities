@@ -13,18 +13,22 @@
     "validate:data": "tsx scripts/validate-question-bank.ts",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "typecheck:api": "tsc -p tsconfig.api.json",
     "test:calculator": "tsx scripts/test-calculator-core.ts",
+    "test:learning": "tsx scripts/test-learning-engine.ts",
     "activation:code": "tsx scripts/generate-activation-code.ts",
-    "dev:admin": "npx vercel dev"
+    "dev:admin": "npx vercel dev",
+    "verify": "npm run typecheck && npm run typecheck:api && npm run lint && npm run test:calculator && npm run test:learning && npm run validate:data && npm run build"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.53.0",
     "@vercel/analytics": "^2.0.1",
     "idb": "^8.0.2",
     "lucide-react": "^1.22.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-router-dom": "^7.6.2",
-    "@supabase/supabase-js": "^2.53.0"
+    "ts-fsrs": "5.4.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.29.0",

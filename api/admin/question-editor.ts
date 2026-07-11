@@ -109,7 +109,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
         explanationSegments: override.explanationSegments.length,
       },
     });
-    sendJson(res, 200, { ok: true, override, message: "題目修改已儲存並立即提供給 App。" });
+    sendJson(res, 200, { ok: true, override, message: "題目工作草稿已儲存。請到發布流程建立版本快照並完成雙人覆核。" });
   } catch (error) {
     console.error("/api/admin/question-editor failed:", error);
     sendError(res, error);

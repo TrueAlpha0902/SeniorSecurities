@@ -1,6 +1,7 @@
-import { ArrowLeft, ArrowRight, Clock3, Heart, Home, Pause, Play, RotateCcw } from "lucide-react";
+import { ArrowLeft, ArrowRight, BrainCircuit, Clock3, Flag, Heart, Home, ListChecks, Pause, Play, RotateCcw } from "lucide-react";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { useLocation, useParams } from "react-router-dom";
+import { useAuth } from "../auth/AuthContext";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
 import { EncouragementNote } from "../components/EncouragementNote";
@@ -20,6 +21,7 @@ import {
   listWrongQuestions,
   recordImageUserAnswer,
   saveImageQuizSessionAnswer,
+  saveImageQuizSessionMarks,
   saveQuizProgress,
   settleImageQuizSession,
   toggleFavoriteRef,
@@ -55,6 +57,7 @@ import {
   getAnswerModeEnabled,
   getAutoNextCorrectEnabled,
 } from "../lib/appSettings";
+import { listLocalLearningStates, type AnswerConfidence } from "../lib/learningEngine";
 import type { UserAnswer, WrongQuestionRecord } from "../types";
 
 const ANSWERS: NumericAnswer[] = ["1", "2", "3", "4"];
@@ -124,7 +127,7 @@ const T = {
   settleSummaryTitle: "\u6a21\u64ec\u8003\u7d50\u7b97",
   answerRate: "\u7b54\u5c0d\u7387",
   answered: "\u5df2\u4f5c\u7b54",
-  randomTitle: "單科隨機測驗",
+  randomTitle: "模擬考測驗",
   randomSubtitle: "\u5f9e\u672c\u79d1\u6240\u6709\u7ae0\u7bc0\u96a8\u6a5f\u62bd\u984c",
   randomEmpty: "\u627e\u4e0d\u5230\u9019\u6b21\u6a21\u64ec\u8003",
   sessionWrongTitle: "\u6e2c\u9a57\u932f\u984c\u8907\u7fd2",
@@ -161,6 +164,7 @@ type ImageQuizData = {
 };
 
 export function ImageQuizPage() {
+  const { user } = useAuth();
   const { bankId = "", chapterId = "", sessionId = "" } = useParams();
   const location = useLocation();
   const mode: ImageQuizMode = location.pathname.includes("/trial")
@@ -207,7 +211,7 @@ export function ImageQuizPage() {
         listUserAnswers(),
         listWrongQuestions(),
       ]);
-      const dailyTraining = buildDailyTrainingQuestions(allQuestions, storedAnswers, wrongRecords);
+      const dailyTraining = buildDailyTrainingQuestions(allQuestions, storedAnswers, wrongRecords, user?.id ?? null);
       const today = localTodayKey();
       const todayAnswers = storedAnswers.filter(
         (answer) => localTodayKey(new Date(answer.answeredAt)) === today,
@@ -282,7 +286,9 @@ export function ImageQuizPage() {
           questions: [],
         };
       }
-      const bankQuestions = await loadImageBankQuestions(session.bankId);
+      const bankQuestions = session.bankId === "__full_exam__"
+        ? await loadAllImageQuestions()
+        : await loadImageBankQuestions(session.bankId);
       const byId = new Map(bankQuestions.map((question) => [question.id, question]));
       return {
         title: `${session.bankTitle} / ${T.randomTitle}`,
@@ -306,7 +312,9 @@ export function ImageQuizPage() {
           questions: [],
         };
       }
-      const bankQuestions = await loadImageBankQuestions(session.bankId);
+      const bankQuestions = session.bankId === "__full_exam__"
+        ? await loadAllImageQuestions()
+        : await loadImageBankQuestions(session.bankId);
       const byId = new Map(bankQuestions.map((question) => [question.id, question]));
       return {
         title: `${session.bankTitle} / ${T.sessionWrongTitle}`,
@@ -349,7 +357,7 @@ export function ImageQuizPage() {
       emptyTitle: T.allEmpty,
       questions,
     };
-  }, [bankId, chapterId, mode, sessionId]);
+  }, [bankId, chapterId, mode, sessionId, user?.id]);
 
   const questions = useMemo(() => data?.questions ?? [], [data]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -362,13 +370,23 @@ export function ImageQuizPage() {
   const [jumpInput, setJumpInput] = useState("");
   const [jumpError, setJumpError] = useState("");
   const [answerModeEnabled, setAnswerModeEnabled] = useState(() => getAnswerModeEnabled());
+  const [confidenceByQuestion, setConfidenceByQuestion] = useState<Record<string, AnswerConfidence>>({});
+  const [retryQueue, setRetryQueue] = useState<string[]>([]);
+  const [markedQuestionIds, setMarkedQuestionIds] = useState<Set<string>>(new Set());
+  const [answerCardOpen, setAnswerCardOpen] = useState(false);
   const [autoNextCorrectEnabled, setAutoNextCorrectEnabled] = useState(() => getAutoNextCorrectEnabled());
+  const sessionDurationSeconds = mode === "random" && data?.session?.durationMinutes
+    ? data.session.durationMinutes * 60
+    : null;
 
   useEffect(() => {
     setElapsedSeconds(0);
     setTimerPaused(false);
     setJumpInput("");
     setJumpError("");
+    setRetryQueue([]);
+    setMarkedQuestionIds(new Set());
+    setAnswerCardOpen(false);
   }, [progressKey]);
 
   useEffect(() => {
@@ -404,6 +422,22 @@ export function ImageQuizPage() {
   }, [finished, progressKey, progressRestored, timerPaused]);
 
   useEffect(() => {
+    if (sessionDurationSeconds === null || !progressRestored || finished || elapsedSeconds < sessionDurationSeconds) return;
+    let cancelled = false;
+    const submitExpiredExam = async () => {
+      if (mode === "random" && data?.session) {
+        await saveRandomSessionResult(data.session.sessionId, questions, answers);
+      }
+      if (cancelled) return;
+      setFinished(true);
+      void clearQuizProgress(progressKey);
+      window.alert("作答時間已結束，系統已自動交卷。");
+    };
+    void submitExpiredExam();
+    return () => { cancelled = true; };
+  }, [answers, data?.session, elapsedSeconds, finished, mode, progressKey, progressRestored, questions, sessionDurationSeconds]);
+
+  useEffect(() => {
     let cancelled = false;
 
     async function restoreState() {
@@ -437,6 +471,7 @@ export function ImageQuizPage() {
       setCurrentIndex(restoredIndex);
       setAnswers(data?.answerRecords ?? storedAnswersToRecords(storedAnswers, questions));
       setFavoriteIds(new Set(favoriteRecords.map((record) => record.questionId)));
+      setMarkedQuestionIds(new Set(data?.session?.markedQuestionIds ?? []));
       setProgressRestored(true);
     }
 
@@ -445,7 +480,7 @@ export function ImageQuizPage() {
     return () => {
       cancelled = true;
     };
-  }, [data?.answerRecords, mode, progressKey, questions]);
+  }, [data?.answerRecords, data?.session?.markedQuestionIds, mode, progressKey, questions]);
 
   useEffect(() => {
     if (!progressRestored || !questions.length || finished) {
@@ -550,11 +585,25 @@ export function ImageQuizPage() {
   }
 
   const savedAnswer = answers[currentQuestion.id];
-  const answerModeAllowed = answerModeEnabled && mode !== "wrong" && mode !== "todayWrong" && mode !== "sessionWrong";
+  const isDeferredExam = mode === "random" && data?.session?.feedbackMode === "deferred";
+  const examAnsweredCount = Object.keys(answers).length;
+  const examUnansweredCount = Math.max(0, questions.length - examAnsweredCount);
+  const currentIsMarked = markedQuestionIds.has(currentQuestion.id);
+  const answerModeAllowed = answerModeEnabled
+    && !isDeferredExam
+    && mode !== "wrong"
+    && mode !== "todayWrong"
+    && mode !== "sessionWrong";
   const answerModeRecord: AnswerRecord | undefined = answerModeAllowed
     ? { selected: currentQuestion.answer, correct: currentQuestion.answer, isCorrect: true }
     : undefined;
   const currentAnswer = savedAnswer ?? answerModeRecord;
+  const currentConfidence = confidenceByQuestion[currentQuestion.id] ?? "sure";
+  const revealCurrentAnswer = !isDeferredExam;
+  const examDurationSeconds = sessionDurationSeconds;
+  const displayedTimerSeconds = examDurationSeconds === null
+    ? elapsedSeconds
+    : Math.max(0, examDurationSeconds - elapsedSeconds);
   const isFavorite = favoriteIds.has(currentQuestion.id);
   const displayedQuestionNumber =
     mode === "random" || mode === "sessionWrong" ? currentIndex + 1 : currentQuestion.number;
@@ -564,11 +613,13 @@ export function ImageQuizPage() {
   const encouragementCorrectStreak = currentAnswer?.isCorrect
     ? Math.max(currentCorrectStreak, activeCorrectStreak, 1)
     : activeCorrectStreak;
-  const encouragementIsCorrect = currentAnswer?.isCorrect === false
-    ? false
-    : encouragementCorrectStreak > 0
-      ? true
-      : undefined;
+  const encouragementIsCorrect = isDeferredExam
+    ? undefined
+    : currentAnswer?.isCorrect === false
+      ? false
+      : encouragementCorrectStreak > 0
+        ? true
+        : undefined;
   const questionSourceLabel = formatImageQuizQuestionSource(currentQuestion);
   const contextLabel =
     mode === "daily"
@@ -596,15 +647,22 @@ export function ImageQuizPage() {
       ...previous,
       [currentQuestion.id]: record,
     }));
-    await recordImageUserAnswer(currentQuestion, selected);
+    await recordImageUserAnswer(currentQuestion, selected, {
+      confidence: currentConfidence,
+      sessionId: data?.session?.sessionId ?? null,
+      sessionMode: data?.session?.mode ?? mode,
+    });
     if (mode === "random" && data?.session) {
       await saveImageQuizSessionAnswer(data.session.sessionId, currentQuestion.id, {
         ...record,
         answeredAt: new Date().toISOString(),
       });
     }
+    if (!isDeferredExam && !record.isCorrect) {
+      setRetryQueue((current) => current.includes(currentQuestion.id) ? current : [...current, currentQuestion.id]);
+    }
 
-    if (autoNextCorrectEnabled && record.isCorrect && currentIndex < questions.length - 1) {
+    if (!isDeferredExam && autoNextCorrectEnabled && record.isCorrect && currentIndex < questions.length - 1) {
       window.setTimeout(() => {
         setCurrentIndex((index) => (index === currentIndex ? Math.min(index + 1, questions.length - 1) : index));
       }, 650);
@@ -616,8 +674,37 @@ export function ImageQuizPage() {
     setCurrentIndex((index) => Math.max(0, index - 1));
   }
 
+  function openNextQueuedRetry(): boolean {
+    const retryQuestionId = retryQueue[0];
+    if (!retryQuestionId) return false;
+    const retryIndex = questions.findIndex((question) => question.id === retryQuestionId);
+    if (retryIndex < 0) {
+      setRetryQueue((current) => current.slice(1));
+      return false;
+    }
+    setAnswers((current) => {
+      const next = { ...current };
+      delete next[retryQuestionId];
+      return next;
+    });
+    setRetryQueue((current) => current.slice(1));
+    setCurrentIndex(retryIndex);
+    setJumpError("");
+    return true;
+  }
+
   async function goNext(): Promise<void> {
+    const shouldRetryNow = !isDeferredExam && retryQueue.length > 0
+      && (currentIndex >= questions.length - 1 || Object.keys(answers).length % 4 === 0);
+    if (shouldRetryNow && openNextQueuedRetry()) return;
     if (currentIndex >= questions.length - 1) {
+      if (isDeferredExam) {
+        const unanswered = Math.max(0, questions.length - Object.keys(answers).length);
+        const confirmed = window.confirm(unanswered > 0
+          ? `尚有 ${unanswered} 題未作答，確定要交卷嗎？`
+          : "確定要交卷並查看成績嗎？");
+        if (!confirmed) return;
+      }
       if (mode === "random" && data?.session) {
         await saveRandomSessionResult(data.session.sessionId, questions, answers);
       }
@@ -640,6 +727,22 @@ export function ImageQuizPage() {
     setCurrentIndex(value - 1);
     setJumpInput("");
     setJumpError("");
+  }
+
+  async function toggleExamMark(): Promise<void> {
+    const question = questions[currentIndex];
+    if (!isDeferredExam || !data?.session || !question) return;
+    const next = new Set(markedQuestionIds);
+    if (next.has(question.id)) next.delete(question.id);
+    else next.add(question.id);
+    setMarkedQuestionIds(next);
+    await saveImageQuizSessionMarks(data.session.sessionId, Array.from(next));
+  }
+
+  function jumpFromAnswerCard(index: number): void {
+    setCurrentIndex(index);
+    setJumpError("");
+    if (window.innerWidth < 760) setAnswerCardOpen(false);
   }
 
   async function toggleFavorite(): Promise<void> {
@@ -717,19 +820,21 @@ export function ImageQuizPage() {
                 {displayedQuestionNumber}
                 {" \u984c"}
               </h1>
-              <span className="glass-badge quiz-timer-badge" aria-label={`${T.timer} ${formatElapsedTime(elapsedSeconds)}`}>
+              <span className={`glass-badge quiz-timer-badge${examDurationSeconds !== null ? " is-countdown" : ""}`} aria-label={`${examDurationSeconds !== null ? "剩餘時間" : T.timer} ${formatElapsedTime(displayedTimerSeconds)}`}>
                 <Clock3 aria-hidden="true" size={15} />
-                {formatElapsedTime(elapsedSeconds)}
-                <button
-                  type="button"
-                  className="timer-pause-button"
-                  aria-label={timerPaused ? T.resumeTimer : T.pauseTimer}
-                  title={timerPaused ? T.resumeTimer : T.pauseTimer}
-                  onClick={() => setTimerPaused((paused) => !paused)}
-                >
-                  {timerPaused ? <Play aria-hidden="true" size={13} /> : <Pause aria-hidden="true" size={13} />}
-                  <span>{timerPaused ? T.resumeTimer : T.pauseTimer}</span>
-                </button>
+                {examDurationSeconds !== null ? "剩餘 " : ""}{formatElapsedTime(displayedTimerSeconds)}
+                {!isDeferredExam ? (
+                  <button
+                    type="button"
+                    className="timer-pause-button"
+                    aria-label={timerPaused ? T.resumeTimer : T.pauseTimer}
+                    title={timerPaused ? T.resumeTimer : T.pauseTimer}
+                    onClick={() => setTimerPaused((paused) => !paused)}
+                  >
+                    {timerPaused ? <Play aria-hidden="true" size={13} /> : <Pause aria-hidden="true" size={13} />}
+                    <span>{timerPaused ? T.resumeTimer : T.pauseTimer}</span>
+                  </button>
+                ) : null}
               </span>
               {mode === "daily" ? (
                 <span className="glass-badge daily-count-badge">
@@ -743,15 +848,39 @@ export function ImageQuizPage() {
               ) : null}
             </div>
           </div>
-          <button
-            type="button"
-            className={`quiz-favorite-button ${isFavorite ? "is-active" : ""}`}
-            aria-label={isFavorite ? T.removeFavorite : T.addFavorite}
-            title={isFavorite ? T.removeFavorite : T.addFavorite}
-            onClick={() => void toggleFavorite()}
-          >
-            <Heart aria-hidden="true" fill={isFavorite ? "currentColor" : "none"} />
-          </button>
+          <div className="quiz-header-actions">
+            {isDeferredExam ? (
+              <>
+                <button
+                  type="button"
+                  className={`quiz-exam-action${answerCardOpen ? " is-active" : ""}`}
+                  aria-label="開啟答題卡"
+                  aria-expanded={answerCardOpen}
+                  onClick={() => setAnswerCardOpen((open) => !open)}
+                >
+                  <ListChecks aria-hidden="true" size={19} /><span>答題卡</span>
+                </button>
+                <button
+                  type="button"
+                  className={`quiz-exam-action${currentIsMarked ? " is-marked" : ""}`}
+                  aria-label={currentIsMarked ? "取消待檢標記" : "標記為待檢"}
+                  aria-pressed={currentIsMarked}
+                  onClick={() => void toggleExamMark()}
+                >
+                  <Flag aria-hidden="true" size={18} fill={currentIsMarked ? "currentColor" : "none"} /><span>{currentIsMarked ? "已標記" : "待檢"}</span>
+                </button>
+              </>
+            ) : null}
+            <button
+              type="button"
+              className={`quiz-favorite-button ${isFavorite ? "is-active" : ""}`}
+              aria-label={isFavorite ? T.removeFavorite : T.addFavorite}
+              title={isFavorite ? T.removeFavorite : T.addFavorite}
+              onClick={() => void toggleFavorite()}
+            >
+              <Heart aria-hidden="true" fill={isFavorite ? "currentColor" : "none"} />
+            </button>
+          </div>
         </div>
         {mode === "daily" ? (
           <>
@@ -768,12 +897,16 @@ export function ImageQuizPage() {
           </div>
         ) : null}
 
-        <EncouragementNote
-          isCorrect={encouragementIsCorrect}
-          seed={`${currentQuestion.id}:${encouragementCorrectStreak}:top`}
-          correctStreak={encouragementCorrectStreak}
-          compact
-        />
+        {!isDeferredExam ? (
+          <EncouragementNote
+            isCorrect={encouragementIsCorrect}
+            seed={`${currentQuestion.id}:${encouragementCorrectStreak}:top`}
+            correctStreak={encouragementCorrectStreak}
+            compact
+          />
+        ) : (
+          <p className="deferred-exam-notice">考試模式：作答後只鎖定選項，交卷前不顯示正解與解析。</p>
+        )}
 
         <ProgressBar
           value={dailyProgressValue}
@@ -783,30 +916,81 @@ export function ImageQuizPage() {
             : `${"\u7b2c"} ${currentIndex + 1} / ${questions.length} ${"\u984c"}`}
         />
 
+        {isDeferredExam && answerCardOpen ? (
+          <section className="exam-answer-card" aria-label="模擬考答題卡">
+            <div className="exam-answer-card-head">
+              <div><strong>答題卡</strong><span>已作答 {examAnsweredCount}／{questions.length} · 未作答 {examUnansweredCount} · 待檢 {markedQuestionIds.size}</span></div>
+              <button type="button" onClick={() => setAnswerCardOpen(false)} aria-label="收合答題卡">收合</button>
+            </div>
+            <div className="exam-answer-card-legend"><span className="is-answered">已作答</span><span className="is-marked">待檢</span><span>未作答</span></div>
+            <div className="exam-answer-card-grid">
+              {questions.map((question, index) => {
+                const answered = Boolean(answers[question.id]);
+                const marked = markedQuestionIds.has(question.id);
+                return (
+                  <button
+                    type="button"
+                    key={question.id}
+                    className={`${answered ? "is-answered" : ""}${marked ? " is-marked" : ""}${index === currentIndex ? " is-current" : ""}`}
+                    aria-label={`第 ${index + 1} 題${answered ? "，已作答" : "，未作答"}${marked ? "，待檢" : ""}`}
+                    onClick={() => jumpFromAnswerCard(index)}
+                  >
+                    {index + 1}{marked ? <Flag size={10} fill="currentColor" /> : null}
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        ) : null}
+
         <PdfSegmentStack
           label={`${"\u7b2c"} ${currentQuestion.number} ${"\u984c\u984c\u76ee"}`}
           segments={currentQuestion.questionSegments}
           priority="high"
         />
 
+        {!currentAnswer ? (
+          <div className="answer-confidence-panel" aria-label="作答把握程度">
+            <div className="answer-confidence-heading"><BrainCircuit size={18} /><span><strong>作答把握程度</strong><small>誠實標記會調整後續複習間隔</small></span></div>
+            <div className="answer-confidence-options">
+              {([
+                ["sure", "確定", "理解並能說明"],
+                ["unsure", "不熟", "概念模糊需再複習"],
+                ["guess", "猜的", "答案可能只是碰巧"],
+                ["unknown", "不知道", "需要從解析重新學"],
+              ] as const).map(([value, label, description]) => (
+                <button
+                  key={value}
+                  type="button"
+                  className={currentConfidence === value ? "is-active" : ""}
+                  aria-pressed={currentConfidence === value}
+                  onClick={() => setConfidenceByQuestion((current) => ({ ...current, [currentQuestion.id]: value }))}
+                >
+                  <strong>{label}</strong><small>{description}</small>
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
         <div className="numeric-option-grid" aria-label={T.answerOptions}>
           {ANSWERS.map((answer) => (
             <button
               key={answer}
               type="button"
-              className={answerButtonClass(answer, currentAnswer)}
+              className={answerButtonClass(answer, currentAnswer, revealCurrentAnswer)}
               disabled={Boolean(currentAnswer)}
               aria-pressed={currentAnswer?.selected === answer}
               aria-label={`${T.choose} (${answer})`}
               onClick={() => void handleAnswer(answer)}
             >
               <span className="answer-key">({answer})</span>
-              {currentAnswer ? <span className="answer-status-label">{answerStatusLabel(answer, currentAnswer)}</span> : null}
+              {currentAnswer ? <span className="answer-status-label">{answerStatusLabel(answer, currentAnswer, revealCurrentAnswer)}</span> : null}
             </button>
           ))}
         </div>
 
-        {currentAnswer ? (
+        {currentAnswer && revealCurrentAnswer ? (
           <div className="image-answer-panel">
             <div className="result-line">
               <span className="glass-badge">
@@ -815,6 +999,7 @@ export function ImageQuizPage() {
               <span className="glass-badge">
                 {T.correctAnswer} ({currentAnswer.correct})
               </span>
+              {!currentAnswer.isCorrect && retryQueue.includes(currentQuestion.id) ? <span className="glass-badge retry-queued-badge">已加入本次重試</span> : null}
             </div>
             <div className="glass-explanation">
               <h2>{T.explanation}</h2>
@@ -851,7 +1036,7 @@ export function ImageQuizPage() {
           </GlassButton>
         </form>
         <GlassButton variant="primary" onClick={() => void goNext()}>
-          <span>{currentIndex >= questions.length - 1 ? T.finish : T.next}</span>
+          <span>{currentIndex >= questions.length - 1 ? (isDeferredExam ? "交卷" : T.finish) : T.next}</span>
           <ArrowRight aria-hidden="true" size={18} />
         </GlassButton>
       </div>
@@ -948,6 +1133,7 @@ function buildDailyTrainingQuestions(
   allQuestions: ImageQuizQuestion[],
   storedAnswers: UserAnswer[],
   wrongRecords: WrongQuestionRecord[],
+  userId: string | null,
 ): DailyTrainingBuildResult {
   const config = getStudyPlanConfig();
   const allQuestionIds = new Set(allQuestions.map((question) => question.id));
@@ -963,9 +1149,21 @@ function buildDailyTrainingQuestions(
     .sort((left, right) => right.wrongCount - left.wrongCount || right.lastWrongAt.localeCompare(left.lastWrongAt))
     .map((record) => byQuestionId.get(record.questionId))
     .filter((question): question is ImageQuizQuestion => Boolean(question));
+  const learningStates = new Map(listLocalLearningStates(userId).map((state) => [state.questionId, state]));
+  const now = Date.now();
   const reviewDueQuestions = planningAnswers
-    .filter((answer) => answer.isCorrect && !wrongIds.has(answer.questionId) && isReviewDue(answer.answeredAt))
-    .sort((left, right) => left.answeredAt.localeCompare(right.answeredAt))
+    .filter((answer) => {
+      if (!answer.isCorrect || wrongIds.has(answer.questionId)) return false;
+      const learningState = learningStates.get(answer.questionId);
+      return learningState
+        ? new Date(learningState.nextReviewAt).getTime() <= now
+        : isReviewDue(answer.answeredAt);
+    })
+    .sort((left, right) => {
+      const leftDue = learningStates.get(left.questionId)?.nextReviewAt ?? left.answeredAt;
+      const rightDue = learningStates.get(right.questionId)?.nextReviewAt ?? right.answeredAt;
+      return leftDue.localeCompare(rightDue);
+    })
     .map((answer) => byQuestionId.get(answer.questionId))
     .filter((question): question is ImageQuizQuestion => Boolean(question));
   const reviewDueIds = new Set(reviewDueQuestions.map((question) => question.id));
@@ -1373,7 +1571,7 @@ function calculateCorrectStreakFromIndex(
   return streak;
 }
 
-function answerButtonClass(answer: NumericAnswer, record: AnswerRecord | undefined): string {
+function answerButtonClass(answer: NumericAnswer, record: AnswerRecord | undefined, revealAnswer = true): string {
   const classes = ["glass-answer-button"];
   if (!record) {
     return classes.join(" ");
@@ -1382,17 +1580,21 @@ function answerButtonClass(answer: NumericAnswer, record: AnswerRecord | undefin
   if (answer === record.selected) {
     classes.push("glass-answer-selected");
   }
-  if (answer === record.correct) {
+  if (revealAnswer && answer === record.correct) {
     classes.push("glass-answer-correct");
   }
-  if (answer === record.selected && !record.isCorrect) {
+  if (revealAnswer && answer === record.selected && !record.isCorrect) {
     classes.push("glass-answer-wrong");
+  }
+  if (!revealAnswer && answer === record.selected) {
+    classes.push("glass-answer-deferred");
   }
 
   return classes.join(" ");
 }
 
-function answerStatusLabel(answer: NumericAnswer, record: AnswerRecord): string {
+function answerStatusLabel(answer: NumericAnswer, record: AnswerRecord, revealAnswer = true): string {
+  if (!revealAnswer) return answer === record.selected ? "已選擇" : "";
   if (answer === record.selected && answer === record.correct) {
     return T.selectedCorrect;
   }

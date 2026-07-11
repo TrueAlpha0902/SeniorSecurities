@@ -31,7 +31,7 @@ function getClientIp(req: ApiRequest): string {
 function getBearerToken(req: ApiRequest): string | null {
   const header = String(req.headers?.authorization || req.headers?.Authorization || "");
   const match = header.match(/^Bearer\s+(.+)$/i);
-  return match ? match[1] : null;
+  return match?.[1] ?? null;
 }
 
 export default async function handler(req: ApiRequest, res: ApiResponse) {
