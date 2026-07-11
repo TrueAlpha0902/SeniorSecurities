@@ -1,33 +1,44 @@
 # SeniorSecurities Current State
 
 更新日期：2026-07-11
-升級基準：`b65226e` 之後的 v66 功能升級
+目前版本：v67 Premium Liquid
+升級基準：GitHub `main` commit `5e7dece`
 
-## 已完成
+## v67 已完成
 
-- 統一 ClassWiz 風格計算機：一般計算、三角／反三角、方程式、複數、進位制、矩陣、向量、統計、常態／二項分布、函數表、不等式、比例與財務公式。
-- 學習排行榜重新設計，支援連續答對與累積時數兩種榜單、前三名展示、進度與響應式排版。
-- 「單科隨機測驗」正名為「模擬考測驗」，並加入單科模式與 150 題／210 分鐘完整模考、延後批改、答題卡、標記待檢、交卷與錯題重練。
-- 相似題改為主動辨識訓練：先作答再揭示、信心標記、錯因歸納、筆記、重做錯題與熟練度篩選。
-- AnswerAttempt append-only 事件、QuestionLearningState、FSRS 排程、首頁新題／學習中／複習／已掌握摘要。
-- 排行榜改用不可重放 event id 聚合。
-- 管理員改用 user-id RBAC，支援 primary/admin/content reviewer/support 角色與 MFA 強制驗證。
-- 帳號頁提供 TOTP MFA 設定、驗證、AAL2 升級與移除流程。
-- 管理後台移除 Windows EXE 整合說明；主要管理員可永久刪除啟用碼。
-- 題庫 Draft → Review → 雙人核准 → Publish → Rollback，發布內容不可變更。
+- 全站視覺收斂為簡約、金融感一致的 Liquid Glass 設計系統。
+- 主色統一為深海軍藍與鈷藍，降低漸層、陰影、裝飾與卡片噪音。
+- 首頁移除「長期記憶進度」大型區塊；FSRS 學習引擎與今日複習入口仍保留在既有流程。
+- 修復計算機開啟後可能離開可視區域的問題：改為固定置中的 modal overlay。
+- 計算機改為 991EX／ClassWiz inspired 單一機身介面，包含 LCD、太陽能板、方向盤、五欄鍵盤與統一模式抽屜。
+- 模擬考建立頁改為清楚的模式、題數、批改方式與科目選擇流程，修正寬螢幕排版擠壓。
+- 排行榜移除大型前三名展示牆，保留個人進度、榜首摘要、名稱設定與單一榜單。
+- 相似題辨識訓練降低資訊密度，保留主動作答、差異線索、錯題重做與掌握標記。
 
-## 必須套用的資料庫 migration
+## 仍保留的核心功能
 
-`supabase/migrations/20260711123000_learning_engine_and_governance_v66.sql`
+- 150 題／210 分鐘完整模擬考。
+- AnswerAttempt、QuestionLearningState 與 FSRS 排程。
+- user-id RBAC、TOTP MFA、主要管理員刪除啟用碼。
+- 題庫 Draft → Review → 雙人核准 → Publish → Rollback。
 
-尚未套用 migration 時，前端保留本機學習狀態，雲端 FSRS、不可重放排行榜、user-id RBAC 與 release workflow 會降級或不可用。
+## 驗證
 
-## 驗證命令
+執行：`npm run verify`
 
-`npm run verify`
+v67 已通過：
 
-涵蓋前端 typecheck、API typecheck、ESLint、計算機測試、FSRS 測試、題庫驗證與 production build。
+- 前端 TypeScript
+- API TypeScript
+- ESLint
+- 計算機核心與進階模式測試
+- FSRS 學習引擎測試
+- 題庫資料驗證
+- Production build 與 PWA 產生
 
-## 下一步
+## Codex／AI 下一次開始方式
 
-只有營運驗收：套用 migration、推送 GitHub、等待 Vercel production deployment，然後依 `docs/V66_UPGRADE_GUIDE.md` 執行 smoke test。沒有尚未實作的既定大型 Codex 計畫。
+1. 執行 `git status --short` 與 `git log -1 --oneline`。
+2. 讀取本檔。
+3. 只讀取 `docs/AI_CHANGELOG.md` 最後一筆。
+4. 不必重新掃描整個專案。

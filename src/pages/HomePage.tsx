@@ -1,4 +1,4 @@
-import { AlertTriangle, BookOpen, BrainCircuit, CalendarDays, CheckCircle2, Clock3, Heart, ListChecks, PlayCircle, Shuffle, Target, Trophy } from "lucide-react";
+import { AlertTriangle, BookOpen, CalendarDays, Heart, ListChecks, PlayCircle, Shuffle, Target, Trophy } from "lucide-react";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { ErrorState } from "../components/ErrorState";
 import { FrierenAnimation } from "../components/FrierenAnimation";
@@ -11,7 +11,6 @@ import { listUserAnswers, listWrongQuestions } from "../lib/db";
 import { loadImageQuizBankSummaries, type ImageQuizBank } from "../lib/imageQuiz";
 import { calculateAccuracy } from "../lib/quiz";
 import { formatTotalPracticeTime, getTotalPracticeSeconds, PRACTICE_TIME_CHANGED } from "../lib/practiceTime";
-import { getLocalLearningSummary, loadCloudLearningSummary, type LearningSummary } from "../lib/learningEngine";
 import {
   calculateSmartStudyPlanStats,
   DAILY_PLAN_STORAGE_VERSION,
@@ -95,29 +94,8 @@ export function HomePage() {
   const [draftIntensity, setDraftIntensity] = useState<StudyIntensity>(() => getStudyPlanConfig().intensity);
   const [totalPracticeSeconds, setTotalPracticeSeconds] = useState(() => getTotalPracticeSeconds());
   const [setupDismissed, setSetupDismissed] = useState(false);
-  const { isActivated, user } = useAuth();
-  const [learningSummary, setLearningSummary] = useState<LearningSummary>(() => getLocalLearningSummary(null));
+  const { isActivated } = useAuth();
   const { data, error, loading } = useAsync(() => loadHomeData(isActivated), [refreshKey, isActivated]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const refreshLearningSummary = async () => {
-      const local = getLocalLearningSummary(user?.id ?? null);
-      if (!cancelled) setLearningSummary(local);
-      try {
-        const cloud = await loadCloudLearningSummary();
-        if (!cancelled && cloud && cloud.total >= local.total) setLearningSummary(cloud);
-      } catch (summaryError) {
-        console.warn("Unable to load cloud learning summary", summaryError);
-      }
-    };
-    void refreshLearningSummary();
-    window.addEventListener("learning-state:changed", refreshLearningSummary);
-    return () => {
-      cancelled = true;
-      window.removeEventListener("learning-state:changed", refreshLearningSummary);
-    };
-  }, [user?.id]);
 
   const banks = data?.banks ?? EMPTY_BANKS;
   const answers = data?.answers ?? EMPTY_ANSWERS;
@@ -236,18 +214,6 @@ export function HomePage() {
 
       {isActivated ? (
         <>
-        <section className="learning-state-overview" aria-label="長期記憶狀態">
-          <GlassCard className="learning-state-heading-card">
-            <div><span className="learner-section-icon"><BrainCircuit size={20} /></span><div><p className="eyebrow">Long-term Memory</p><h2>長期記憶進度</h2><p>依答題正確性與「確定／不熟／猜的／不知道」自動安排下次複習。</p></div></div>
-            <GlassLinkButton to="/image-quiz/daily" variant="primary">開始今日複習</GlassLinkButton>
-          </GlassCard>
-          <div className="learning-state-grid">
-            <GlassCard><span><BookOpen size={18} />學習中</span><strong>{learningSummary.learningCount}</strong><small>Box 1–2，短期內再看</small></GlassCard>
-            <GlassCard><span><Clock3 size={18} />到期複習</span><strong>{learningSummary.dueCount}</strong><small>今天應優先回想</small></GlassCard>
-            <GlassCard><span><Target size={18} />穩定複習</span><strong>{learningSummary.reviewCount}</strong><small>Box 3–4，逐步拉長間隔</small></GlassCard>
-            <GlassCard className="is-mastered"><span><CheckCircle2 size={18} />穩定記住</span><strong>{learningSummary.masteredCount}</strong><small>Box 5，30 天後再驗證</small></GlassCard>
-          </div>
-        </section>
         <section className="daily-plan-section" aria-label={T.smartPractice}>
           <GlassCard className="daily-simple-card">
             <div className="daily-simple-countdown">

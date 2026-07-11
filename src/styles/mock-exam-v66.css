@@ -1,28 +1,163 @@
-.random-practice-page .random-practice-hero { padding:28px; background:linear-gradient(135deg,rgba(255,255,255,.96),rgba(221,245,249,.8)); }
-.random-practice-page .random-builder-card { padding:24px; border-color:rgba(24,126,149,.13); }
-.mock-exam-kind-switch { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin:18px 0; }
-.mock-exam-kind-switch button { display:flex; min-height:72px; align-items:center; gap:12px; padding:13px 16px; border:1px solid rgba(31,45,66,.1); border-radius:18px; color:#49586b; cursor:pointer; background:rgba(248,251,252,.82); text-align:left; transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease; }
-.mock-exam-kind-switch button:hover { transform:translateY(-1px); border-color:rgba(24,126,149,.28); box-shadow:0 10px 24px rgba(42,72,88,.08); }
-.mock-exam-kind-switch button.is-active { color:#fff; border-color:transparent; background:linear-gradient(145deg,#238da3,#11677b); box-shadow:0 14px 30px rgba(17,103,123,.22); }
-.mock-exam-kind-switch button>svg { flex:0 0 auto; }
-.mock-exam-kind-switch button span { display:grid; gap:2px; }
-.mock-exam-kind-switch button strong { font-size:.95rem; }
-.mock-exam-kind-switch button small { color:inherit; opacity:.75; }
-.random-practice-page .random-quiz-options { grid-template-columns:minmax(0,1.8fr) minmax(160px,.65fr) minmax(220px,.85fr) minmax(220px,.85fr); align-items:stretch; }
-.full-mock-launch-card { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:18px; padding:20px; border:1px solid rgba(20,125,148,.16); border-radius:22px; background:linear-gradient(145deg,#f9fefe,#e3f6f9); }
-.full-mock-launch-card>div:first-child { display:flex; align-items:center; gap:14px; }
-.full-mock-icon { display:grid; flex:0 0 56px; width:56px; height:56px; place-items:center; border-radius:18px; color:#fff; background:linear-gradient(145deg,#2a97ac,#106579); box-shadow:0 12px 24px rgba(15,100,120,.2); }
-.full-mock-launch-card strong { color:#183249; font-size:1.08rem; }
-.full-mock-launch-card p { margin-top:4px; max-width:620px; font-size:.82rem; }
-.full-mock-launch-card dl { display:grid; grid-template-columns:repeat(3,auto); gap:8px; margin:0; }
-.full-mock-launch-card dl div { min-width:110px; padding:10px 12px; border:1px solid rgba(31,45,66,.08); border-radius:14px; background:rgba(255,255,255,.78); }
-.full-mock-launch-card dt { color:#788597; font-size:.68rem; }
-.full-mock-launch-card dd { margin:2px 0 0; color:#17364a; font-weight:900; }
-.full-mock-start { grid-column:1/-1; width:100%; }
-.random-practice-page .random-bank-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
-.random-practice-page .random-bank-card { padding:20px; }
-.random-practice-page .random-bank-stats { gap:8px; }
-.random-practice-page .random-bank-stats>div { border-radius:14px; }
-.random-practice-page .exam-rules-card { padding:22px 24px; }
-@media(max-width:1100px){.random-practice-page .random-quiz-options{grid-template-columns:1fr 1fr}.full-mock-launch-card{grid-template-columns:1fr}.full-mock-launch-card dl{grid-template-columns:repeat(3,1fr)}}
-@media(max-width:760px){.mock-exam-kind-switch{grid-template-columns:1fr}.random-practice-page .random-quiz-options,.random-practice-page .random-bank-grid{grid-template-columns:1fr}.full-mock-launch-card dl{grid-template-columns:1fr}.full-mock-launch-card dl div{display:flex;align-items:center;justify-content:space-between}.random-practice-page .random-practice-hero,.random-practice-page .random-builder-card{padding:18px}}
+.random-practice-page { gap: 16px; }
+.random-practice-page .random-practice-hero {
+  display: grid;
+  grid-template-columns: minmax(0,1.25fr) minmax(320px,.75fr);
+  align-items: center;
+  gap: 24px;
+}
+.random-practice-page .learner-hero-copy { align-items: flex-start; }
+.random-practice-page .learner-title-icon { color: #3457c5; background: rgba(52,87,197,.08); }
+.random-practice-page .learner-hero-copy p:last-child { max-width: 650px; }
+.random-practice-page .learner-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(3,minmax(0,1fr));
+  gap: 0;
+  padding: 13px 0;
+  border: 1px solid rgba(20,39,68,.08);
+  border-radius: 18px;
+  background: rgba(255,255,255,.46);
+}
+.random-practice-page .learner-kpi {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 0 15px;
+  border-right: 1px solid rgba(20,39,68,.08);
+  background: transparent;
+  box-shadow: none;
+}
+.random-practice-page .learner-kpi:last-child { border-right: 0; }
+.random-practice-page .learner-kpi span { color: #7a8595; font-size: .68rem; }
+.random-practice-page .learner-kpi strong { color: #15243a; font-size: 1.25rem; }
+.random-practice-page .learner-kpi small { font-size: .65rem; }
+.random-practice-page .learner-kpi progress { height: 4px; }
+.random-practice-page .learner-kpi.is-accent { color: inherit; background: transparent; }
+.random-practice-page .learner-kpi.is-accent strong { color: #3457c5; }
+
+.random-practice-page .random-builder-card {
+  padding: 24px;
+  background: rgba(255,255,255,.71);
+}
+.random-builder-heading { display: flex; align-items: flex-start; gap: 12px; }
+.random-builder-heading .learner-section-icon { color: #3457c5; background: rgba(52,87,197,.08); }
+.random-builder-heading p { max-width: 760px; }
+
+.mock-exam-kind-switch { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; margin: 18px 0; }
+.mock-exam-kind-switch button {
+  display: flex;
+  min-height: 66px;
+  align-items: center;
+  gap: 11px;
+  padding: 12px 15px;
+  border: 1px solid rgba(20,39,68,.09);
+  border-radius: 16px;
+  color: #516078;
+  cursor: pointer;
+  background: rgba(248,250,253,.68);
+  box-shadow: none;
+  text-align: left;
+}
+.mock-exam-kind-switch button.is-active { color: #fff; border-color: #3457c5; background: #3457c5; box-shadow: 0 10px 28px rgba(52,87,197,.17); }
+.mock-exam-kind-switch button span { display: grid; gap: 1px; }
+.mock-exam-kind-switch button strong { font-size: .94rem; }
+.mock-exam-kind-switch button small { color: inherit; opacity: .78; }
+
+.random-practice-page .random-quiz-options {
+  display: grid;
+  grid-template-columns: minmax(330px,1.25fr) minmax(150px,.55fr) minmax(210px,.8fr) minmax(210px,.8fr);
+  align-items: stretch;
+  gap: 10px;
+}
+.random-practice-page .random-count-panel,
+.random-practice-page .random-count-input-label,
+.random-practice-page .random-answer-toggle {
+  min-width: 0;
+  min-height: 112px;
+  padding: 14px;
+  border: 1px solid rgba(20,39,68,.08);
+  border-radius: 16px;
+  background: rgba(248,250,253,.68);
+  box-shadow: none;
+}
+.random-practice-page .random-count-panel { margin: 0; }
+.random-practice-page .random-count-panel legend { padding: 0 4px; color: #526077; font-size: .72rem; font-weight: 800; }
+.random-practice-page .random-count-quick-actions { display: grid; grid-template-columns: repeat(4,1fr); gap: 6px; }
+.random-practice-page .random-count-chip {
+  display: grid;
+  min-width: 0;
+  min-height: 55px;
+  place-items: center;
+  padding: 6px;
+  border: 1px solid rgba(20,39,68,.08);
+  border-radius: 12px;
+  background: rgba(255,255,255,.76);
+  box-shadow: none;
+}
+.random-practice-page .random-count-chip.is-active { color: #fff; border-color: #3457c5; background: #3457c5; }
+.random-practice-page .random-count-chip strong { font-size: 1rem; }
+.random-practice-page .random-count-chip span { font-size: .62rem; }
+.random-practice-page .random-count-input-label { display: grid; align-content: center; gap: 6px; }
+.random-practice-page .random-count-input-label > span:first-child { color: #526077; font-size: .72rem; font-weight: 800; }
+.random-practice-page .random-number-input { display: flex; align-items: center; gap: 6px; }
+.random-practice-page .random-number-input input { width: 100%; min-width: 0; min-height: 44px; padding: 0 10px; border: 1px solid rgba(20,39,68,.1); border-radius: 11px; background: rgba(255,255,255,.82); font-size: 1rem; font-weight: 800; }
+.random-practice-page .random-count-input-label small { color: #8390a1; font-size: .63rem; }
+.random-practice-page .random-answer-toggle { display: grid; grid-template-columns: 1fr auto; align-content: center; align-items: center; gap: 8px 12px; cursor: pointer; }
+.random-practice-page .random-answer-toggle > input { position: absolute; opacity: 0; pointer-events: none; }
+.random-practice-page .random-toggle-copy { display: grid; gap: 3px; }
+.random-practice-page .random-toggle-copy strong { color: #23334a; font-size: .8rem; }
+.random-practice-page .random-toggle-copy small { color: #7e8999; font-size: .65rem; line-height: 1.35; }
+.random-practice-page .random-switch { position: relative; width: 43px; height: 25px; border-radius: 999px; background: #cad2dd; transition: background .16s ease; }
+.random-practice-page .random-switch::after { position: absolute; top: 3px; left: 3px; width: 19px; height: 19px; border-radius: 50%; background: #fff; box-shadow: 0 2px 5px rgba(20,39,68,.18); content: ""; transition: transform .16s ease; }
+.random-practice-page .random-answer-toggle > input:checked ~ .random-switch { background: #3457c5; }
+.random-practice-page .random-answer-toggle > input:checked ~ .random-switch::after { transform: translateX(18px); }
+
+.full-mock-launch-card {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) auto;
+  align-items: center;
+  gap: 16px;
+  padding: 18px;
+  border: 1px solid rgba(20,39,68,.08);
+  border-radius: 18px;
+  background: rgba(248,250,253,.72);
+}
+.full-mock-launch-card > div:first-child { display: flex; align-items: center; gap: 12px; }
+.full-mock-icon { display: grid; flex: 0 0 46px; width: 46px; height: 46px; place-items: center; border-radius: 14px; color: #3457c5; background: rgba(52,87,197,.08); }
+.full-mock-launch-card dl { grid-column: 1/-1; display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin: 0; }
+.full-mock-launch-card dl div { display: flex; justify-content: space-between; gap: 8px; padding: 10px 12px; border-radius: 12px; background: rgba(255,255,255,.75); }
+.full-mock-launch-card dt { color: #7b8798; }
+.full-mock-launch-card dd { margin: 0; color: #1d2d44; font-weight: 850; }
+
+.random-subject-section { display: grid; gap: 12px; }
+.random-practice-page .learner-section-heading { align-items: end; }
+.random-practice-page .random-bank-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; }
+.random-practice-page .random-bank-card { gap: 14px; padding: 18px; background: rgba(255,255,255,.68); }
+.random-practice-page .random-bank-header { grid-template-columns: auto 1fr auto; }
+.random-practice-page .random-bank-header .learner-section-icon { color: #3457c5; background: rgba(52,87,197,.08); }
+.random-practice-page .random-progress-badge { color: #3457c5; background: rgba(52,87,197,.08); }
+.random-practice-page .random-bank-stats { gap: 6px; }
+.random-practice-page .random-bank-stats > div { padding: 9px; border: 1px solid rgba(20,39,68,.07); border-radius: 11px; background: rgba(248,250,253,.72); }
+.random-practice-page .random-bank-stats > div.is-primary { color: #3457c5; background: rgba(52,87,197,.07); }
+.random-practice-page .random-start-button { width: 100%; }
+
+.random-practice-page .learner-exam-rules { padding: 20px 22px; background: rgba(255,255,255,.62); }
+.random-practice-page .exam-rule-grid { gap: 7px; }
+.random-practice-page .exam-rule-item { border-color: rgba(20,39,68,.07); background: rgba(248,250,253,.68); }
+.random-record-section { display: grid; gap: 12px; }
+.random-practice-page .record-card { background: rgba(255,255,255,.66); }
+
+@media(max-width:1050px){
+  .random-practice-page .random-practice-hero { grid-template-columns: 1fr; }
+  .random-practice-page .random-quiz-options { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .random-practice-page .random-bank-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+@media(max-width:680px){
+  .random-practice-page .random-practice-hero,.random-practice-page .random-builder-card { padding: 19px; }
+  .random-practice-page .learner-kpi-grid { grid-template-columns: 1fr; padding: 0; }
+  .random-practice-page .learner-kpi { padding: 11px 14px; border-right: 0; border-bottom: 1px solid rgba(20,39,68,.08); }
+  .random-practice-page .learner-kpi:last-child { border-bottom: 0; }
+  .mock-exam-kind-switch,.random-practice-page .random-quiz-options,.random-practice-page .random-bank-grid { grid-template-columns: 1fr; }
+  .random-practice-page .random-count-quick-actions { grid-template-columns: repeat(4,1fr); }
+  .full-mock-launch-card { grid-template-columns: 1fr; }
+  .full-mock-launch-card dl { grid-template-columns: 1fr; }
+}

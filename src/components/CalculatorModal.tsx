@@ -1,8 +1,7 @@
-import { type KeyboardEvent, type PointerEvent, useEffect, useMemo, useRef, useState } from "react";
+import { type KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   Calculator,
   ChevronDown,
-  GripHorizontal,
   History,
   LayoutGrid,
   Landmark,
@@ -48,7 +47,6 @@ const T = {
 };
 
 type CalculatorModalProps = { open: boolean; onClose: () => void };
-type Position = { x: number; y: number };
 type ToolPanel = "advanced" | "solve" | "finance" | "history" | null;
 type SolveMode = "single" | "system";
 type FinanceMode = "yield" | "capm" | "wacc";
@@ -86,6 +84,10 @@ const SCIENTIFIC_KEYS: KeySpec[] = [
   { label: ")", value: ")", shiftLabel: ",", shiftValue: ",", kind: "function" },
   { label: "nPr", value: "npr(", shiftLabel: "nCr", shiftValue: "ncr(", kind: "function" },
   { label: "π", value: "π", shiftLabel: "e", shiftValue: "e", kind: "function" },
+  { label: "%", value: "%", shiftLabel: "Rnd", shiftValue: "round(", kind: "function" },
+  { label: "Abs", value: "abs(", shiftLabel: "Frac", shiftValue: "(", kind: "function" },
+  { label: "root", value: "root(", shiftLabel: "∛", shiftValue: "cbrt(", kind: "function" },
+  { label: ",", value: ",", shiftLabel: "EXP", shiftValue: "*10^(", kind: "function" },
 ];
 
 const KEYPAD_KEYS: KeySpec[] = [
@@ -141,24 +143,13 @@ export function CalculatorModal({ open, onClose }: CalculatorModalProps) {
   const [waccFields, setWaccFields] = useState<WaccFields>(DEFAULT_WACC_FIELDS);
   const [financeSummary, setFinanceSummary] = useState<CalculationSummary | null>(null);
   const [error, setError] = useState("");
-  const [position, setPosition] = useState<Position>(() => ({ x: 24, y: 82 }));
-  const dialogRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const dragStartRef = useRef<{ pointerId: number; startX: number; startY: number; originX: number; originY: number } | null>(null);
 
   const displayResult = useMemo(() => {
     if (!result) return "";
     if (preferFraction && fractionResult) return `${fractionResult.numerator}/${fractionResult.denominator}`;
     return result;
   }, [fractionResult, preferFraction, result]);
-
-  useEffect(() => {
-    if (!open) return;
-    const keepOnScreen = () => setPosition((current) => clampPosition(current, dialogRef.current));
-    keepOnScreen();
-    window.addEventListener("resize", keepOnScreen);
-    return () => window.removeEventListener("resize", keepOnScreen);
-  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -287,31 +278,20 @@ export function CalculatorModal({ open, onClose }: CalculatorModalProps) {
     } catch (caught) { setError(caught instanceof Error ? caught.message : "請檢查輸入欄位。"); }
   }
 
-  function handleDragStart(event: PointerEvent<HTMLDivElement>): void {
-    const target = event.target as HTMLElement;
-    if (target.closest("button") || target.closest("input")) return;
-    event.currentTarget.setPointerCapture(event.pointerId);
-    dragStartRef.current = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, originX: position.x, originY: position.y };
-  }
-  function handleDragMove(event: PointerEvent<HTMLDivElement>): void {
-    const start = dragStartRef.current;
-    if (!start || start.pointerId !== event.pointerId) return;
-    setPosition(clampPosition({ x: start.originX + event.clientX - start.startX, y: start.originY + event.clientY - start.startY }, dialogRef.current));
-  }
-  function handleDragEnd(event: PointerEvent<HTMLDivElement>): void {
-    if (dragStartRef.current?.pointerId !== event.pointerId) return;
-    dragStartRef.current = null;
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
-  }
+
 
   return (
-    <div ref={dialogRef} className="calculator-classwiz" role="dialog" aria-label={T.title} aria-modal="false" style={{ transform: `translate3d(${position.x}px, ${position.y}px, 0)` }}>
-      <header className="classwiz-header" onPointerDown={handleDragStart} onPointerMove={handleDragMove} onPointerUp={handleDragEnd} onPointerCancel={handleDragEnd}>
-        <div className="classwiz-brand"><Calculator size={20} /><div><span>CLASSWIZ FINANCE</span><strong>{T.title}</strong></div></div>
-        <div className="classwiz-header-actions"><GripHorizontal size={21} aria-hidden="true" /><button type="button" onClick={onClose} aria-label="關閉計算機"><X size={20} /></button></div>
-      </header>
+    <div className="calculator-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+      <div className="calculator-classwiz" role="dialog" aria-label={T.title} aria-modal="true" onMouseDown={(event) => event.stopPropagation()}>
+        <header className="classwiz-header">
+          <div className="classwiz-brand">
+            <div className="classwiz-wordmark"><strong>CLASSWIZ</strong><span>FINANCE · 991 STYLE</span></div>
+            <div className="classwiz-solar" aria-hidden="true" />
+          </div>
+          <button type="button" className="classwiz-close" onClick={onClose} aria-label="關閉計算機"><X size={20} /></button>
+        </header>
 
-      <div className="classwiz-body">
+        <div className="classwiz-body">
         <section className={`classwiz-screen${error ? " has-error" : ""}`} aria-live="polite">
           <div className="classwiz-status"><span>{shift ? "SHIFT" : "COMP"}</span><span>{angleUnit.toUpperCase()}</span><span>{Math.abs(memory) > Number.EPSILON ? "M" : ""}</span></div>
           <input ref={inputRef} value={expression} onChange={(event) => { setExpression(event.target.value.slice(0, 300)); setResult(""); setResultValue(null); setFractionResult(null); setError(""); }} onKeyDown={(event: KeyboardEvent<HTMLInputElement>) => { if (event.key === "Enter") { event.preventDefault(); calculate(); } }} placeholder="輸入算式，例如 sin(30)+√144" autoComplete="off" spellCheck="false" />
@@ -337,11 +317,18 @@ export function CalculatorModal({ open, onClose }: CalculatorModalProps) {
           </section>
         ) : null}
 
+        <div className="classwiz-control-deck" aria-label="計算機導覽控制">
+          <button type="button" onClick={() => setToolPanel((panel) => panel === "advanced" ? null : "advanced")}>MENU</button>
+          <div className="classwiz-dpad" aria-hidden="true"><span>▲</span><span>◀</span><i>OK</i><span>▶</span><span>▼</span></div>
+          <button type="button" onClick={() => setToolPanel((panel) => panel === "solve" ? null : "solve")}>CALC</button>
+        </div>
+
         <div className="classwiz-scientific-grid">
           {SCIENTIFIC_KEYS.map((key) => <CalcKey key={`${key.label}-${key.shiftLabel ?? ""}`} spec={key} shift={shift} angleUnit={angleUnit} onClick={() => handleKey(key)} />)}
         </div>
         <div className="classwiz-keypad">
           {KEYPAD_KEYS.map((key) => <CalcKey key={key.label} spec={key} shift={false} angleUnit={angleUnit} onClick={() => handleKey(key)} />)}
+        </div>
         </div>
       </div>
     </div>
@@ -510,6 +497,5 @@ function requireNonNegativeNumber(value: string, label: string): number { const 
 function requireRate(value: string, label: string): number { const parsed = requireNumber(value, label); if (parsed < 0 || parsed > 100) throw new Error(`${label}需介於 0% 至 100%。`); return parsed; }
 function toReasonableFraction(value: number): FractionResult | null { if (!Number.isFinite(value) || Math.abs(value) >= 1e8) return null; const sign = value < 0 ? -1 : 1; const target = Math.abs(value); let bestNumerator = Math.round(target); let bestDenominator = 1; let bestError = Math.abs(target - bestNumerator); for (let denominator = 1; denominator <= 10000; denominator += 1) { const numerator = Math.round(target * denominator); const error = Math.abs(target - numerator / denominator); if (error < bestError) { bestNumerator = numerator; bestDenominator = denominator; bestError = error; } if (error < 1e-10) break; } if (bestDenominator === 1 || bestError > 1e-8) return null; const divisor = greatestCommonDivisor(bestNumerator, bestDenominator); return { numerator: sign * bestNumerator / divisor, denominator: bestDenominator / divisor }; }
 function greatestCommonDivisor(a: number, b: number): number { let left = Math.abs(Math.trunc(a)); let right = Math.abs(Math.trunc(b)); while (right !== 0) { const next = left % right; left = right; right = next; } return left || 1; }
-function clampPosition(position: Position, dialog: HTMLDivElement | null): Position { const width = dialog?.offsetWidth ?? Math.min(610, window.innerWidth - 16); const height = dialog?.offsetHeight ?? Math.min(900, window.innerHeight - 16); const minX = 8; const minY = 8; const maxX = Math.max(minX, window.innerWidth - width - 8); const maxY = Math.max(minY, window.innerHeight - height - 8); return { x: Math.min(maxX, Math.max(minX, position.x)), y: Math.min(maxY, Math.max(minY, position.y)) }; }
 function softFeedback(): void { if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate?.(5); }
 function successFeedback(): void { if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate?.([8, 24, 8]); }

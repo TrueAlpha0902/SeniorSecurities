@@ -3,9 +3,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock3,
-  Crown,
   Flame,
-  Medal,
   RefreshCw,
   Save,
   Sparkles,
@@ -16,7 +14,7 @@ import {
 } from "lucide-react";
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { ErrorState } from "../components/ErrorState";
-import { GlassButton, GlassLinkButton } from "../components/GlassButton";
+import { GlassButton } from "../components/GlassButton";
 import { GlassCard } from "../components/GlassCard";
 import { LoadingState } from "../components/LoadingState";
 import {
@@ -92,7 +90,6 @@ export function LeaderboardPage() {
   const entries = activeTab === "streak" ? streakEntries : timeEntries;
   const currentIndex = entries.findIndex((entry) => entry.isCurrentUser);
   const currentEntry = currentIndex >= 0 ? entries[currentIndex] : null;
-  const podium = entries.slice(0, 3);
   const pageCount = Math.max(1, Math.ceil(entries.length / PAGE_SIZE));
   const currentPage = Math.min(page, pageCount);
   const visibleEntries = entries.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
@@ -135,20 +132,7 @@ export function LeaderboardPage() {
         <GlassCard className="leaderboard-v66-stat-card"><span><Sparkles size={18} />榜首成績</span><strong>{entries[0] ? metricValue(entries[0], activeTab) : "—"}</strong><small>{entries[0]?.displayName ?? "等待第一筆紀錄"}</small></GlassCard>
       </section>
 
-      <section className="leaderboard-v66-podium" aria-label="前三名">
-        {podium.length ? [1, 0, 2].map((sourceIndex) => {
-          const entry = podium[sourceIndex];
-          if (!entry) return <div className="leaderboard-v66-podium-placeholder" key={sourceIndex} />;
-          const rank = sourceIndex + 1;
-          return <GlassCard key={entry.userId} className={`leaderboard-v66-podium-card rank-${rank}${entry.isCurrentUser ? " is-current" : ""}`}>
-            <div className="leaderboard-v66-rank-icon">{rank === 1 ? <Crown size={28} /> : <Medal size={25} />}</div>
-            <span className="leaderboard-v66-rank">第 {rank} 名</span>
-            <strong className="leaderboard-v66-name">{entry.displayName}{entry.isCurrentUser ? <em>你</em> : null}</strong>
-            <strong className="leaderboard-v66-score">{metricValue(entry, activeTab)}</strong>
-            <small>{secondaryMetric(entry, activeTab)}</small>
-          </GlassCard>;
-        }) : <GlassCard className="leaderboard-v66-empty"><Trophy size={30} /><h2>排行榜正在等第一位挑戰者</h2><p>完成題目或開始計時練習後，排名會自動出現。</p><GlassLinkButton to="/random" variant="primary">開始模擬考測驗</GlassLinkButton></GlassCard>}
-      </section>
+
 
       <GlassCard className="leaderboard-v66-name-editor" as="section">
         <div><span className="leaderboard-v66-section-icon"><UserRound size={20} /></span><div><p className="eyebrow">Display Name</p><h2>排行榜顯示名稱</h2><p>使用不含個資、容易辨識的暱稱，最多 24 個字。</p></div></div>
@@ -159,6 +143,7 @@ export function LeaderboardPage() {
       <GlassCard className="leaderboard-v66-list" as="section">
         <div className="leaderboard-v66-list-head"><div><p className="eyebrow">Full Ranking</p><h2>{activeTab === "streak" ? "連續答對排行" : "累積練習時數排行"}</h2></div><span>{entries.length} 位</span></div>
         <div className="leaderboard-v66-rows">
+          {!visibleEntries.length ? <div className="leaderboard-v66-empty"><Trophy size={26} /><strong>目前還沒有排名資料</strong><span>完成一場測驗後會自動加入排行榜。</span></div> : null}
           {visibleEntries.map((entry, index) => {
             const rank = (currentPage - 1) * PAGE_SIZE + index + 1;
             return <article key={entry.userId} className={entry.isCurrentUser ? "is-current" : ""}>

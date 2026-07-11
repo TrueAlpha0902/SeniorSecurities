@@ -1,0 +1,135 @@
+/* v67 — premium finance learning system: quiet, consistent, liquid glass. */
+:root {
+  --page-bg: #f4f6fa;
+  --glass-bg: rgba(255, 255, 255, 0.72);
+  --glass-bg-strong: rgba(255, 255, 255, 0.9);
+  --glass-border: rgba(255, 255, 255, 0.88);
+  --glass-border-low: rgba(16, 35, 63, 0.09);
+  --text: #122036;
+  --muted: #6d7889;
+  --primary: #3457c5;
+  --primary-strong: #253f99;
+  --secondary: #526077;
+  --shadow: 0 18px 50px rgba(26, 45, 78, 0.08);
+  --soft-shadow: 0 9px 28px rgba(26, 45, 78, 0.07);
+  --inner-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  --radius-lg: 26px;
+  --radius-md: 22px;
+  --radius-sm: 16px;
+}
+
+html,
+body,
+.glass-page {
+  background:
+    radial-gradient(circle at 15% -10%, rgba(92, 124, 216, 0.10), transparent 33rem),
+    radial-gradient(circle at 92% 0%, rgba(122, 177, 212, 0.09), transparent 31rem),
+    #f4f6fa;
+}
+
+.glass-page { padding-top: calc(13px + env(safe-area-inset-top)); }
+.glass-shell { width: min(1180px, 100%); }
+.page-stack, .quiz-page { gap: 16px; }
+
+.glass-navbar {
+  top: calc(10px + env(safe-area-inset-top));
+  min-height: 58px;
+  margin-bottom: 20px;
+  padding: 7px 9px;
+  border-color: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.68);
+  box-shadow: 0 12px 38px rgba(31, 51, 82, 0.08), inset 0 1px 0 rgba(255,255,255,.95);
+  backdrop-filter: blur(30px) saturate(150%);
+  -webkit-backdrop-filter: blur(30px) saturate(150%);
+}
+
+.nav-icon-button {
+  background: rgba(255,255,255,.54);
+  border-color: rgba(24,42,70,.08);
+  box-shadow: none;
+}
+.nav-icon-button:hover { background: rgba(255,255,255,.92); border-color: rgba(52,87,197,.18); }
+.brand-link { letter-spacing: .02em; }
+
+.glass-card {
+  border-color: rgba(255,255,255,.9);
+  background: rgba(255,255,255,.67);
+  box-shadow: var(--shadow), var(--inner-highlight);
+  backdrop-filter: blur(28px) saturate(135%);
+  -webkit-backdrop-filter: blur(28px) saturate(135%);
+}
+.glass-card::before { background: linear-gradient(145deg, rgba(255,255,255,.28), transparent 42%); }
+.glass-card-interactive:hover { transform: translateY(-1px); box-shadow: 0 22px 52px rgba(26,45,78,.10), var(--inner-highlight); }
+
+.glass-button { min-height: 46px; box-shadow: none; font-weight: 780; }
+.glass-button-primary { background: #3457c5; border-color: rgba(255,255,255,.45); }
+.glass-button-primary:hover { background: #2e4db1; }
+.glass-button-secondary { background: rgba(255,255,255,.72); border-color: rgba(20,39,68,.09); }
+.glass-badge { min-height: 30px; background: rgba(255,255,255,.55); box-shadow: none; color: #4f5d72; font-size: .82rem; }
+.eyebrow { color: #526f9d; letter-spacing: .1em; font-size: .68rem; font-weight: 800; text-transform: uppercase; }
+
+/* Home — one clear daily action, no dashboard-of-cards aesthetic. */
+.home-overview .overview-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 24px 28px;
+  background: rgba(255,255,255,.72);
+}
+.home-overview .overview-panel h1 { font-size: clamp(1.75rem, 4vw, 2.35rem); }
+.home-overview .metric-row { justify-content: flex-end; }
+.daily-plan-section .daily-simple-card {
+  display: grid;
+  grid-template-columns: minmax(190px,.55fr) minmax(0,1.45fr);
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+  background: rgba(255,255,255,.72);
+}
+.daily-simple-countdown {
+  display: grid;
+  align-content: center;
+  gap: 10px;
+  min-height: 290px;
+  padding: 30px;
+  border-right: 1px solid rgba(22,40,69,.08);
+  background: rgba(244,247,252,.62);
+}
+.daily-original-practice { padding: 30px; }
+.daily-original-practice h2 { font-size: clamp(1.45rem, 3vw, 2rem); }
+.daily-simple-stats, .daily-home-allocation { gap: 8px !important; }
+.daily-simple-stats > div, .daily-allocation-card {
+  border: 1px solid rgba(20,39,68,.08) !important;
+  background: rgba(248,250,253,.72) !important;
+  box-shadow: none !important;
+}
+.smart-warning { border: 0 !important; background: rgba(52,87,197,.06) !important; }
+.priority-bank-grid { gap: 12px; }
+.priority-bank-grid .bank-card { padding: 20px; }
+.home-tools { padding: 2px 0; }
+.tool-strip { gap: 8px; }
+.tool-strip .glass-button { min-height: 44px; background: rgba(255,255,255,.63); }
+
+/* Shared page headers — compact rather than feature showcase. */
+.learner-hero,
+.random-practice-page .random-practice-hero,
+.leaderboard-v66-page .leaderboard-v66-hero,
+.similar-learning-page .similar-learning-hero {
+  padding: 24px 26px;
+  border: 1px solid rgba(255,255,255,.9);
+  background: rgba(255,255,255,.68);
+  box-shadow: var(--shadow), var(--inner-highlight);
+}
+.learner-hero h1,
+.leaderboard-v66-heading h1,
+.similar-learning-heading h1 { font-size: clamp(1.75rem, 4vw, 2.25rem); }
+
+@media (max-width: 760px) {
+  .glass-page { padding-inline: 10px; }
+  .home-overview .overview-panel { align-items: flex-start; flex-direction: column; padding: 20px; }
+  .home-overview .metric-row { justify-content: flex-start; }
+  .daily-plan-section .daily-simple-card { grid-template-columns: 1fr; }
+  .daily-simple-countdown { min-height: 0; padding: 22px; border-right: 0; border-bottom: 1px solid rgba(22,40,69,.08); }
+  .daily-original-practice { padding: 22px; }
+}

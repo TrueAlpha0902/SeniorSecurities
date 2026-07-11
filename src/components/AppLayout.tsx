@@ -6,6 +6,8 @@ import { SettingsPanel } from "./SettingsPanel";
 import { CalculatorModal } from "./CalculatorModal";
 import { useAuth } from "../auth/AuthContext";
 
+import "../styles/premium-liquid-v67.css";
+
 type AppLayoutProps = {
   children: ReactNode;
 };
