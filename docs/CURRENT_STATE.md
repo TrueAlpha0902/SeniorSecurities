@@ -1,16 +1,16 @@
 ﻿# SeniorSecurities Current State
 
 更新日期：2026-07-11
-目前版本：v72 首頁靜態芙莉蓮加油圖與動畫移除
+目前版本：v72 首頁透明芙莉蓮、計算機鍵位微調與設定排版優化
 
 ## v72 已完成
 
-- 首頁底部原本的芙莉蓮生活空間動畫已完全移除。
-- 首頁底部改為單張 Q 版芙莉蓮「加油」靜態插圖。
-- 移除首頁動畫 React 元件、動畫預載程式、動畫 CSS、產圖最佳化腳本與舊動畫素材。
-- 新圖片使用 WebP，約 92 KB，採延遲載入與非同步解碼，避免首頁持續執行動畫與預載多張素材。
-- 首頁底部圖片維持響應式置中顯示，最大寬度 380 px。
-- 本次未新增 npm 套件，也沒有資料庫變更。
+- 首頁底部完整移除原本的芙莉蓮生活空間動畫、預載程式、CSS 與舊動畫素材，改為透明底 Q 版芙莉蓮「加油」插圖，直接融入 App 背景，不再額外包一張白色區塊卡片。
+- 首頁工具列中的「相似題辨識訓練」更名為「相似題測驗」。
+- 計算機功能列改為讓 `x` 緊鄰 `x²` 左側，並將等號移到 `%` 的右邊空位，按鈕配色與 `Ans` 相同。
+- 計算機右上角工具列不再放獨立等號按鈕。
+- 首頁倒數區塊往右微調，減少過度貼齊左側的感覺。
+- 設定頁增加留白與卡片內距，開關卡與危險操作區更好讀、不擁擠。
 
 ## 驗證
 
@@ -29,24 +29,11 @@
 
 ## 資料庫
 
-v72 沒有新增 Supabase migration，不需執行 `supabase db push`。
+v71 沒有新增 Supabase migration，不需執行 `supabase db push`。
 
-## 主要變更檔案
+## 資產說明
 
-- `src/pages/HomePage.tsx`
-- `src/main.tsx`
-- `src/styles/glass.css`
-- `public/frieren-cheer-home.webp`
-- `docs/CURRENT_STATE.md`
-- `docs/AI_CHANGELOG.md`
-
-## 已移除檔案
-
-- `src/components/FrierenAnimation.tsx`
-- `src/lib/frierenStory.ts`
-- `src/styles/frieren-story-v65.css`
-- `scripts/optimize-frieren-story-assets.py`
-- `public/animation/frieren-story/`
+本版本保留既有角色圖像，只以 CSS／React 編排同一空間的連續動畫。受限於現有讀書、步行與睡眠關鍵姿勢數量，效果為高品質網頁合成動畫，而不是逐幀手繪電影動畫。
 
 ## Codex／AI 下次開始方式
 

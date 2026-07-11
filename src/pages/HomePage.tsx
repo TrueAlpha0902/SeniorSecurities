@@ -54,7 +54,7 @@ const T = {
   mixed: "全題庫練習",
   random80: "模擬考測驗",
   weakFirst: "弱點練習",
-  similar: "相似題辨識訓練",
+  similar: "相似題測驗",
   favorites: "收藏題目",
   leaderboard: "排行榜",
   bankList: "題庫科目",
@@ -79,7 +79,7 @@ const T = {
   wrongCorrection: "錯題訂正",
 };
 
-const HOMEPAGE_FRIEREN_IMAGE = `${import.meta.env.BASE_URL}frieren-cheer-home.webp`;
+const HOMEPAGE_FRIEREN_IMAGE = `${import.meta.env.BASE_URL}frieren-cheer-home.png`;
 
 const STUDY_TIME_OPTIONS = [30, 60, 90, 120, 240] as const;
 const INTENSITY_OPTIONS: {
@@ -552,15 +552,15 @@ export function HomePage() {
             className="cat-playground"
             aria-label="主頁底部加油插圖"
           >
-            <GlassCard className="homepage-frieren-card">
+            <figure className="homepage-frieren-figure">
               <img
                 className="homepage-frieren-image"
                 src={HOMEPAGE_FRIEREN_IMAGE}
-                alt="Q版芙莉蓮握拳說加油的插圖"
+                alt="Q版芙莉蓮握拳加油插圖"
                 loading="lazy"
                 decoding="async"
               />
-            </GlassCard>
+            </figure>
           </section>
         </>
       )}

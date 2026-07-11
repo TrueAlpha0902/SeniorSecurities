@@ -305,6 +305,6 @@
   background: #fff !important;
 }
 @media (min-width: 761px) {
-  .daily-countdown-panel-v70 { padding-right: 34px; }
+  .daily-countdown-panel-v70 { padding: 26px 34px 26px 42px; }
   .daily-compact-main-v70 { padding-left: 34px; }
 }

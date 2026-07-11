@@ -42,9 +42,9 @@ type KeySpec = {
 };
 
 const FUNCTION_KEYS: KeySpec[] = [
-  { label: "x", value: "x", tone: "function" },
   { label: "(", value: "(", tone: "function" },
   { label: ")", value: ")", tone: "function" },
+  { label: "x", value: "x", tone: "function" },
   { label: "x²", value: "^2", tone: "function" },
   { label: "xʸ", value: "^", tone: "function" },
   { label: "√", value: "sqrt(", tone: "function" },
@@ -56,6 +56,7 @@ const FUNCTION_KEYS: KeySpec[] = [
   { label: "π", value: "π", tone: "function" },
   { label: "a⁄b", action: "fraction", tone: "function" },
   { label: "%", value: "%", tone: "function" },
+  { label: "=", value: "=", tone: "primary" },
 ];
 
 const NUMBER_KEYS: KeySpec[] = [
@@ -341,14 +342,6 @@ export function CalculatorModal({ open, onClose }: CalculatorModalProps) {
               <button type="button" onClick={() => setShowFractionResult((current) => !current)}>S⇔D</button>
             ) : null}
           </div>
-          <button
-            type="button"
-            className="floating-calculator-equals"
-            onClick={() => insertAtCursor("=")}
-            aria-label="插入等號"
-          >
-            =
-          </button>
         </div>
 
         <div className="floating-calculator-screen">

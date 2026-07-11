@@ -296,7 +296,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
         {error ? <p className="inline-error">{error}</p> : null}
 
         {view === "menu" ? (
-          <div className="settings-menu">
+          <div className="settings-menu settings-menu-stack">
             <section className="settings-option-card" aria-label={T.correctAnswerMode}>
               <SelectionCheckbox
                 label={T.correctAnswerMode}
@@ -325,7 +325,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                 </GlassButton>
               </div>
             </section>
-            <GlassButton variant="danger" onClick={() => setView("clear")}>
+            <GlassButton variant="danger" className="settings-danger-button" onClick={() => setView("clear")}>
               <Trash2 aria-hidden="true" size={20} />
               <span>{T.clearRecords}</span>
             </GlassButton>
