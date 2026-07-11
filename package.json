@@ -25,7 +25,7 @@
     "dev:admin": "npx vercel dev",
     "predev": "npm run generate:shards && npm run generate:plan-index",
     "prebuild": "npm run generate:shards && npm run generate:plan-index",
-    "verify": "npm run validate:image-data && npm run test:shards && npm run test:plan-index && npm run typecheck && npm run typecheck:api && npm run lint && npm run test:css && npm run test:calculator && npm run test:learning && npm run test:storage && npm run test:reliability && npm run test:integrity && npm run test:daily-plan && npm run test:recovery && npm run validate:data && npm run build && npm run test:bundle",
+    "verify": "npm run validate:image-data && npm run test:shards && npm run test:plan-index && npm run typecheck && npm run typecheck:api && npm run lint && npm run test:css && npm run test:calculator && npm run test:learning && npm run test:storage && npm run test:reliability && npm run test:integrity && npm run test:admin && npm run test:daily-plan && npm run test:recovery && npm run validate:data && npm run build && npm run test:bundle",
     "test:recovery": "tsx scripts/test-app-recovery.ts",
     "generate:shards": "tsx scripts/generate-question-shards.ts",
     "test:shards": "tsx scripts/generate-question-shards.ts --check",
@@ -35,7 +35,8 @@
     "test:reliability": "tsx scripts/test-reliability-store.ts",
     "test:integrity": "tsx scripts/test-integrity-contracts.ts",
     "validate:image-data": "tsx scripts/validate-image-quiz-data.ts",
-    "test:css": "tsx scripts/check-css-budget.ts"
+    "test:css": "tsx scripts/check-css-budget.ts",
+    "test:admin": "tsx scripts/test-admin-console-contracts.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.53.0",

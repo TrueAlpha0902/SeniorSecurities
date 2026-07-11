@@ -63,13 +63,14 @@ export function AccountPage() {
 
 function AccountContent() {
   const navigate = useNavigate();
-  const { access, loading, signOut, user } = useAuth();
-  const adminEmails = new Set(
+  const { access, loading, session, signOut, user } = useAuth();
+  const configuredClientAdminEmails = new Set(
     (import.meta.env.VITE_ADMIN_EMAILS ?? "").split(",")
       .map((email) => email.trim().toLowerCase())
       .filter(Boolean),
   );
-  const isAdminAccount = Boolean(user?.email && adminEmails.has(user.email.toLowerCase()));
+  const clientAdminFallback = Boolean(user?.email && configuredClientAdminEmails.has(user.email.toLowerCase()));
+  const [adminAccessState, setAdminAccessState] = useState<"checking" | "allowed" | "denied" | "unavailable">("checking");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [syncBusy, setSyncBusy] = useState(false);
@@ -95,6 +96,37 @@ function AccountContent() {
       setError(loadError instanceof Error ? loadError.message : "讀取同步資料失敗。 ");
     });
   }, [loadSyncSummary]);
+
+  useEffect(() => {
+    const token = session?.access_token || "";
+    if (!user || !token) {
+      setAdminAccessState("denied");
+      return;
+    }
+
+    const controller = new AbortController();
+    setAdminAccessState("checking");
+    void fetch("/api/admin/tools?tool=access", {
+      cache: "no-store",
+      signal: controller.signal,
+      headers: { Authorization: `Bearer ${token}` },
+    }).then((response) => {
+      if (response.ok) {
+        setAdminAccessState("allowed");
+        return;
+      }
+      if (response.status === 401 || response.status === 403) {
+        setAdminAccessState(clientAdminFallback ? "allowed" : "denied");
+        return;
+      }
+      setAdminAccessState(clientAdminFallback ? "allowed" : "unavailable");
+    }).catch((reason: unknown) => {
+      if (reason instanceof DOMException && reason.name === "AbortError") return;
+      setAdminAccessState(clientAdminFallback ? "allowed" : "unavailable");
+    });
+
+    return () => controller.abort();
+  }, [clientAdminFallback, session?.access_token, user]);
 
   if (loading) return <LoadingState label="載入帳號" />;
 
@@ -234,10 +266,10 @@ function AccountContent() {
         </section>
 
         <div className="button-row">
-          {isAdminAccount ? (
+          {adminAccessState !== "denied" ? (
             <GlassLinkButton to="/admin" variant="primary">
               <Shield aria-hidden="true" size={18} />
-              <span>管理後台</span>
+              <span>{adminAccessState === "checking" ? "檢查管理權限…" : "管理後台"}</span>
             </GlassLinkButton>
           ) : null}
           {!access.hasEntitlement ? <GlassLinkButton to="/activate" variant="primary">輸入啟用碼</GlassLinkButton> : null}

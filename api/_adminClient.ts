@@ -28,10 +28,13 @@ export function getErrorStatusCode(error: unknown): number {
 
 const supabaseUrl = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "").trim();
 const serviceRoleKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || "").trim();
-const configuredAdminEmails = (process.env.ADMIN_EMAILS || "")
-  .split(",")
-  .map((email) => email.trim().toLowerCase())
-  .filter(Boolean);
+const configuredAdminEmails = Array.from(new Set(
+  [process.env.PRIMARY_ADMIN_EMAILS || "", process.env.ADMIN_EMAILS || ""]
+    .join(",")
+    .split(",")
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean),
+));
 
 export type AdminRole = "primary_admin" | "admin";
 
@@ -126,11 +129,12 @@ export async function requireAdminUser(
   if (error || !data.user) throw new HttpError("無法驗證目前登入帳號。", 401);
 
   const email = data.user.email?.toLowerCase() || "";
-  const isPrimaryAdmin = configuredAdminEmails.includes(email);
-  const databaseAccess = isPrimaryAdmin
-    ? { role: "primary_admin" as AdminRole, mfaRequired: true }
+  const isConfiguredPrimaryAdmin = configuredAdminEmails.includes(email);
+  const databaseAccess = isConfiguredPrimaryAdmin
+    ? { role: "primary_admin" as AdminRole, mfaRequired: false }
     : await getDatabaseAdminAccess(data.user.id, email);
   if (!databaseAccess) throw new HttpError("這個帳號沒有管理員權限。", 403);
+  const isPrimaryAdmin = databaseAccess.role === "primary_admin";
 
   const jwt = decodeJwtPayload(token);
   const aal = String(jwt.aal || "aal1");

@@ -61,36 +61,50 @@ async function findAuthUserIdByEmail(
 export default async function handler(req: ApiRequest, res: ApiResponse) {
   try {
     const tool = req.method === "GET" ? queryValue(req.query?.tool) : "";
-    const accessOnly = req.method === "GET" && tool === "access";
-    const auth = await requireAdminUser(req, accessOnly
-      ? {}
-      : { roles: ["primary_admin"], requireAal2: true });
-    const { supabase, user, isPrimaryAdmin, role } = auth;
 
     if (req.method === "GET") {
       if (tool === "access") {
-        sendJson(res, 200, { role, isPrimaryAdmin, mfaVerified: auth.mfaVerified });
+        const auth = await requireAdminUser(req, { roles: ["primary_admin", "admin"] });
+        sendJson(res, 200, {
+          role: auth.role,
+          isPrimaryAdmin: auth.isPrimaryAdmin,
+          mfaVerified: auth.mfaVerified,
+        });
         return;
       }
+
       if (tool === "admins") {
-        const { data, error } = await supabase
+        const auth = await requireAdminUser(req, { roles: ["primary_admin"] });
+        const { data, error } = await auth.supabase
           .from("admin_users")
           .select("id, email, role, is_active, note, created_by, created_at, updated_at")
           .order("created_at", { ascending: false });
         if (error) throw error;
-        sendJson(res, 200, { admins: data || [], primaryEmails: getConfiguredAdminEmails(), isPrimaryAdmin });
+        sendJson(res, 200, {
+          admins: data || [],
+          primaryEmails: getConfiguredAdminEmails(),
+          isPrimaryAdmin: auth.isPrimaryAdmin,
+          mfaVerified: auth.mfaVerified,
+        });
         return;
       }
+
       if (tool === "activation-codes") {
-        const { data, error } = await supabase
+        const auth = await requireAdminUser(req, { roles: ["primary_admin", "admin"] });
+        const { data, error } = await auth.supabase
           .from("activation_codes")
           .select("id, code_preview, max_uses, use_count, is_active, note, created_at, redeemed_at")
           .order("created_at", { ascending: false })
           .limit(100);
         if (error) throw error;
-        sendJson(res, 200, { activationCodes: data || [], isPrimaryAdmin });
+        sendJson(res, 200, {
+          activationCodes: data || [],
+          isPrimaryAdmin: auth.isPrimaryAdmin,
+          mfaVerified: auth.mfaVerified,
+        });
         return;
       }
+
       throw new HttpError("未知的管理工具。", 400);
     }
 
@@ -101,6 +115,16 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
 
     const body = parseBody(req);
     const action = String(body.action || "");
+    const highRiskActions = new Set([
+      "delete-activation-code",
+      "upsert-admin",
+      "disable-admin",
+      "delete-admin",
+    ]);
+    const auth = await requireAdminUser(req, highRiskActions.has(action)
+      ? { roles: ["primary_admin"], requireAal2: true }
+      : { roles: ["primary_admin", "admin"] });
+    const { supabase, user } = auth;
     const actorEmail = user.email?.toLowerCase() || user.id;
     const ipAddress = requestIpAddress(req);
 
@@ -145,10 +169,14 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       return;
     }
 
+    if (!["upsert-admin", "disable-admin", "delete-admin"].includes(action)) {
+      throw new HttpError("未知操作。", 400);
+    }
+
     const targetEmail = normalizeEmail(body.email);
     const primaryEmails = getConfiguredAdminEmails();
     const currentEmail = user.email?.toLowerCase() || "";
-    if (primaryEmails.includes(targetEmail)) throw new HttpError("環境設定的主要管理員帳號不可修改。", 400);
+    if (primaryEmails.includes(targetEmail)) throw new HttpError("主要管理員帳號不可修改。", 400);
     if (targetEmail === currentEmail && action !== "upsert-admin") throw new HttpError("不可停用或刪除目前登入的管理員帳號。", 400);
     const targetUserId = await findAuthUserIdByEmail(supabase, targetEmail);
 
@@ -175,21 +203,16 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       return;
     }
 
-    if (action === "delete-admin") {
-      const { error } = await supabase.rpc("delete_admin_access_v79", {
-        p_actor_user_id: user.id,
-        p_actor_email: actorEmail,
-        p_target_user_id: targetUserId,
-        p_target_email: targetEmail,
-        p_action: "admin_account.delete",
-        p_ip_address: ipAddress,
-      });
-      if (error) throw error;
-      sendJson(res, 200, { ok: true, message: `已刪除管理員：${targetEmail}` });
-      return;
-    }
-
-    throw new HttpError("未知操作。", 400);
+    const { error } = await supabase.rpc("delete_admin_access_v79", {
+      p_actor_user_id: user.id,
+      p_actor_email: actorEmail,
+      p_target_user_id: targetUserId,
+      p_target_email: targetEmail,
+      p_action: "admin_account.delete",
+      p_ip_address: ipAddress,
+    });
+    if (error) throw error;
+    sendJson(res, 200, { ok: true, message: `已刪除管理員：${targetEmail}` });
   } catch (error) {
     console.error("/api/admin/tools failed:", error);
     sendError(res, error);

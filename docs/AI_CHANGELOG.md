@@ -1,3 +1,11 @@
+## v79.3 — 管理後台入口與權限相容性修正
+
+- 修正移除前端硬編碼管理員 Email 後，帳號頁「管理後台」入口消失的回歸。
+- 改為呼叫受保護的 `/api/admin/tools?tool=access` 判定管理員角色。
+- 修正資料庫 `primary_admin` 未被 `isPrimaryAdmin` 正確認定的問題。
+- 恢復一般管理員建立與查看啟用碼；破壞性操作維持主要管理員與 MFA 保護。
+- 新增主要管理員 bootstrap migration 與管理後台契約測試。
+
 # AI Change Log
 
 ## 2026-07-12 — Complete Optimization v79

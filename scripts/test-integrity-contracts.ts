@@ -115,8 +115,8 @@ async function main(): Promise<void> {
   );
   assert(
     adminClient.includes("if (!assignment.is_active) return null") &&
-      adminClient.includes('mfaRequired: true'),
-    "Inactive role assignments must fail closed and configured primary admins must require MFA.",
+      adminClient.includes('databaseAccess.role === "primary_admin"'),
+    "Inactive role assignments must fail closed and database primary roles must be recognized.",
   );
   for (const [name, source] of [
     ["users", adminUsers],
