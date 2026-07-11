@@ -19,3 +19,9 @@
 - 題庫說明必須保留完整原文；OCR 內容只能標示為未校對、已逐字校對或需複查。
 - 管理權限以 `user_id` 角色為主，Email 僅保留主要管理員 bootstrap fallback。
 - 已發布題庫 release 不得直接修改，只能建立新版本或回滾。
+
+## 每日計畫單一來源
+
+- 首頁與每日練習只能透過 `src/lib/dailyPlanService.ts` 建立或讀取今日題列。
+- 不得在 `HomePage.tsx`、`ImageQuizPage.tsx` 或其他頁面複製 FSRS 到期判斷、錯題排序、科目平衡或 daily-plan localStorage 解析。
+- 修改每日計畫演算法時必須同步更新 `scripts/test-daily-plan-service.ts`。

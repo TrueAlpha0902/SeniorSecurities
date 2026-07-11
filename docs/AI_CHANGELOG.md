@@ -1,5 +1,23 @@
 ﻿# AI Change Log
 
+## 2026-07-11 — v73 Phase 2.1 驗證相容性修正
+
+- 移除 `ImageQuizPage.tsx` 未使用的 `WrongQuestionRecord` 型別 import。
+- 修正 DailyPlanService 測試在 `noUncheckedIndexedAccess` 下的型別錯誤。
+- Node 測試 TypeScript 設定加入 `vite/client`，讓共用 DailyPlanService 的型別依賴可完整建置。
+- ESLint 與 Git 忽略本機 `update-backups`，避免備份檔影響驗證。
+- 完整 `npm run verify` 已通過；無 migration、無新增 npm 套件。
+
+## 2026-07-11 — v73 Phase 2 DailyPlanService 單一來源
+
+- 新增共用 `DailyPlanService`，首頁與每日練習頁使用同一份當日不可變題列。
+- 統一 FSRS 到期判斷、錯題排序、新題配置、三科平衡、交錯順序、快取讀寫與剩餘題數計算。
+- 快取新增題庫 universe signature 與完整 plan snapshot，避免題庫更新或今日作答後造成首頁與練習頁漂移。
+- `DAILY_PLAN_STORAGE_VERSION` 更新至 42，舊快取安全失效。
+- 刪除 HomePage／ImageQuizPage 兩套重複 Daily Plan 邏輯。
+- 新增 `test:daily-plan` 並納入 `npm run verify`。
+- 無 Supabase migration、無新增 npm 套件。
+
 ## 2026-07-11 — v73 Phase 1 資料可靠性與多帳號隔離
 
 - FSRS learning attempt 與排行榜 answer event 納入持久 cloud mutation queue，離線及短暫同步失敗後可重新補送。

@@ -11,7 +11,7 @@ const STUDY_INTENSITY_KEY = "quizpwa:study-intensity";
 const DAILY_PLAN_KEY_PREFIX = "quizpwa:daily-plan:";
 
 export const STUDY_PLAN_CHANGED = "quizpwa:study-plan-changed";
-export const DAILY_PLAN_STORAGE_VERSION = 41;
+export const DAILY_PLAN_STORAGE_VERSION = 42;
 export const DAY_MS = 24 * 60 * 60 * 1000;
 
 export type StudyIntensity = "steady" | "standard" | "sprint";

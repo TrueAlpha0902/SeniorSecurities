@@ -2,12 +2,14 @@
 
 更新日期：2026-07-11
 
+目前進度：v73 Phase 2 已完成 DailyPlanService 單一來源；下一項為統一管理員授權與 AAL2。
+
 ## Phase 1 — Reliability stabilization
 
 - [x] Durable FSRS／leaderboard event outbox
 - [x] User-scoped local storage and conservative legacy migration
 - [x] GitHub Actions full verification
-- [ ] Single-source `DailyPlanService` shared by Home and ImageQuiz pages
+- [x] Single-source `DailyPlanService` shared by Home and ImageQuiz pages
 - [ ] Transaction-safe question release publish／rollback RPC
 - [ ] Unified admin authorization and AAL2 enforcement
 

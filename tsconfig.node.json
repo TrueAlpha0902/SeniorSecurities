@@ -16,7 +16,8 @@
     "isolatedModules": true,
     "noEmit": true,
     "types": [
-      "node"
+      "node",
+      "vite/client"
     ],
     "noUnusedLocals": true,
     "noUnusedParameters": true,

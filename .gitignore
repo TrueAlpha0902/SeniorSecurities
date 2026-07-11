@@ -18,3 +18,5 @@ yarn-error.log*
 pnpm-debug.log*
 supabase/.temp/
 *.tsbuildinfo
+
+update-backups/

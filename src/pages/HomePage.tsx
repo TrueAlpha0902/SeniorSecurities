@@ -20,8 +20,10 @@ import { useAsync } from "../hooks/useAsync";
 import { useAuth } from "../auth/AuthContext";
 import { listUserAnswers, listWrongQuestions } from "../lib/db";
 import {
+  loadAllImageQuestions,
   loadImageQuizBankSummaries,
   type ImageQuizBank,
+  type ImageQuizQuestion,
 } from "../lib/imageQuiz";
 import { calculateAccuracy } from "../lib/quiz";
 import {
@@ -31,11 +33,8 @@ import {
 } from "../lib/practiceTime";
 import {
   calculateSmartStudyPlanStats,
-  DAILY_PLAN_STORAGE_VERSION,
   formatExamDate,
   getStudyPlanConfig,
-  getStudyPlanSignature,
-  isReviewDue,
   localTodayKey,
   setStudyPlanConfig,
   STUDY_PLAN_CHANGED,
@@ -44,10 +43,11 @@ import {
   type StudyPlanConfig,
 } from "../lib/studyPlan";
 import {
-  readScopedStorageItem,
-  USER_STORAGE_SCOPE_CHANGED,
-} from "../lib/userScopedStorage";
-import type { UserAnswer, WrongQuestionRecord } from "../types";
+  buildOrReadDailyPlan,
+  type DailyPlanResult,
+} from "../lib/dailyPlanService";
+import { USER_STORAGE_SCOPE_CHANGED } from "../lib/userScopedStorage";
+import type { UserAnswer } from "../types";
 
 const T = {
   loading: "載入題庫",
@@ -102,21 +102,38 @@ const INTENSITY_OPTIONS: {
 
 const EMPTY_BANKS: ImageQuizBank[] = [];
 const EMPTY_ANSWERS: UserAnswer[] = [];
-const EMPTY_WRONGS: WrongQuestionRecord[] = [];
 
 type HomeData = {
   banks: ImageQuizBank[];
   answers: UserAnswer[];
-  wrongRecords: WrongQuestionRecord[];
+  dailyPlan?: DailyPlanResult;
 };
 
-async function loadHomeData(includePrivateData: boolean): Promise<HomeData> {
-  const [banks, answers, wrongRecords] = await Promise.all([
+async function loadHomeData(
+  includePrivateData: boolean,
+  userId: string | null,
+  examDate: string | null,
+  dailyStudyMinutes: number,
+  intensity: StudyIntensity,
+): Promise<HomeData> {
+  const [banks, allQuestions, answers, wrongRecords] = await Promise.all([
     loadImageQuizBankSummaries(),
+    includePrivateData
+      ? loadAllImageQuestions()
+      : Promise.resolve([] as ImageQuizQuestion[]),
     includePrivateData ? listUserAnswers() : Promise.resolve([]),
     includePrivateData ? listWrongQuestions() : Promise.resolve([]),
   ]);
-  return { banks, answers, wrongRecords };
+  const dailyPlan = includePrivateData
+    ? buildOrReadDailyPlan({
+        allQuestions,
+        storedAnswers: answers,
+        wrongRecords,
+        userId,
+        config: { examDate, dailyStudyMinutes, intensity },
+      })
+    : undefined;
+  return { banks, answers, dailyPlan };
 }
 
 export function HomePage() {
@@ -138,15 +155,28 @@ export function HomePage() {
   );
   const [setupDismissed, setSetupDismissed] = useState(false);
   const [dailyDetailsOpen, setDailyDetailsOpen] = useState(false);
-  const { isActivated } = useAuth();
+  const { isActivated, user } = useAuth();
   const { data, error, loading } = useAsync(
-    () => loadHomeData(isActivated),
-    [refreshKey, isActivated],
+    () =>
+      loadHomeData(
+        isActivated,
+        user?.id ?? null,
+        studyConfig.examDate,
+        studyConfig.dailyStudyMinutes,
+        studyConfig.intensity,
+      ),
+    [
+      refreshKey,
+      isActivated,
+      user?.id,
+      studyConfig.examDate,
+      studyConfig.dailyStudyMinutes,
+      studyConfig.intensity,
+    ],
   );
 
   const banks = data?.banks ?? EMPTY_BANKS;
   const answers = data?.answers ?? EMPTY_ANSWERS;
-  const wrongRecords = data?.wrongRecords ?? EMPTY_WRONGS;
 
   useEffect(() => {
     const refreshRecords = () => setRefreshKey((key) => key + 1);
@@ -207,50 +237,24 @@ export function HomePage() {
     answers,
     sourceBankIds,
   );
-  const planningAnswers = useMemo(
-    () => excludeTodayAnswers(answers, sourceBankIds),
-    [answers, sourceBankIds],
-  );
-  const smartInputs = useMemo(
-    () =>
-      calculateSmartInputs(
-        questionCount,
-        sourceBankIds,
-        planningAnswers,
-        wrongRecords,
-      ),
-    [planningAnswers, questionCount, sourceBankIds, wrongRecords],
-  );
-  const studyPlan = useMemo(
-    () =>
-      calculateSmartStudyPlanStats({
-        totalQuestions: questionCount,
-        unattemptedQuestions: smartInputs.unattemptedCount,
-        wrongDueQuestions: smartInputs.wrongDueCount,
-        reviewDueQuestions: smartInputs.reviewDueCount,
-        mixedPoolQuestions: smartInputs.mixedPoolCount,
-        examDate: studyConfig.examDate,
-        dailyStudyMinutes: studyConfig.dailyStudyMinutes,
-        intensity: studyConfig.intensity,
-      }),
-    [questionCount, smartInputs, studyConfig],
-  );
-  const dailyDisplayPlan = useMemo(
-    () =>
-      calculateDailyDisplayPlan(
-        studyPlan,
-        answers,
-        sourceBankIds,
-        questionCount,
-      ),
-    [answers, questionCount, sourceBankIds, studyPlan],
-  );
-  const homeDailyAllocations = useMemo(
-    () =>
-      (["wrong", "review", "new"] as DailyPlanCategory[]).map(
-        (category) => dailyDisplayPlan.allocations[category],
-      ),
-    [dailyDisplayPlan.allocations],
+  const dailyPlan = data?.dailyPlan;
+  const studyPlan = dailyPlan?.plan ??
+    calculateSmartStudyPlanStats({
+      totalQuestions: questionCount,
+      unattemptedQuestions: questionCount,
+      wrongDueQuestions: 0,
+      reviewDueQuestions: 0,
+      mixedPoolQuestions: 0,
+      examDate: studyConfig.examDate,
+      dailyStudyMinutes: studyConfig.dailyStudyMinutes,
+      intensity: studyConfig.intensity,
+    });
+  const dailyDisplayPlan = {
+    count: dailyPlan?.remainingCount ?? studyPlan.suggestedDailyCount,
+    allocations: dailyPlan?.remainingAllocations ?? studyPlan.allocations,
+  };
+  const homeDailyAllocations = (["wrong", "review", "new"] as DailyPlanCategory[]).map(
+    (category) => dailyDisplayPlan.allocations[category],
   );
 
   async function handlePlanSubmit(
@@ -710,227 +714,4 @@ function calculateOverallProgress(
       .map((answer) => answer.questionId),
   );
   return calculateAccuracy(answeredIds.size, questionCount);
-}
-
-function excludeTodayAnswers(
-  answers: UserAnswer[],
-  sourceBankIds: Set<string>,
-): UserAnswer[] {
-  const today = localTodayKey();
-  return answers.filter(
-    (answer) =>
-      sourceBankIds.has(answer.bankId) &&
-      localTodayKey(new Date(answer.answeredAt)) !== today,
-  );
-}
-
-function calculateSmartInputs(
-  questionCount: number,
-  sourceBankIds: Set<string>,
-  answers: UserAnswer[],
-  wrongRecords: WrongQuestionRecord[],
-) {
-  const answerById = new Map(
-    answers
-      .filter((answer) => sourceBankIds.has(answer.bankId))
-      .map((answer) => [answer.questionId, answer]),
-  );
-  const answeredIds = new Set(answerById.keys());
-  const wrongIds = new Set(
-    wrongRecords
-      .filter(
-        (record) =>
-          sourceBankIds.has(record.bankId) &&
-          answerById.get(record.questionId)?.isCorrect !== true,
-      )
-      .map((record) => record.questionId),
-  );
-  const reviewDueIds = new Set(
-    answers
-      .filter(
-        (answer) =>
-          sourceBankIds.has(answer.bankId) &&
-          answer.isCorrect &&
-          !wrongIds.has(answer.questionId) &&
-          isReviewDue(answer.answeredAt),
-      )
-      .map((answer) => answer.questionId),
-  );
-  return {
-    unattemptedCount: Math.max(0, questionCount - answeredIds.size),
-    wrongDueCount: wrongIds.size,
-    reviewDueCount: reviewDueIds.size,
-    mixedPoolCount: Math.max(
-      0,
-      answeredIds.size - wrongIds.size - reviewDueIds.size,
-    ),
-  };
-}
-
-type StoredDailyPlan = {
-  date: string;
-  version?: number;
-  planSignature?: string;
-  questionIds: string[];
-  plannedCount?: number;
-  categoryCounts?: Partial<Record<DailyPlanCategory, number>>;
-  categoryQuestionIds?: Partial<Record<DailyPlanCategory, string[]>>;
-};
-
-type DailyDisplayPlan = {
-  hasTodayPlan: boolean;
-  count: number;
-  targetCount: number;
-  allocations: ReturnType<typeof calculateSmartStudyPlanStats>["allocations"];
-};
-
-const DAILY_PLAN_CATEGORIES: DailyPlanCategory[] = [
-  "new",
-  "wrong",
-  "review",
-  "mixed",
-];
-
-function calculateDailyDisplayPlan(
-  studyPlan: ReturnType<typeof calculateSmartStudyPlanStats>,
-  answers: UserAnswer[],
-  sourceBankIds: Set<string>,
-  totalQuestionCount: number,
-): DailyDisplayPlan {
-  const todayAnsweredIds = getTodayAnsweredIds(answers, sourceBankIds);
-  const stored = readTodayDailyPlan(getStudyPlanSignature(studyPlan));
-  if (!stored) {
-    return {
-      hasTodayPlan: false,
-      count: studyPlan.suggestedDailyCount,
-      targetCount: studyPlan.suggestedDailyCount,
-      allocations: studyPlan.allocations,
-    };
-  }
-
-  const categoryIds = normalizeStoredCategoryIds(stored);
-  const remainingCounts = countRemainingByCategory(
-    categoryIds,
-    todayAnsweredIds,
-  );
-  const remainingTotal = Object.values(remainingCounts).reduce(
-    (sum, count) => sum + count,
-    0,
-  );
-  const allocations = Object.fromEntries(
-    DAILY_PLAN_CATEGORIES.map((category) => [
-      category,
-      {
-        ...studyPlan.allocations[category],
-        count: remainingCounts[category],
-        estimatedMinutes: remainingCounts[category],
-      },
-    ]),
-  ) as ReturnType<typeof calculateSmartStudyPlanStats>["allocations"];
-
-  return {
-    hasTodayPlan: true,
-    count: Math.min(remainingTotal, totalQuestionCount),
-    targetCount: Math.min(
-      stored.plannedCount ?? stored.questionIds.length,
-      totalQuestionCount,
-    ),
-    allocations,
-  };
-}
-
-function readTodayDailyPlan(
-  expectedPlanSignature: string,
-): StoredDailyPlan | undefined {
-  if (typeof window === "undefined") return undefined;
-  const raw = readScopedStorageItem(
-    `quizpwa:daily-plan:${localTodayKey()}`,
-  );
-  if (!raw) return undefined;
-  try {
-    const stored = JSON.parse(raw) as StoredDailyPlan;
-    if (
-      stored.date !== localTodayKey() ||
-      stored.version !== DAILY_PLAN_STORAGE_VERSION ||
-      stored.planSignature !== expectedPlanSignature ||
-      !Array.isArray(stored.questionIds)
-    )
-      return undefined;
-    const questionIds = stored.questionIds.filter(
-      (questionId): questionId is string =>
-        typeof questionId === "string" && questionId.length > 0,
-    );
-    if (questionIds.length === 0) return undefined;
-    return { ...stored, questionIds };
-  } catch {
-    return undefined;
-  }
-}
-
-function normalizeStoredCategoryIds(
-  stored: StoredDailyPlan,
-): Record<DailyPlanCategory, string[]> {
-  const validIds = (values: string[] | undefined) =>
-    (values ?? []).filter(
-      (questionId) => typeof questionId === "string" && questionId.length > 0,
-    );
-  if (stored.categoryQuestionIds) {
-    return {
-      new: validIds(stored.categoryQuestionIds.new),
-      wrong: validIds(stored.categoryQuestionIds.wrong),
-      review: validIds(stored.categoryQuestionIds.review),
-      mixed: validIds(stored.categoryQuestionIds.mixed),
-    };
-  }
-
-  const result: Record<DailyPlanCategory, string[]> = {
-    new: [],
-    wrong: [],
-    review: [],
-    mixed: [],
-  };
-  let cursor = 0;
-  for (const category of DAILY_PLAN_CATEGORIES) {
-    const count = Math.max(0, stored.categoryCounts?.[category] ?? 0);
-    result[category] = validIds(
-      stored.questionIds.slice(cursor, cursor + count),
-    );
-    cursor += count;
-  }
-  return result;
-}
-
-function countRemainingByCategory(
-  categoryIds: Record<DailyPlanCategory, string[]>,
-  answeredIds: Set<string>,
-): Record<DailyPlanCategory, number> {
-  return {
-    new: categoryIds.new.filter((questionId) => !answeredIds.has(questionId))
-      .length,
-    wrong: categoryIds.wrong.filter(
-      (questionId) => !answeredIds.has(questionId),
-    ).length,
-    review: categoryIds.review.filter(
-      (questionId) => !answeredIds.has(questionId),
-    ).length,
-    mixed: categoryIds.mixed.filter(
-      (questionId) => !answeredIds.has(questionId),
-    ).length,
-  };
-}
-
-function getTodayAnsweredIds(
-  answers: UserAnswer[],
-  sourceBankIds: Set<string>,
-): Set<string> {
-  const today = localTodayKey();
-  return new Set(
-    answers
-      .filter(
-        (answer) =>
-          sourceBankIds.has(answer.bankId) &&
-          localTodayKey(new Date(answer.answeredAt)) === today,
-      )
-      .map((answer) => answer.questionId),
-  );
 }

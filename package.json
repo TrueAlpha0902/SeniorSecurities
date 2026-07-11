@@ -18,8 +18,9 @@
     "test:learning": "tsx scripts/test-learning-engine.ts",
     "activation:code": "tsx scripts/generate-activation-code.ts",
     "dev:admin": "npx vercel dev",
-    "verify": "npm run typecheck && npm run typecheck:api && npm run lint && npm run test:calculator && npm run test:learning && npm run test:storage && npm run validate:data && npm run build",
-    "test:storage": "tsx scripts/test-user-scoped-storage.ts"
+    "verify": "npm run typecheck && npm run typecheck:api && npm run lint && npm run test:calculator && npm run test:learning && npm run test:storage && npm run test:daily-plan && npm run validate:data && npm run build",
+    "test:storage": "tsx scripts/test-user-scoped-storage.ts",
+    "test:daily-plan": "tsx scripts/test-daily-plan-service.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.53.0",
