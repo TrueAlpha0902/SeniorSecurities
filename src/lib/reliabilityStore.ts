@@ -12,12 +12,17 @@ export type ReliabilityQueueEntry<TPayload = unknown> = {
   payload: TPayload;
 };
 
-export type ReliabilityDeadLetter<TPayload = unknown> = ReliabilityQueueEntry<TPayload> & {
-  failedAt: string;
-};
+export type ReliabilityDeadLetter<TPayload = unknown> =
+  ReliabilityQueueEntry<TPayload> & {
+    failedAt: string;
+  };
 
 type LearningStateRecord = { questionId: string; [key: string]: unknown };
-type LearningAttemptRecord = { eventId: string; answeredAt: string; [key: string]: unknown };
+type LearningAttemptRecord = {
+  eventId: string;
+  answeredAt: string;
+  [key: string]: unknown;
+};
 type SyncMetadataRecord = { key: string; value: unknown; updatedAt: string };
 
 interface ReliabilityDatabase extends DBSchema {
@@ -52,13 +57,18 @@ interface ReliabilityDatabase extends DBSchema {
 
 const DB_PREFIX = "senior-securities-reliability-v1";
 const DB_VERSION = 1;
-const dbPromises = new Map<string, Promise<IDBPDatabase<ReliabilityDatabase>>>();
+const dbPromises = new Map<
+  string,
+  Promise<IDBPDatabase<ReliabilityDatabase>>
+>();
 
 function databaseName(userId: string | null): string {
   return `${DB_PREFIX}:${userId || "guest"}`;
 }
 
-async function openReliabilityDatabase(userId: string | null): Promise<IDBPDatabase<ReliabilityDatabase>> {
+async function openReliabilityDatabase(
+  userId: string | null,
+): Promise<IDBPDatabase<ReliabilityDatabase>> {
   const name = databaseName(userId);
   const existing = dbPromises.get(name);
   if (existing) return existing;
@@ -69,7 +79,9 @@ async function openReliabilityDatabase(userId: string | null): Promise<IDBPDatab
         db.createObjectStore("learningStates", { keyPath: "questionId" });
       }
       if (!db.objectStoreNames.contains("learningAttempts")) {
-        const store = db.createObjectStore("learningAttempts", { keyPath: "eventId" });
+        const store = db.createObjectStore("learningAttempts", {
+          keyPath: "eventId",
+        });
         store.createIndex("by-answeredAt", "answeredAt");
       }
       if (!db.objectStoreNames.contains("cloudQueue")) {
@@ -91,7 +103,9 @@ async function openReliabilityDatabase(userId: string | null): Promise<IDBPDatab
   return promise;
 }
 
-export async function loadReliabilityLearningData<TState, TAttempt>(userId: string | null): Promise<{
+export async function loadReliabilityLearningData<TState, TAttempt>(
+  userId: string | null,
+): Promise<{
   states: TState[];
   attempts: TAttempt[];
 }> {
@@ -103,18 +117,40 @@ export async function loadReliabilityLearningData<TState, TAttempt>(userId: stri
   return { states: states as TState[], attempts: attempts as TAttempt[] };
 }
 
-export async function persistReliabilityLearningUpdate<TState extends { questionId: string }, TAttempt extends { eventId: string; answeredAt: string }>(
+export async function persistReliabilityLearningUpdate<
+  TState extends { questionId: string },
+  TAttempt extends { eventId: string; answeredAt: string },
+  TPayload = unknown,
+>(
   userId: string | null,
   state: TState,
   attempt: TAttempt,
   maxAttempts: number,
+  queueEntries: ReliabilityQueueEntry<TPayload>[] = [],
 ): Promise<void> {
   const db = await openReliabilityDatabase(userId);
-  const tx = db.transaction(["learningStates", "learningAttempts"], "readwrite");
+  const tx = db.transaction(
+    ["learningStates", "learningAttempts", "cloudQueue"],
+    "readwrite",
+  );
   await Promise.all([
     tx.objectStore("learningStates").put(state as LearningStateRecord),
     tx.objectStore("learningAttempts").put(attempt as LearningAttemptRecord),
   ]);
+
+  const queueStore = tx.objectStore("cloudQueue");
+  for (const entry of queueEntries) {
+    if (entry.coalesceKey) {
+      let queueCursor = await queueStore
+        .index("by-coalesceKey")
+        .openCursor(entry.coalesceKey);
+      while (queueCursor) {
+        await queueCursor.delete();
+        queueCursor = await queueCursor.continue();
+      }
+    }
+    await queueStore.put(entry as ReliabilityQueueEntry);
+  }
 
   const attemptsStore = tx.objectStore("learningAttempts");
   let excess = Math.max(0, (await attemptsStore.count()) - maxAttempts);
@@ -129,29 +165,37 @@ export async function persistReliabilityLearningUpdate<TState extends { question
   await tx.done;
 }
 
-export async function replaceReliabilityLearningData<TState extends { questionId: string }, TAttempt extends { eventId: string; answeredAt: string }>(
+export async function replaceReliabilityLearningData<
+  TState extends { questionId: string },
+  TAttempt extends { eventId: string; answeredAt: string },
+>(
   userId: string | null,
   states: TState[],
   attempts: TAttempt[],
   maxAttempts: number,
 ): Promise<void> {
   const db = await openReliabilityDatabase(userId);
-  const tx = db.transaction(["learningStates", "learningAttempts"], "readwrite");
+  const tx = db.transaction(
+    ["learningStates", "learningAttempts"],
+    "readwrite",
+  );
   await Promise.all([
     tx.objectStore("learningStates").clear(),
     tx.objectStore("learningAttempts").clear(),
   ]);
-  for (const state of states) await tx.objectStore("learningStates").put(state as LearningStateRecord);
+  for (const state of states)
+    await tx.objectStore("learningStates").put(state as LearningStateRecord);
   for (const attempt of attempts.slice(-maxAttempts)) {
-    await tx.objectStore("learningAttempts").put(attempt as LearningAttemptRecord);
+    await tx
+      .objectStore("learningAttempts")
+      .put(attempt as LearningAttemptRecord);
   }
   await tx.done;
 }
 
-export async function mergeReliabilityLearningStates<TState extends { questionId: string }>(
-  userId: string | null,
-  states: TState[],
-): Promise<void> {
+export async function mergeReliabilityLearningStates<
+  TState extends { questionId: string },
+>(userId: string | null, states: TState[]): Promise<void> {
   if (!states.length) return;
   const db = await openReliabilityDatabase(userId);
   const tx = db.transaction("learningStates", "readwrite");
@@ -166,7 +210,9 @@ export async function enqueueReliabilityMutation<TPayload>(
   const db = await openReliabilityDatabase(userId);
   const tx = db.transaction("cloudQueue", "readwrite");
   if (entry.coalesceKey) {
-    let cursor = await tx.store.index("by-coalesceKey").openCursor(entry.coalesceKey);
+    let cursor = await tx.store
+      .index("by-coalesceKey")
+      .openCursor(entry.coalesceKey);
     while (cursor) {
       await cursor.delete();
       cursor = await cursor.continue();
@@ -183,7 +229,8 @@ export async function replaceReliabilityQueue<TPayload>(
   const db = await openReliabilityDatabase(userId);
   const tx = db.transaction("cloudQueue", "readwrite");
   await tx.store.clear();
-  for (const entry of entries) await tx.store.put(entry as ReliabilityQueueEntry);
+  for (const entry of entries)
+    await tx.store.put(entry as ReliabilityQueueEntry);
   await tx.done;
 }
 
@@ -193,7 +240,10 @@ export async function listReliabilityQueue<TPayload>(
 ): Promise<ReliabilityQueueEntry<TPayload>[]> {
   const db = await openReliabilityDatabase(userId);
   const results: ReliabilityQueueEntry<TPayload>[] = [];
-  let cursor = await db.transaction("cloudQueue").store.index("by-createdAt").openCursor();
+  let cursor = await db
+    .transaction("cloudQueue")
+    .store.index("by-nextAttemptAt")
+    .openCursor();
   while (cursor && results.length < limit) {
     results.push(cursor.value as ReliabilityQueueEntry<TPayload>);
     cursor = await cursor.continue();
@@ -209,19 +259,29 @@ export async function listDueReliabilityQueue<TPayload>(
   const db = await openReliabilityDatabase(userId);
   const results: ReliabilityQueueEntry<TPayload>[] = [];
   const range = IDBKeyRange.upperBound(nowIso);
-  let cursor = await db.transaction("cloudQueue").store.index("by-nextAttemptAt").openCursor(range);
+  let cursor = await db
+    .transaction("cloudQueue")
+    .store.index("by-nextAttemptAt")
+    .openCursor(range);
   while (cursor && results.length < limit) {
     results.push(cursor.value as ReliabilityQueueEntry<TPayload>);
     cursor = await cursor.continue();
   }
-  return results.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  return results.sort(
+    (a, b) =>
+      a.nextAttemptAt.localeCompare(b.nextAttemptAt) ||
+      a.createdAt.localeCompare(b.createdAt),
+  );
 }
 
 export async function countReliabilityQueue(userId: string): Promise<number> {
   return (await openReliabilityDatabase(userId)).count("cloudQueue");
 }
 
-export async function deleteReliabilityQueueEntries(userId: string, ids: string[]): Promise<void> {
+export async function deleteReliabilityQueueEntries(
+  userId: string,
+  ids: string[],
+): Promise<void> {
   if (!ids.length) return;
   const db = await openReliabilityDatabase(userId);
   const tx = db.transaction("cloudQueue", "readwrite");
@@ -243,22 +303,121 @@ export async function moveReliabilityQueueEntryToDeadLetter<TPayload>(
 ): Promise<void> {
   const db = await openReliabilityDatabase(userId);
   const tx = db.transaction(["cloudQueue", "deadLetters"], "readwrite");
-  await tx.objectStore("deadLetters").put({ ...entry, failedAt: new Date().toISOString() } as ReliabilityDeadLetter);
+  await tx.objectStore("deadLetters").put({
+    ...entry,
+    failedAt: new Date().toISOString(),
+  } as ReliabilityDeadLetter);
   await tx.objectStore("cloudQueue").delete(entry.id);
   await tx.done;
 }
 
-export async function countReliabilityDeadLetters(userId: string): Promise<number> {
+export async function countReliabilityDeadLetters(
+  userId: string,
+): Promise<number> {
   return (await openReliabilityDatabase(userId)).count("deadLetters");
 }
 
-export async function getReliabilityMetadata<T>(userId: string | null, key: string): Promise<T | null> {
-  const row = await (await openReliabilityDatabase(userId)).get("syncMetadata", key);
-  return row ? row.value as T : null;
+export async function listReliabilityDeadLetters<TPayload>(
+  userId: string,
+  limit = 50,
+): Promise<ReliabilityDeadLetter<TPayload>[]> {
+  const db = await openReliabilityDatabase(userId);
+  const results: ReliabilityDeadLetter<TPayload>[] = [];
+  let cursor = await db
+    .transaction("deadLetters")
+    .store.index("by-failedAt")
+    .openCursor(null, "prev");
+  while (cursor && results.length < limit) {
+    results.push(cursor.value as ReliabilityDeadLetter<TPayload>);
+    cursor = await cursor.continue();
+  }
+  return results;
 }
 
-export async function setReliabilityMetadata(userId: string | null, key: string, value: unknown): Promise<void> {
-  await (await openReliabilityDatabase(userId)).put("syncMetadata", {
+export async function retryReliabilityDeadLetters(
+  userId: string,
+  ids?: string[],
+): Promise<number> {
+  const db = await openReliabilityDatabase(userId);
+  const tx = db.transaction(["deadLetters", "cloudQueue"], "readwrite");
+  const deadLetterStore = tx.objectStore("deadLetters");
+  const queueStore = tx.objectStore("cloudQueue");
+  const selected = ids?.length
+    ? (await Promise.all(ids.map((id) => deadLetterStore.get(id)))).filter(
+        (entry): entry is ReliabilityDeadLetter => Boolean(entry),
+      )
+    : await deadLetterStore.getAll();
+  const now = new Date().toISOString();
+
+  for (const deadLetter of selected) {
+    if (deadLetter.coalesceKey) {
+      let cursor = await queueStore
+        .index("by-coalesceKey")
+        .openCursor(deadLetter.coalesceKey);
+      while (cursor) {
+        await cursor.delete();
+        cursor = await cursor.continue();
+      }
+    }
+    await queueStore.put({
+      id: deadLetter.id,
+      userId: deadLetter.userId,
+      createdAt: deadLetter.createdAt,
+      updatedAt: now,
+      coalesceKey: deadLetter.coalesceKey,
+      attemptCount: 0,
+      nextAttemptAt: now,
+      lastError: null,
+      payload: deadLetter.payload,
+    });
+    await deadLetterStore.delete(deadLetter.id);
+  }
+
+  await tx.done;
+  return selected.length;
+}
+
+export async function deleteReliabilityDeadLetters(
+  userId: string,
+  ids?: string[],
+): Promise<number> {
+  const db = await openReliabilityDatabase(userId);
+  const tx = db.transaction("deadLetters", "readwrite");
+  if (!ids?.length) {
+    const count = await tx.store.count();
+    await tx.store.clear();
+    await tx.done;
+    return count;
+  }
+  let removed = 0;
+  for (const id of ids) {
+    if (await tx.store.get(id)) {
+      await tx.store.delete(id);
+      removed += 1;
+    }
+  }
+  await tx.done;
+  return removed;
+}
+
+export async function getReliabilityMetadata<T>(
+  userId: string | null,
+  key: string,
+): Promise<T | null> {
+  const row = await (
+    await openReliabilityDatabase(userId)
+  ).get("syncMetadata", key);
+  return row ? (row.value as T) : null;
+}
+
+export async function setReliabilityMetadata(
+  userId: string | null,
+  key: string,
+  value: unknown,
+): Promise<void> {
+  await (
+    await openReliabilityDatabase(userId)
+  ).put("syncMetadata", {
     key,
     value,
     updatedAt: new Date().toISOString(),

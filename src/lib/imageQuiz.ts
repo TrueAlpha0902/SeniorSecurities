@@ -85,7 +85,10 @@ type SimilarQuestionData = {
   groups: SimilarQuestionGroup[];
 };
 
-export type ImageQuizPlanningQuestion = Pick<ImageQuizQuestion, "id" | "bankId">;
+export type ImageQuizPlanningQuestion = Pick<
+  ImageQuizQuestion,
+  "id" | "bankId"
+>;
 
 type ImageQuizPlanningIndexData = {
   version: 1;
@@ -111,11 +114,12 @@ type QuestionShardManifestBank = {
 };
 
 export type QuestionReleaseManifest = {
-  schemaVersion: 1;
+  schemaVersion: 2;
   releaseId: string;
   sourceHash: string;
   generatedAt: string;
   totalQuestions: number;
+  questionIndex: Record<string, string>;
   banks: QuestionShardManifestBank[];
 };
 
@@ -132,10 +136,14 @@ const sourceChapterCache = new Map<string, Promise<ImageQuizChapter>>();
 const similarGroupsCache: { promise?: Promise<SimilarQuestionGroup[]> } = {};
 const trialQuestionsCache: { promise?: Promise<ImageQuizQuestion[]> } = {};
 const summaryBanksCache: { promise?: Promise<ImageQuizBank[]> } = {};
-const planningIndexCache: { promise?: Promise<ImageQuizPlanningQuestion[]> } = {};
-const questionOverridesCache: { promise?: Promise<Map<string, ImageQuizQuestionOverride>> } = {};
+const planningIndexCache: { promise?: Promise<ImageQuizPlanningQuestion[]> } =
+  {};
+const questionOverridesCache: {
+  promise?: Promise<Map<string, ImageQuizQuestionOverride>>;
+} = {};
 const SECURITIES_COMBINED_BANK_ID = "securities-laws-practice";
-const SECURITIES_COMBINED_BANK_TITLE = "\u8b49\u5238\u76f8\u95dc\u6cd5\u898f\u8207\u5be6\u52d9";
+const SECURITIES_COMBINED_BANK_TITLE =
+  "\u8b49\u5238\u76f8\u95dc\u6cd5\u898f\u8207\u5be6\u52d9";
 
 const CHAPTER_TOPIC_TITLES: Record<string, Record<string, string>> = {
   investment: {
@@ -196,16 +204,22 @@ export function assetUrl(path: string): string {
 
 async function fetchJson<T>(path: string, version?: string): Promise<T> {
   const url = assetUrl(path);
-  const requestUrl = version ? `${url}${url.includes("?") ? "&" : "?"}v=${encodeURIComponent(version)}` : url;
+  const requestUrl = version
+    ? `${url}${url.includes("?") ? "&" : "?"}v=${encodeURIComponent(version)}`
+    : url;
   const response = await fetch(requestUrl);
   if (!response.ok) {
-    throw new Error(`\u7121\u6cd5\u8f09\u5165 ${path}: ${response.status} ${response.statusText}`);
+    throw new Error(
+      `\u7121\u6cd5\u8f09\u5165 ${path}: ${response.status} ${response.statusText}`,
+    );
   }
   return (await response.json()) as T;
 }
 
 export async function loadQuestionReleaseManifest(): Promise<QuestionReleaseManifest> {
-  manifestCache.promise ??= fetchJson<QuestionReleaseManifest>("data/question-release-manifest.json");
+  manifestCache.promise ??= fetchJson<QuestionReleaseManifest>(
+    "data/question-release-manifest.json",
+  );
   return manifestCache.promise;
 }
 
@@ -216,20 +230,47 @@ async function loadSourceChapter(
   const key = `${bank.bankId}:${chapter.chapterId}:${chapter.hash}`;
   let promise = sourceChapterCache.get(key);
   if (!promise) {
-    promise = fetchJson<QuestionShardPayload>(chapter.path, chapter.hash).then((payload) => payload.chapter);
+    promise = fetchJson<QuestionShardPayload>(chapter.path, chapter.hash).then(
+      (payload) => payload.chapter,
+    );
     sourceChapterCache.set(key, promise);
   }
   return promise;
 }
 
-async function loadSourceBank(bankId: string): Promise<ImageQuizBank | undefined> {
+function findManifestChapterByPath(
+  manifest: QuestionReleaseManifest,
+  shardPath: string,
+):
+  | { bank: QuestionShardManifestBank; chapter: QuestionShardManifestChapter }
+  | undefined {
+  for (const bank of manifest.banks) {
+    const chapter = bank.chapters.find(
+      (candidate) => candidate.path === shardPath,
+    );
+    if (chapter) return { bank, chapter };
+  }
+  return undefined;
+}
+
+async function loadSourceBank(
+  bankId: string,
+): Promise<ImageQuizBank | undefined> {
   let promise = sourceBankCache.get(bankId);
   if (!promise) {
     promise = loadQuestionReleaseManifest().then(async (manifest) => {
-      const bank = manifest.banks.find((candidate) => candidate.bankId === bankId);
+      const bank = manifest.banks.find(
+        (candidate) => candidate.bankId === bankId,
+      );
       if (!bank) return undefined;
-      const chapters = await Promise.all(bank.chapters.map((chapter) => loadSourceChapter(bank, chapter)));
-      return enrichBankTopics({ bankId: bank.bankId, bankTitle: bank.bankTitle, chapters });
+      const chapters = await Promise.all(
+        bank.chapters.map((chapter) => loadSourceChapter(bank, chapter)),
+      );
+      return enrichBankTopics({
+        bankId: bank.bankId,
+        bankTitle: bank.bankTitle,
+        chapters,
+      });
     });
     sourceBankCache.set(bankId, promise);
   }
@@ -237,12 +278,19 @@ async function loadSourceBank(bankId: string): Promise<ImageQuizBank | undefined
 }
 
 export async function loadImageQuizData(): Promise<ImageQuizData> {
-  dataCache.promise ??= Promise.all([loadQuestionReleaseManifest(), loadQuestionOverrides()])
-    .then(async ([manifest, overrides]) => {
-      const sourceBanks = (await Promise.all(manifest.banks.map((bank) => loadSourceBank(bank.bankId))))
-        .filter((bank): bank is ImageQuizBank => Boolean(bank));
-      return normalizeImageQuizData(applyQuestionOverrides({ banks: sourceBanks }, overrides));
-    });
+  dataCache.promise ??= Promise.all([
+    loadQuestionReleaseManifest(),
+    loadQuestionOverrides(),
+  ]).then(async ([manifest, overrides]) => {
+    const sourceBanks = (
+      await Promise.all(
+        manifest.banks.map((bank) => loadSourceBank(bank.bankId)),
+      )
+    ).filter((bank): bank is ImageQuizBank => Boolean(bank));
+    return normalizeImageQuizData(
+      applyQuestionOverrides({ banks: sourceBanks }, overrides),
+    );
+  });
   return dataCache.promise;
 }
 
@@ -250,34 +298,66 @@ export async function loadImageQuizBanks(): Promise<ImageQuizBank[]> {
   return (await loadImageQuizData()).banks;
 }
 
+export async function loadImageQuizEditorBanks(): Promise<ImageQuizBank[]> {
+  const [manifest, overrides] = await Promise.all([
+    loadQuestionReleaseManifest(),
+    loadQuestionOverrides(),
+  ]);
+  const sourceBanks = (
+    await Promise.all(
+      manifest.banks.map((bank) => loadSourceBank(bank.bankId)),
+    )
+  ).filter((bank): bank is ImageQuizBank => Boolean(bank));
+  return applyQuestionOverrides({ banks: sourceBanks }, overrides).banks;
+}
+
 export async function loadImageQuizBankSummaries(): Promise<ImageQuizBank[]> {
   summaryBanksCache.promise ??= loadQuestionReleaseManifest()
-    .then((manifest) => fetchJson<ImageQuizData>("data/pdf-image-quiz-summary.json", manifest.releaseId))
+    .then((manifest) =>
+      fetchJson<ImageQuizData>(
+        "data/pdf-image-quiz-summary.json",
+        manifest.releaseId,
+      ),
+    )
     .then(normalizeImageQuizData)
     .then((data) => data.banks);
   return summaryBanksCache.promise;
 }
 
-export async function loadImageQuizPlanningIndex(): Promise<ImageQuizPlanningQuestion[]> {
+export async function loadImageQuizPlanningIndex(): Promise<
+  ImageQuizPlanningQuestion[]
+> {
   planningIndexCache.promise ??= loadQuestionReleaseManifest()
-    .then((manifest) => fetchJson<ImageQuizPlanningIndexData>("data/pdf-image-quiz-plan-index.json", manifest.releaseId))
+    .then((manifest) =>
+      fetchJson<ImageQuizPlanningIndexData>(
+        "data/pdf-image-quiz-plan-index.json",
+        manifest.releaseId,
+      ),
+    )
     .then((data) => data.questions);
   return planningIndexCache.promise;
 }
 
-export async function loadImageQuizBank(bankId: string): Promise<ImageQuizBank | undefined> {
+export async function loadImageQuizBank(
+  bankId: string,
+): Promise<ImageQuizBank | undefined> {
   if (bankId === SECURITIES_COMBINED_BANK_ID) {
     const [regulations, practice] = await Promise.all([
       loadSourceBank("securities-trading-regulations"),
       loadSourceBank("securities-trading-practice"),
     ]);
     if (!regulations || !practice) return undefined;
-    return normalizeImageQuizData({ banks: [regulations, practice] }).banks.find((bank) => bank.bankId === bankId);
+    return normalizeImageQuizData({
+      banks: [regulations, practice],
+    }).banks.find((bank) => bank.bankId === bankId);
   }
   return loadSourceBank(bankId);
 }
 
-export async function loadImageQuizChapter(bankId: string, chapterId: string): Promise<ImageQuizChapter | undefined> {
+export async function loadImageQuizChapter(
+  bankId: string,
+  chapterId: string,
+): Promise<ImageQuizChapter | undefined> {
   if (bankId === SECURITIES_COMBINED_BANK_ID) {
     const source = chapterId.startsWith("regulations-")
       ? { bankId: "securities-trading-regulations", prefix: "regulations" }
@@ -287,56 +367,185 @@ export async function loadImageQuizChapter(bankId: string, chapterId: string): P
     if (source) {
       const slug = chapterId.slice(source.prefix.length + 1);
       const manifest = await loadQuestionReleaseManifest();
-      const bank = manifest.banks.find((candidate) => candidate.bankId === source.bankId);
-      const chapter = bank?.chapters.find((candidate) => candidate.chapterSlug === slug);
+      const bank = manifest.banks.find(
+        (candidate) => candidate.bankId === source.bankId,
+      );
+      const chapter = bank?.chapters.find(
+        (candidate) => candidate.chapterSlug === slug,
+      );
       if (bank && chapter) {
         const loaded = await loadSourceChapter(bank, chapter);
-        const enriched = enrichBankTopics({ bankId: bank.bankId, bankTitle: bank.bankTitle, chapters: [loaded] }).chapters[0];
-        return enriched ? makeCombinedChapter(enriched, source.prefix === "regulations" ? "\u6cd5\u898f" : "\u5be6\u52d9", source.prefix) : undefined;
+        const enriched = enrichBankTopics({
+          bankId: bank.bankId,
+          bankTitle: bank.bankTitle,
+          chapters: [loaded],
+        }).chapters[0];
+        return enriched
+          ? makeCombinedChapter(
+              enriched,
+              source.prefix === "regulations" ? "\u6cd5\u898f" : "\u5be6\u52d9",
+              source.prefix,
+            )
+          : undefined;
       }
     }
   }
-  const bank = await loadImageQuizBank(bankId);
-  return bank?.chapters.find((chapter) => chapter.chapterId === chapterId);
+  const manifest = await loadQuestionReleaseManifest();
+  const bank = manifest.banks.find((candidate) => candidate.bankId === bankId);
+  const chapter = bank?.chapters.find(
+    (candidate) => candidate.chapterId === chapterId,
+  );
+  if (!bank || !chapter) return undefined;
+  const loaded = await loadSourceChapter(bank, chapter);
+  return enrichBankTopics({
+    bankId: bank.bankId,
+    bankTitle: bank.bankTitle,
+    chapters: [loaded],
+  }).chapters[0];
 }
 
-export async function loadImageBankQuestions(bankId: string): Promise<ImageQuizQuestion[]> {
+export async function loadImageBankQuestions(
+  bankId: string,
+): Promise<ImageQuizQuestion[]> {
   const bank = await loadImageQuizBank(bankId);
   if (!bank) throw new Error(`\u627e\u4e0d\u5230\u984c\u5eab\uff1a${bankId}`);
   const overrides = await loadQuestionOverrides();
-  return applyQuestionOverrides({ banks: [bank] }, overrides).banks[0]?.chapters.flatMap((chapter) => chapter.questions) ?? [];
+  return (
+    applyQuestionOverrides(
+      { banks: [bank] },
+      overrides,
+    ).banks[0]?.chapters.flatMap((chapter) => chapter.questions) ?? []
+  );
 }
 
-export async function loadImageChapterQuestions(bankId: string, chapterId: string): Promise<ImageQuizQuestion[]> {
+export async function loadImageChapterQuestions(
+  bankId: string,
+  chapterId: string,
+): Promise<ImageQuizQuestion[]> {
   const chapter = await loadImageQuizChapter(bankId, chapterId);
-  if (!chapter) throw new Error(`\u627e\u4e0d\u5230\u7ae0\u7bc0\uff1a${bankId} / ${chapterId}`);
+  if (!chapter)
+    throw new Error(
+      `\u627e\u4e0d\u5230\u7ae0\u7bc0\uff1a${bankId} / ${chapterId}`,
+    );
   const overrides = await loadQuestionOverrides();
-  const bank: ImageQuizBank = { bankId, bankTitle: chapter.bankTitle, chapters: [chapter] };
-  return applyQuestionOverrides({ banks: [bank] }, overrides).banks[0]?.chapters[0]?.questions ?? [];
+  const bank: ImageQuizBank = {
+    bankId,
+    bankTitle: chapter.bankTitle,
+    chapters: [chapter],
+  };
+  return (
+    applyQuestionOverrides({ banks: [bank] }, overrides).banks[0]?.chapters[0]
+      ?.questions ?? []
+  );
 }
 
 export async function loadAllImageQuestions(): Promise<ImageQuizQuestion[]> {
-  return (await loadImageQuizBanks()).flatMap((bank) => bank.chapters.flatMap((chapter) => chapter.questions));
+  return (await loadImageQuizBanks()).flatMap((bank) =>
+    bank.chapters.flatMap((chapter) => chapter.questions),
+  );
+}
+
+/** Loads only the chapter shards needed for the requested question ids. */
+export async function loadImageQuestionsByIds(
+  questionIds: readonly string[],
+): Promise<ImageQuizQuestion[]> {
+  if (questionIds.length === 0) return [];
+  const [manifest, overrides] = await Promise.all([
+    loadQuestionReleaseManifest(),
+    loadQuestionOverrides(),
+  ]);
+  const requestedIds = new Set(questionIds);
+  const shardPaths = [
+    ...new Set(
+      questionIds
+        .map((id) => manifest.questionIndex[id])
+        .filter((value): value is string => Boolean(value)),
+    ),
+  ];
+  const chapters = await Promise.all(
+    shardPaths.map(async (shardPath) => {
+      const entry = findManifestChapterByPath(manifest, shardPath);
+      return entry ? loadSourceChapter(entry.bank, entry.chapter) : undefined;
+    }),
+  );
+  const loadedQuestions = chapters
+    .filter((chapter): chapter is ImageQuizChapter => Boolean(chapter))
+    .flatMap((chapter) => chapter.questions)
+    .filter((question) => requestedIds.has(question.id));
+  const questionBank: ImageQuizBank = {
+    bankId: "__selected__",
+    bankTitle: "Selected questions",
+    chapters: [
+      {
+        bankId: "__selected__",
+        bankTitle: "Selected questions",
+        chapterId: "selected",
+        chapterTitle: "Selected questions",
+        chapterSlug: "selected",
+        sourceFile: "",
+        questionCount: loadedQuestions.length,
+        questions: loadedQuestions,
+      },
+    ],
+  };
+  const overridden =
+    applyQuestionOverrides({ banks: [questionBank] }, overrides).banks[0]
+      ?.chapters[0]?.questions ?? [];
+  const byId = new Map(overridden.map((question) => [question.id, question]));
+  return questionIds
+    .map((id) => byId.get(id))
+    .filter((question): question is ImageQuizQuestion => Boolean(question));
 }
 
 export async function loadTrialImageQuestions(): Promise<ImageQuizQuestion[]> {
-  trialQuestionsCache.promise ??= Promise.all([loadQuestionReleaseManifest(), loadQuestionOverrides()])
-    .then(([manifest, overrides]) => Promise.all([
-      fetchJson<ImageQuizData>("data/pdf-image-quiz-trial.json", manifest.releaseId),
-      Promise.resolve(overrides),
-    ]))
-    .then(([data, overrides]) => normalizeImageQuizData(applyQuestionOverrides(data, overrides)))
-    .then((data) => data.banks.flatMap((bank) => bank.chapters.flatMap((chapter) => chapter.questions)).slice(0, 10));
+  trialQuestionsCache.promise ??= Promise.all([
+    loadQuestionReleaseManifest(),
+    loadQuestionOverrides(),
+  ])
+    .then(([manifest, overrides]) =>
+      Promise.all([
+        fetchJson<ImageQuizData>(
+          "data/pdf-image-quiz-trial.json",
+          manifest.releaseId,
+        ),
+        Promise.resolve(overrides),
+      ]),
+    )
+    .then(([data, overrides]) =>
+      normalizeImageQuizData(applyQuestionOverrides(data, overrides)),
+    )
+    .then((data) =>
+      data.banks
+        .flatMap((bank) =>
+          bank.chapters.flatMap((chapter) => chapter.questions),
+        )
+        .slice(0, 10),
+    );
   return trialQuestionsCache.promise;
 }
 
-async function loadQuestionOverrides(): Promise<Map<string, ImageQuizQuestionOverride>> {
+async function loadQuestionOverrides(): Promise<
+  Map<string, ImageQuizQuestionOverride>
+> {
   questionOverridesCache.promise ??= (async () => {
     try {
-      const response = await fetch(assetUrl("api/question-overrides"), { cache: "no-store" });
-      if (!response.ok || !(response.headers.get("content-type") || "").includes("application/json")) return new Map();
-      const payload = await response.json() as QuestionOverridesResponse;
-      return new Map((payload.overrides || []).map((override) => [override.questionId, override]));
+      const response = await fetch(assetUrl("api/question-overrides"), {
+        cache: "no-store",
+      });
+      if (
+        !response.ok ||
+        !(response.headers.get("content-type") || "").includes(
+          "application/json",
+        )
+      )
+        return new Map();
+      const payload = (await response.json()) as QuestionOverridesResponse;
+      return new Map(
+        (payload.overrides || []).map((override) => [
+          override.questionId,
+          override,
+        ]),
+      );
     } catch {
       // Offline and local Vite mode keep using the bundled question bank.
       return new Map();
@@ -357,22 +566,31 @@ function applyQuestionOverrides(
         ...chapter,
         questions: chapter.questions.map((question) => {
           const override = overrides.get(question.id);
-          return override ? {
-            ...question,
-            answer: override.answer,
-            questionSegments: override.questionSegments,
-            explanationSegments: override.explanationSegments,
-          } : question;
+          return override
+            ? {
+                ...question,
+                answer: override.answer,
+                questionSegments: override.questionSegments,
+                explanationSegments: override.explanationSegments,
+              }
+            : question;
         }),
       })),
     })),
   };
 }
 
-export async function loadSimilarQuestionGroups(): Promise<SimilarQuestionGroup[]> {
-  similarGroupsCache.promise ??= loadQuestionReleaseManifest().then((manifest) => fetchJson<SimilarQuestionData>("data/similar-question-groups.json", manifest.releaseId)).then(
-    (data) => data.groups,
-  );
+export async function loadSimilarQuestionGroups(): Promise<
+  SimilarQuestionGroup[]
+> {
+  similarGroupsCache.promise ??= loadQuestionReleaseManifest()
+    .then((manifest) =>
+      fetchJson<SimilarQuestionData>(
+        "data/similar-question-groups.json",
+        manifest.releaseId,
+      ),
+    )
+    .then((data) => data.groups);
   return similarGroupsCache.promise;
 }
 
@@ -383,7 +601,9 @@ export function findImageQuestion(
   return questions.find((question) => question.id === questionId);
 }
 
-export function formatImageQuizQuestionSource(question: ImageQuizQuestion): string {
+export function formatImageQuizQuestionSource(
+  question: ImageQuizQuestion,
+): string {
   const base = `${question.bankTitle} / ${question.chapterTitle}`;
   const topic = question.chapterTopic?.trim();
   return topic ? `${base} - ${topic}` : base;
@@ -391,8 +611,12 @@ export function formatImageQuizQuestionSource(question: ImageQuizQuestion): stri
 
 function normalizeImageQuizData(data: ImageQuizData): ImageQuizData {
   const banks = data.banks.map(enrichBankTopics);
-  const regulations = banks.find((bank) => bank.bankId === "securities-trading-regulations");
-  const practice = banks.find((bank) => bank.bankId === "securities-trading-practice");
+  const regulations = banks.find(
+    (bank) => bank.bankId === "securities-trading-regulations",
+  );
+  const practice = banks.find(
+    (bank) => bank.bankId === "securities-trading-practice",
+  );
 
   if (!regulations || !practice) {
     return { banks };
@@ -402,15 +626,21 @@ function normalizeImageQuizData(data: ImageQuizData): ImageQuizData {
     bankId: SECURITIES_COMBINED_BANK_ID,
     bankTitle: SECURITIES_COMBINED_BANK_TITLE,
     chapters: [
-      ...regulations.chapters.map((chapter) => makeCombinedChapter(chapter, "\u6cd5\u898f", "regulations")),
-      ...practice.chapters.map((chapter) => makeCombinedChapter(chapter, "\u5be6\u52d9", "practice")),
+      ...regulations.chapters.map((chapter) =>
+        makeCombinedChapter(chapter, "\u6cd5\u898f", "regulations"),
+      ),
+      ...practice.chapters.map((chapter) =>
+        makeCombinedChapter(chapter, "\u5be6\u52d9", "practice"),
+      ),
     ],
   };
 
   return {
     banks: [
       ...banks.filter(
-        (bank) => bank.bankId !== "securities-trading-regulations" && bank.bankId !== "securities-trading-practice",
+        (bank) =>
+          bank.bankId !== "securities-trading-regulations" &&
+          bank.bankId !== "securities-trading-practice",
       ),
       combined,
     ],
@@ -421,7 +651,8 @@ function enrichBankTopics(bank: ImageQuizBank): ImageQuizBank {
   return {
     ...bank,
     chapters: bank.chapters.map((chapter) => {
-      const chapterTopic = CHAPTER_TOPIC_TITLES[bank.bankId]?.[chapter.chapterSlug];
+      const chapterTopic =
+        CHAPTER_TOPIC_TITLES[bank.bankId]?.[chapter.chapterSlug];
       return {
         ...chapter,
         chapterTopic,
@@ -436,7 +667,11 @@ function enrichBankTopics(bank: ImageQuizBank): ImageQuizBank {
   };
 }
 
-function makeCombinedChapter(chapter: ImageQuizChapter, label: string, prefix: string): ImageQuizChapter {
+function makeCombinedChapter(
+  chapter: ImageQuizChapter,
+  label: string,
+  prefix: string,
+): ImageQuizChapter {
   return {
     ...chapter,
     chapterId: `${prefix}-${chapter.chapterSlug}`,

@@ -5,9 +5,21 @@ import path from "node:path";
 const root = process.cwd();
 const sourcePath = path.join(root, "public", "data", "pdf-image-quiz.json");
 const outputRoot = path.join(root, "public", "data", "question-shards");
-const manifestPath = path.join(root, "public", "data", "question-release-manifest.json");
-const generatedReleasePath = path.join(root, "src", "generated", "questionRelease.ts");
+const manifestPath = path.join(
+  root,
+  "public",
+  "data",
+  "question-release-manifest.json",
+);
+const generatedReleasePath = path.join(
+  root,
+  "src",
+  "generated",
+  "questionRelease.ts",
+);
 const checkOnly = process.argv.includes("--check");
+
+type Question = { id: string };
 
 type Chapter = {
   bankId: string;
@@ -17,18 +29,19 @@ type Chapter = {
   chapterSlug: string;
   sourceFile: string;
   questionCount: number;
-  questions: unknown[];
+  questions: Question[];
 };
 
 type Bank = { bankId: string; bankTitle: string; chapters: Chapter[] };
 type SourceData = { banks: Bank[] };
 
 type Manifest = {
-  schemaVersion: 1;
+  schemaVersion: 2;
   releaseId: string;
   sourceHash: string;
   generatedAt: string;
   totalQuestions: number;
+  questionIndex: Record<string, string>;
   banks: Array<{
     bankId: string;
     bankTitle: string;
@@ -55,23 +68,41 @@ function sha256(value: string | Buffer): string {
 }
 
 function safeSegment(value: string): string {
-  return value.replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "chapter";
+  return (
+    value.replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "chapter"
+  );
 }
 
-async function build(): Promise<{ manifest: Manifest; files: Map<string, string> }> {
+async function build(): Promise<{
+  manifest: Manifest;
+  files: Map<string, string>;
+}> {
   const raw = await readFile(sourcePath);
   const data = JSON.parse(raw.toString("utf8")) as SourceData;
   const sourceHash = sha256(raw);
   const files = new Map<string, string>();
   let totalQuestions = 0;
+  const questionIndex: Record<string, string> = {};
 
   const banks = data.banks.map((bank) => {
     let bankQuestionCount = 0;
     const chapters = bank.chapters.map((chapter) => {
-      const payload = { bankId: bank.bankId, bankTitle: bank.bankTitle, chapter };
+      const payload = {
+        bankId: bank.bankId,
+        bankTitle: bank.bankTitle,
+        chapter,
+      };
       const content = stableJson(payload);
       const relativePath = `data/question-shards/${safeSegment(bank.bankId)}/${safeSegment(chapter.chapterSlug || chapter.chapterId)}.json`;
       files.set(relativePath, content);
+      for (const question of chapter.questions) {
+        if (!question.id || questionIndex[question.id]) {
+          throw new Error(
+            `Duplicate or empty question id: ${question.id || "<empty>"}`,
+          );
+        }
+        questionIndex[question.id] = relativePath;
+      }
       const questionCount = chapter.questions.length;
       bankQuestionCount += questionCount;
       totalQuestions += questionCount;
@@ -86,15 +117,25 @@ async function build(): Promise<{ manifest: Manifest; files: Map<string, string>
         bytes: Buffer.byteLength(content),
       };
     });
-    return { bankId: bank.bankId, bankTitle: bank.bankTitle, questionCount: bankQuestionCount, chapters };
+    return {
+      bankId: bank.bankId,
+      bankTitle: bank.bankTitle,
+      questionCount: bankQuestionCount,
+      chapters,
+    };
   });
 
   const manifest: Manifest = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     releaseId: sourceHash.slice(0, 16),
     sourceHash,
     generatedAt: new Date(0).toISOString(),
     totalQuestions,
+    questionIndex: Object.fromEntries(
+      Object.entries(questionIndex).sort(([left], [right]) =>
+        left.localeCompare(right),
+      ),
+    ),
     banks,
   };
   return { manifest, files };
@@ -102,7 +143,10 @@ async function build(): Promise<{ manifest: Manifest; files: Map<string, string>
 
 async function verifyFile(filePath: string, expected: string): Promise<void> {
   const actual = await readFile(filePath, "utf8").catch(() => "");
-  if (actual !== expected) throw new Error(`Generated question shard is stale: ${path.relative(root, filePath)}`);
+  if (actual !== expected)
+    throw new Error(
+      `Generated question shard is stale: ${path.relative(root, filePath)}`,
+    );
 }
 
 async function main(): Promise<void> {
@@ -113,8 +157,11 @@ async function main(): Promise<void> {
   if (checkOnly) {
     await verifyFile(manifestPath, manifestContent);
     await verifyFile(generatedReleasePath, generatedReleaseContent);
-    for (const [relativePath, content] of files) await verifyFile(path.join(root, "public", relativePath), content);
-    console.log(`Question shard manifest verified: ${manifest.totalQuestions} questions, ${files.size} chapter shards`);
+    for (const [relativePath, content] of files)
+      await verifyFile(path.join(root, "public", relativePath), content);
+    console.log(
+      `Question shard manifest verified: ${manifest.totalQuestions} questions, ${files.size} chapter shards`,
+    );
     return;
   }
 
@@ -127,7 +174,9 @@ async function main(): Promise<void> {
   await writeFile(manifestPath, manifestContent, "utf8");
   await mkdir(path.dirname(generatedReleasePath), { recursive: true });
   await writeFile(generatedReleasePath, generatedReleaseContent, "utf8");
-  console.log(`Question shards generated: ${manifest.totalQuestions} questions, ${files.size} chapter shards, release ${manifest.releaseId}`);
+  console.log(
+    `Question shards generated: ${manifest.totalQuestions} questions, ${files.size} chapter shards, release ${manifest.releaseId}`,
+  );
 }
 
 void main();

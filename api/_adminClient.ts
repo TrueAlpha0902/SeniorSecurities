@@ -28,8 +28,7 @@ export function getErrorStatusCode(error: unknown): number {
 
 const supabaseUrl = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "").trim();
 const serviceRoleKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || "").trim();
-const defaultAdminEmails = "true.alpha0902@gmail.com";
-const configuredAdminEmails = (process.env.ADMIN_EMAILS || defaultAdminEmails)
+const configuredAdminEmails = (process.env.ADMIN_EMAILS || "")
   .split(",")
   .map((email) => email.trim().toLowerCase())
   .filter(Boolean);
@@ -80,7 +79,8 @@ async function getDatabaseAdminAccess(userId: string, email: string): Promise<Da
     .select("role, is_active, mfa_required")
     .eq("user_id", userId)
     .maybeSingle();
-  if (!assignmentError && assignment?.is_active) {
+  if (!assignmentError && assignment) {
+    if (!assignment.is_active) return null;
     return {
       role: normalizeAdminRole(assignment.role),
       mfaRequired: Boolean(assignment.mfa_required),
@@ -128,7 +128,7 @@ export async function requireAdminUser(
   const email = data.user.email?.toLowerCase() || "";
   const isPrimaryAdmin = configuredAdminEmails.includes(email);
   const databaseAccess = isPrimaryAdmin
-    ? { role: "primary_admin" as AdminRole, mfaRequired: false }
+    ? { role: "primary_admin" as AdminRole, mfaRequired: true }
     : await getDatabaseAdminAccess(data.user.id, email);
   if (!databaseAccess) throw new HttpError("這個帳號沒有管理員權限。", 403);
 
@@ -169,6 +169,19 @@ export function sendError(res: ApiResponse, error: unknown): void {
   sendJson(res, statusCode, { error: message });
 }
 
+export function sendPublicJson(
+  res: ApiResponse,
+  statusCode: number,
+  payload: unknown,
+  options: { cacheControl?: string; etag?: string } = {},
+): void {
+  res.statusCode = statusCode;
+  res.setHeader("Cache-Control", options.cacheControl || "public, max-age=0, s-maxage=300, stale-while-revalidate=86400");
+  if (options.etag) res.setHeader("ETag", options.etag);
+  res.setHeader("Content-Type", "application/json; charset=utf-8");
+  res.end(JSON.stringify(payload));
+}
+
 export function requestIpAddress(req: ApiRequest): string | null {
   const forwarded = String(req.headers?.["x-forwarded-for"] || "").split(",")[0]?.trim();
   return forwarded || req.socket?.remoteAddress || null;
@@ -192,7 +205,5 @@ export async function writeAdminAudit(args: {
     metadata: args.metadata || {},
     ip_address: requestIpAddress(args.req),
   });
-  if (error) {
-    console.warn("Failed to write admin audit event:", error.message);
-  }
+  if (error) throw new Error(`Failed to write admin audit event: ${error.message}`);
 }

@@ -44,8 +44,8 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
-      - name: Install Chromium
-        run: npx playwright install --with-deps chromium
+      - name: Install Chromium and WebKit
+        run: npx playwright install --with-deps chromium webkit
       - name: Run browser, offline and accessibility tests
         run: npm run test:e2e
       - name: Upload browser artifacts
@@ -73,9 +73,9 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
-      - name: Wait for Git deployment
-        run: sleep 90
-      - name: Check production deployment
+      - name: Poll and check production deployment
         env:
           HEALTHCHECK_BASE_URL: ${{ vars.POST_DEPLOY_BASE_URL }}
+          HEALTHCHECK_TIMEOUT_MS: 480000
+          HEALTHCHECK_INTERVAL_MS: 15000
         run: npm run postdeploy:health

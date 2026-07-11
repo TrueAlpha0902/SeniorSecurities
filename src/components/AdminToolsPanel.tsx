@@ -1,13 +1,13 @@
 import { Activity, Clipboard, KeyRound, RefreshCcw, Save, ShieldCheck, Trash2, UsersRound, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type {
-  ImageQuizBank,
+import {
+  loadImageQuizEditorBanks,
+  type ImageQuizBank,
   ImageQuizQuestion,
   ImageQuizQuestionOverride,
   NumericAnswer,
   PdfCropSegment,
 } from "../lib/imageQuiz";
-import { assetUrl } from "../lib/imageQuiz";
 import { GlassButton } from "./GlassButton";
 import { GlassCard } from "./GlassCard";
 import { PdfSegmentStack } from "./PdfSegmentStack";
@@ -64,7 +64,6 @@ type ApiPayload = {
   health?: SystemHealthPayload;
 };
 
-type SourceQuestionData = { banks: ImageQuizBank[] };
 
 type ReleaseRow = {
   id: string;
@@ -436,15 +435,13 @@ function QuestionEditorTool({ accessToken, isPrimaryAdmin }: { accessToken: stri
     setLoading(true);
     setError("");
     try {
-      const [dataResponse, overrideResponse] = await Promise.all([
-        fetch(`${assetUrl("data/pdf-image-quiz.json")}?editor=1`),
+      const [source, overrideResponse] = await Promise.all([
+        loadImageQuizEditorBanks(),
         fetch("/api/question-overrides", { cache: "no-store" }),
       ]);
-      if (!dataResponse.ok) throw new Error("無法載入完整題庫。 ");
-      const source = await dataResponse.json() as SourceQuestionData;
       const payload = overrideResponse.ok ? await overrideResponse.json() as ApiPayload : {};
       const overrideMap = new Map((payload.overrides || []).map((override) => [override.questionId, override]));
-      const merged = source.banks.map((bank) => ({
+      const merged = source.map((bank) => ({
         ...bank,
         chapters: bank.chapters.map((chapter) => ({
           ...chapter,

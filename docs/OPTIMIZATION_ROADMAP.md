@@ -1,59 +1,59 @@
 # SeniorSecurities Optimization Roadmap
 
-更新日期：2026-07-11  
-狀態：**Stabilization Final 核心計畫完成；後續進入例行維護與量測式優化。**
+更新日期：2026-07-12  
+狀態：**v79 高優先級資料完整性、安全、PWA、題庫品質與部署計畫完成。**
 
-## Data Integrity
+## Completed — Data Integrity
 
-- [x] 雲端查詢明確分頁、穩定次排序與增量 checkpoint
-- [x] Checkpoint 僅在完整 merge 後前進；舊 tombstone 不覆蓋較新 live row
-- [x] Explicit tombstone，避免 partial response 誤刪本機資料
-- [x] 初始上傳／outbox 批次處理
-- [x] FSRS state、attempt、cloud queue、dead-letter 搬到 IndexedDB
-- [x] event-id 冪等、coalescing、exponential backoff、jitter
-- [x] 3,500-row、多帳號、dead-letter 自動測試
-- [x] 今日已作答題目不占 Daily Plan 名額
-- [x] 理論覆蓋速度與可執行每日題數分離
+- [x] Server-authored `sync_version` cursor
+- [x] Keyset pagination，移除 mutable offset 與 client wall-clock checkpoint
+- [x] Download-first bootstrap 與 explicit tombstone reconciliation
+- [x] Per-user IndexedDB transactional outbox
+- [x] FSRS state／attempt／outbox atomic transaction
+- [x] Image quiz session cloud sync
+- [x] Batch RPC、event-id、coalescing、backoff、jitter、dead-letter
+- [x] Dead-letter retry／discard UI
+- [x] 3,500-row、1,200-attempt、多帳號與 atomic outbox tests
 
-## Security and Release Integrity
+## Completed — Security and Release Integrity
 
-- [x] Admin API 統一中央權限驗證
-- [x] 高風險操作 primary-admin／AAL2
-- [x] Publish／rollback transaction RPC
-- [x] Production 禁止 draft fallback
-- [x] Activation code plaintext 不落庫
+- [x] Central Admin authorization
+- [x] Hard-coded Admin Email removed
+- [x] Inactive assignment fail closed
+- [x] Primary admin／AAL2 for sensitive actions
+- [x] Admin／activation mutation + audit transaction RPC
+- [x] Published-only question override API
+- [x] ETag、CDN cache、release-item pagination
+- [x] Activation plaintext not stored
+- [x] Privacy-safe telemetry limits and redaction
 - [x] CSP／HSTS／nosniff／frame／referrer／permissions headers
-- [x] Privacy-safe client error telemetry
-- [x] Admin system-health panel
 
-## PWA and Performance
+## Completed — Question Data and Performance
 
-- [x] 所有 lazy chunks 具備 chunk recovery
-- [x] Service Worker 提示式更新與 scoped cache cleanup
-- [x] Release manifest／content hash cache versioning
-- [x] 3,526 題拆成 40 個章節 shard
-- [x] 科目離線下載與清除
-- [x] Compact Daily Plan index
-- [x] Lazy calculator／settings／analytics／FSRS
-- [x] Progressive rendering／content-visibility
-- [x] Bundle-size budgets
-- [x] Production post-deploy health check
+- [x] 3,526-question semantic crop validator
+- [x] 6 missing crop records corrected
+- [x] 40 content-hashed chapter shards
+- [x] `questionId -> shard` manifest index
+- [x] Chapter／Daily Plan／wrong／favorite／similar／session selective materialization
+- [x] Raw editor source and backups excluded from production output
+- [x] Compact planning index and bundle budgets
+- [x] Offline package cache verification
 
-## Regression Prevention
+## Completed — CI and Maintainability
 
-- [x] 歷史主題 import 合併成單一 current theme
-- [x] Data／security／visual CSS integrity contracts
-- [x] Playwright desktop／iPad／mobile projects
-- [x] Blank-screen、calculator、settings、answer colors、offline tests
-- [x] axe serious／critical accessibility scan
-- [x] Browser artifacts on CI
+- [x] Chromium + WebKit browser installation in CI
+- [x] Desktop／mobile／iPad Chromium／iPad WebKit projects
+- [x] Polling production health check with security and cache header validation
+- [x] CSS historical artifact cleanup
+- [x] CSS file／line／`!important` maintenance budgets
+- [x] Full TypeScript／API／lint／unit／integrity／build／PWA verification
 
-## Ongoing Maintenance Only
+## Optional Future Work — Measurement Driven
 
-以下不是阻擋上線的未完成項目，而是應依實際量測啟動：
+These are not correctness blockers and should only be started when production measurements justify them:
 
-- [ ] 依 production telemetry 排名前幾名錯誤持續修正
-- [ ] 題庫超過約 10,000 題後評估更細粒度 shard 或 CDN object storage
-- [ ] Admin 使用者數達數萬後改用 database-native directory mirror，避免 Auth Admin pagination 成為瓶頸
-- [ ] CSS 新功能逐步搬入 tokens/components/pages；禁止再新增版本式覆蓋檔
-- [ ] 依真實裝置 Core Web Vitals 調整 precache 與圖片格式
+- [ ] Generate responsive pre-cropped WebP/AVIF only if real-device image decode or transfer metrics show a bottleneck. The current 818 full-page assets are shared by 3,526 questions and benefit from page-level cache reuse.
+- [ ] Replace screenshot artifacts with pixel baselines after approving stable screenshots on GitHub Actions environments.
+- [ ] Further split `glass.css` into component modules while keeping CSS budget and browser screenshot protection green.
+- [ ] Add a disposable Supabase CI environment when a complete migration-only baseline and CI project credentials are available.
+- [ ] Move question images to object storage/CDN if repository or deployment limits become material.

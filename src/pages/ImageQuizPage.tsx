@@ -1,4 +1,15 @@
-import { ArrowLeft, ArrowRight, Clock3, Flag, Heart, Home, ListChecks, Pause, Play, RotateCcw } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Clock3,
+  Flag,
+  Heart,
+  Home,
+  ListChecks,
+  Pause,
+  Play,
+  RotateCcw,
+} from "lucide-react";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
@@ -31,6 +42,8 @@ import {
 import {
   formatImageQuizQuestionSource,
   loadAllImageQuestions,
+  loadImageQuestionsByIds,
+  loadImageQuizPlanningIndex,
   loadImageBankQuestions,
   loadImageChapterQuestions,
   loadImageQuizBank,
@@ -62,19 +75,23 @@ const answerKeyToNumeric = {
 
 const T = {
   wrongTitle: "\u5f31\u9ede\u7df4\u7fd2",
-  wrongSubtitle: "\u91cd\u65b0\u7df4\u7fd2\u66fe\u7d93\u7b54\u932f\u7684\u984c\u76ee",
+  wrongSubtitle:
+    "\u91cd\u65b0\u7df4\u7fd2\u66fe\u7d93\u7b54\u932f\u7684\u984c\u76ee",
   wrongEmpty: "\u76ee\u524d\u6c92\u6709\u932f\u984c",
   favoriteTitle: "\u6536\u85cf\u984c\u76ee",
-  favoriteSubtitle: "\u7df4\u7fd2\u4f60\u52a0\u5165\u6536\u85cf\u7684\u984c\u76ee",
+  favoriteSubtitle:
+    "\u7df4\u7fd2\u4f60\u52a0\u5165\u6536\u85cf\u7684\u984c\u76ee",
   favoriteEmpty: "\u76ee\u524d\u6c92\u6709\u6536\u85cf\u984c\u76ee",
   chapterTitle: "\u7ae0\u7bc0\u7df4\u7fd2",
   chapterSubtitle: "\u4f9d\u539f PDF \u984c\u865f\u9806\u5e8f\u7df4\u7fd2",
   chapterEmpty: "\u9019\u500b\u7ae0\u7bc0\u76ee\u524d\u6c92\u6709\u984c\u76ee",
   bankTitle: "\u79d1\u76ee\u7df4\u7fd2",
-  bankSubtitle: "\u4f9d\u7ae0\u7bc0\u8207\u539f PDF \u984c\u865f\u9806\u5e8f\u7df4\u7fd2",
+  bankSubtitle:
+    "\u4f9d\u7ae0\u7bc0\u8207\u539f PDF \u984c\u865f\u9806\u5e8f\u7df4\u7fd2",
   bankEmpty: "\u9019\u500b\u79d1\u76ee\u76ee\u524d\u6c92\u6709\u984c\u76ee",
   allTitle: "\u5168\u90e8\u984c\u76ee\u6df7\u5408\u7df4\u7fd2",
-  allSubtitle: "\u6240\u6709 PDF \u984c\u5eab\u4f9d\u8cc7\u6599\u9806\u5e8f\u7df4\u7fd2",
+  allSubtitle:
+    "\u6240\u6709 PDF \u984c\u5eab\u4f9d\u8cc7\u6599\u9806\u5e8f\u7df4\u7fd2",
   allEmpty: "\u76ee\u524d\u6c92\u6709\u984c\u76ee",
   dailyTitle: "每日練習",
   dailyEmpty: "今天的智能練習已完成",
@@ -86,10 +103,12 @@ const T = {
   resumeTimer: "繼續",
   loading: "\u8f09\u5165 PDF \u984c\u5eab",
   loadError: "\u7121\u6cd5\u8f09\u5165\u984c\u5eab",
-  emptyMessage: "\u8acb\u5148\u56de\u9996\u9801\u9078\u64c7\u5176\u4ed6\u984c\u5eab\uff0c\u6216\u91cd\u65b0\u532f\u5165 PDF \u984c\u5eab\u3002",
+  emptyMessage:
+    "\u8acb\u5148\u56de\u9996\u9801\u9078\u64c7\u5176\u4ed6\u984c\u5eab\uff0c\u6216\u91cd\u65b0\u532f\u5165 PDF \u984c\u5eab\u3002",
   home: "\u56de\u9996\u9801",
   questionError: "\u7121\u6cd5\u8f09\u5165\u984c\u76ee",
-  questionErrorMessage: "\u76ee\u524d\u984c\u865f\u8d85\u51fa\u984c\u5eab\u7bc4\u570d\uff0c\u8acb\u56de\u9996\u9801\u91cd\u65b0\u9078\u64c7\u984c\u5eab\u3002",
+  questionErrorMessage:
+    "\u76ee\u524d\u984c\u865f\u8d85\u51fa\u984c\u5eab\u7bc4\u570d\uff0c\u8acb\u56de\u9996\u9801\u91cd\u65b0\u9078\u64c7\u984c\u5eab\u3002",
   finished: "\u7df4\u7fd2\u5b8c\u6210",
   total: "\u7e3d\u984c\u6578",
   correctCount: "\u672c\u6b21\u7b54\u5c0d",
@@ -115,15 +134,18 @@ const T = {
   previous: "\u4e0a\u4e00\u984c",
   next: "\u4e0b\u4e00\u984c",
   finish: "\u5b8c\u6210",
-  settleConfirm: "\u8981\u5148\u7d50\u7b97\u9019\u6b21\u6a21\u64ec\u8003\u518d\u96e2\u958b\u55ce\uff1f\u78ba\u5b9a\u5f8c\u6703\u4fdd\u7559\u76ee\u524d\u7b54\u5c0d\u7387\uff0c\u4e4b\u5f8c\u4ecd\u53ef\u7e7c\u7e8c\u672a\u4f5c\u7b54\u984c\u76ee\u3002",
+  settleConfirm:
+    "\u8981\u5148\u7d50\u7b97\u9019\u6b21\u6a21\u64ec\u8003\u518d\u96e2\u958b\u55ce\uff1f\u78ba\u5b9a\u5f8c\u6703\u4fdd\u7559\u76ee\u524d\u7b54\u5c0d\u7387\uff0c\u4e4b\u5f8c\u4ecd\u53ef\u7e7c\u7e8c\u672a\u4f5c\u7b54\u984c\u76ee\u3002",
   settleSummaryTitle: "\u6a21\u64ec\u8003\u7d50\u7b97",
   answerRate: "\u7b54\u5c0d\u7387",
   answered: "\u5df2\u4f5c\u7b54",
   randomTitle: "模擬考測驗",
-  randomSubtitle: "\u5f9e\u672c\u79d1\u6240\u6709\u7ae0\u7bc0\u96a8\u6a5f\u62bd\u984c",
+  randomSubtitle:
+    "\u5f9e\u672c\u79d1\u6240\u6709\u7ae0\u7bc0\u96a8\u6a5f\u62bd\u984c",
   randomEmpty: "\u627e\u4e0d\u5230\u9019\u6b21\u6a21\u64ec\u8003",
   sessionWrongTitle: "\u6e2c\u9a57\u932f\u984c\u8907\u7fd2",
-  sessionWrongSubtitle: "\u91cd\u65b0\u7df4\u7fd2\u9019\u6b21\u6a21\u64ec\u8003\u7b54\u932f\u7684\u984c\u76ee",
+  sessionWrongSubtitle:
+    "\u91cd\u65b0\u7df4\u7fd2\u9019\u6b21\u6a21\u64ec\u8003\u7b54\u932f\u7684\u984c\u76ee",
   sessionWrongEmpty: "\u9019\u6b21\u6e2c\u9a57\u6c92\u6709\u932f\u984c",
   trialTitle: "試用 10 題",
   trialSubtitle: "免費試用前 10 題；完整題庫需登入並輸入啟用碼。",
@@ -137,7 +159,17 @@ type AnswerRecord = {
   isCorrect: boolean;
 };
 
-type ImageQuizMode = "all" | "bank" | "chapter" | "wrong" | "todayWrong" | "favorites" | "random" | "sessionWrong" | "daily" | "trial";
+type ImageQuizMode =
+  | "all"
+  | "bank"
+  | "chapter"
+  | "wrong"
+  | "todayWrong"
+  | "favorites"
+  | "random"
+  | "sessionWrong"
+  | "daily"
+  | "trial";
 
 type ImageQuizData = {
   title: string;
@@ -162,29 +194,30 @@ export function ImageQuizPage() {
   const mode: ImageQuizMode = location.pathname.includes("/trial")
     ? "trial"
     : location.pathname.includes("/session-wrong")
-    ? "sessionWrong"
-    : location.pathname.includes("/today-wrong")
-      ? "todayWrong"
-    : location.pathname.includes("/daily")
-      ? "daily"
-    : location.pathname.includes("/wrong")
-      ? "wrong"
-      : location.pathname.includes("/favorites")
-      ? "favorites"
-      : location.pathname.includes("/random")
-          ? "random"
-          : location.pathname.includes("/all")
-            ? "all"
-            : chapterId
-              ? "chapter"
-              : "bank";
-  const progressKey = mode === "daily"
-    ? `image:daily:${localTodayKey()}:all`
-    : mode === "todayWrong"
-      ? `image:today-wrong:${localTodayKey()}:all`
-    : mode === "trial"
-      ? "image:trial:free"
-      : `image:${mode}:${bankId || "all"}:${chapterId || sessionId || "all"}`;
+      ? "sessionWrong"
+      : location.pathname.includes("/today-wrong")
+        ? "todayWrong"
+        : location.pathname.includes("/daily")
+          ? "daily"
+          : location.pathname.includes("/wrong")
+            ? "wrong"
+            : location.pathname.includes("/favorites")
+              ? "favorites"
+              : location.pathname.includes("/random")
+                ? "random"
+                : location.pathname.includes("/all")
+                  ? "all"
+                  : chapterId
+                    ? "chapter"
+                    : "bank";
+  const progressKey =
+    mode === "daily"
+      ? `image:daily:${localTodayKey()}:all`
+      : mode === "todayWrong"
+        ? `image:today-wrong:${localTodayKey()}:all`
+        : mode === "trial"
+          ? "image:trial:free"
+          : `image:${mode}:${bankId || "all"}:${chapterId || sessionId || "all"}`;
 
   const { data, error, loading } = useAsync<ImageQuizData>(async () => {
     if (mode === "trial") {
@@ -198,17 +231,21 @@ export function ImageQuizPage() {
     }
 
     if (mode === "daily") {
-      const [allQuestions, storedAnswers, wrongRecords] = await Promise.all([
-        loadAllImageQuestions(),
-        listUserAnswers(),
-        listWrongQuestions(),
-      ]);
+      const [planningQuestions, storedAnswers, wrongRecords] =
+        await Promise.all([
+          loadImageQuizPlanningIndex(),
+          listUserAnswers(),
+          listWrongQuestions(),
+        ]);
       const dailyTraining = buildOrReadDailyPlan({
-        allQuestions,
+        allQuestions: planningQuestions,
         storedAnswers,
         wrongRecords,
         userId: user?.id ?? null,
       });
+      const questions = await loadImageQuestionsByIds(
+        dailyTraining.questions.map((question) => question.id),
+      );
       const today = localTodayKey();
       const todayAnswers = storedAnswers.filter(
         (answer) => localTodayKey(new Date(answer.answeredAt)) === today,
@@ -217,59 +254,90 @@ export function ImageQuizPage() {
         title: T.dailyTitle,
         subtitle: dailyTraining.summary,
         emptyTitle: T.dailyEmpty,
-        questions: dailyTraining.questions,
-        answerRecords: storedAnswersToRecords(todayAnswers, dailyTraining.questions),
+        questions,
+        answerRecords: storedAnswersToRecords(todayAnswers, questions),
         dailyPlannedCount: dailyTraining.plannedCount,
         dailyCompletedBeforePlanCount: dailyTraining.completedBeforePlanCount,
         dailyCategoryCounts: dailyTraining.categoryCounts,
         dailyCategoryQuestionIds: dailyTraining.categoryQuestionIds,
-        dailyInitialCompletedQuestionIds: dailyTraining.initialCompletedQuestionIds,
+        dailyInitialCompletedQuestionIds:
+          dailyTraining.initialCompletedQuestionIds,
         remainingCount: dailyTraining.remainingCount,
       };
     }
 
     if (mode === "todayWrong") {
-      const [questions, wrongRecords] = await Promise.all([loadAllImageQuestions(), listWrongQuestions()]);
+      const wrongRecords = await listWrongQuestions();
       const today = localTodayKey();
-      const byId = new Map(questions.map((question) => [question.id, question]));
-      const todayWrongRecords = wrongRecords.filter((record) => localTodayKey(new Date(record.lastWrongAt)) === today);
-      const wrongCounts = Object.fromEntries(todayWrongRecords.map((record) => [record.questionId, record.wrongCount]));
+      const todayWrongRecords = wrongRecords.filter(
+        (record) => localTodayKey(new Date(record.lastWrongAt)) === today,
+      );
+      const questions = await loadImageQuestionsByIds(
+        todayWrongRecords.map((record) => record.questionId),
+      );
+      const byId = new Map(
+        questions.map((question) => [question.id, question]),
+      );
+      const wrongCounts = Object.fromEntries(
+        todayWrongRecords.map((record) => [
+          record.questionId,
+          record.wrongCount,
+        ]),
+      );
       return {
         title: T.todayWrongTitle,
         subtitle: T.todayWrongSubtitle,
         emptyTitle: T.todayWrongEmpty,
         questions: todayWrongRecords
           .map((record) => byId.get(record.questionId))
-          .filter((question): question is ImageQuizQuestion => Boolean(question)),
+          .filter((question): question is ImageQuizQuestion =>
+            Boolean(question),
+          ),
         wrongCounts,
       };
     }
 
     if (mode === "wrong") {
-      const [questions, wrongRecords] = await Promise.all([loadAllImageQuestions(), listWrongQuestions()]);
-      const byId = new Map(questions.map((question) => [question.id, question]));
-      const wrongCounts = Object.fromEntries(wrongRecords.map((record) => [record.questionId, record.wrongCount]));
+      const wrongRecords = await listWrongQuestions();
+      const questions = await loadImageQuestionsByIds(
+        wrongRecords.map((record) => record.questionId),
+      );
+      const byId = new Map(
+        questions.map((question) => [question.id, question]),
+      );
+      const wrongCounts = Object.fromEntries(
+        wrongRecords.map((record) => [record.questionId, record.wrongCount]),
+      );
       return {
         title: T.wrongTitle,
         subtitle: T.wrongSubtitle,
         emptyTitle: T.wrongEmpty,
         questions: wrongRecords
           .map((record) => byId.get(record.questionId))
-          .filter((question): question is ImageQuizQuestion => Boolean(question)),
+          .filter((question): question is ImageQuizQuestion =>
+            Boolean(question),
+          ),
         wrongCounts,
       };
     }
 
     if (mode === "favorites") {
-      const [questions, favoriteRecords] = await Promise.all([loadAllImageQuestions(), listFavoriteQuestions()]);
-      const byId = new Map(questions.map((question) => [question.id, question]));
+      const favoriteRecords = await listFavoriteQuestions();
+      const questions = await loadImageQuestionsByIds(
+        favoriteRecords.map((record) => record.questionId),
+      );
+      const byId = new Map(
+        questions.map((question) => [question.id, question]),
+      );
       return {
         title: T.favoriteTitle,
         subtitle: T.favoriteSubtitle,
         emptyTitle: T.favoriteEmpty,
         questions: favoriteRecords
           .map((record) => byId.get(record.questionId))
-          .filter((question): question is ImageQuizQuestion => Boolean(question)),
+          .filter((question): question is ImageQuizQuestion =>
+            Boolean(question),
+          ),
       };
     }
 
@@ -283,17 +351,19 @@ export function ImageQuizPage() {
           questions: [],
         };
       }
-      const bankQuestions = session.bankId === "__full_exam__"
-        ? await loadAllImageQuestions()
-        : await loadImageBankQuestions(session.bankId);
-      const byId = new Map(bankQuestions.map((question) => [question.id, question]));
+      const bankQuestions = await loadImageQuestionsByIds(session.questionIds);
+      const byId = new Map(
+        bankQuestions.map((question) => [question.id, question]),
+      );
       return {
         title: `${session.bankTitle} / ${T.randomTitle}`,
         subtitle: T.randomSubtitle,
         emptyTitle: T.randomEmpty,
         questions: session.questionIds
           .map((questionId) => byId.get(questionId))
-          .filter((question): question is ImageQuizQuestion => Boolean(question)),
+          .filter((question): question is ImageQuizQuestion =>
+            Boolean(question),
+          ),
         answerRecords: sessionAnswersToRecords(session),
         session,
       };
@@ -309,17 +379,21 @@ export function ImageQuizPage() {
           questions: [],
         };
       }
-      const bankQuestions = session.bankId === "__full_exam__"
-        ? await loadAllImageQuestions()
-        : await loadImageBankQuestions(session.bankId);
-      const byId = new Map(bankQuestions.map((question) => [question.id, question]));
+      const bankQuestions = await loadImageQuestionsByIds(
+        session.wrongQuestionIds,
+      );
+      const byId = new Map(
+        bankQuestions.map((question) => [question.id, question]),
+      );
       return {
         title: `${session.bankTitle} / ${T.sessionWrongTitle}`,
         subtitle: T.sessionWrongSubtitle,
         emptyTitle: T.sessionWrongEmpty,
         questions: session.wrongQuestionIds
           .map((questionId) => byId.get(questionId))
-          .filter((question): question is ImageQuizQuestion => Boolean(question)),
+          .filter((question): question is ImageQuizQuestion =>
+            Boolean(question),
+          ),
       };
     }
 
@@ -330,7 +404,10 @@ export function ImageQuizPage() {
         loadImageQuizBank(bankId),
       ]);
       return {
-        title: chapter && bank ? `${bank.bankTitle} / ${chapter.chapterTitle}` : T.chapterTitle,
+        title:
+          chapter && bank
+            ? `${bank.bankTitle} / ${chapter.chapterTitle}`
+            : T.chapterTitle,
         subtitle: T.chapterSubtitle,
         emptyTitle: T.chapterEmpty,
         questions,
@@ -338,7 +415,10 @@ export function ImageQuizPage() {
     }
 
     if (mode === "bank") {
-      const [questions, bank] = await Promise.all([loadImageBankQuestions(bankId), loadImageQuizBank(bankId)]);
+      const [questions, bank] = await Promise.all([
+        loadImageBankQuestions(bankId),
+        loadImageQuizBank(bankId),
+      ]);
       return {
         title: bank?.bankTitle ?? T.bankTitle,
         subtitle: T.bankSubtitle,
@@ -366,12 +446,18 @@ export function ImageQuizPage() {
   const [timerPaused, setTimerPaused] = useState(false);
   const [jumpInput, setJumpInput] = useState("");
   const [jumpError, setJumpError] = useState("");
-  const [answerModeEnabled, setAnswerModeEnabled] = useState(() => getAnswerModeEnabled());
+  const [answerModeEnabled, setAnswerModeEnabled] = useState(() =>
+    getAnswerModeEnabled(),
+  );
   const [confidenceByQuestion] = useState<Record<string, AnswerConfidence>>({});
   const [retryQueue, setRetryQueue] = useState<string[]>([]);
-  const [markedQuestionIds, setMarkedQuestionIds] = useState<Set<string>>(new Set());
+  const [markedQuestionIds, setMarkedQuestionIds] = useState<Set<string>>(
+    new Set(),
+  );
   const [answerCardOpen, setAnswerCardOpen] = useState(false);
-  const [autoNextCorrectEnabled, setAutoNextCorrectEnabled] = useState(() => getAutoNextCorrectEnabled());
+  const [autoNextCorrectEnabled, setAutoNextCorrectEnabled] = useState(() =>
+    getAutoNextCorrectEnabled(),
+  );
 
   useEffect(() => {
     setElapsedSeconds(0);
@@ -394,12 +480,24 @@ export function ImageQuizPage() {
       refreshAnswerModeSetting();
       refreshAutoNextCorrectSetting();
     }
-    window.addEventListener(ANSWER_MODE_SETTING_CHANGED, refreshAnswerModeSetting);
-    window.addEventListener(AUTO_NEXT_CORRECT_SETTING_CHANGED, refreshAutoNextCorrectSetting);
+    window.addEventListener(
+      ANSWER_MODE_SETTING_CHANGED,
+      refreshAnswerModeSetting,
+    );
+    window.addEventListener(
+      AUTO_NEXT_CORRECT_SETTING_CHANGED,
+      refreshAutoNextCorrectSetting,
+    );
     window.addEventListener("storage", refreshAllSettings);
     return () => {
-      window.removeEventListener(ANSWER_MODE_SETTING_CHANGED, refreshAnswerModeSetting);
-      window.removeEventListener(AUTO_NEXT_CORRECT_SETTING_CHANGED, refreshAutoNextCorrectSetting);
+      window.removeEventListener(
+        ANSWER_MODE_SETTING_CHANGED,
+        refreshAnswerModeSetting,
+      );
+      window.removeEventListener(
+        AUTO_NEXT_CORRECT_SETTING_CHANGED,
+        refreshAutoNextCorrectSetting,
+      );
       window.removeEventListener("storage", refreshAllSettings);
     };
   }, []);
@@ -430,7 +528,11 @@ export function ImageQuizPage() {
         return;
       }
 
-      const shouldRestoreGlobalAnswers = !data?.answerRecords && mode !== "sessionWrong" && mode !== "todayWrong" && mode !== "wrong";
+      const shouldRestoreGlobalAnswers =
+        !data?.answerRecords &&
+        mode !== "sessionWrong" &&
+        mode !== "todayWrong" &&
+        mode !== "wrong";
       const [progress, favoriteRecords, storedAnswers] = await Promise.all([
         getQuizProgress(progressKey),
         listFavoriteQuestions(),
@@ -447,8 +549,12 @@ export function ImageQuizPage() {
           : 0;
 
       setCurrentIndex(restoredIndex);
-      setAnswers(data?.answerRecords ?? storedAnswersToRecords(storedAnswers, questions));
-      setFavoriteIds(new Set(favoriteRecords.map((record) => record.questionId)));
+      setAnswers(
+        data?.answerRecords ?? storedAnswersToRecords(storedAnswers, questions),
+      );
+      setFavoriteIds(
+        new Set(favoriteRecords.map((record) => record.questionId)),
+      );
       setMarkedQuestionIds(new Set(data?.session?.markedQuestionIds ?? []));
       setProgressRestored(true);
     }
@@ -458,7 +564,13 @@ export function ImageQuizPage() {
     return () => {
       cancelled = true;
     };
-  }, [data?.answerRecords, data?.session?.markedQuestionIds, mode, progressKey, questions]);
+  }, [
+    data?.answerRecords,
+    data?.session?.markedQuestionIds,
+    mode,
+    progressKey,
+    questions,
+  ]);
 
   useEffect(() => {
     if (!progressRestored || !questions.length || finished) {
@@ -469,29 +581,55 @@ export function ImageQuizPage() {
   }, [currentIndex, finished, progressKey, progressRestored, questions.length]);
 
   const answeredRecords = Object.values(answers);
-  const correctCount = answeredRecords.filter((record) => record.isCorrect).length;
+  const correctCount = answeredRecords.filter(
+    (record) => record.isCorrect,
+  ).length;
   const resultTotal = answeredRecords.length;
   const wrongCount = resultTotal - correctCount;
-  const accuracy = resultTotal ? calculateAccuracy(correctCount, resultTotal) : 0;
+  const accuracy = resultTotal
+    ? calculateAccuracy(correctCount, resultTotal)
+    : 0;
   const shouldPromptRandomExit =
-    mode === "random" && !finished && resultTotal > 0 && resultTotal < questions.length && Boolean(data?.session);
-  const dailyAnsweredIds = useMemo(() => new Set(Object.keys(answers)), [answers]);
-  const dailyInitialCompletedIds = useMemo(() => new Set(data?.dailyInitialCompletedQuestionIds ?? []), [data?.dailyInitialCompletedQuestionIds]);
-  const dailyRemainingCount = mode === "daily"
-    ? calculateLiveDailyRemainingCount(
-        data?.remainingCount ?? questions.length,
-        data?.dailyCategoryQuestionIds,
-        dailyAnsweredIds,
-        dailyInitialCompletedIds,
-      )
-    : undefined;
-  const dailyPlannedCount = mode === "daily" ? (data?.dailyPlannedCount ?? questions.length) : undefined;
-  const dailyAnsweredCount = mode === "daily"
-    ? Math.max(0, (dailyPlannedCount ?? questions.length) - (dailyRemainingCount ?? 0))
-    : undefined;
-  const dailyProgressValue = mode === "daily"
-    ? Math.min(dailyPlannedCount ?? questions.length, Math.max(0, dailyAnsweredCount ?? 0))
-    : currentIndex + 1;
+    mode === "random" &&
+    !finished &&
+    resultTotal > 0 &&
+    resultTotal < questions.length &&
+    Boolean(data?.session);
+  const dailyAnsweredIds = useMemo(
+    () => new Set(Object.keys(answers)),
+    [answers],
+  );
+  const dailyInitialCompletedIds = useMemo(
+    () => new Set(data?.dailyInitialCompletedQuestionIds ?? []),
+    [data?.dailyInitialCompletedQuestionIds],
+  );
+  const dailyRemainingCount =
+    mode === "daily"
+      ? calculateLiveDailyRemainingCount(
+          data?.remainingCount ?? questions.length,
+          data?.dailyCategoryQuestionIds,
+          dailyAnsweredIds,
+          dailyInitialCompletedIds,
+        )
+      : undefined;
+  const dailyPlannedCount =
+    mode === "daily"
+      ? (data?.dailyPlannedCount ?? questions.length)
+      : undefined;
+  const dailyAnsweredCount =
+    mode === "daily"
+      ? Math.max(
+          0,
+          (dailyPlannedCount ?? questions.length) - (dailyRemainingCount ?? 0),
+        )
+      : undefined;
+  const dailyProgressValue =
+    mode === "daily"
+      ? Math.min(
+          dailyPlannedCount ?? questions.length,
+          Math.max(0, dailyAnsweredCount ?? 0),
+        )
+      : currentIndex + 1;
 
   useEffect(() => {
     if (!shouldPromptRandomExit) {
@@ -513,7 +651,9 @@ export function ImageQuizPage() {
         return;
       }
 
-      const navigationEvent = event as CustomEvent<{ continueNavigation?: () => void }>;
+      const navigationEvent = event as CustomEvent<{
+        continueNavigation?: () => void;
+      }>;
       event.preventDefault();
 
       async function confirmSettlement(): Promise<void> {
@@ -535,9 +675,20 @@ export function ImageQuizPage() {
     }
 
     window.addEventListener("quiz:navigation-attempt", handleNavigationAttempt);
-    return () => window.removeEventListener("quiz:navigation-attempt", handleNavigationAttempt);
-  }, [accuracy, correctCount, data?.session, questions.length, resultTotal, shouldPromptRandomExit, wrongCount]);
-
+    return () =>
+      window.removeEventListener(
+        "quiz:navigation-attempt",
+        handleNavigationAttempt,
+      );
+  }, [
+    accuracy,
+    correctCount,
+    data?.session,
+    questions.length,
+    resultTotal,
+    shouldPromptRandomExit,
+    wrongCount,
+  ]);
 
   useEffect(() => {
     return preloadNeighborQuestionAssets(questions, currentIndex);
@@ -553,37 +704,63 @@ export function ImageQuizPage() {
 
   if (!questions.length) {
     return (
-      <EmptyState title={data?.emptyTitle ?? T.allEmpty} message={emptyMessageForMode(mode)} actionLabel={T.home} actionTo="/" />
+      <EmptyState
+        title={data?.emptyTitle ?? T.allEmpty}
+        message={emptyMessageForMode(mode)}
+        actionLabel={T.home}
+        actionTo="/"
+      />
     );
   }
 
   const currentQuestion = questions[currentIndex];
   if (!currentQuestion) {
-    return <ErrorState title={T.questionError} message={T.questionErrorMessage} />;
+    return (
+      <ErrorState title={T.questionError} message={T.questionErrorMessage} />
+    );
   }
 
   const savedAnswer = answers[currentQuestion.id];
-  const isDeferredExam = mode === "random" && data?.session?.feedbackMode === "deferred";
+  const isDeferredExam =
+    mode === "random" && data?.session?.feedbackMode === "deferred";
   const examAnsweredCount = Object.keys(answers).length;
   const examUnansweredCount = Math.max(0, questions.length - examAnsweredCount);
   const currentIsMarked = markedQuestionIds.has(currentQuestion.id);
-  const answerModeAllowed = answerModeEnabled
-    && !isDeferredExam
-    && mode !== "wrong"
-    && mode !== "todayWrong"
-    && mode !== "sessionWrong";
+  const answerModeAllowed =
+    answerModeEnabled &&
+    !isDeferredExam &&
+    mode !== "wrong" &&
+    mode !== "todayWrong" &&
+    mode !== "sessionWrong";
   const answerModeRecord: AnswerRecord | undefined = answerModeAllowed
-    ? { selected: currentQuestion.answer, correct: currentQuestion.answer, isCorrect: true }
+    ? {
+        selected: currentQuestion.answer,
+        correct: currentQuestion.answer,
+        isCorrect: true,
+      }
     : undefined;
   const currentAnswer = savedAnswer ?? answerModeRecord;
   const currentConfidence = confidenceByQuestion[currentQuestion.id] ?? "sure";
   const revealCurrentAnswer = !isDeferredExam;
   const isFavorite = favoriteIds.has(currentQuestion.id);
   const displayedQuestionNumber =
-    mode === "random" || mode === "sessionWrong" ? currentIndex + 1 : currentQuestion.number;
-  const currentWrongCount = mode === "wrong" || mode === "todayWrong" ? data?.wrongCounts?.[currentQuestion.id] : undefined;
-  const currentCorrectStreak = calculateConsecutiveCorrectStreak(questions, answers, currentIndex);
-  const activeCorrectStreak = calculateActiveCorrectStreak(questions, answers, currentIndex);
+    mode === "random" || mode === "sessionWrong"
+      ? currentIndex + 1
+      : currentQuestion.number;
+  const currentWrongCount =
+    mode === "wrong" || mode === "todayWrong"
+      ? data?.wrongCounts?.[currentQuestion.id]
+      : undefined;
+  const currentCorrectStreak = calculateConsecutiveCorrectStreak(
+    questions,
+    answers,
+    currentIndex,
+  );
+  const activeCorrectStreak = calculateActiveCorrectStreak(
+    questions,
+    answers,
+    currentIndex,
+  );
   const encouragementCorrectStreak = currentAnswer?.isCorrect
     ? Math.max(currentCorrectStreak, activeCorrectStreak, 1)
     : activeCorrectStreak;
@@ -627,18 +804,35 @@ export function ImageQuizPage() {
       sessionMode: data?.session?.mode ?? mode,
     });
     if (mode === "random" && data?.session) {
-      await saveImageQuizSessionAnswer(data.session.sessionId, currentQuestion.id, {
-        ...record,
-        answeredAt: new Date().toISOString(),
-      });
+      await saveImageQuizSessionAnswer(
+        data.session.sessionId,
+        currentQuestion.id,
+        {
+          ...record,
+          answeredAt: new Date().toISOString(),
+        },
+      );
     }
     if (!isDeferredExam && !record.isCorrect) {
-      setRetryQueue((current) => current.includes(currentQuestion.id) ? current : [...current, currentQuestion.id]);
+      setRetryQueue((current) =>
+        current.includes(currentQuestion.id)
+          ? current
+          : [...current, currentQuestion.id],
+      );
     }
 
-    if (!isDeferredExam && autoNextCorrectEnabled && record.isCorrect && currentIndex < questions.length - 1) {
+    if (
+      !isDeferredExam &&
+      autoNextCorrectEnabled &&
+      record.isCorrect &&
+      currentIndex < questions.length - 1
+    ) {
       window.setTimeout(() => {
-        setCurrentIndex((index) => (index === currentIndex ? Math.min(index + 1, questions.length - 1) : index));
+        setCurrentIndex((index) =>
+          index === currentIndex
+            ? Math.min(index + 1, questions.length - 1)
+            : index,
+        );
       }, 650);
     }
   }
@@ -651,7 +845,9 @@ export function ImageQuizPage() {
   function openNextQueuedRetry(): boolean {
     const retryQuestionId = retryQueue[0];
     if (!retryQuestionId) return false;
-    const retryIndex = questions.findIndex((question) => question.id === retryQuestionId);
+    const retryIndex = questions.findIndex(
+      (question) => question.id === retryQuestionId,
+    );
     if (retryIndex < 0) {
       setRetryQueue((current) => current.slice(1));
       return false;
@@ -668,19 +864,31 @@ export function ImageQuizPage() {
   }
 
   async function goNext(): Promise<void> {
-    const shouldRetryNow = !isDeferredExam && retryQueue.length > 0
-      && (currentIndex >= questions.length - 1 || Object.keys(answers).length % 4 === 0);
+    const shouldRetryNow =
+      !isDeferredExam &&
+      retryQueue.length > 0 &&
+      (currentIndex >= questions.length - 1 ||
+        Object.keys(answers).length % 4 === 0);
     if (shouldRetryNow && openNextQueuedRetry()) return;
     if (currentIndex >= questions.length - 1) {
       if (isDeferredExam) {
-        const unanswered = Math.max(0, questions.length - Object.keys(answers).length);
-        const confirmed = window.confirm(unanswered > 0
-          ? `尚有 ${unanswered} 題未作答，確定要交卷嗎？`
-          : "確定要交卷並查看成績嗎？");
+        const unanswered = Math.max(
+          0,
+          questions.length - Object.keys(answers).length,
+        );
+        const confirmed = window.confirm(
+          unanswered > 0
+            ? `尚有 ${unanswered} 題未作答，確定要交卷嗎？`
+            : "確定要交卷並查看成績嗎？",
+        );
         if (!confirmed) return;
       }
       if (mode === "random" && data?.session) {
-        await saveRandomSessionResult(data.session.sessionId, questions, answers);
+        await saveRandomSessionResult(
+          data.session.sessionId,
+          questions,
+          answers,
+        );
       }
       setFinished(true);
       void clearQuizProgress(progressKey);
@@ -785,16 +993,17 @@ export function ImageQuizPage() {
       <GlassCard className="image-quiz-card">
         <div className="image-quiz-header">
           <div>
-            <p className="eyebrow">
-              {contextLabel}
-            </p>
+            <p className="eyebrow">{contextLabel}</p>
             <div className="quiz-title-line">
               <h1>
                 {"\u7b2c "}
                 {displayedQuestionNumber}
                 {" \u984c"}
               </h1>
-              <span className="glass-badge quiz-timer-badge" aria-label={`練習時間 ${formatElapsedTime(elapsedSeconds)}`}>
+              <span
+                className="glass-badge quiz-timer-badge"
+                aria-label={`練習時間 ${formatElapsedTime(elapsedSeconds)}`}
+              >
                 <Clock3 aria-hidden="true" size={15} />
                 {formatElapsedTime(elapsedSeconds)}
                 {!isDeferredExam ? (
@@ -805,14 +1014,19 @@ export function ImageQuizPage() {
                     title={timerPaused ? T.resumeTimer : T.pauseTimer}
                     onClick={() => setTimerPaused((paused) => !paused)}
                   >
-                    {timerPaused ? <Play aria-hidden="true" size={13} /> : <Pause aria-hidden="true" size={13} />}
+                    {timerPaused ? (
+                      <Play aria-hidden="true" size={13} />
+                    ) : (
+                      <Pause aria-hidden="true" size={13} />
+                    )}
                     <span>{timerPaused ? T.resumeTimer : T.pauseTimer}</span>
                   </button>
                 ) : null}
               </span>
               {mode === "daily" ? (
                 <span className="glass-badge daily-count-badge">
-                  今日剩餘 {dailyRemainingCount ?? 0} 題 / 答對 {correctCount} 題 / 答錯 {wrongCount} 題
+                  今日剩餘 {dailyRemainingCount ?? 0} 題 / 答對 {correctCount}{" "}
+                  題 / 答錯 {wrongCount} 題
                 </span>
               ) : null}
               {currentWrongCount ? (
@@ -832,7 +1046,8 @@ export function ImageQuizPage() {
                   aria-expanded={answerCardOpen}
                   onClick={() => setAnswerCardOpen((open) => !open)}
                 >
-                  <ListChecks aria-hidden="true" size={19} /><span>答題卡</span>
+                  <ListChecks aria-hidden="true" size={19} />
+                  <span>答題卡</span>
                 </button>
                 <button
                   type="button"
@@ -841,7 +1056,12 @@ export function ImageQuizPage() {
                   aria-pressed={currentIsMarked}
                   onClick={() => void toggleExamMark()}
                 >
-                  <Flag aria-hidden="true" size={18} fill={currentIsMarked ? "currentColor" : "none"} /><span>{currentIsMarked ? "已標記" : "待檢"}</span>
+                  <Flag
+                    aria-hidden="true"
+                    size={18}
+                    fill={currentIsMarked ? "currentColor" : "none"}
+                  />
+                  <span>{currentIsMarked ? "已標記" : "待檢"}</span>
                 </button>
               </>
             ) : null}
@@ -852,14 +1072,18 @@ export function ImageQuizPage() {
               title={isFavorite ? T.removeFavorite : T.addFavorite}
               onClick={() => void toggleFavorite()}
             >
-              <Heart aria-hidden="true" fill={isFavorite ? "currentColor" : "none"} />
+              <Heart
+                aria-hidden="true"
+                fill={isFavorite ? "currentColor" : "none"}
+              />
             </button>
           </div>
         </div>
         {mode === "daily" ? (
           <>
             <p className="daily-quiz-subtitle">
-              今日規劃 {dailyPlannedCount ?? questions.length} 題，已完成 {dailyAnsweredCount ?? 0} 題，剩餘 {dailyRemainingCount ?? 0} 題。
+              今日規劃 {dailyPlannedCount ?? questions.length} 題，已完成{" "}
+              {dailyAnsweredCount ?? 0} 題，剩餘 {dailyRemainingCount ?? 0} 題。
             </p>
             <div className="daily-question-source-badge" aria-label="題目來源">
               <span>{questionSourceLabel}</span>
@@ -879,24 +1103,48 @@ export function ImageQuizPage() {
             compact
           />
         ) : (
-          <p className="deferred-exam-notice">考試模式：作答後只鎖定選項，交卷前不顯示正解與解析。</p>
+          <p className="deferred-exam-notice">
+            考試模式：作答後只鎖定選項，交卷前不顯示正解與解析。
+          </p>
         )}
 
         <ProgressBar
           value={dailyProgressValue}
-          max={mode === "daily" ? (dailyPlannedCount ?? questions.length) : questions.length}
-          label={mode === "daily"
-            ? `已完成 ${dailyProgressValue} / ${dailyPlannedCount ?? questions.length} 題`
-            : `${"\u7b2c"} ${currentIndex + 1} / ${questions.length} ${"\u984c"}`}
+          max={
+            mode === "daily"
+              ? (dailyPlannedCount ?? questions.length)
+              : questions.length
+          }
+          label={
+            mode === "daily"
+              ? `已完成 ${dailyProgressValue} / ${dailyPlannedCount ?? questions.length} 題`
+              : `${"\u7b2c"} ${currentIndex + 1} / ${questions.length} ${"\u984c"}`
+          }
         />
 
         {isDeferredExam && answerCardOpen ? (
           <section className="exam-answer-card" aria-label="模擬考答題卡">
             <div className="exam-answer-card-head">
-              <div><strong>答題卡</strong><span>已作答 {examAnsweredCount}／{questions.length} · 未作答 {examUnansweredCount} · 待檢 {markedQuestionIds.size}</span></div>
-              <button type="button" onClick={() => setAnswerCardOpen(false)} aria-label="收合答題卡">收合</button>
+              <div>
+                <strong>答題卡</strong>
+                <span>
+                  已作答 {examAnsweredCount}／{questions.length} · 未作答{" "}
+                  {examUnansweredCount} · 待檢 {markedQuestionIds.size}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAnswerCardOpen(false)}
+                aria-label="收合答題卡"
+              >
+                收合
+              </button>
             </div>
-            <div className="exam-answer-card-legend"><span className="is-answered">已作答</span><span className="is-marked">待檢</span><span>未作答</span></div>
+            <div className="exam-answer-card-legend">
+              <span className="is-answered">已作答</span>
+              <span className="is-marked">待檢</span>
+              <span>未作答</span>
+            </div>
             <div className="exam-answer-card-grid">
               {questions.map((question, index) => {
                 const answered = Boolean(answers[question.id]);
@@ -909,7 +1157,8 @@ export function ImageQuizPage() {
                     aria-label={`第 ${index + 1} 題${answered ? "，已作答" : "，未作答"}${marked ? "，待檢" : ""}`}
                     onClick={() => jumpFromAnswerCard(index)}
                   >
-                    {index + 1}{marked ? <Flag size={10} fill="currentColor" /> : null}
+                    {index + 1}
+                    {marked ? <Flag size={10} fill="currentColor" /> : null}
                   </button>
                 );
               })}
@@ -928,14 +1177,26 @@ export function ImageQuizPage() {
             <button
               key={answer}
               type="button"
-              className={answerButtonClass(answer, currentAnswer, revealCurrentAnswer)}
+              className={answerButtonClass(
+                answer,
+                currentAnswer,
+                revealCurrentAnswer,
+              )}
               disabled={Boolean(currentAnswer)}
               aria-pressed={currentAnswer?.selected === answer}
               aria-label={`${T.choose} (${answer})`}
               onClick={() => void handleAnswer(answer)}
             >
               <span className="answer-key">({answer})</span>
-              {currentAnswer ? <span className="answer-status-label">{answerStatusLabel(answer, currentAnswer, revealCurrentAnswer)}</span> : null}
+              {currentAnswer ? (
+                <span className="answer-status-label">
+                  {answerStatusLabel(
+                    answer,
+                    currentAnswer,
+                    revealCurrentAnswer,
+                  )}
+                </span>
+              ) : null}
             </button>
           ))}
         </div>
@@ -949,7 +1210,12 @@ export function ImageQuizPage() {
               <span className="glass-badge">
                 {T.correctAnswer} ({currentAnswer.correct})
               </span>
-              {!currentAnswer.isCorrect && retryQueue.includes(currentQuestion.id) ? <span className="glass-badge retry-queued-badge">已加入本次重試</span> : null}
+              {!currentAnswer.isCorrect &&
+              retryQueue.includes(currentQuestion.id) ? (
+                <span className="glass-badge retry-queued-badge">
+                  已加入本次重試
+                </span>
+              ) : null}
             </div>
             <div className="glass-explanation">
               <h2>{T.explanation}</h2>
@@ -963,13 +1229,24 @@ export function ImageQuizPage() {
         ) : null}
       </GlassCard>
 
-      {jumpError ? <p className="inline-error jump-error-fixed" role="alert">{jumpError}</p> : null}
+      {jumpError ? (
+        <p className="inline-error jump-error-fixed" role="alert">
+          {jumpError}
+        </p>
+      ) : null}
       <div className="image-quiz-controls" aria-label={T.navigation}>
-        <GlassButton variant="secondary" onClick={goPrevious} disabled={currentIndex === 0}>
+        <GlassButton
+          variant="secondary"
+          onClick={goPrevious}
+          disabled={currentIndex === 0}
+        >
           <ArrowLeft aria-hidden="true" size={18} />
           <span>{T.previous}</span>
         </GlassButton>
-        <form className="question-jump-form inline-jump-form" onSubmit={handleJump}>
+        <form
+          className="question-jump-form inline-jump-form"
+          onSubmit={handleJump}
+        >
           <label htmlFor="question-jump-input">{T.jumpLabel}</label>
           <input
             id="question-jump-input"
@@ -981,19 +1258,28 @@ export function ImageQuizPage() {
             placeholder={T.jumpPlaceholder}
             onChange={(event) => setJumpInput(event.currentTarget.value)}
           />
-          <GlassButton variant="secondary" type="submit" disabled={!jumpInput.trim()}>
+          <GlassButton
+            variant="secondary"
+            type="submit"
+            disabled={!jumpInput.trim()}
+          >
             {T.jumpAction}
           </GlassButton>
         </form>
         <GlassButton variant="primary" onClick={() => void goNext()}>
-          <span>{currentIndex >= questions.length - 1 ? (isDeferredExam ? "交卷" : T.finish) : T.next}</span>
+          <span>
+            {currentIndex >= questions.length - 1
+              ? isDeferredExam
+                ? "交卷"
+                : T.finish
+              : T.next}
+          </span>
           <ArrowRight aria-hidden="true" size={18} />
         </GlassButton>
       </div>
     </div>
   );
 }
-
 
 function calculateLiveDailyRemainingCount(
   baseRemainingCount: number,
@@ -1017,12 +1303,17 @@ function calculateLiveDailyRemainingCount(
       completedQuestionIds.add(questionId);
     }
   });
-  const calculatedRemaining = Math.max(0, dailyQuestionIds.size - completedQuestionIds.size);
+  const calculatedRemaining = Math.max(
+    0,
+    dailyQuestionIds.size - completedQuestionIds.size,
+  );
   return Math.min(Math.max(0, baseRemainingCount), calculatedRemaining);
 }
 
-
-function preloadNeighborQuestionAssets(questions: readonly ImageQuizQuestion[], currentIndex: number): () => void {
+function preloadNeighborQuestionAssets(
+  questions: readonly ImageQuizQuestion[],
+  currentIndex: number,
+): () => void {
   if (typeof window === "undefined" || !questions.length) {
     return () => undefined;
   }
@@ -1055,11 +1346,14 @@ function formatElapsedTime(totalSeconds: number): string {
   const minutes = Math.floor((totalSeconds % 3600) / 60);
   const seconds = totalSeconds % 60;
   const two = (value: number) => value.toString().padStart(2, "0");
-  return hours > 0 ? `${hours}:${two(minutes)}:${two(seconds)}` : `${minutes}:${two(seconds)}`;
+  return hours > 0
+    ? `${hours}:${two(minutes)}:${two(seconds)}`
+    : `${minutes}:${two(seconds)}`;
 }
 
 function emptyMessageForMode(mode: ImageQuizMode): string {
-  if (mode === "daily") return "今日安排的新題、錯題與複習題都完成了，回首頁查看首輪覆蓋與明日任務。";
+  if (mode === "daily")
+    return "今日安排的新題、錯題與複習題都完成了，回首頁查看首輪覆蓋與明日任務。";
   if (mode === "todayWrong") return "今天答錯但尚未訂正的題目會出現在這裡。";
   if (mode === "wrong") return "答錯的題目會自動收進這裡，答對後即完成訂正。";
   if (mode === "favorites") return "在題目頁點選收藏後，就能從這裡集中複習。";
@@ -1070,7 +1364,9 @@ function storedAnswersToRecords(
   storedAnswers: UserAnswer[],
   questions: ImageQuizQuestion[],
 ): Record<string, AnswerRecord> {
-  const byQuestionId = new Map(questions.map((question) => [question.id, question]));
+  const byQuestionId = new Map(
+    questions.map((question) => [question.id, question]),
+  );
   const records: Record<string, AnswerRecord> = {};
   for (const answer of storedAnswers) {
     const question = byQuestionId.get(answer.questionId);
@@ -1088,7 +1384,9 @@ function storedAnswersToRecords(
   return records;
 }
 
-function sessionAnswersToRecords(session: ImageQuizSessionRecord): Record<string, AnswerRecord> {
+function sessionAnswersToRecords(
+  session: ImageQuizSessionRecord,
+): Record<string, AnswerRecord> {
   const records: Record<string, AnswerRecord> = {};
   for (const [questionId, answer] of Object.entries(session.answers)) {
     records[questionId] = {
@@ -1107,9 +1405,14 @@ async function saveRandomSessionResult(
 ): Promise<void> {
   const answered = questions
     .map((question) => ({ question, answer: answers[question.id] }))
-    .filter((item): item is { question: ImageQuizQuestion; answer: AnswerRecord } => Boolean(item.answer));
+    .filter(
+      (item): item is { question: ImageQuizQuestion; answer: AnswerRecord } =>
+        Boolean(item.answer),
+    );
   const correctCount = answered.filter((item) => item.answer.isCorrect).length;
-  const wrongQuestionIds = answered.filter((item) => !item.answer.isCorrect).map((item) => item.question.id);
+  const wrongQuestionIds = answered
+    .filter((item) => !item.answer.isCorrect)
+    .map((item) => item.question.id);
   const answeredCount = answered.length;
   const wrongCount = answeredCount - correctCount;
   await finishImageQuizSession(sessionId, {
@@ -1119,7 +1422,6 @@ async function saveRandomSessionResult(
     wrongQuestionIds,
   });
 }
-
 
 function calculateConsecutiveCorrectStreak(
   questions: ImageQuizQuestion[],
@@ -1135,7 +1437,9 @@ function calculateActiveCorrectStreak(
   currentIndex: number,
 ): number {
   const currentQuestion = questions[currentIndex];
-  const currentAnswer = currentQuestion ? answers[currentQuestion.id] : undefined;
+  const currentAnswer = currentQuestion
+    ? answers[currentQuestion.id]
+    : undefined;
   const startIndex = currentAnswer ? currentIndex : currentIndex - 1;
   return calculateCorrectStreakFromIndex(questions, answers, startIndex);
 }
@@ -1160,7 +1464,11 @@ function calculateCorrectStreakFromIndex(
   return streak;
 }
 
-function answerButtonClass(answer: NumericAnswer, record: AnswerRecord | undefined, revealAnswer = true): string {
+function answerButtonClass(
+  answer: NumericAnswer,
+  record: AnswerRecord | undefined,
+  revealAnswer = true,
+): string {
   const classes = ["glass-answer-button"];
   if (!record) {
     return classes.join(" ");
@@ -1182,7 +1490,11 @@ function answerButtonClass(answer: NumericAnswer, record: AnswerRecord | undefin
   return classes.join(" ");
 }
 
-function answerStatusLabel(answer: NumericAnswer, record: AnswerRecord, revealAnswer = true): string {
+function answerStatusLabel(
+  answer: NumericAnswer,
+  record: AnswerRecord,
+  revealAnswer = true,
+): string {
   if (!revealAnswer) return answer === record.selected ? "已選擇" : "";
   if (answer === record.selected && answer === record.correct) {
     return T.selectedCorrect;

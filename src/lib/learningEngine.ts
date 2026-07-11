@@ -7,6 +7,7 @@ import {
   type Grade,
 } from "ts-fsrs";
 import { supabase } from "./supabase";
+import type { ReliabilityQueueEntry } from "./reliabilityStore";
 import {
   initializeLearningStore,
   recordLearningStoreUpdate,
@@ -23,7 +24,10 @@ export type {
   LearningSummary,
   QuestionLearningState,
 } from "./learningStateStore";
-export { getLocalLearningSummary, listLocalLearningStates } from "./learningStateStore";
+export {
+  getLocalLearningSummary,
+  listLocalLearningStates,
+} from "./learningStateStore";
 
 const MAX_LOCAL_ATTEMPTS = 1200;
 const scheduler = fsrs({
@@ -60,7 +64,9 @@ function cardFromState(
     reps: previous.reps,
     lapses: previous.lapseCount,
     state: previous.fsrsState,
-    last_review: Number.isFinite(lastReview.getTime()) ? lastReview : reviewDate,
+    last_review: Number.isFinite(lastReview.getTime())
+      ? lastReview
+      : reviewDate,
   };
 }
 
@@ -132,9 +138,12 @@ export function createAttemptId(): string {
   return `attempt-${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
 }
 
-export async function recordLocalLearningAttempt(
+export async function recordLocalLearningAttempt<TPayload = unknown>(
   userId: string | null,
   attempt: LearningAttemptInput,
+  queueEntriesForState?: (
+    state: QuestionLearningState,
+  ) => ReliabilityQueueEntry<TPayload>[],
 ): Promise<QuestionLearningState> {
   const store = await initializeLearningStore(userId);
   if (store.attempts.some((row) => row.eventId === attempt.eventId)) {
@@ -143,13 +152,21 @@ export async function recordLocalLearningAttempt(
       scheduleLearningAttempt(undefined, attempt)
     );
   }
-  const state = scheduleLearningAttempt(store.states[attempt.questionId], attempt);
+  const state = scheduleLearningAttempt(
+    store.states[attempt.questionId],
+    attempt,
+  );
   store.states[attempt.questionId] = state;
   store.attempts.push(attempt);
   if (store.attempts.length > MAX_LOCAL_ATTEMPTS) {
     store.attempts.splice(0, store.attempts.length - MAX_LOCAL_ATTEMPTS);
   }
-  await recordLearningStoreUpdate(userId, state, attempt);
+  await recordLearningStoreUpdate(
+    userId,
+    state,
+    attempt,
+    queueEntriesForState?.(state) ?? [],
+  );
   return state;
 }
 

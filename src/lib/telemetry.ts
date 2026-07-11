@@ -31,7 +31,7 @@ export function reportClientError(error: unknown): void {
 
   const payload = JSON.stringify({
     releaseId: import.meta.env.VITE_VERCEL_GIT_COMMIT_SHA || import.meta.env.VITE_APP_RELEASE || "local",
-    route: `${window.location.pathname}${window.location.search}`.slice(0, 180),
+    route: window.location.pathname.slice(0, 180),
     name: normalized.name,
     message,
     context: {

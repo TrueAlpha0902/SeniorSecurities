@@ -1,4 +1,20 @@
-﻿# AI Change Log
+# AI Change Log
+
+## 2026-07-12 — Complete Optimization v79
+
+- 雲端同步由裝置時間／offset 改為 PostgreSQL `sync_version` server cursor 與 keyset pagination。
+- 首次同步改為 download-first；live rows 與 tombstones 依 sync version reconciliation。
+- 一般學習資料與 local sync intent 使用同一個 per-user IndexedDB transaction；FSRS state／attempt／outbox 亦為原子寫入。
+- 圖片測驗 session 納入雲端同步、tombstone、批次 queue 與帳號同步摘要。
+- Dead-letter queue 新增列出、重新嘗試、清除及帳號頁復原介面。
+- 題庫 manifest 升級 schema 2，加入 question-to-shard index；Daily Plan、錯題、收藏、相似題與 session 只載入所需 shards。
+- 新增 3,526 題／818 張圖片的完整 crop validator，修復 6 筆空白裁切及相鄰題目重疊。
+- 移除 production build 中的完整編輯來源 JSON／backups；管理後台題目編輯器改從 hashed shards 載入。
+- 移除 hard-coded admin Email，inactive assignment fail closed；敏感 admin／activation mutation 改為 AAL2 transaction RPC。
+- Public override API 使用 published-only、分頁、ETag 與 CDN cache。
+- Telemetry 移除 query string，加入 body size、source hash、rate limit 與敏感值清理。
+- GitHub Actions 增加 WebKit；production health 改為輪詢並驗證安全與快取標頭。
+- 移除未使用歷史計算機 CSS／bak，新增 CSS budget；完整 `npm run verify` 通過。
 
 ## 2026-07-11 — Stabilization Final（v78）
 

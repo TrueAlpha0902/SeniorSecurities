@@ -18,15 +18,39 @@ export default defineConfig({
     screenshot: "only-on-failure",
     serviceWorkers: "allow",
     locale: "zh-TW",
-    launchOptions: chromiumExecutablePath ? { executablePath: chromiumExecutablePath, args: ["--no-sandbox", "--disable-setuid-sandbox", "--no-proxy-server", "--proxy-bypass-list=<-loopback>", "--host-resolver-rules=MAP app.test 127.0.0.1", "--disable-gpu", "--disable-dev-shm-usage", "--use-gl=swiftshader"] } : undefined,
+    launchOptions: chromiumExecutablePath
+      ? {
+          executablePath: chromiumExecutablePath,
+          args: [
+            "--no-sandbox",
+            "--disable-setuid-sandbox",
+            "--no-proxy-server",
+            "--proxy-bypass-list=<-loopback>",
+            "--host-resolver-rules=MAP app.test 127.0.0.1",
+            "--disable-gpu",
+            "--disable-dev-shm-usage",
+            "--use-gl=swiftshader",
+          ],
+        }
+      : undefined,
   },
   projects: [
-    { name: "desktop", use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 1000 } } },
-    { name: "ipad", use: { ...devices["iPad Pro 11"] } },
-    { name: "mobile", use: { ...devices["Pixel 7"] } },
+    {
+      name: "desktop",
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 1440, height: 1000 },
+      },
+    },
+    {
+      name: "ipad-chromium",
+      use: { ...devices["iPad Pro 11"], browserName: "chromium" },
+    },
+    { name: "mobile", use: { ...devices["Pixel 7"], browserName: "chromium" } },
+    { name: "ipad-webkit", use: { ...devices["iPad Pro 11"] } },
   ],
   webServer: {
-    command: "npm run build && npm run preview -- --port 4173",
+    command: "npm run build && npm run preview -- --host 0.0.0.0 --port 4173",
     url: "http://127.0.0.1:4173/auth",
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

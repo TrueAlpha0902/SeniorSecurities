@@ -1,6 +1,6 @@
 import { requireAdminUser, sendError, sendJson, type ApiRequest, type ApiResponse } from "../_adminClient.js";
 
-const EXPECTED_MIGRATION = "20260712090000_stabilization_final";
+const EXPECTED_MIGRATION = "20260712130000_final_hardening_v79";
 
 type HealthCheck = {
   id: string;
@@ -28,6 +28,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     const tableChecks = [
       ["tombstones", "user_record_tombstones", "record_key"],
       ["telemetry", "app_client_errors", "id"],
+      ["image-sessions", "user_image_quiz_sessions", "session_id"],
       ["release-pointer", "question_release_pointer", "singleton"],
       ["release-batches", "question_release_batches", "id"],
       ["activation-codes", "activation_codes", "id"],

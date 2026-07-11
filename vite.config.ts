@@ -7,11 +7,11 @@ import { VitePWA } from "vite-plugin-pwa";
 const base = process.env.VITE_BASE_PATH ?? "/";
 const appName = "\u8b49\u5238\u9ad8\u696d";
 
-function excludePublicBackupsFromBuild(): Plugin {
+function excludeEditorSourcesFromBuild(): Plugin {
   let outputDirectory = "";
 
   return {
-    name: "exclude-public-backups-from-build",
+    name: "exclude-editor-sources-from-build",
     apply: "build",
     enforce: "post",
     configResolved(config) {
@@ -29,9 +29,28 @@ function excludePublicBackupsFromBuild(): Plugin {
         throw new Error(`Refusing to remove unexpected build path: ${backupOutputDirectory}`);
       }
 
-      // Vite copies public/ wholesale. Remove only the copied build artifact;
-      // the source backups under public/data/backups are never modified.
-      await rm(backupOutputDirectory, { recursive: true, force: true });
+      const editorSourceOutputPath = resolve(
+        outputDirectory,
+        "data",
+        "pdf-image-quiz.json",
+      );
+      const relativeEditorSourcePath = relative(
+        outputDirectory,
+        editorSourceOutputPath,
+      ).replaceAll("\\", "/");
+      if (relativeEditorSourcePath !== "data/pdf-image-quiz.json") {
+        throw new Error(
+          `Refusing to remove unexpected build path: ${editorSourceOutputPath}`,
+        );
+      }
+
+      // Vite copies public/ wholesale. The raw editor source and local backups
+      // are repository authoring inputs, not runtime assets. The production app
+      // reads content-hashed chapter shards instead.
+      await Promise.all([
+        rm(backupOutputDirectory, { recursive: true, force: true }),
+        rm(editorSourceOutputPath, { force: true }),
+      ]);
     },
   };
 }
@@ -75,7 +94,7 @@ export default defineConfig({
   },
   plugins: [
     react(),
-    excludePublicBackupsFromBuild(),
+    excludeEditorSourcesFromBuild(),
     VitePWA({
       registerType: "prompt",
       includeAssets: [

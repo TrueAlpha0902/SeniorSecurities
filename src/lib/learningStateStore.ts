@@ -4,6 +4,7 @@ import {
   mergeReliabilityLearningStates,
   persistReliabilityLearningUpdate,
   replaceReliabilityLearningData,
+  type ReliabilityQueueEntry,
 } from "./reliabilityStore";
 
 export type AnswerConfidence = "sure" | "unsure" | "guess" | "unknown";
@@ -110,35 +111,63 @@ export function normalizeStoredLearningState(
 ): QuestionLearningState | null {
   if (!raw || typeof raw !== "object") return null;
   const value = raw as Record<string, unknown>;
-  const answeredAt = validDateIso(value.lastAnsweredAt, new Date(0).toISOString());
+  const answeredAt = validDateIso(
+    value.lastAnsweredAt,
+    new Date(0).toISOString(),
+  );
   const nextReviewAt = validDateIso(value.nextReviewAt, answeredAt);
   const stageValue = value.stage;
   const stage: LearningStage =
-    stageValue === "new" || stageValue === "learning" || stageValue === "review" || stageValue === "mastered"
+    stageValue === "new" ||
+    stageValue === "learning" ||
+    stageValue === "review" ||
+    stageValue === "mastered"
       ? stageValue
       : "new";
   const confidenceValue = value.lastConfidence;
   const lastConfidence: AnswerConfidence =
-    confidenceValue === "sure" || confidenceValue === "unsure" || confidenceValue === "guess" || confidenceValue === "unknown"
+    confidenceValue === "sure" ||
+    confidenceValue === "unsure" ||
+    confidenceValue === "guess" ||
+    confidenceValue === "unknown"
       ? confidenceValue
       : "sure";
   const stateNumber = finiteNumber(value.fsrsState, inferFsrsState(stage));
-  const fsrsState = stateNumber >= 0 && stateNumber <= 3 ? stateNumber as State : inferFsrsState(stage);
-  const successCount = Math.max(0, Math.trunc(finiteNumber(value.successCount, 0)));
+  const fsrsState =
+    stateNumber >= 0 && stateNumber <= 3
+      ? (stateNumber as State)
+      : inferFsrsState(stage);
+  const successCount = Math.max(
+    0,
+    Math.trunc(finiteNumber(value.successCount, 0)),
+  );
   const lapseCount = Math.max(0, Math.trunc(finiteNumber(value.lapseCount, 0)));
-  const reps = Math.max(0, Math.trunc(finiteNumber(value.reps, successCount + lapseCount)));
+  const reps = Math.max(
+    0,
+    Math.trunc(finiteNumber(value.reps, successCount + lapseCount)),
+  );
   const scheduledDays = Math.max(
     0,
     Math.trunc(
       finiteNumber(
         value.scheduledDays,
-        Math.max(0, Math.round((new Date(nextReviewAt).getTime() - new Date(answeredAt).getTime()) / 86_400_000)),
+        Math.max(
+          0,
+          Math.round(
+            (new Date(nextReviewAt).getTime() -
+              new Date(answeredAt).getTime()) /
+              86_400_000,
+          ),
+        ),
       ),
     ),
   );
 
   return {
-    questionId: typeof value.questionId === "string" && value.questionId ? value.questionId : questionId,
+    questionId:
+      typeof value.questionId === "string" && value.questionId
+        ? value.questionId
+        : questionId,
     bankId: typeof value.bankId === "string" ? value.bankId : "",
     chapterId: typeof value.chapterId === "string" ? value.chapterId : "",
     box: Math.min(5, Math.max(0, Math.trunc(finiteNumber(value.box, 0)))),
@@ -153,9 +182,15 @@ export function normalizeStoredLearningState(
     stability: Math.max(0, finiteNumber(value.stability, 0)),
     elapsedDays: Math.max(0, Math.trunc(finiteNumber(value.elapsedDays, 0))),
     scheduledDays,
-    learningSteps: Math.max(0, Math.trunc(finiteNumber(value.learningSteps, 0))),
+    learningSteps: Math.max(
+      0,
+      Math.trunc(finiteNumber(value.learningSteps, 0)),
+    ),
     reps,
-    lastReviewAt: value.lastReviewAt == null ? answeredAt : validDateIso(value.lastReviewAt, answeredAt),
+    lastReviewAt:
+      value.lastReviewAt == null
+        ? answeredAt
+        : validDateIso(value.lastReviewAt, answeredAt),
     algorithmVersion: 2,
   };
 }
@@ -173,7 +208,9 @@ function normalizeAttempt(raw: unknown): LearningAttemptInput | null {
     correctAnswer: String(value.correctAnswer || ""),
     isCorrect: Boolean(value.isCorrect),
     confidence:
-      value.confidence === "unsure" || value.confidence === "guess" || value.confidence === "unknown"
+      value.confidence === "unsure" ||
+      value.confidence === "guess" ||
+      value.confidence === "unknown"
         ? value.confidence
         : "sure",
     answeredAt: validDateIso(value.answeredAt, new Date(0).toISOString()),
@@ -186,10 +223,20 @@ function readLegacyStore(userId: string | null): LocalLearningStore | null {
   const storage = safeStorage();
   if (!storage) return null;
   try {
-    const parsed = JSON.parse(storage.getItem(legacyStorageKey(userId)) || "null") as Record<string, unknown> | null;
-    if (!parsed || typeof parsed.states !== "object" || parsed.states === null || !Array.isArray(parsed.attempts)) return null;
+    const parsed = JSON.parse(
+      storage.getItem(legacyStorageKey(userId)) || "null",
+    ) as Record<string, unknown> | null;
+    if (
+      !parsed ||
+      typeof parsed.states !== "object" ||
+      parsed.states === null ||
+      !Array.isArray(parsed.attempts)
+    )
+      return null;
     const states: Record<string, QuestionLearningState> = {};
-    for (const [questionId, raw] of Object.entries(parsed.states as Record<string, unknown>)) {
+    for (const [questionId, raw] of Object.entries(
+      parsed.states as Record<string, unknown>,
+    )) {
       const normalized = normalizeStoredLearningState(questionId, raw);
       if (normalized) states[normalized.questionId] = normalized;
     }
@@ -203,7 +250,10 @@ function readLegacyStore(userId: string | null): LocalLearningStore | null {
   }
 }
 
-function publishLearningStore(userId: string | null, store: LocalLearningStore): LocalLearningStore {
+function publishLearningStore(
+  userId: string | null,
+  store: LocalLearningStore,
+): LocalLearningStore {
   storeCache.set(scopeKey(userId), store);
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent("learning-state:changed"));
@@ -211,7 +261,9 @@ function publishLearningStore(userId: string | null, store: LocalLearningStore):
   return store;
 }
 
-export async function initializeLearningStore(userId: string | null): Promise<LocalLearningStore> {
+export async function initializeLearningStore(
+  userId: string | null,
+): Promise<LocalLearningStore> {
   const key = scopeKey(userId);
   const cached = storeCache.get(key);
   if (cached) return cached;
@@ -219,7 +271,10 @@ export async function initializeLearningStore(userId: string | null): Promise<Lo
   if (active) return active;
 
   const promise = (async () => {
-    const persisted = await loadReliabilityLearningData<QuestionLearningState, LearningAttemptInput>(userId);
+    const persisted = await loadReliabilityLearningData<
+      QuestionLearningState,
+      LearningAttemptInput
+    >(userId);
     const states: Record<string, QuestionLearningState> = {};
     for (const raw of persisted.states) {
       const normalized = normalizeStoredLearningState(raw.questionId, raw);
@@ -236,7 +291,12 @@ export async function initializeLearningStore(userId: string | null): Promise<Lo
 
     const legacy = readLegacyStore(userId);
     if (legacy) {
-      await replaceReliabilityLearningData(userId, Object.values(legacy.states), legacy.attempts, MAX_LOCAL_ATTEMPTS);
+      await replaceReliabilityLearningData(
+        userId,
+        Object.values(legacy.states),
+        legacy.attempts,
+        MAX_LOCAL_ATTEMPTS,
+      );
       try {
         safeStorage()?.removeItem(legacyStorageKey(userId));
       } catch {
@@ -268,10 +328,11 @@ export function readLearningStore(userId: string | null): LocalLearningStore {
   return store;
 }
 
-export async function recordLearningStoreUpdate(
+export async function recordLearningStoreUpdate<TPayload = unknown>(
   userId: string | null,
   state: QuestionLearningState,
   attempt: LearningAttemptInput,
+  queueEntries: ReliabilityQueueEntry<TPayload>[] = [],
 ): Promise<void> {
   const store = await initializeLearningStore(userId);
   store.states[state.questionId] = state;
@@ -282,8 +343,15 @@ export async function recordLearningStoreUpdate(
     }
   }
   storeCache.set(scopeKey(userId), store);
-  await persistReliabilityLearningUpdate(userId, state, attempt, MAX_LOCAL_ATTEMPTS);
-  if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("learning-state:changed"));
+  await persistReliabilityLearningUpdate(
+    userId,
+    state,
+    attempt,
+    MAX_LOCAL_ATTEMPTS,
+    queueEntries,
+  );
+  if (typeof window !== "undefined")
+    window.dispatchEvent(new CustomEvent("learning-state:changed"));
 }
 
 export async function mergeCloudLearningStates(
@@ -305,14 +373,20 @@ export async function mergeCloudLearningStates(
   if (!accepted.length) return;
   storeCache.set(scopeKey(userId), store);
   await mergeReliabilityLearningStates(userId, accepted);
-  if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("learning-state:changed"));
+  if (typeof window !== "undefined")
+    window.dispatchEvent(new CustomEvent("learning-state:changed"));
 }
 
-export function listLocalLearningStates(userId: string | null = null): QuestionLearningState[] {
+export function listLocalLearningStates(
+  userId: string | null = null,
+): QuestionLearningState[] {
   return Object.values(readLearningStore(userId).states);
 }
 
-export function getLocalLearningSummary(userId: string | null = null, now = new Date()): LearningSummary {
+export function getLocalLearningSummary(
+  userId: string | null = null,
+  now = new Date(),
+): LearningSummary {
   const states = listLocalLearningStates(userId);
   const summary: LearningSummary = {
     total: states.length,
@@ -328,7 +402,8 @@ export function getLocalLearningSummary(userId: string | null = null, now = new 
     else if (state.stage === "learning") summary.learningCount += 1;
     else if (state.stage === "review") summary.reviewCount += 1;
     else summary.masteredCount += 1;
-    if (new Date(state.nextReviewAt).getTime() <= nowTime) summary.dueCount += 1;
+    if (new Date(state.nextReviewAt).getTime() <= nowTime)
+      summary.dueCount += 1;
   }
   return summary;
 }

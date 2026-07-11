@@ -29,9 +29,9 @@
 
 ## 同步與資料完整性護欄
 
-- 雲端清單查詢必須明確分頁；不得用「本次查詢沒出現」推斷刪除。
+- 雲端同步必須使用伺服器 `sync_version` 與 keyset pagination；不得使用裝置時間 checkpoint、offset pagination，或用「本次查詢沒出現」推斷刪除。
 - 刪除只能透過 `user_record_tombstones` 或明確伺服器事件 reconcile。
-- FSRS、attempts、cloud queue 與 dead-letter 必須保留在 `reliabilityStore` IndexedDB；不得搬回大型 localStorage snapshot。
+- Domain record 與 `syncIntents` 必須在同一個 per-user IndexedDB transaction；FSRS state、attempt、cloud queue 與 dead-letter 必須保留在 `reliabilityStore` IndexedDB。
 - Queue mutation 必須有 event id／coalescing／重試上限；新增 mutation 類型時同步更新 reliability tests。
 - 同一裝置的本機資料必須依 user id 隔離。
 
@@ -44,7 +44,7 @@
 
 ## 題庫與離線內容
 
-- `public/data/pdf-image-quiz.json` 變更後必須執行 `npm run generate:shards` 與 `npm run generate:plan-index`，並提交 generated manifest、shards 與 release source。
+- `public/data/pdf-image-quiz.json` 變更後必須執行 `npm run validate:image-data`、`npm run generate:shards` 與 `npm run generate:plan-index`，並提交 generated manifest、question index、shards 與 release source；production build 不得包含原始編輯 JSON 或 backups。
 - Bank／chapter route 不得改回載入完整題庫。
 - Cache version 必須來自 release manifest／content hash，不得新增人工日期常數。
 - 離線下載只能快取該 App 的 `question-bank-*` cache。
@@ -64,4 +64,4 @@
 - 進度條、錯誤次數、正解／答錯顏色修改必須保留 integrity contract 與 Playwright 驗證。
 - 首頁不得載入完整 crop payload。
 - 大型列表使用 progressive rendering、virtualization 或 `content-visibility`。
-- 修改 Vite、主 bundle 或全域 CSS 後必須通過 `npm run test:bundle`。
+- 修改 Vite、主 bundle 或全域 CSS 後必須通過 `npm run test:bundle` 與 `npm run test:css`。

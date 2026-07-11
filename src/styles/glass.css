@@ -4752,3 +4752,33 @@ p {
     width: 100%;
   }
 }
+
+/* v79 sync recovery controls */
+.account-sync-recovery {
+  display: grid;
+  gap: 14px;
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid rgba(166, 103, 31, 0.22);
+  border-radius: 18px;
+  background: rgba(255, 248, 235, 0.82);
+}
+.account-sync-recovery strong { color: #6f451e; }
+.account-sync-recovery p { margin: 5px 0 0; color: var(--muted); }
+.account-sync-recovery ul {
+  display: grid;
+  gap: 7px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.account-sync-recovery li {
+  display: grid;
+  gap: 2px;
+  padding: 9px 11px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.72);
+}
+.account-sync-recovery li span { font-weight: 760; }
+.account-sync-recovery li small { color: var(--muted); overflow-wrap: anywhere; }
+.account-sync-recovery .button-row { justify-content: flex-start; }
