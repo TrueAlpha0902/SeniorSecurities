@@ -527,6 +527,7 @@ p {
   position: relative;
   display: flex;
   justify-content: center;
+  width: 100%;
   padding: 10px 0 2px;
   overflow: visible;
   border: 0;
@@ -534,8 +535,10 @@ p {
 }
 
 .homepage-frieren-figure {
-  margin: 0;
-  display: block;
+  margin: 0 auto;
+  width: 100%;
+  display: flex;
+  justify-content: center;
 }
 
 .homepage-frieren-image {
@@ -4451,4 +4454,44 @@ p {
   .account-mfa-code-row { align-items: stretch; flex-direction: column; }
   .account-mfa-code-row > input, .account-mfa-code-row > .glass-button { width: 100%; flex-basis: auto; }
   .account-mfa-badge { align-self: flex-start; }
+}
+
+
+/* v72.5 visual restore fixes */
+.chapter-card .glass-progress {
+  background: rgba(229, 236, 240, 0.9) !important;
+  border-color: rgba(28, 73, 91, 0.12) !important;
+}
+
+.chapter-card .glass-progress span {
+  background: linear-gradient(90deg, var(--primary), #2ea36d) !important;
+}
+
+.glass-badge.weak-count-badge {
+  color: #ffffff !important;
+  background: linear-gradient(135deg, #cf3e54, #9f2638) !important;
+  border-color: rgba(173, 49, 64, 0.35) !important;
+}
+
+.glass-answer-button.glass-answer-correct {
+  color: #ffffff !important;
+  background: linear-gradient(135deg, #1f9a73, #127052) !important;
+  border-color: rgba(20, 128, 88, 0.95) !important;
+}
+
+.glass-answer-button.glass-answer-wrong {
+  color: #ffffff !important;
+  background: linear-gradient(135deg, #cf3e54, #9f2638) !important;
+  border-color: rgba(190, 45, 62, 0.96) !important;
+}
+
+.glass-answer-button.glass-answer-correct .answer-key,
+.glass-answer-button.glass-answer-wrong .answer-key,
+.glass-answer-button.glass-answer-correct .answer-status-label,
+.glass-answer-button.glass-answer-wrong .answer-status-label {
+  color: #ffffff !important;
+}
+
+.answer-confidence-panel {
+  display: none !important;
 }

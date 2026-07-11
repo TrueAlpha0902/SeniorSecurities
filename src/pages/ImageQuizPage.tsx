@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, BrainCircuit, Clock3, Flag, Heart, Home, ListChecks, Pause, Play, RotateCcw } from "lucide-react";
+import { ArrowLeft, ArrowRight, Clock3, Flag, Heart, Home, ListChecks, Pause, Play, RotateCcw } from "lucide-react";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
@@ -370,7 +370,7 @@ export function ImageQuizPage() {
   const [jumpInput, setJumpInput] = useState("");
   const [jumpError, setJumpError] = useState("");
   const [answerModeEnabled, setAnswerModeEnabled] = useState(() => getAnswerModeEnabled());
-  const [confidenceByQuestion, setConfidenceByQuestion] = useState<Record<string, AnswerConfidence>>({});
+  const [confidenceByQuestion] = useState<Record<string, AnswerConfidence>>({});
   const [retryQueue, setRetryQueue] = useState<string[]>([]);
   const [markedQuestionIds, setMarkedQuestionIds] = useState<Set<string>>(new Set());
   const [answerCardOpen, setAnswerCardOpen] = useState(false);
@@ -925,30 +925,6 @@ export function ImageQuizPage() {
           segments={currentQuestion.questionSegments}
           priority="high"
         />
-
-        {!currentAnswer ? (
-          <div className="answer-confidence-panel" aria-label="作答把握程度">
-            <div className="answer-confidence-heading"><BrainCircuit size={18} /><span><strong>作答把握程度</strong><small>誠實標記會調整後續複習間隔</small></span></div>
-            <div className="answer-confidence-options">
-              {([
-                ["sure", "確定", "理解並能說明"],
-                ["unsure", "不熟", "概念模糊需再複習"],
-                ["guess", "猜的", "答案可能只是碰巧"],
-                ["unknown", "不知道", "需要從解析重新學"],
-              ] as const).map(([value, label, description]) => (
-                <button
-                  key={value}
-                  type="button"
-                  className={currentConfidence === value ? "is-active" : ""}
-                  aria-pressed={currentConfidence === value}
-                  onClick={() => setConfidenceByQuestion((current) => ({ ...current, [currentQuestion.id]: value }))}
-                >
-                  <strong>{label}</strong><small>{description}</small>
-                </button>
-              ))}
-            </div>
-          </div>
-        ) : null}
 
         <div className="numeric-option-grid" aria-label={T.answerOptions}>
           {ANSWERS.map((answer) => (

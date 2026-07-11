@@ -9,7 +9,7 @@ export function ProgressBar({ value, max, label }: ProgressBarProps) {
   return (
     <div className="progress-wrap" aria-label={label}>
       <div className="glass-progress" role="progressbar" aria-valuemin={0} aria-valuemax={max} aria-valuenow={value}>
-        <span style={{ width: `${percent}%` }} />
+        <span style={{ width: `${percent}%`, minWidth: value > 0 ? "12px" : 0 }} />
       </div>
       <span className="progress-label">{label}</span>
     </div>
