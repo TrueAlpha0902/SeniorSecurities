@@ -13,6 +13,8 @@ const app = read("src/App.tsx");
 const account = read("src/pages/AccountPage.tsx");
 const adminClient = read("api/_adminClient.ts");
 const tools = read("api/admin/tools.ts");
+const adminPanel = read("src/components/AdminToolsPanel.tsx");
+const segmentStack = read("src/components/PdfSegmentStack.tsx");
 const migration = read("supabase/migrations/20260712160000_restore_admin_console_v793.sql");
 
 assertIncludes(app, 'path="/admin"', "Admin route must remain registered.");
@@ -26,6 +28,10 @@ assertIncludes(tools, '"upsert-admin"', "Administrator account management must r
 assertIncludes(tools, 'requireAal2: true', "Destructive administrator actions must retain AAL2 enforcement.");
 assertIncludes(migration, "public.admin_users", "Restoration migration must use the existing administrator registry.");
 assertIncludes(migration, "primary_admin", "Restoration migration must bootstrap the primary administrator role.");
+assertIncludes(adminPanel, "自動壓縮與前段接縫", "Cross-page question editing must retain automatic seam compression.");
+assertIncludes(adminPanel, "裁上", "The crop editor must support trimming individual crop edges.");
+assertIncludes(adminPanel, "復原上一步", "The crop editor must provide a safe undo action.");
+assertIncludes(segmentStack, "activeIndex", "The preview must identify the segment currently being edited.");
 if (adminClient.includes("true.alpha0902@gmail.com") || migration.includes("true.alpha0902@gmail.com")) {
   throw new Error("Administrator access must not depend on an embedded email address.");
 }

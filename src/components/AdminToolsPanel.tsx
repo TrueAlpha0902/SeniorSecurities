@@ -9,6 +9,16 @@ import {
   PdfCropSegment,
 } from "../lib/imageQuiz";
 import { GlassButton } from "./GlassButton";
+import { pdfImageUrl } from "../lib/pdfAssets";
+import {
+  compressPdfCropSeam,
+  contentBoundsToVerticalTrim,
+  detectVerticalContentBounds,
+  movePdfCropSegment,
+  normalizePdfCropSegment,
+  resizePdfCropSegment,
+  trimPdfCropEdge,
+} from "../lib/pdfCropEditor";
 import { GlassCard } from "./GlassCard";
 import { PdfSegmentStack } from "./PdfSegmentStack";
 import "../styles/admin-tools.css";
@@ -428,6 +438,10 @@ function QuestionEditorTool({ accessToken, isPrimaryAdmin }: { accessToken: stri
   const [segmentIndex, setSegmentIndex] = useState(0);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [cropBusy, setCropBusy] = useState(false);
+  const [cropStep, setCropStep] = useState(5);
+  const [cropUndoStack, setCropUndoStack] = useState<ImageQuizQuestion[]>([]);
+  const [cropMessage, setCropMessage] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -480,7 +494,14 @@ function QuestionEditorTool({ accessToken, isPrimaryAdmin }: { accessToken: stri
   useEffect(() => {
     setEditable(question ? cloneQuestion(question) : null);
     setSegmentIndex(0);
+    setCropUndoStack([]);
+    setCropMessage("");
   }, [question]);
+
+  useEffect(() => {
+    setCropUndoStack([]);
+    setCropMessage("");
+  }, [mode]);
 
   const segmentKey = mode === "question" ? "questionSegments" : "explanationSegments";
   const segments = editable?.[segmentKey] || [];
@@ -491,9 +512,104 @@ function QuestionEditorTool({ accessToken, isPrimaryAdmin }: { accessToken: stri
       if (!current) return current;
       const next = [...current[segmentKey]];
       if (!next[segmentIndex]) return current;
-      next[segmentIndex] = { ...next[segmentIndex], ...patch };
+      next[segmentIndex] = normalizePdfCropSegment({ ...next[segmentIndex], ...patch });
       return { ...current, [segmentKey]: next };
     });
+  }
+
+  function applyCropAction(
+    transform: (segments: PdfCropSegment[], activeIndex: number) => PdfCropSegment[],
+    successMessage = "截圖範圍已調整。",
+  ): void {
+    if (!editable) return;
+    const before = cloneQuestion(editable);
+    const nextSegments = transform(editable[segmentKey].map((item) => ({ ...item })), segmentIndex);
+    setCropUndoStack((current) => [...current.slice(-29), before]);
+    setEditable({ ...editable, [segmentKey]: nextSegments });
+    setCropMessage(successMessage);
+  }
+
+  function updateActiveSegment(transform: (current: PdfCropSegment) => PdfCropSegment, successMessage?: string): void {
+    applyCropAction((currentSegments, activeIndex) => currentSegments.map((item, index) => (
+      index === activeIndex ? transform(item) : item
+    )), successMessage);
+  }
+
+  function undoCropAction(): void {
+    const previous = cropUndoStack[cropUndoStack.length - 1];
+    if (!previous) return;
+    setEditable(cloneQuestion(previous));
+    setCropUndoStack((current) => current.slice(0, -1));
+    setSegmentIndex((current) => Math.min(current, Math.max(0, previous[segmentKey].length - 1)));
+    setCropMessage("已復原上一個裁切調整。");
+  }
+
+  async function autoTrimSegment(target: PdfCropSegment): Promise<{ top: number; bottom: number }> {
+    const image = await loadCropAnalysisImage(pdfImageUrl(target.src));
+    const scaleX = image.naturalWidth / Math.max(1, target.pageWidth);
+    const scaleY = image.naturalHeight / Math.max(1, target.pageHeight);
+    const sourceX = Math.max(0, target.x * scaleX);
+    const sourceY = Math.max(0, target.y * scaleY);
+    const sourceWidth = Math.max(1, Math.min(target.width * scaleX, image.naturalWidth - sourceX));
+    const sourceHeight = Math.max(1, Math.min(target.height * scaleY, image.naturalHeight - sourceY));
+    const analyzedWidth = Math.max(80, Math.min(1200, Math.round(sourceWidth)));
+    const analyzedHeight = Math.max(20, Math.round(sourceHeight * analyzedWidth / sourceWidth));
+    const canvas = document.createElement("canvas");
+    canvas.width = analyzedWidth;
+    canvas.height = analyzedHeight;
+    const context = canvas.getContext("2d", { willReadFrequently: true });
+    if (!context) throw new Error("瀏覽器無法建立圖片分析工具。");
+    context.drawImage(image, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, analyzedWidth, analyzedHeight);
+    const pixels = context.getImageData(0, 0, analyzedWidth, analyzedHeight).data;
+    const bounds = detectVerticalContentBounds(pixels, analyzedWidth, analyzedHeight);
+    if (!bounds) return { top: 0, bottom: 0 };
+    return contentBoundsToVerticalTrim(bounds, analyzedHeight, target.height, 6);
+  }
+
+  async function autoTrimActiveSegment(): Promise<void> {
+    if (!segment || cropBusy) return;
+    setCropBusy(true);
+    setCropMessage("");
+    try {
+      const trim = await autoTrimSegment(segment);
+      if (trim.top < 1 && trim.bottom < 1) {
+        setCropMessage("沒有偵測到可安全裁除的上下白邊。");
+        return;
+      }
+      updateActiveSegment((current) => trimPdfCropEdge(trimPdfCropEdge(current, "top", trim.top), "bottom", trim.bottom), `已自動裁除上方 ${trim.top}px、下方 ${trim.bottom}px 白邊。`);
+    } catch (reason) {
+      setCropMessage(reason instanceof Error ? reason.message : "自動裁切失敗，請改用手動裁邊。");
+    } finally {
+      setCropBusy(false);
+    }
+  }
+
+  async function autoCompressPreviousSeam(): Promise<void> {
+    if (!editable || segmentIndex < 1 || cropBusy) return;
+    const currentSegments = editable[segmentKey];
+    const previous = currentSegments[segmentIndex - 1];
+    const current = currentSegments[segmentIndex];
+    if (!previous || !current) return;
+    setCropBusy(true);
+    setCropMessage("");
+    try {
+      const [previousTrim, currentTrim] = await Promise.all([autoTrimSegment(previous), autoTrimSegment(current)]);
+      const previousBottom = previousTrim.bottom;
+      const currentTop = currentTrim.top;
+      if (previousBottom < 1 && currentTop < 1) {
+        setCropMessage("這個接縫沒有偵測到可安全裁除的白邊。");
+        return;
+      }
+      applyCropAction((segmentsToEdit, activeIndex) => segmentsToEdit.map((item, index) => {
+        if (index === activeIndex - 1) return trimPdfCropEdge(item, "bottom", previousBottom);
+        if (index === activeIndex) return trimPdfCropEdge(item, "top", currentTop);
+        return item;
+      }), `已壓縮跨頁接縫：前段裁下 ${previousBottom}px，本段裁上 ${currentTop}px。`);
+    } catch (reason) {
+      setCropMessage(reason instanceof Error ? reason.message : "自動壓縮接縫失敗，請改用手動接縫裁切。");
+    } finally {
+      setCropBusy(false);
+    }
   }
 
   function addSegment(): void {
@@ -601,19 +717,74 @@ function QuestionEditorTool({ accessToken, isPrimaryAdmin }: { accessToken: stri
               </div>
               {segment ? <SegmentFields segment={segment} onChange={updateSegment} /> : <p>目前沒有段落，請先新增。</p>}
               {segment ? (
-                <div className="segment-nudges">
-                  <button type="button" onClick={() => updateSegment({ y: Math.max(0, segment.y - 5) })}>上移 5</button>
-                  <button type="button" onClick={() => updateSegment({ y: segment.y + 5 })}>下移 5</button>
-                  <button type="button" onClick={() => updateSegment({ x: Math.max(0, segment.x - 5) })}>左移 5</button>
-                  <button type="button" onClick={() => updateSegment({ x: segment.x + 5 })}>右移 5</button>
-                  <button type="button" onClick={() => updateSegment({ width: segment.width + 5 })}>加寬 5</button>
-                  <button type="button" onClick={() => updateSegment({ height: segment.height + 5 })}>加高 5</button>
+                <div className="segment-crop-tools">
+                  <div className="segment-crop-tool-head">
+                    <label>調整步長
+                      <select value={cropStep} onChange={(event) => setCropStep(Number(event.target.value))}>
+                        <option value={1}>1 px</option>
+                        <option value={5}>5 px</option>
+                        <option value={10}>10 px</option>
+                        <option value={20}>20 px</option>
+                      </select>
+                    </label>
+                    <button type="button" disabled={!cropUndoStack.length || cropBusy} onClick={undoCropAction}>復原上一步</button>
+                  </div>
+
+                  <section className="segment-control-group">
+                    <strong>移動整個截圖</strong>
+                    <div className="segment-nudges">
+                      <button type="button" onClick={() => updateActiveSegment((current) => movePdfCropSegment(current, 0, -cropStep))}>上移 {cropStep}</button>
+                      <button type="button" onClick={() => updateActiveSegment((current) => movePdfCropSegment(current, 0, cropStep))}>下移 {cropStep}</button>
+                      <button type="button" onClick={() => updateActiveSegment((current) => movePdfCropSegment(current, -cropStep, 0))}>左移 {cropStep}</button>
+                      <button type="button" onClick={() => updateActiveSegment((current) => movePdfCropSegment(current, cropStep, 0))}>右移 {cropStep}</button>
+                    </div>
+                  </section>
+
+                  <section className="segment-control-group">
+                    <strong>改變外框大小</strong>
+                    <div className="segment-nudges">
+                      <button type="button" onClick={() => updateActiveSegment((current) => resizePdfCropSegment(current, -cropStep, 0))}>減寬 {cropStep}</button>
+                      <button type="button" onClick={() => updateActiveSegment((current) => resizePdfCropSegment(current, cropStep, 0))}>加寬 {cropStep}</button>
+                      <button type="button" onClick={() => updateActiveSegment((current) => resizePdfCropSegment(current, 0, -cropStep))}>減高 {cropStep}</button>
+                      <button type="button" onClick={() => updateActiveSegment((current) => resizePdfCropSegment(current, 0, cropStep))}>加高 {cropStep}</button>
+                    </div>
+                  </section>
+
+                  <section className="segment-control-group segment-seam-tools">
+                    <div>
+                      <strong>裁除白邊／跨頁接縫</strong>
+                      <p>「裁上」只移除本段頂部空白；「裁下」只移除底部空白，不會把整張截圖一起移動。</p>
+                    </div>
+                    <div className="segment-nudges">
+                      <button type="button" onClick={() => updateActiveSegment((current) => trimPdfCropEdge(current, "top", cropStep))}>裁上 {cropStep}</button>
+                      <button type="button" onClick={() => updateActiveSegment((current) => trimPdfCropEdge(current, "bottom", cropStep))}>裁下 {cropStep}</button>
+                      <button type="button" onClick={() => updateActiveSegment((current) => trimPdfCropEdge(current, "left", cropStep))}>裁左 {cropStep}</button>
+                      <button type="button" onClick={() => updateActiveSegment((current) => trimPdfCropEdge(current, "right", cropStep))}>裁右 {cropStep}</button>
+                    </div>
+                    <div className="segment-auto-actions">
+                      <button type="button" disabled={cropBusy} onClick={() => void autoTrimActiveSegment()}>{cropBusy ? "分析中…" : "自動裁上下白邊"}</button>
+                      <button type="button" disabled={cropBusy || segmentIndex < 1} onClick={() => void autoCompressPreviousSeam()}>自動壓縮與前段接縫</button>
+                      {segmentIndex > 0 ? (
+                        <button type="button" disabled={cropBusy} onClick={() => applyCropAction((items, activeIndex) => {
+                          const next = [...items];
+                          const previousItem = next[activeIndex - 1];
+                          const currentItem = next[activeIndex];
+                          if (!previousItem || !currentItem) return next;
+                          const [previousSegment, currentSegment] = compressPdfCropSeam(previousItem, currentItem, cropStep);
+                          next[activeIndex - 1] = previousSegment;
+                          next[activeIndex] = currentSegment;
+                          return next;
+                        }, `前段底部與本段頂部各裁除 ${cropStep}px。`)}>接縫兩側各裁 {cropStep}</button>
+                      ) : null}
+                    </div>
+                    {cropMessage ? <p className="segment-crop-message" role="status">{cropMessage}</p> : null}
+                  </section>
                 </div>
               ) : null}
             </div>
             <div className="question-editor-preview">
               <p>App 實際顯示預覽</p>
-              <PdfSegmentStack segments={segments} label={`第 ${editable.number} 題預覽`} priority="auto" />
+              <PdfSegmentStack segments={segments} label={`第 ${editable.number} 題預覽`} priority="auto" activeIndex={segmentIndex} />
             </div>
           </div>
 
@@ -770,6 +941,16 @@ function SegmentFields({ segment, onChange }: { segment: PdfCropSegment; onChang
       ))}
     </div>
   );
+}
+
+function loadCropAnalysisImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.decoding = "async";
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("無法載入原始頁面圖片，請確認圖片路徑後再試。"));
+    image.src = src;
+  });
 }
 
 function ToolMessages({ message, error }: { message: string; error: string }) {

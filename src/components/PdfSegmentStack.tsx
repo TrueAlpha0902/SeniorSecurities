@@ -6,9 +6,10 @@ type PdfSegmentStackProps = {
   label: string;
   segments: PdfCropSegment[];
   priority?: "high" | "auto" | "low";
+  activeIndex?: number;
 };
 
-export function PdfSegmentStack({ label, segments, priority = "auto" }: PdfSegmentStackProps) {
+export function PdfSegmentStack({ label, segments, priority = "auto", activeIndex }: PdfSegmentStackProps) {
   return (
     <div className="pdf-segment-stack" aria-label={label}>
       {segments.map((segment, index) => (
@@ -16,6 +17,8 @@ export function PdfSegmentStack({ label, segments, priority = "auto" }: PdfSegme
           key={`${segment.src}-${segment.x}-${segment.y}-${segment.width}-${segment.height}`}
           segment={segment}
           priority={index === 0 ? priority : priority === "high" ? "auto" : priority}
+          isActive={activeIndex === index}
+          segmentNumber={index + 1}
         />
       ))}
     </div>
@@ -23,7 +26,17 @@ export function PdfSegmentStack({ label, segments, priority = "auto" }: PdfSegme
 }
 
 
-function PdfCrop({ segment, priority }: { segment: PdfCropSegment; priority: "high" | "auto" | "low" }) {
+function PdfCrop({
+  segment,
+  priority,
+  isActive,
+  segmentNumber,
+}: {
+  segment: PdfCropSegment;
+  priority: "high" | "auto" | "low";
+  isActive: boolean;
+  segmentNumber: number;
+}) {
   const [retryToken, setRetryToken] = useState(0);
   const [failed, setFailed] = useState(false);
   const imageStyle: CSSProperties = {
@@ -39,7 +52,11 @@ function PdfCrop({ segment, priority }: { segment: PdfCropSegment; priority: "hi
   }, [segment.src, segment.x, segment.y, segment.width, segment.height]);
 
   return (
-    <div className="pdf-crop-viewport" style={{ aspectRatio: `${segment.width} / ${segment.height}` }}>
+    <div
+      className={`pdf-crop-viewport${isActive ? " is-admin-active-segment" : ""}`}
+      data-segment-number={isActive ? segmentNumber : undefined}
+      style={{ aspectRatio: `${segment.width} / ${segment.height}` }}
+    >
       <img
         key={`${segment.src}:${retryToken}`}
         src={pdfImageUrl(segment.src, retryToken)}
