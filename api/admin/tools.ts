@@ -46,9 +46,8 @@ function activationCodeRecord(customCode: string | null) {
   return { formatted, preview, hash };
 }
 
-function normalizeAdminRole(value: unknown): "admin" | "content_reviewer" | "support_admin" {
-  const role = String(value || "admin");
-  if (role === "content_reviewer" || role === "support_admin") return role;
+function normalizeAdminRole(value: unknown): "admin" {
+  void value;
   return "admin";
 }
 
@@ -69,13 +68,19 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
 
     if (req.method === "GET") {
       const tool = queryValue(req.query?.tool);
+      if (tool === "access") {
+        sendJson(res, 200, { role: isPrimaryAdmin ? "primary_admin" : "admin", isPrimaryAdmin });
+        return;
+      }
+
       if (tool === "admins") {
+        if (!isPrimaryAdmin) throw new HttpError("只有主要管理員可以管理管理員帳號。", 403);
         const { data, error } = await supabase
           .from("admin_users")
           .select("id, email, role, is_active, note, created_by, created_at, updated_at")
           .order("created_at", { ascending: false });
         if (error) throw error;
-        sendJson(res, 200, { admins: data || [], primaryEmails: getConfiguredAdminEmails() });
+        sendJson(res, 200, { admins: data || [], primaryEmails: getConfiguredAdminEmails(), isPrimaryAdmin });
         return;
       }
 
@@ -157,6 +162,10 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       });
       sendJson(res, 200, { ok: true, code: code.formatted, message: "啟用碼已建立。" });
       return;
+    }
+
+    if (["upsert-admin", "disable-admin", "delete-admin"].includes(action) && !isPrimaryAdmin) {
+      throw new HttpError("只有主要管理員可以管理管理員帳號。", 403);
     }
 
     const targetEmail = normalizeEmail(body.email);

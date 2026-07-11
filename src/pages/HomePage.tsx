@@ -311,42 +311,54 @@ export function HomePage() {
                 className="daily-plan-section"
                 aria-label={T.smartPractice}
               >
-                <GlassCard className="daily-compact-card">
-                  <div className="daily-compact-copy">
-                    <p className="eyebrow">Daily Practice</p>
-                    <div className="daily-compact-title-row">
-                      <h2>
-                        今日應做 <strong>{dailyDisplayPlan.count}</strong>{" "}
-                        {T.question}
-                      </h2>
-                      <button
-                        type="button"
-                        className="daily-info-button"
-                        aria-label="查看今日練習安排說明"
-                        title="查看今日練習安排"
-                        aria-expanded={dailyDetailsOpen}
-                        onClick={() => setDailyDetailsOpen(true)}
-                      >
-                        <Info aria-hidden="true" size={18} />
-                      </button>
-                      {studyPlan.daysLeft !== null ? (
-                        <span className="daily-countdown-pill">
-                          <CalendarDays aria-hidden="true" size={16} />
-                          {studyPlan.daysLeft === 0
-                            ? T.examToday
-                            : `${T.countdown} ${studyPlan.daysLeft} ${T.days}`}
-                        </span>
+                <GlassCard className="daily-compact-card daily-deadline-card-v70">
+                  <div className="daily-countdown-panel-v70">
+                    <p className="eyebrow">Countdown</p>
+                    <div className="smart-countdown-number">
+                      <CalendarDays aria-hidden="true" size={30} />
+                      <strong>
+                        {studyPlan.daysLeft === 0
+                          ? T.examToday
+                          : studyPlan.daysLeft ?? "--"}
+                      </strong>
+                      {studyPlan.daysLeft !== null && studyPlan.daysLeft > 0 ? (
+                        <span>{T.days}</span>
                       ) : null}
                     </div>
+                    <p>
+                      {T.examDate}：{formatExamDate(studyConfig.examDate)}
+                    </p>
                   </div>
-                  <GlassLinkButton
-                    to="/image-quiz/daily"
-                    variant="primary"
-                    className="daily-primary-action"
-                  >
-                    <PlayCircle aria-hidden="true" size={19} />
-                    <span>{T.startDaily}</span>
-                  </GlassLinkButton>
+                  <div className="daily-compact-main-v70">
+                    <div className="daily-compact-copy">
+                      <p className="eyebrow">Daily Practice</p>
+                      <div className="daily-compact-title-row">
+                        <h2>
+                          今日應做 <strong>{dailyDisplayPlan.count}</strong>{" "}
+                          {T.question}
+                        </h2>
+                        <button
+                          type="button"
+                          className="daily-info-button"
+                          aria-label="查看今日練習安排說明"
+                          title="查看今日練習安排"
+                          aria-expanded={dailyDetailsOpen}
+                          onClick={() => setDailyDetailsOpen(true)}
+                        >
+                          <Info aria-hidden="true" size={18} />
+                        </button>
+                      </div>
+                      <p>依目前進度安排，完成後即可結束今日練習。</p>
+                    </div>
+                    <GlassLinkButton
+                      to="/image-quiz/daily"
+                      variant="primary"
+                      className="daily-primary-action"
+                    >
+                      <PlayCircle aria-hidden="true" size={19} />
+                      <span>{T.startDaily}</span>
+                    </GlassLinkButton>
+                  </div>
                 </GlassCard>
               </section>
 

@@ -77,8 +77,8 @@ const NUMBER_KEYS: KeySpec[] = [
   { label: "−", value: "-", tone: "operator" },
   { label: "0", value: "0", span: 2 },
   { label: ".", value: "." },
-  { label: "EXE", action: "execute", tone: "command" },
   { label: "Ans", action: "ans", tone: "primary" },
+  { label: "EXE", action: "execute", tone: "command" },
 ];
 
 export function CalculatorModal({ open, onClose }: CalculatorModalProps) {

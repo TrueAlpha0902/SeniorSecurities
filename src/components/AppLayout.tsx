@@ -9,6 +9,7 @@ import { useAuth } from "../auth/AuthContext";
 import "../styles/premium-liquid-v67.css";
 import "../styles/premium-navy-v68.css";
 import "../styles/premium-navy-v69.css";
+import "../styles/premium-navy-v70.css";
 
 type AppLayoutProps = {
   children: ReactNode;

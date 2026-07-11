@@ -66,7 +66,7 @@ async function listReleases(supabase: Awaited<ReturnType<typeof requireAdminUser
 
 export default async function handler(req: ApiRequest, res: ApiResponse) {
   try {
-    const admin = await requireAdminUser(req, { roles: ["primary_admin", "admin", "content_reviewer"] });
+    const admin = await requireAdminUser(req, { roles: ["primary_admin", "admin"] });
     const { supabase, user, role, isPrimaryAdmin } = admin;
 
     if (req.method === "GET") {

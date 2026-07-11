@@ -1,0 +1,288 @@
+/* v70 — restore the original countdown hierarchy, simplify mock setup, and unify admin governance. */
+
+/* Daily practice: large original-style countdown + compact action panel. */
+.daily-plan-section .daily-compact-card.daily-deadline-card-v70 {
+  display: grid;
+  grid-template-columns: minmax(190px, .58fr) minmax(0, 1.42fr);
+  gap: 0;
+  padding: 0 !important;
+  overflow: hidden;
+  border: 1px solid rgba(20, 43, 59, .10);
+  background: #fff !important;
+}
+.daily-countdown-panel-v70 {
+  display: grid;
+  align-content: center;
+  gap: 9px;
+  min-height: 220px;
+  padding: 26px;
+  border-right: 1px solid rgba(20, 43, 59, .08);
+  background: #f5f8f9 !important;
+}
+.daily-countdown-panel-v70 .eyebrow { margin: 0; }
+.daily-countdown-panel-v70 .smart-countdown-number {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  color: var(--primary-strong);
+}
+.daily-countdown-panel-v70 .smart-countdown-number svg {
+  align-self: center;
+  color: var(--primary);
+}
+.daily-countdown-panel-v70 .smart-countdown-number strong {
+  font-size: clamp(2.8rem, 6vw, 4.35rem);
+  line-height: .95;
+  letter-spacing: -.055em;
+}
+.daily-countdown-panel-v70 .smart-countdown-number span {
+  color: var(--secondary);
+  font-weight: 850;
+}
+.daily-countdown-panel-v70 > p:last-child {
+  margin: 0;
+  color: var(--muted);
+  font-size: .86rem;
+}
+.daily-compact-main-v70 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 22px;
+  min-width: 0;
+  padding: 28px 30px;
+}
+.daily-compact-main-v70 .daily-compact-copy { flex: 1 1 auto; }
+.daily-compact-main-v70 .daily-compact-copy > p:last-child {
+  margin: 7px 0 0;
+  color: var(--muted);
+  font-size: .9rem;
+}
+.daily-compact-title-row {
+  flex-wrap: nowrap;
+  align-items: center;
+}
+.daily-info-button {
+  display: inline-grid;
+  width: 28px !important;
+  height: 28px;
+  min-height: 28px !important;
+  flex: 0 0 28px;
+  place-items: center;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 50%;
+  color: var(--primary-strong) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+.daily-info-button:hover { background: #edf3f5 !important; }
+.daily-info-button:active { transform: scale(.94); }
+.daily-countdown-pill { display: none !important; }
+
+/* Mock exam: headings and controls only; remove explanatory density. */
+.mock-rules-card-v68 {
+  padding: 18px 22px !important;
+}
+.mock-rules-heading-v68 {
+  align-items: center;
+}
+.mock-rules-heading-v68 h1 {
+  margin: 0;
+  font-size: clamp(1.45rem, 3vw, 1.9rem);
+}
+.mock-rules-card-v68 ul,
+.mock-rules-card-v68 li { display: none !important; }
+.mock-builder-v68 { padding: 20px 22px !important; }
+.mock-settings-grid-v68 { margin-top: 14px; }
+.mock-count-only-v68,
+.random-practice-page .random-answer-toggle {
+  min-height: 92px !important;
+  padding: 13px 15px !important;
+}
+.random-practice-page .random-count-input-label small,
+.random-practice-page .random-toggle-copy small,
+.random-practice-page .learner-section-heading p { display: none !important; }
+.random-practice-page .random-toggle-copy { gap: 0; }
+
+/* Admin control center: white financial dashboard, no red hero. */
+.admin-premium-page {
+  --admin-ink: #172235;
+  --admin-navy: #155468;
+  --admin-teal: #1d6f8a;
+  --admin-line: rgba(20, 43, 59, .10);
+}
+.admin-premium-hero {
+  padding: 22px 24px !important;
+  color: var(--admin-ink) !important;
+  border: 1px solid var(--admin-line) !important;
+  background: #fff !important;
+  box-shadow: 0 18px 42px rgba(16, 41, 58, .09) !important;
+}
+.admin-premium-hero::after { display: none !important; }
+.admin-premium-hero-top {
+  align-items: flex-start;
+}
+.admin-premium-title {
+  align-items: flex-start;
+}
+.admin-premium-emblem {
+  width: 48px;
+  height: 48px;
+  color: var(--primary) !important;
+  border: 0 !important;
+  background: #edf3f5 !important;
+  box-shadow: none !important;
+}
+.admin-premium-title .eyebrow { color: var(--primary) !important; }
+.admin-premium-title h1 {
+  color: var(--admin-ink) !important;
+  font-size: clamp(1.75rem, 3vw, 2.35rem);
+}
+.admin-premium-title p:last-child {
+  color: var(--muted) !important;
+  opacity: 1 !important;
+}
+.admin-premium-actions {
+  max-width: 650px;
+}
+.admin-premium-actions .glass-button {
+  min-height: 42px;
+  box-shadow: none !important;
+}
+.admin-premium-actions .glass-button-primary {
+  color: #fff !important;
+  border-color: var(--primary) !important;
+  background: var(--primary) !important;
+}
+.admin-premium-actions .glass-button-secondary {
+  color: var(--admin-ink) !important;
+  border-color: var(--admin-line) !important;
+  background: #fff !important;
+}
+.admin-premium-actions .glass-button-secondary:hover:not(:disabled) {
+  color: var(--primary-strong) !important;
+  background: #f4f7f8 !important;
+}
+.admin-premium-kpis {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 20px;
+}
+.admin-premium-kpis > div,
+.admin-premium-kpis > div.is-live {
+  min-height: 92px;
+  padding: 14px 16px;
+  border: 1px solid var(--admin-line) !important;
+  background: #f7f9fa !important;
+  box-shadow: none !important;
+}
+.admin-premium-kpis span,
+.admin-premium-kpis strong,
+.admin-premium-kpis small {
+  color: var(--admin-ink) !important;
+  opacity: 1 !important;
+}
+.admin-premium-kpis span,
+.admin-premium-kpis small { color: var(--muted) !important; }
+.admin-premium-kpis > div.is-live strong { color: var(--primary-strong) !important; }
+.admin-premium-session,
+.admin-premium-session strong {
+  color: var(--muted) !important;
+  opacity: 1 !important;
+}
+
+/* Admin tool navigation and integrated question publishing. */
+.admin-tools-tabs {
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+}
+.admin-tools-tabs > button {
+  background: #fff !important;
+}
+.admin-tools-tabs > button.is-active {
+  color: #fff;
+  border-color: var(--primary);
+  background: var(--primary) !important;
+  box-shadow: none;
+}
+.admin-tool-pane,
+.question-release-section {
+  background: #fff !important;
+}
+.question-release-section {
+  display: grid;
+  gap: 15px;
+  margin-top: 6px;
+  padding: 18px;
+  border: 1px solid var(--glass-border-low);
+  border-radius: 22px;
+}
+.question-release-heading,
+.question-publish-footer,
+.question-publish-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.question-release-heading h3 { margin: 2px 0 4px; }
+.question-release-heading p:last-child,
+.question-publish-footer span {
+  display: block;
+  margin: 0;
+  color: var(--muted);
+  font-size: .84rem;
+}
+.question-release-form { margin-top: 2px; }
+.compact-release-list {
+  max-height: 310px;
+  overflow: auto;
+}
+.question-publish-footer {
+  position: sticky;
+  bottom: 8px;
+  z-index: 4;
+  padding: 14px 16px;
+  border: 1px solid rgba(29, 111, 138, .18);
+  border-radius: 18px;
+  background: #f7fafb !important;
+  box-shadow: 0 12px 28px rgba(16, 41, 58, .10);
+}
+.question-publish-footer > div:first-child { display: grid; gap: 3px; }
+.question-publish-actions { justify-content: flex-end; }
+.question-publish-actions .glass-button-primary:disabled {
+  color: #7a8795 !important;
+  border-color: #d7dde2 !important;
+  background: #e7ebee !important;
+}
+.release-center-intro { background: #f7fafb !important; }
+
+@media (max-width: 980px) {
+  .daily-compact-main-v70 { align-items: flex-start; flex-direction: column; }
+  .daily-primary-action { width: 100%; }
+  .admin-premium-hero-top { flex-direction: column; }
+  .admin-premium-actions { justify-content: flex-start; max-width: none; }
+}
+
+@media (max-width: 760px) {
+  .daily-plan-section .daily-compact-card.daily-deadline-card-v70 { grid-template-columns: 1fr; }
+  .daily-countdown-panel-v70 {
+    min-height: 0;
+    padding: 20px;
+    border-right: 0;
+    border-bottom: 1px solid rgba(20, 43, 59, .08);
+  }
+  .daily-compact-main-v70 { padding: 20px; }
+  .admin-premium-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 520px) {
+  .daily-compact-title-row { align-items: center; }
+  .daily-compact-main-v70 .daily-compact-copy > p:last-child { display: none; }
+  .admin-premium-kpis { grid-template-columns: 1fr 1fr; }
+  .admin-premium-actions { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
+  .admin-premium-actions .glass-button { width: 100%; }
+  .question-publish-actions { width: 100%; }
+  .question-publish-actions .glass-button { flex: 1 1 auto; }
+}

@@ -34,12 +34,16 @@ const configuredAdminEmails = (process.env.ADMIN_EMAILS || defaultAdminEmails)
   .map((email) => email.trim().toLowerCase())
   .filter(Boolean);
 
-export type AdminRole = "primary_admin" | "admin" | "content_reviewer" | "support_admin";
+export type AdminRole = "primary_admin" | "admin";
 
 type DatabaseAdminAccess = {
   role: AdminRole;
   mfaRequired: boolean;
 };
+
+function normalizeAdminRole(value: unknown): AdminRole {
+  return String(value || "admin") === "primary_admin" ? "primary_admin" : "admin";
+}
 
 function decodeJwtPayload(token: string): Record<string, unknown> {
   try {
@@ -78,7 +82,7 @@ async function getDatabaseAdminAccess(userId: string, email: string): Promise<Da
     .maybeSingle();
   if (!assignmentError && assignment?.is_active) {
     return {
-      role: String(assignment.role || "admin") as AdminRole,
+      role: normalizeAdminRole(assignment.role),
       mfaRequired: Boolean(assignment.mfa_required),
     };
   }
@@ -101,7 +105,7 @@ async function getDatabaseAdminAccess(userId: string, email: string): Promise<Da
     throw error;
   }
   if (!data) return null;
-  return { role: String(data.role || "admin") as AdminRole, mfaRequired: false };
+  return { role: normalizeAdminRole(data.role), mfaRequired: false };
 }
 
 function extractBearerToken(req: ApiRequest): string | null {

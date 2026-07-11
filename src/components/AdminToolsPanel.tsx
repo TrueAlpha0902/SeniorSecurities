@@ -13,7 +13,7 @@ import { GlassCard } from "./GlassCard";
 import { PdfSegmentStack } from "./PdfSegmentStack";
 import "../styles/admin-tools.css";
 
-type ToolId = "activation" | "admins" | "questions" | "releases";
+type ToolId = "activation" | "admins" | "questions";
 
 type AdminAccountRow = {
   id: string;
@@ -78,11 +78,10 @@ type ReleasePointer = {
   updated_at: string;
 };
 
-const TOOL_TABS: { id: ToolId; label: string; description: string }[] = [
+const TOOL_TABS: { id: ToolId; label: string; description: string; primaryOnly?: boolean }[] = [
   { id: "activation", label: "啟用碼", description: "建立與查看啟用碼" },
-  { id: "admins", label: "管理員", description: "新增、恢復或停用管理員" },
-  { id: "questions", label: "題目編輯", description: "調整答案與 PDF 裁切範圍" },
-  { id: "releases", label: "發布流程", description: "雙人覆核、正式發布與回滾" },
+  { id: "admins", label: "管理員", description: "新增、恢復或停用管理員", primaryOnly: true },
+  { id: "questions", label: "題目編輯", description: "編輯、覆核與發布題庫" },
 ];
 
 async function adminRequest(accessToken: string, url: string, init: RequestInit = {}): Promise<ApiPayload> {
@@ -104,6 +103,25 @@ async function adminRequest(accessToken: string, url: string, init: RequestInit 
 
 export function AdminToolsPanel({ accessToken, onClose }: { accessToken: string; onClose?: () => void }) {
   const [activeTool, setActiveTool] = useState<ToolId>("activation");
+  const [isPrimaryAdmin, setIsPrimaryAdmin] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    void adminRequest(accessToken, "/api/admin/tools?tool=access")
+      .then((payload) => {
+        if (active) setIsPrimaryAdmin(Boolean(payload.isPrimaryAdmin));
+      })
+      .catch(() => {
+        if (active) setIsPrimaryAdmin(false);
+      });
+    return () => { active = false; };
+  }, [accessToken]);
+
+  const visibleTabs = TOOL_TABS.filter((tool) => !tool.primaryOnly || isPrimaryAdmin);
+
+  useEffect(() => {
+    if (activeTool === "admins" && !isPrimaryAdmin) setActiveTool("activation");
+  }, [activeTool, isPrimaryAdmin]);
 
   return (
     <GlassCard
@@ -129,7 +147,7 @@ export function AdminToolsPanel({ accessToken, onClose }: { accessToken: string;
       </div>
 
       <div className="admin-tools-tabs" role="tablist" aria-label="管理工具">
-        {TOOL_TABS.map((tool) => (
+        {visibleTabs.map((tool) => (
           <button
             key={tool.id}
             type="button"
@@ -145,9 +163,8 @@ export function AdminToolsPanel({ accessToken, onClose }: { accessToken: string;
       </div>
 
       {activeTool === "activation" ? <ActivationCodeTool accessToken={accessToken} /> : null}
-      {activeTool === "admins" ? <AdminAccountTool accessToken={accessToken} /> : null}
-      {activeTool === "questions" ? <QuestionEditorTool accessToken={accessToken} /> : null}
-      {activeTool === "releases" ? <ReleaseCenterTool accessToken={accessToken} /> : null}
+      {activeTool === "admins" && isPrimaryAdmin ? <AdminAccountTool accessToken={accessToken} /> : null}
+      {activeTool === "questions" ? <QuestionEditorTool accessToken={accessToken} isPrimaryAdmin={isPrimaryAdmin} /> : null}
     </GlassCard>
   );
 }
@@ -266,7 +283,6 @@ function ActivationCodeTool({ accessToken }: { accessToken: string }) {
 function AdminAccountTool({ accessToken }: { accessToken: string }) {
   const [email, setEmail] = useState("");
   const [note, setNote] = useState("");
-  const [role, setRole] = useState<"admin" | "content_reviewer" | "support_admin">("admin");
   const [mfaRequired, setMfaRequired] = useState(false);
   const [rows, setRows] = useState<AdminAccountRow[]>([]);
   const [primaryEmails, setPrimaryEmails] = useState<string[]>([]);
@@ -290,7 +306,6 @@ function AdminAccountTool({ accessToken }: { accessToken: string }) {
   async function run(
     action: "upsert-admin" | "disable-admin" | "delete-admin",
     targetEmail = email,
-    targetRole: "admin" | "content_reviewer" | "support_admin" = role,
   ): Promise<void> {
     if ((action === "disable-admin" || action === "delete-admin") && !window.confirm(`確定要${action === "delete-admin" ? "刪除" : "停用"}管理員 ${targetEmail}？`)) return;
     setBusy(true);
@@ -299,7 +314,7 @@ function AdminAccountTool({ accessToken }: { accessToken: string }) {
     try {
       const payload = await adminRequest(accessToken, "/api/admin/tools", {
         method: "POST",
-        body: JSON.stringify({ action, email: targetEmail, note, role: targetRole, mfaRequired }),
+        body: JSON.stringify({ action, email: targetEmail, note, role: "admin", mfaRequired }),
       });
       setMessage(payload.message || "操作完成。 ");
       setEmail("");
@@ -317,7 +332,7 @@ function AdminAccountTool({ accessToken }: { accessToken: string }) {
     <div className="admin-tool-pane" role="tabpanel">
       <div className="admin-tool-form-grid">
         <label>管理員 Email<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="admin@example.com" /></label>
-        <label>權限角色<select value={role} onChange={(event) => setRole(event.target.value as typeof role)}><option value="admin">一般管理員</option><option value="content_reviewer">題庫覆核員</option><option value="support_admin">客服管理員</option></select></label>
+        <label>權限角色<input value="管理員" readOnly aria-label="權限角色" /></label>
         <label className="admin-tool-wide">備註<input value={note} onChange={(event) => setNote(event.target.value)} placeholder="角色或用途" /></label>
         <label className="admin-mfa-toggle"><input type="checkbox" checked={mfaRequired} onChange={(event) => setMfaRequired(event.target.checked)} /><span><strong>此帳號強制 MFA</strong><small>未以 aal2 驗證時，後台 API 會拒絕操作。</small></span></label>
       </div>
@@ -331,10 +346,10 @@ function AdminAccountTool({ accessToken }: { accessToken: string }) {
           const isPrimary = primaryEmails.includes(row.email);
           return (
             <article key={row.id}>
-              <div><strong>{row.email}</strong><span>{row.note || "無備註"}{isPrimary ? "・主要管理員" : `・${adminRoleLabel(row.role)}`}</span></div>
+              <div><strong>{row.email}</strong><span>{row.note || "無備註"}{isPrimary ? "・主要管理員" : "・管理員"}</span></div>
               <span className={row.is_active ? "is-enabled" : "is-disabled"}>{row.is_active ? "啟用" : "停用"}</span>
               <div className="admin-inline-actions">
-                {!row.is_active ? <button type="button" disabled={busy} onClick={() => void run("upsert-admin", row.email, normalizeUiAdminRole(row.role))}>恢復</button> : null}
+                {!row.is_active ? <button type="button" disabled={busy} onClick={() => void run("upsert-admin", row.email)}>恢復</button> : null}
                 {!isPrimary && row.is_active ? <button type="button" disabled={busy} onClick={() => void run("disable-admin", row.email)}>停用</button> : null}
                 {!isPrimary ? <button type="button" className="is-danger" disabled={busy} onClick={() => void run("delete-admin", row.email)}><Trash2 size={14} />刪除</button> : null}
               </div>
@@ -346,18 +361,7 @@ function AdminAccountTool({ accessToken }: { accessToken: string }) {
   );
 }
 
-function normalizeUiAdminRole(role: string): "admin" | "content_reviewer" | "support_admin" {
-  if (role === "content_reviewer" || role === "support_admin") return role;
-  return "admin";
-}
-
-function adminRoleLabel(role: string): string {
-  if (role === "content_reviewer") return "題庫覆核員";
-  if (role === "support_admin") return "客服管理員";
-  return "一般管理員";
-}
-
-function QuestionEditorTool({ accessToken }: { accessToken: string }) {
+function QuestionEditorTool({ accessToken, isPrimaryAdmin }: { accessToken: string; isPrimaryAdmin: boolean }) {
   const [banks, setBanks] = useState<ImageQuizBank[]>([]);
   const [overrideIds, setOverrideIds] = useState<Set<string>>(new Set());
   const [bankId, setBankId] = useState("");
@@ -568,15 +572,15 @@ function QuestionEditorTool({ accessToken }: { accessToken: string }) {
         </>
       ) : null}
       <ToolMessages message={message} error={error} />
+      <QuestionReleaseControls accessToken={accessToken} isPrimaryAdmin={isPrimaryAdmin} />
     </div>
   );
 }
 
 
-function ReleaseCenterTool({ accessToken }: { accessToken: string }) {
+function QuestionReleaseControls({ accessToken, isPrimaryAdmin }: { accessToken: string; isPrimaryAdmin: boolean }) {
   const [rows, setRows] = useState<ReleaseRow[]>([]);
   const [pointer, setPointer] = useState<ReleasePointer | null>(null);
-  const [isPrimaryAdmin, setIsPrimaryAdmin] = useState(false);
   const [version, setVersion] = useState(() => `v${new Date().toISOString().slice(0, 10).replace(/-/g, ".")}`);
   const [title, setTitle] = useState("題庫內容更新");
   const [notes, setNotes] = useState("");
@@ -590,7 +594,6 @@ function ReleaseCenterTool({ accessToken }: { accessToken: string }) {
       const payload = await adminRequest(accessToken, "/api/admin/releases");
       setRows(payload.releases || []);
       setPointer(payload.pointer || null);
-      setIsPrimaryAdmin(Boolean(payload.isPrimaryAdmin));
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "無法載入發布流程。");
     }
@@ -601,7 +604,9 @@ function ReleaseCenterTool({ accessToken }: { accessToken: string }) {
   async function run(action: "create-draft" | "submit-review" | "approve" | "publish" | "rollback", releaseId?: string): Promise<void> {
     const labels = { "create-draft": "建立發布草稿", "submit-review": "送交覆核", approve: "核准", publish: "正式發布", rollback: "回滾上一版" };
     if ((action === "publish" || action === "rollback") && !window.confirm(`確定要${labels[action]}？這會改變所有使用者看到的線上題庫。`)) return;
-    setBusy(true); setMessage(""); setError("");
+    setBusy(true);
+    setMessage("");
+    setError("");
     try {
       const payload = await adminRequest(accessToken, "/api/admin/releases", {
         method: "POST",
@@ -611,40 +616,83 @@ function ReleaseCenterTool({ accessToken }: { accessToken: string }) {
       await loadRows();
     } catch (actionError) {
       setError(actionError instanceof Error ? actionError.message : `${labels[action]}失敗。`);
-    } finally { setBusy(false); }
+    } finally {
+      setBusy(false);
+    }
   }
 
-  return <div className="admin-tool-pane release-center-pane" role="tabpanel">
-    <div className="release-center-intro">
-      <ShieldCheck size={22} />
-      <div><strong>不可變題庫發布</strong><p>題目編輯先存為工作草稿；建立版本快照後，必須由另一位管理員覆核，再由主要管理員正式發布。線上版本可一鍵回滾。</p></div>
-    </div>
-    <div className="admin-tool-form-grid">
-      <label>版本名稱<input value={version} onChange={(event) => setVersion(event.target.value)} placeholder="v2026.07.11" /></label>
-      <label>發布標題<input value={title} onChange={(event) => setTitle(event.target.value)} /></label>
-      <label className="admin-tool-wide">版本說明<input value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="本次修正內容、驗證方式與注意事項" /></label>
-    </div>
-    <div className="admin-tool-actions">
-      <GlassButton variant="primary" disabled={busy} onClick={() => void run("create-draft")}><Save size={18} />建立版本快照</GlassButton>
-      <GlassButton variant="secondary" disabled={busy} onClick={() => void loadRows()}><RefreshCcw size={18} />重新整理</GlassButton>
-    </div>
-    <ToolMessages message={message} error={error} />
-    <div className="release-list">
-      {rows.map((row) => {
-        const isActive = pointer?.active_release_id === row.id;
-        return <article key={row.id} className={isActive ? "is-active-release" : ""}>
-          <div className="release-row-main"><div><span className={`release-status status-${row.status}`}>{releaseStatusLabel(row.status)}</span>{isActive ? <span className="release-live-badge">線上版本</span> : null}<strong>{row.version} · {row.title}</strong><small>{row.notes || "無版本說明"}</small></div><time>{new Intl.DateTimeFormat("zh-TW", { dateStyle: "medium", timeStyle: "short" }).format(new Date(row.created_at))}</time></div>
-          <div className="release-row-actions">
-            {row.status === "draft" ? <button disabled={busy} onClick={() => void run("submit-review", row.id)}>送交覆核</button> : null}
-            {row.status === "in_review" ? <button disabled={busy} onClick={() => void run("approve", row.id)}>第二人核准</button> : null}
-            {row.status === "approved" && isPrimaryAdmin ? <button className="is-primary" disabled={busy} onClick={() => void run("publish", row.id)}>正式發布</button> : null}
-            {row.status === "published" && isActive && pointer?.previous_release_id && isPrimaryAdmin ? <button className="is-danger" disabled={busy} onClick={() => void run("rollback", row.id)}>回滾上一版</button> : null}
-          </div>
-        </article>;
-      })}
-      {!rows.length ? <p className="admin-tool-empty">目前沒有發布批次。先在「題目編輯」儲存工作草稿，再建立版本快照。</p> : null}
-    </div>
-  </div>;
+  const publishableRelease = rows.find((row) => row.status === "approved") || null;
+  const activeRelease = rows.find((row) => pointer?.active_release_id === row.id) || null;
+
+  return (
+    <section className="question-release-section" aria-labelledby="question-release-title">
+      <div className="question-release-heading">
+        <div>
+          <p className="eyebrow">Publish</p>
+          <h3 id="question-release-title">題庫發布</h3>
+          <p>工作草稿建立快照並完成覆核後，由主要管理員發布。</p>
+        </div>
+        {activeRelease ? <span className="release-live-badge">線上：{activeRelease.version}</span> : null}
+      </div>
+
+      <div className="admin-tool-form-grid question-release-form">
+        <label>版本名稱<input value={version} onChange={(event) => setVersion(event.target.value)} placeholder="v2026.07.11" /></label>
+        <label>發布標題<input value={title} onChange={(event) => setTitle(event.target.value)} /></label>
+        <label className="admin-tool-wide">版本說明<input value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="本次修正內容與驗證方式" /></label>
+      </div>
+
+      <div className="admin-tool-actions">
+        <GlassButton variant="secondary" disabled={busy} onClick={() => void run("create-draft")}><Save size={18} />建立版本快照</GlassButton>
+        <GlassButton variant="secondary" disabled={busy} onClick={() => void loadRows()}><RefreshCcw size={18} />重新整理</GlassButton>
+      </div>
+
+      <ToolMessages message={message} error={error} />
+
+      <div className="release-list compact-release-list">
+        {rows.slice(0, 8).map((row) => {
+          const isActive = pointer?.active_release_id === row.id;
+          return (
+            <article key={row.id} className={isActive ? "is-active-release" : ""}>
+              <div className="release-row-main">
+                <div>
+                  <span className={`release-status status-${row.status}`}>{releaseStatusLabel(row.status)}</span>
+                  {isActive ? <span className="release-live-badge">線上版本</span> : null}
+                  <strong>{row.version} · {row.title}</strong>
+                  <small>{row.notes || "無版本說明"}</small>
+                </div>
+                <time>{new Intl.DateTimeFormat("zh-TW", { dateStyle: "medium", timeStyle: "short" }).format(new Date(row.created_at))}</time>
+              </div>
+              <div className="release-row-actions">
+                {row.status === "draft" ? <button disabled={busy} onClick={() => void run("submit-review", row.id)}>送交覆核</button> : null}
+                {row.status === "in_review" ? <button disabled={busy} onClick={() => void run("approve", row.id)}>第二人核准</button> : null}
+              </div>
+            </article>
+          );
+        })}
+        {!rows.length ? <p className="admin-tool-empty">尚無發布版本。先儲存工作草稿，再建立版本快照。</p> : null}
+      </div>
+
+      <div className="question-publish-footer">
+        <div>
+          <strong>{publishableRelease ? `${publishableRelease.version} 已可發布` : "尚無已核准版本"}</strong>
+          <span>{isPrimaryAdmin ? "發布後將立即成為線上題庫版本。" : "只有主要管理員可以執行正式發布。"}</span>
+        </div>
+        <div className="question-publish-actions">
+          {activeRelease && pointer?.previous_release_id && isPrimaryAdmin ? (
+            <GlassButton variant="secondary" disabled={busy} onClick={() => void run("rollback", activeRelease.id)}>回滾上一版</GlassButton>
+          ) : null}
+          <GlassButton
+            variant="primary"
+            disabled={busy || !isPrimaryAdmin || !publishableRelease}
+            onClick={() => publishableRelease ? void run("publish", publishableRelease.id) : undefined}
+          >
+            <ShieldCheck size={18} />
+            發布題庫
+          </GlassButton>
+        </div>
+      </div>
+    </section>
+  );
 }
 
 function releaseStatusLabel(status: ReleaseRow["status"]): string {

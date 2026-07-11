@@ -39,7 +39,6 @@ const MAX_RANDOM_SIZE = 300;
 const T = {
   loading: "載入模擬考測驗",
   title: "模擬考測驗",
-  description: "選擇一個科目並自訂題數。系統只記錄實際練習時間，不設倒數壓力。",
   start: "開始模擬考",
   avoidAnswered: "避開已作答題目",
   customQuestionCount: "自訂題數",
@@ -65,11 +64,6 @@ const T = {
   proportionalHint: "依章節比例抽題",
 };
 
-const EXAM_RULES = [
-  "僅提供單科模擬考，可自訂 1–300 題。",
-  "作答期間不倒數，系統只記錄實際練習時間。",
-  "可選擇交卷後統一批改，作答進度會自動保存。",
-] as const;
 
 type RandomPracticeData = {
   banks: ImageQuizBank[];
@@ -173,10 +167,8 @@ export function RandomPracticePage() {
           <div>
             <p className="eyebrow">Mock Exam Rules</p>
             <h1 id="mock-rules-title">模擬考規則</h1>
-            <p>{T.description}</p>
           </div>
         </div>
-        <ul>{EXAM_RULES.map((rule) => <li key={rule}>{rule}</li>)}</ul>
       </GlassCard>
 
       <GlassCard className="random-builder-card mock-builder-v68" as="section" aria-labelledby="random-builder-title">
@@ -185,7 +177,6 @@ export function RandomPracticePage() {
           <div>
             <p className="eyebrow">Setup</p>
             <h2 id="random-builder-title">設定模擬考</h2>
-            <p>輸入本次題數，再選擇科目開始作答。</p>
           </div>
         </div>
 
@@ -199,7 +190,6 @@ export function RandomPracticePage() {
                 max={MAX_RANDOM_SIZE}
                 inputMode="numeric"
                 value={questionCount}
-                aria-describedby="random-count-range"
                 onChange={(event) => {
                   const value = event.currentTarget.value;
                   setQuestionCount(value === "" ? "" : normalizeQuestionCount(Number(value)));
@@ -208,18 +198,17 @@ export function RandomPracticePage() {
               />
               <span aria-hidden="true">題</span>
             </span>
-            <small id="random-count-range">可設定 {MIN_RANDOM_SIZE}–{MAX_RANDOM_SIZE} 題</small>
           </label>
 
           <label className="random-answer-toggle">
             <input type="checkbox" checked={avoidAnswered} onChange={(event) => setAvoidAnswered(event.currentTarget.checked)} />
-            <span className="random-toggle-copy"><strong>{T.avoidAnswered}</strong><small>{avoidAnswered ? "優先探索尚未練過的題目" : "已作答題目也可能再次出現"}</small></span>
+            <span className="random-toggle-copy"><strong>{T.avoidAnswered}</strong></span>
             <span className="random-switch" aria-hidden="true" />
           </label>
 
           <label className="random-answer-toggle">
             <input type="checkbox" checked={deferredFeedback} onChange={(event) => setDeferredFeedback(event.currentTarget.checked)} />
-            <span className="random-toggle-copy"><strong>交卷後統一批改</strong><small>{deferredFeedback ? "作答時不顯示答案與解析" : "每題作答後立即顯示解析"}</small></span>
+            <span className="random-toggle-copy"><strong>交卷後統一批改</strong></span>
             <span className="random-switch" aria-hidden="true" />
           </label>
         </div>
@@ -230,7 +219,6 @@ export function RandomPracticePage() {
           <div>
             <p className="eyebrow">Choose a subject</p>
             <h2 id="random-subject-title">選擇模考科目</h2>
-            <p>系統依章節題量比例抽題，維持科目內合理分布。</p>
           </div>
           <span className="learner-count-pill">{banks.length} 科</span>
         </div>
