@@ -291,7 +291,7 @@ export function AdminPage() {
 }
 
 function AdminContent() {
-  const { session, user } = useAuth();
+  const { session } = useAuth();
   const accessToken = session?.access_token || "";
   const [users, setUsers] = useState<AdminUserRow[]>([]);
   const [userPage, setUserPage] = useState(1);
@@ -623,13 +623,12 @@ function AdminContent() {
           </div>
         </div>
 
-        <div className="admin-premium-kpis">
-          <div className="admin-kpi-card"><span className="admin-kpi-icon"><UsersRound size={19} /></span><span className="admin-kpi-copy"><small>全部帳號</small><strong>{summary.total}</strong><em>目前管理範圍</em></span></div>
-          <div className="admin-kpi-card"><span className="admin-kpi-icon"><KeyRound size={19} /></span><span className="admin-kpi-copy"><small>有效授權</small><strong>{summary.active}</strong><em>{summary.total ? Math.round(summary.active / summary.total * 100) : 0}% 已開通</em></span></div>
-          <div className="admin-kpi-card"><span className="admin-kpi-icon"><BookOpenCheck size={19} /></span><span className="admin-kpi-copy"><small>累積作答</small><strong>{summary.practiced.toLocaleString("zh-TW")}</strong><em>全體學習活動</em></span></div>
-          <div className="admin-kpi-card"><span className="admin-kpi-icon"><Clock3 size={19} /></span><span className="admin-kpi-copy"><small>練習投入</small><strong>{formatTotalPracticeTime(summary.practiceSeconds)}</strong><em>全體累積時間</em></span></div>
+        <div className="admin-overview-strip" aria-label="營運摘要">
+          <div><span><UsersRound size={18} /></span><small>全部帳號</small><strong>{summary.total}</strong></div>
+          <div><span><KeyRound size={18} /></span><small>有效授權</small><strong>{summary.active}</strong></div>
+          <div><span><BookOpenCheck size={18} /></span><small>累積作答</small><strong>{summary.practiced.toLocaleString("zh-TW")}</strong></div>
+          <div><span><Clock3 size={18} /></span><small>練習投入</small><strong>{formatTotalPracticeTime(summary.practiceSeconds)}</strong></div>
         </div>
-        <p className="admin-premium-session"><ShieldCheck size={15} aria-hidden="true" />登入管理員 <strong>{user?.email}</strong></p>
       </GlassCard>
 
       <GlassCard className="admin-premium-directory">
@@ -637,7 +636,7 @@ function AdminContent() {
           <div>
             <p className="eyebrow">Member Intelligence</p>
             <h2>使用者與活動</h2>
-            <p>快速比較學習成效、練習投入與最近使用狀態，點選會員可查看完整明細。</p>
+            <p>以精簡清單掌握核心學習狀態，點選任一會員查看完整明細。</p>
           </div>
           <div className="admin-directory-heading-meta">
             <span className="admin-directory-count"><UsersRound size={16} />{filteredUsers.length} 位會員</span>
@@ -675,7 +674,10 @@ function AdminContent() {
         {message ? <p className="form-success admin-premium-notice">{message}</p> : null}
         {error ? <p className="form-error admin-premium-notice">{error}</p> : null}
 
-        <div className="admin-member-grid">
+        <div className="admin-member-table">
+          <div className="admin-member-table-head" aria-hidden="true">
+            <span>使用者</span><span>學習成效</span><span>練習投入</span><span>最近活動</span><span>授權</span><span />
+          </div>
           {filteredUsers.length === 0 ? (
             <div className="admin-premium-empty">
               <Search size={24} aria-hidden="true" />
@@ -688,41 +690,23 @@ function AdminContent() {
             return (
               <button
                 type="button"
-                className="admin-member-card"
+                className="admin-member-row"
                 key={row.id}
                 onClick={() => setSelectedUserId(row.id)}
                 aria-label={"查看 " + row.email + " 的活動資料"}
               >
-                <span className="admin-member-identity">
+                <span className="admin-member-user">
                   <span className={"admin-user-avatar " + (row.isOnline ? "is-online" : "")}>
                     {(row.email[0] || "U").toUpperCase()}
-                    {row.isOnline ? <i aria-label="在線" /> : null}
+                    {row.isOnline ? <i aria-label="正在使用" /> : null}
                   </span>
-                  <span className="admin-user-primary-copy">
-                    <strong>{row.email || "未命名帳號"}</strong>
-                    <small>#{row.id.slice(0, 8).toUpperCase()} · IP {row.lastIp || "未記錄"}</small>
-                  </span>
-                  <span className={"admin-status admin-status-" + row.entitlementStatus}>{statusLabel(row.entitlementStatus)}</span>
+                  <span><strong>{row.email || "未命名帳號"}</strong><small>點擊查看帳號、裝置與活動明細</small></span>
                 </span>
-                <span className="admin-member-metrics">
-                  <span className="admin-member-metric">
-                    <small><BookOpenCheck size={15} aria-hidden="true" />學習成效</small>
-                    <strong>{answered.toLocaleString("zh-TW")} 題</strong>
-                    <span className="admin-row-progress" aria-label={`正確率 ${accuracy}%`}><i style={{ width: `${accuracy}%` }} /></span>
-                    <em>{row.totalAnswered > 0 ? accuracy + "% 正確率" : "尚無完整統計"}</em>
-                  </span>
-                  <span className="admin-member-metric">
-                    <small><Clock3 size={15} aria-hidden="true" />練習投入</small>
-                    <strong>{formatTotalPracticeTime(row.totalPracticeSeconds || 0)}</strong>
-                    <em>最高連對 {row.bestCorrectStreak || 0} 題</em>
-                  </span>
-                  <span className="admin-member-metric">
-                    <small><Activity size={15} aria-hidden="true" />最近活動</small>
-                    <strong>{row.isOnline ? "正在使用" : relativeActivity(row.lastActivityAt)}</strong>
-                    <em>{formatShortDate(row.lastActivityAt || row.lastEventAt || row.lastSignInAt)}</em>
-                  </span>
-                </span>
-                <span className="admin-member-open"><span>查看完整資料</span><ChevronRight size={20} aria-hidden="true" /></span>
+                <span className="admin-member-cell"><strong>{answered.toLocaleString("zh-TW")} 題</strong><small>{row.totalAnswered > 0 ? accuracy + "% 正確率" : "尚無完整統計"}</small></span>
+                <span className="admin-member-cell"><strong>{formatTotalPracticeTime(row.totalPracticeSeconds || 0)}</strong><small>累積練習時間</small></span>
+                <span className="admin-member-cell"><strong>{row.isOnline ? "正在使用" : relativeActivity(row.lastActivityAt)}</strong><small>{formatShortDate(row.lastActivityAt || row.lastEventAt || row.lastSignInAt)}</small></span>
+                <span className={"admin-status admin-status-" + row.entitlementStatus}>{statusLabel(row.entitlementStatus)}</span>
+                <ChevronRight className="admin-member-chevron" size={20} aria-hidden="true" />
               </button>
             );
           })}

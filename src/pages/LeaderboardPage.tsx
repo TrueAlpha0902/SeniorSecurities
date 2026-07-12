@@ -45,16 +45,15 @@ function secondaryMetric(entry: LeaderboardEntry, tab: LeaderboardTab): string {
   return `累計作答 ${entry.totalAnswered.toLocaleString("zh-TW")} 題 · 正確率 ${entry.totalAnswered ? Math.round(entry.totalCorrect / entry.totalAnswered * 100) : 0}%`;
 }
 
-function rankLabel(rank: number): string {
-  if (rank === 1) return "金牌";
-  if (rank === 2) return "銀牌";
-  return "銅牌";
-}
-
-function Avatar({ entry, size = "normal" }: { entry: Pick<LeaderboardEntry, "avatarUrl" | "displayName">; size?: "normal" | "large" }) {
+function Avatar({ entry, size = "normal" }: { entry: Pick<LeaderboardEntry, "avatarUrl" | "displayName">; size?: "normal" | "large" | "profile" }) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [entry.avatarUrl]);
+  const fallback = entry.displayName.slice(0, 1).toUpperCase() || "考";
   return (
     <span className={`leaderboard-avatar is-${size}`} aria-hidden="true">
-      {entry.avatarUrl ? <img src={entry.avatarUrl} alt="" loading="lazy" decoding="async" /> : entry.displayName.slice(0, 1).toUpperCase()}
+      {entry.avatarUrl && !failed ? (
+        <img src={entry.avatarUrl} alt="" loading="lazy" decoding="async" onError={() => setFailed(true)} />
+      ) : fallback}
     </span>
   );
 }
@@ -161,7 +160,7 @@ export function LeaderboardPage() {
       {podiumEntries.length ? (
         <GlassCard className={`leaderboard-v796-podium count-${podiumEntries.length}`} as="section">
           <div className="leaderboard-v796-podium-head">
-            <div><p className="eyebrow">Hall of Achievement</p><h2>本期榮耀殿堂</h2><p>前三名分別獲得金牌、銀牌與銅牌，向持續投入的學習者致敬。</p></div>
+            <div><p className="eyebrow">Hall of Achievement</p><h2>榮耀殿堂</h2><p>以穩定練習與持續投入，向前三名學習者致敬。</p></div>
             <span><Trophy size={17} />Top {podiumEntries.length}</span>
           </div>
           <div className="leaderboard-v796-podium-grid">
@@ -171,10 +170,10 @@ export function LeaderboardPage() {
               const rank = entryIndex + 1;
               return (
                 <article key={entry.userId} className={`rank-${rank}${entry.isCurrentUser ? " is-current" : ""}`}>
-                  <span className="leaderboard-v796-medal"><Medal size={20} />{rankLabel(rank)}</span>
+                  <span className="leaderboard-v796-medal" aria-label={`第 ${rank} 名`}><Medal size={27} strokeWidth={2.25} /><b>{rank}</b></span>
                   <Avatar entry={entry} size="large" />
                   <div className="leaderboard-v796-podium-player">
-                    <small>{rank === 1 ? "本期冠軍" : `本期第 ${rank} 名`}</small>
+                    <small>{rank === 1 ? "冠軍" : `第 ${rank} 名`}</small>
                     <strong>{entry.displayName}{entry.isCurrentUser ? <em>你</em> : null}</strong>
                     <span>{secondaryMetric(entry, activeTab)}</span>
                   </div>
@@ -189,7 +188,7 @@ export function LeaderboardPage() {
       <GlassCard className="leaderboard-profile-editor" as="section">
         <div className="leaderboard-profile-heading">
           <div className="leaderboard-profile-avatar-wrap">
-            <span className="leaderboard-avatar is-profile">{avatarUrl ? <img src={avatarUrl} alt="目前排行榜頭像" /> : displayName.slice(0, 1).toUpperCase()}</span>
+            <Avatar entry={{ avatarUrl, displayName }} size="profile" />
             <button type="button" disabled={avatarBusy} onClick={() => fileInputRef.current?.click()} aria-label="上傳排行榜頭像"><Camera size={18} /></button>
           </div>
           <div><p className="eyebrow">Public Profile</p><h2>我的排行榜資料</h2><p>頭像會自動裁成正方形並壓縮，不會公開你的 Email。</p></div>

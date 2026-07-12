@@ -165,9 +165,9 @@ function AccountContent() {
               <span>{syncBusy ? "同步中" : "立即同步"}</span>
             </GlassButton>
           </div>
-          <div className="account-status-grid account-sync-status-grid">
-            <StatusItem icon={<Cloud aria-hidden="true" size={24} />} label="雲端狀態" value={syncSummary?.cloudAvailable ? "已啟用" : "尚未啟用"} />
-            <StatusItem icon={<Clock aria-hidden="true" size={24} />} label="最後同步" value={formatDate(syncSummary?.syncedAt)} />
+          <div className="account-sync-inline" role="list" aria-label="同步狀態">
+            <div role="listitem"><Cloud aria-hidden="true" size={21} /><span>雲端狀態</span><strong>{syncSummary?.cloudAvailable ? "已啟用" : "尚未啟用"}</strong></div>
+            <div role="listitem"><Clock aria-hidden="true" size={21} /><span>最後同步</span><strong>{formatDate(syncSummary?.syncedAt)}</strong></div>
           </div>
           {syncSummary?.error ? <p className="form-error">{syncSummary.error}</p> : null}
         </section>

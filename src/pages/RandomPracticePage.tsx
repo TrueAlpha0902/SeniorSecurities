@@ -166,9 +166,8 @@ export function RandomPracticePage() {
           <div className="mock-exam-console-title-v797">
             <span className="learner-section-icon" aria-hidden="true"><ClipboardList size={21} /></span>
             <div>
-              <p className="eyebrow">Professional Mock Exam</p>
-              <h1 id="mock-exam-title">專業模擬考</h1>
-              <p>依各章節題量比例抽題，建立接近正式應試節奏的個人測驗。</p>
+              <p className="eyebrow">Mock Exam</p>
+              <h1 id="mock-exam-title">模擬考</h1>
             </div>
           </div>
           <span className="mock-exam-method-v797"><ListFilter size={16} aria-hidden="true" />依章節比例抽題</span>
@@ -301,8 +300,13 @@ function SessionRecordCard({ session, showSelection, selected, onSelectedChange 
       </div>
       <dl className="record-metrics"><div><dt>{T.accuracy}</dt><dd>{session.accuracy}%</dd></div><div><dt>{T.correct}</dt><dd>{session.correctCount}</dd></div><div><dt>{T.wrong}</dt><dd>{session.wrongCount}</dd></div></dl>
       <div className="button-row random-record-actions">
-        {!isCompleted ? <GlassLinkButton to={`/image-quiz/random/${session.bankId}/${session.sessionId}`} variant="primary"><RotateCcw aria-hidden="true" size={18} /><span>{T.continueTest}</span></GlassLinkButton> : null}
-        {session.wrongQuestionIds.length > 0 ? <GlassLinkButton to={`/image-quiz/session-wrong/${session.sessionId}`} variant="secondary">{T.reviewWrong}</GlassLinkButton> : null}
+        {!isCompleted ? (
+          <GlassLinkButton to={`/image-quiz/random/${session.bankId}/${session.sessionId}`} variant="primary"><RotateCcw aria-hidden="true" size={18} /><span>{T.continueTest}</span></GlassLinkButton>
+        ) : session.wrongQuestionIds.length > 0 ? (
+          <GlassLinkButton to={`/image-quiz/session-wrong/${session.sessionId}`} variant="secondary">{T.reviewWrong}</GlassLinkButton>
+        ) : (
+          <span className="random-record-complete-label">全數答對</span>
+        )}
       </div>
     </GlassCard>
   );
