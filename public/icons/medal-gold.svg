@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title">
+  <title id="title">第一名金色獎牌</title>
+  <defs>
+    <linearGradient id="ribbon" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#0f7187"/><stop offset="1" stop-color="#164c63"/></linearGradient>
+    <radialGradient id="metal" cx="35%" cy="28%" r="72%"><stop stop-color="#fff7bc"/><stop offset=".48" stop-color="#f6cf4b"/><stop offset="1" stop-color="#c98a05"/></radialGradient>
+  </defs>
+  <path d="M37 69 25 118l22-11 14 17 7-47Z" fill="url(#ribbon)"/>
+  <path d="m91 69 12 49-22-11-14 17-7-47Z" fill="url(#ribbon)"/>
+  <circle cx="64" cy="52" r="39" fill="#9a6700" opacity=".25"/>
+  <circle cx="64" cy="49" r="38" fill="url(#metal)" stroke="#b67800" stroke-width="5"/>
+  <circle cx="64" cy="49" r="28" fill="none" stroke="#fff3a2" stroke-width="2.5" opacity=".85"/>
+  <path d="m87 25 2.8 6.4 6.7 2.6-6.7 2.7-2.8 6.4-2.7-6.4-6.7-2.7 6.7-2.6Z" fill="#fff9d1"/>
+  <text x="64" y="61" text-anchor="middle" font-family="Arial, sans-serif" font-size="36" font-weight="900" fill="#8a5600">1</text>
+  <circle cx="50" cy="69" r="2.4" fill="#a46e00" opacity=".48"/><circle cx="78" cy="69" r="2.4" fill="#a46e00" opacity=".48"/>
+  <path d="M55 72c5 4 13 4 18 0" fill="none" stroke="#9b6500" stroke-width="2.4" stroke-linecap="round" opacity=".55"/>
+</svg>

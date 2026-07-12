@@ -1347,7 +1347,7 @@
 .admin-premium-actions .glass-button { min-height: 44px; }
 .admin-overview-strip {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(180px, 1fr));
   margin-top: 0;
   border-bottom: 1px solid var(--admin-line);
   background: #fff;
@@ -1373,7 +1373,24 @@
   background: #eef6f8;
 }
 .admin-overview-strip small { grid-area: label; color: #748195; font-size: .74rem; font-weight: 850; }
-.admin-overview-strip strong { grid-area: value; overflow: hidden; color: var(--admin-ink); font-size: clamp(1.45rem, 2.5vw, 1.9rem); line-height: 1.12; text-overflow: ellipsis; white-space: nowrap; }
+.admin-overview-strip strong {
+  grid-area: value;
+  min-width: 0;
+  color: var(--admin-ink);
+  font-size: clamp(1.45rem, 2.2vw, 1.9rem);
+  line-height: 1.16;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.admin-overview-strip > div.is-live > span {
+  color: #13805a;
+  background: #eaf8f2;
+}
+.admin-overview-strip > div.is-live strong { color: #126c4e; }
+.admin-overview-strip > div.is-duration strong {
+  font-size: clamp(1.15rem, 1.85vw, 1.65rem);
+  white-space: normal;
+}
 .admin-premium-session { display: none; }
 
 .admin-premium-directory {

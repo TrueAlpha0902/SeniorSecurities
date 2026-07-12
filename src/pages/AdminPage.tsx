@@ -331,6 +331,7 @@ function AdminContent() {
   const summary = useMemo(() => ({
     total: users.length,
     active: users.filter((row) => row.entitlementStatus === "active").length,
+    online: users.filter((row) => row.isOnline).length,
     practiced: users.reduce((sum, row) => sum + (row.totalAnswered || row.practicedQuestionCount || 0), 0),
     practiceSeconds: users.reduce((sum, row) => sum + (row.totalPracticeSeconds || 0), 0),
   }), [users]);
@@ -625,9 +626,9 @@ function AdminContent() {
 
         <div className="admin-overview-strip" aria-label="營運摘要">
           <div><span><UsersRound size={18} /></span><small>全部帳號</small><strong>{summary.total}</strong></div>
-          <div><span><KeyRound size={18} /></span><small>有效授權</small><strong>{summary.active}</strong></div>
+          <div className="is-live"><span><Activity size={18} /></span><small>目前在線</small><strong>{summary.online}</strong></div>
           <div><span><BookOpenCheck size={18} /></span><small>累積作答</small><strong>{summary.practiced.toLocaleString("zh-TW")}</strong></div>
-          <div><span><Clock3 size={18} /></span><small>練習投入</small><strong>{formatTotalPracticeTime(summary.practiceSeconds)}</strong></div>
+          <div className="is-duration"><span><Clock3 size={18} /></span><small>練習投入</small><strong>{formatTotalPracticeTime(summary.practiceSeconds)}</strong></div>
         </div>
       </GlassCard>
 

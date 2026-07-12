@@ -135,10 +135,10 @@ async function main(): Promise<void> {
   }
   assert(
     adminTools.includes('roles: ["primary_admin"]') &&
-      adminTools.includes("requireAal2: true") &&
+      !adminTools.includes("requireAal2") &&
       adminTools.includes("create_activation_code_v79") &&
       adminTools.includes("set_admin_access_v79"),
-    "Sensitive admin tools must require primary-admin AAL2 and atomic RPCs.",
+    "Sensitive admin tools must require the primary-admin role and atomic RPCs without MFA coupling.",
   );
 
   const activationSources = await Promise.all([

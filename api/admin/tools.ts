@@ -68,7 +68,6 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
         sendJson(res, 200, {
           role: auth.role,
           isPrimaryAdmin: auth.isPrimaryAdmin,
-          mfaVerified: auth.mfaVerified,
         });
         return;
       }
@@ -84,7 +83,6 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
           admins: data || [],
           primaryEmails: getConfiguredAdminEmails(),
           isPrimaryAdmin: auth.isPrimaryAdmin,
-          mfaVerified: auth.mfaVerified,
         });
         return;
       }
@@ -100,7 +98,6 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
         sendJson(res, 200, {
           activationCodes: data || [],
           isPrimaryAdmin: auth.isPrimaryAdmin,
-          mfaVerified: auth.mfaVerified,
         });
         return;
       }
@@ -122,7 +119,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       "delete-admin",
     ]);
     const auth = await requireAdminUser(req, highRiskActions.has(action)
-      ? { roles: ["primary_admin"], requireAal2: true }
+      ? { roles: ["primary_admin"] }
       : { roles: ["primary_admin", "admin"] });
     const { supabase, user } = auth;
     const actorEmail = user.email?.toLowerCase() || user.id;
@@ -190,7 +187,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
         p_target_email: targetEmail,
         p_role: "admin",
         p_is_active: isActive,
-        p_mfa_required: isActive ? Boolean(body.mfaRequired) : true,
+        p_mfa_required: false,
         p_note: note || (isActive ? null : `disabled by ${currentEmail}`),
         p_action: isActive ? "admin_account.upsert" : "admin_account.disable",
         p_ip_address: ipAddress,

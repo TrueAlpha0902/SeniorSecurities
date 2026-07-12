@@ -40,22 +40,10 @@ export type AdminRole = "primary_admin" | "admin";
 
 type DatabaseAdminAccess = {
   role: AdminRole;
-  mfaRequired: boolean;
 };
 
 function normalizeAdminRole(value: unknown): AdminRole {
   return String(value || "admin") === "primary_admin" ? "primary_admin" : "admin";
-}
-
-function decodeJwtPayload(token: string): Record<string, unknown> {
-  try {
-    const payload = token.split(".")[1];
-    if (!payload) return {};
-    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
-    return JSON.parse(Buffer.from(normalized, "base64").toString("utf8")) as Record<string, unknown>;
-  } catch {
-    return {};
-  }
 }
 
 export function getAdminClient() {
@@ -79,14 +67,13 @@ async function getDatabaseAdminAccess(userId: string, email: string): Promise<Da
   const client = getAdminClient();
   const { data: assignment, error: assignmentError } = await client
     .from("admin_role_assignments")
-    .select("role, is_active, mfa_required")
+    .select("role, is_active")
     .eq("user_id", userId)
     .maybeSingle();
   if (!assignmentError && assignment) {
     if (!assignment.is_active) return null;
     return {
       role: normalizeAdminRole(assignment.role),
-      mfaRequired: Boolean(assignment.mfa_required),
     };
   }
   if (assignmentError) {
@@ -108,7 +95,7 @@ async function getDatabaseAdminAccess(userId: string, email: string): Promise<Da
     throw error;
   }
   if (!data) return null;
-  return { role: normalizeAdminRole(data.role), mfaRequired: false };
+  return { role: normalizeAdminRole(data.role) };
 }
 
 function extractBearerToken(req: ApiRequest): string | null {
@@ -119,7 +106,7 @@ function extractBearerToken(req: ApiRequest): string | null {
 
 export async function requireAdminUser(
   req: ApiRequest,
-  options: { roles?: AdminRole[]; requireAal2?: boolean; allowPrimaryAdminWithoutAal2?: boolean } = {},
+  options: { roles?: AdminRole[] } = {},
 ) {
   const token = extractBearerToken(req);
   if (!token) throw new HttpError("尚未登入，或登入狀態已過期。", 401);
@@ -131,19 +118,11 @@ export async function requireAdminUser(
   const email = data.user.email?.toLowerCase() || "";
   const isConfiguredPrimaryAdmin = configuredAdminEmails.includes(email);
   const databaseAccess = isConfiguredPrimaryAdmin
-    ? { role: "primary_admin" as AdminRole, mfaRequired: false }
+    ? { role: "primary_admin" as AdminRole }
     : await getDatabaseAdminAccess(data.user.id, email);
   if (!databaseAccess) throw new HttpError("這個帳號沒有管理員權限。", 403);
   const isPrimaryAdmin = databaseAccess.role === "primary_admin";
 
-  const jwt = decodeJwtPayload(token);
-  const aal = String(jwt.aal || "aal1");
-  const globalMfaRequired = String(process.env.ADMIN_REQUIRE_MFA || "").toLowerCase() === "true";
-  const mfaRequired = globalMfaRequired || databaseAccess.mfaRequired || options.requireAal2 === true;
-  const primaryAdminMfaExemption = isPrimaryAdmin && options.allowPrimaryAdminWithoutAal2 === true;
-  if (mfaRequired && aal !== "aal2" && !primaryAdminMfaExemption) {
-    throw new HttpError("此管理員操作需要完成多因素驗證（MFA）。", 403);
-  }
   if (options.roles?.length && !options.roles.includes(databaseAccess.role)) {
     throw new HttpError("目前管理員角色沒有執行此操作的權限。", 403);
   }
@@ -153,7 +132,6 @@ export async function requireAdminUser(
     user: data.user,
     role: databaseAccess.role,
     isPrimaryAdmin,
-    mfaVerified: aal === "aal2",
   };
 }
 

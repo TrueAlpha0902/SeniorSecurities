@@ -1,4 +1,4 @@
-import { Cloud, Clock, KeyRound, LockKeyhole, LogOut, QrCode, Shield, ShieldCheck, Smartphone, Trash2 } from "lucide-react";
+import { Cloud, Clock, KeyRound, LogOut, Shield, ShieldCheck } from "lucide-react";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { ProtectedRoute } from "../auth/ProtectedRoute";
@@ -11,7 +11,6 @@ import {
   syncLocalRecordsToCloud,
   type CloudSyncSummary,
 } from "../lib/db";
-import { supabase } from "../lib/supabase";
 
 const DATE_FORMATTER = new Intl.DateTimeFormat("zh-TW", {
   year: "numeric",
@@ -152,8 +151,6 @@ function AccountContent() {
         {syncMessage ? <p className="form-success">{syncMessage}</p> : null}
 
 
-        <MfaSecuritySection />
-
         <section className="account-device-section account-sync-compact" aria-labelledby="account-sync-title">
           <div className="account-section-header">
             <div>
@@ -190,221 +187,6 @@ function AccountContent() {
   );
 }
 
-
-type MfaFactorRow = {
-  id: string;
-  friendlyName: string;
-  status: string;
-  createdAt: string | null;
-};
-
-function MfaSecuritySection() {
-  const [factors, setFactors] = useState<MfaFactorRow[]>([]);
-  const [aal, setAal] = useState<"aal1" | "aal2" | null>(null);
-  const [pendingFactorId, setPendingFactorId] = useState<string | null>(null);
-  const [qrCode, setQrCode] = useState("");
-  const [secret, setSecret] = useState("");
-  const [verificationCode, setVerificationCode] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const [mfaError, setMfaError] = useState<string | null>(null);
-
-  const loadMfa = useCallback(async () => {
-    if (!supabase) return;
-    const [factorResult, aalResult] = await Promise.all([
-      supabase.auth.mfa.listFactors(),
-      supabase.auth.mfa.getAuthenticatorAssuranceLevel(),
-    ]);
-    if (factorResult.error) throw factorResult.error;
-    if (aalResult.error) throw aalResult.error;
-    setFactors(factorResult.data.totp.map((factor) => ({
-      id: factor.id,
-      friendlyName: factor.friendly_name || "驗證器",
-      status: factor.status,
-      createdAt: factor.created_at || null,
-    })));
-    const currentLevel = aalResult.data.currentLevel;
-    setAal(currentLevel === "aal2" ? "aal2" : currentLevel === "aal1" ? "aal1" : null);
-  }, []);
-
-  useEffect(() => {
-    void loadMfa().catch((loadError: unknown) => {
-      setMfaError(loadError instanceof Error ? loadError.message : "讀取 MFA 狀態失敗。");
-    });
-  }, [loadMfa]);
-
-  async function startEnrollment(): Promise<void> {
-    if (!supabase) return;
-    setBusy(true);
-    setMfaError(null);
-    setMessage(null);
-    try {
-      if (pendingFactorId) {
-        await supabase.auth.mfa.unenroll({ factorId: pendingFactorId });
-      }
-      const { data, error } = await supabase.auth.mfa.enroll({
-        factorType: "totp",
-        friendlyName: `SeniorSecurities ${new Date().toLocaleDateString("zh-TW")}`,
-      });
-      if (error) throw error;
-      setPendingFactorId(data.id);
-      setQrCode(data.totp.qr_code);
-      setSecret(data.totp.secret);
-      setVerificationCode("");
-      setMessage("請用驗證器 App 掃描 QR Code，再輸入 6 位數驗證碼。");
-    } catch (enrollError: unknown) {
-      setMfaError(enrollError instanceof Error ? enrollError.message : "無法開始 MFA 設定。");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function verifyFactor(factorId: string): Promise<void> {
-    if (!supabase) return;
-    const code = verificationCode.replace(/\D/g, "").slice(0, 6);
-    if (code.length !== 6) {
-      setMfaError("請輸入驗證器顯示的 6 位數驗證碼。");
-      return;
-    }
-    setBusy(true);
-    setMfaError(null);
-    setMessage(null);
-    try {
-      const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId, code });
-      if (error) throw error;
-      setPendingFactorId(null);
-      setQrCode("");
-      setSecret("");
-      setVerificationCode("");
-      setMessage("MFA 驗證成功，目前工作階段已提升為 AAL2。");
-      await loadMfa();
-    } catch (verifyError: unknown) {
-      setMfaError(verifyError instanceof Error ? verifyError.message : "MFA 驗證失敗。");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function cancelEnrollment(): Promise<void> {
-    if (!supabase || !pendingFactorId) return;
-    setBusy(true);
-    try {
-      const { error } = await supabase.auth.mfa.unenroll({ factorId: pendingFactorId });
-      if (error) throw error;
-      setPendingFactorId(null);
-      setQrCode("");
-      setSecret("");
-      setVerificationCode("");
-      setMessage("已取消本次 MFA 設定。");
-      await loadMfa();
-    } catch (cancelError: unknown) {
-      setMfaError(cancelError instanceof Error ? cancelError.message : "取消 MFA 設定失敗。");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function removeFactor(factorId: string): Promise<void> {
-    if (!supabase) return;
-    if (aal !== "aal2") {
-      setMfaError("移除已驗證的 MFA 前，請先輸入驗證碼將目前工作階段提升為 AAL2。");
-      return;
-    }
-    if (!window.confirm("確定要移除這個驗證器嗎？移除後管理員操作可能暫時無法使用。")) return;
-    setBusy(true);
-    setMfaError(null);
-    try {
-      const { error } = await supabase.auth.mfa.unenroll({ factorId });
-      if (error) throw error;
-      setMessage("驗證器已移除。");
-      await loadMfa();
-    } catch (removeError: unknown) {
-      setMfaError(removeError instanceof Error ? removeError.message : "移除驗證器失敗。");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  const verifiedFactor = factors.find((factor) => factor.status === "verified") ?? null;
-
-  return (
-    <section className="account-device-section account-mfa-section" aria-labelledby="account-mfa-title">
-      <div className="account-section-header">
-        <div>
-          <p className="eyebrow">Account Security</p>
-          <h2 id="account-mfa-title">多因素驗證（MFA）</h2>
-          <p>使用驗證器的一次性密碼保護管理員與帳號敏感操作。</p>
-        </div>
-        <span className={`account-mfa-badge${aal === "aal2" ? " is-verified" : ""}`}>
-          <LockKeyhole aria-hidden="true" size={17} />
-          {aal === "aal2" ? "AAL2 已驗證" : verifiedFactor ? "等待本次驗證" : "尚未設定"}
-        </span>
-      </div>
-
-      {mfaError ? <p className="form-error">{mfaError}</p> : null}
-      {message ? <p className="form-success">{message}</p> : null}
-
-      {pendingFactorId ? (
-        <div className="account-mfa-enrollment">
-          <div className="account-mfa-qr">
-            {qrCode ? <img src={qrCode} alt="MFA 驗證器 QR Code" /> : <QrCode aria-hidden="true" size={88} />}
-          </div>
-          <div className="account-mfa-steps">
-            <strong>完成驗證器綁定</strong>
-            <ol>
-              <li>使用 Google Authenticator、Microsoft Authenticator 或其他 TOTP App 掃描 QR Code。</li>
-              <li>輸入 App 顯示的 6 位數驗證碼。</li>
-              <li>驗證成功後，目前登入狀態會升級為 AAL2。</li>
-            </ol>
-            {secret ? <label className="account-mfa-secret">無法掃描時手動輸入密鑰<input readOnly value={secret} onFocus={(event) => event.currentTarget.select()} /></label> : null}
-            <div className="account-mfa-code-row">
-              <input
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                value={verificationCode}
-                onChange={(event) => setVerificationCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
-                placeholder="6 位數驗證碼"
-                aria-label="MFA 6 位數驗證碼"
-              />
-              <GlassButton variant="primary" disabled={busy} onClick={() => void verifyFactor(pendingFactorId)}>
-                <ShieldCheck aria-hidden="true" size={18} />完成啟用
-              </GlassButton>
-              <GlassButton variant="secondary" disabled={busy} onClick={() => void cancelEnrollment()}>取消</GlassButton>
-            </div>
-          </div>
-        </div>
-      ) : verifiedFactor ? (
-        <div className="account-mfa-factor">
-          <div><Smartphone aria-hidden="true" size={24} /><div><strong>{verifiedFactor.friendlyName}</strong><span>已綁定 · {formatDate(verifiedFactor.createdAt)}</span></div></div>
-          {aal !== "aal2" ? (
-            <div className="account-mfa-code-row">
-              <input
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                value={verificationCode}
-                onChange={(event) => setVerificationCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
-                placeholder="輸入驗證碼以升級 AAL2"
-                aria-label="MFA 6 位數驗證碼"
-              />
-              <GlassButton variant="primary" disabled={busy} onClick={() => void verifyFactor(verifiedFactor.id)}>驗證</GlassButton>
-            </div>
-          ) : (
-            <GlassButton variant="danger" disabled={busy} onClick={() => void removeFactor(verifiedFactor.id)}>
-              <Trash2 aria-hidden="true" size={17} />移除驗證器
-            </GlassButton>
-          )}
-        </div>
-      ) : (
-        <div className="account-mfa-empty">
-          <div><QrCode aria-hidden="true" size={28} /><span>目前帳號尚未綁定驗證器。</span></div>
-          <GlassButton variant="primary" disabled={busy || !supabase} onClick={() => void startEnrollment()}>
-            <ShieldCheck aria-hidden="true" size={18} />設定驗證器
-          </GlassButton>
-        </div>
-      )}
-    </section>
-  );
-}
 
 function StatusItem({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
   return (

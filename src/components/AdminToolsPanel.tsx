@@ -55,7 +55,6 @@ type SystemHealthPayload = {
   environment: string;
   expectedMigration: string;
   role: string;
-  mfaVerified: boolean;
   checkedAt: string;
   checks: Array<{ id: string; ok: boolean; message: string }>;
 };
@@ -204,7 +203,7 @@ function SystemHealthTool({ accessToken }: { accessToken: string }) {
             <div><span>Release</span><strong>{health.releaseId}</strong></div>
             <div><span>環境</span><strong>{health.environment}</strong></div>
             <div><span>預期 migration</span><strong>{health.expectedMigration}</strong></div>
-            <div><span>管理員驗證</span><strong>{health.role} · {health.mfaVerified ? "AAL2" : "AAL1"}</strong></div>
+            <div><span>管理角色</span><strong>{health.role}</strong></div>
           </div>
           <div className="system-health-checks">
             {health.checks.map((check) => <div key={check.id} className={check.ok ? "is-ok" : "is-error"}><span aria-hidden="true">{check.ok ? "✓" : "!"}</span><strong>{check.message}</strong></div>)}
@@ -328,7 +327,6 @@ function ActivationCodeTool({ accessToken }: { accessToken: string }) {
 function AdminAccountTool({ accessToken }: { accessToken: string }) {
   const [email, setEmail] = useState("");
   const [note, setNote] = useState("");
-  const [mfaRequired, setMfaRequired] = useState(false);
   const [rows, setRows] = useState<AdminAccountRow[]>([]);
   const [primaryEmails, setPrimaryEmails] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
@@ -359,12 +357,11 @@ function AdminAccountTool({ accessToken }: { accessToken: string }) {
     try {
       const payload = await adminRequest(accessToken, "/api/admin/tools", {
         method: "POST",
-        body: JSON.stringify({ action, email: targetEmail, note, role: "admin", mfaRequired }),
+        body: JSON.stringify({ action, email: targetEmail, note, role: "admin" }),
       });
       setMessage(payload.message || "操作完成。 ");
       setEmail("");
       setNote("");
-      setMfaRequired(false);
       await loadRows();
     } catch (actionError) {
       setError(actionError instanceof Error ? actionError.message : "管理員操作失敗。 ");
@@ -379,7 +376,6 @@ function AdminAccountTool({ accessToken }: { accessToken: string }) {
         <label>管理員 Email<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="admin@example.com" /></label>
         <label>權限角色<input value="管理員" readOnly aria-label="權限角色" /></label>
         <label className="admin-tool-wide">備註<input value={note} onChange={(event) => setNote(event.target.value)} placeholder="角色或用途" /></label>
-        <label className="admin-mfa-toggle"><input type="checkbox" checked={mfaRequired} onChange={(event) => setMfaRequired(event.target.checked)} /><span><strong>此帳號強制 MFA</strong><small>未以 aal2 驗證時，後台 API 會拒絕操作。</small></span></label>
       </div>
       <div className="admin-tool-actions">
         <GlassButton variant="primary" disabled={busy || !email.trim()} onClick={() => void run("upsert-admin")}><UsersRound size={18} />加入／恢復管理員</GlassButton>

@@ -89,7 +89,6 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     if (action === "publish-current") {
       const admin = await requireAdminUser(req, {
         roles: ["primary_admin"],
-        allowPrimaryAdminWithoutAal2: true,
       });
       if (!admin.isPrimaryAdmin) throw new HttpError("只有主要管理員可以發布題庫。", 403);
 
@@ -135,7 +134,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     }
 
     if (action === "rollback") {
-      const admin = await requireAdminUser(req, { roles: ["primary_admin"], requireAal2: true });
+      const admin = await requireAdminUser(req, { roles: ["primary_admin"] });
       if (!admin.isPrimaryAdmin) throw new HttpError("只有主要管理員可以回滾題庫。", 403);
       const releaseId = idValue(body.releaseId);
       const { error } = await admin.supabase.rpc("rollback_question_release_v75", {

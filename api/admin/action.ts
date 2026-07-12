@@ -102,7 +102,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
   }
 
   try {
-    const { supabase, user } = await requireAdminUser(req, { roles: ["primary_admin", "admin"], requireAal2: true });
+    const { supabase, user } = await requireAdminUser(req, { roles: ["primary_admin", "admin"] });
     const body = parseBody(req);
     const action = String(body.action || "");
     const email = String(body.email || "").trim();

@@ -1,11 +1,9 @@
 import {
-  Award,
   Camera,
   ChevronLeft,
   ChevronRight,
   Clock3,
   Flame,
-  Medal,
   RefreshCw,
   Save,
   Trash2,
@@ -30,6 +28,26 @@ import "../styles/leaderboard-v66.css";
 
 type LeaderboardTab = "streak" | "time";
 const PAGE_SIZE = 10;
+
+type MedalRank = 1 | 2 | 3;
+
+const MEDAL_ICON_PATHS: Record<MedalRank, string> = {
+  1: "/icons/medal-gold.svg",
+  2: "/icons/medal-silver.svg",
+  3: "/icons/medal-bronze.svg",
+};
+
+function MedalIcon({ rank, size = "row" }: { rank: MedalRank; size?: "row" | "podium" }) {
+  return (
+    <img
+      className={`leaderboard-medal-icon is-${size}`}
+      src={MEDAL_ICON_PATHS[rank]}
+      alt=""
+      aria-hidden="true"
+      draggable={false}
+    />
+  );
+}
 
 function formatDate(value: string | null): string {
   if (!value) return "尚無紀錄";
@@ -170,7 +188,7 @@ export function LeaderboardPage() {
               const rank = entryIndex + 1;
               return (
                 <article key={entry.userId} className={`rank-${rank}${entry.isCurrentUser ? " is-current" : ""}`}>
-                  <span className="leaderboard-v796-medal" aria-label={`第 ${rank} 名`}><Medal size={27} strokeWidth={2.25} /><b>{rank}</b></span>
+                  <span className="leaderboard-v796-medal" role="img" aria-label={`第 ${rank} 名`}><MedalIcon rank={rank as MedalRank} size="podium" /></span>
                   <Avatar entry={entry} size="large" />
                   <div className="leaderboard-v796-podium-player">
                     <small>{rank === 1 ? "冠軍" : `第 ${rank} 名`}</small>
@@ -212,7 +230,7 @@ export function LeaderboardPage() {
           {visibleEntries.map((entry, index) => {
             const rank = (currentPage - 1) * PAGE_SIZE + index + 1;
             return <article key={entry.userId} className={`${entry.isCurrentUser ? "is-current " : ""}${rank <= 3 ? `is-podium rank-${rank}` : ""}`.trim()}>
-              <span className={`leaderboard-v66-row-rank rank-${rank <= 3 ? rank : "other"}`}>{rank <= 3 ? <Award size={17} /> : null}{rank}</span>
+              <span className={`leaderboard-v66-row-rank rank-${rank <= 3 ? rank : "other"}`} role="img" aria-label={`第 ${rank} 名`}>{rank <= 3 ? <MedalIcon rank={rank as MedalRank} /> : rank}</span>
               <Avatar entry={entry} />
               <div className="leaderboard-v66-player"><strong>{entry.displayName}{entry.isCurrentUser ? <em>你</em> : null}</strong><small>{secondaryMetric(entry, activeTab)}</small></div>
               <div className="leaderboard-v66-row-score"><strong>{metricValue(entry, activeTab)}</strong><small>{formatDate(entry.updatedAt)}</small></div>

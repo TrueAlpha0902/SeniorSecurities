@@ -15,7 +15,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
   }
 
   try {
-    const { supabase, role, mfaVerified } = await requireAdminUser(req);
+    const { supabase, role } = await requireAdminUser(req);
     const checks: HealthCheck[] = [];
 
     const { error: authError } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1 });
@@ -51,7 +51,6 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
         environment: process.env.VERCEL_ENV || process.env.NODE_ENV || "unknown",
         expectedMigration: EXPECTED_MIGRATION,
         role,
-        mfaVerified,
         checkedAt: new Date().toISOString(),
         checks,
       },

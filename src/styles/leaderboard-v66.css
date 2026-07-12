@@ -69,23 +69,26 @@
 .leaderboard-v796-podium-grid article.is-current { outline: 3px solid rgba(29, 111, 138, .12); outline-offset: 2px; }
 .leaderboard-v796-medal {
   position: absolute;
-  top: 14px;
-  left: 15px;
-  display: inline-grid;
-  grid-template-columns: auto auto;
-  align-items: center;
-  gap: 4px;
+  top: 10px;
+  left: 12px;
+  display: grid;
+  width: 58px;
+  height: 58px;
+  place-items: center;
   padding: 0;
   border: 0;
   background: transparent;
+  filter: drop-shadow(0 8px 12px rgba(17, 41, 58, .12));
 }
-.leaderboard-v796-medal b { color: #647386; font-size: .72rem; }
-.rank-1 .leaderboard-v796-medal svg { color: var(--lb-gold-dark); fill: #f7cb42; filter: drop-shadow(0 3px 5px rgba(174, 126, 0, .2)); }
-.rank-2 .leaderboard-v796-medal svg { color: var(--lb-silver-dark); fill: #cbd4db; filter: drop-shadow(0 3px 5px rgba(79, 94, 106, .16)); }
-.rank-3 .leaderboard-v796-medal svg { color: var(--lb-bronze-dark); fill: #d8895a; filter: drop-shadow(0 3px 5px rgba(128, 67, 34, .17)); }
-.rank-1 .leaderboard-v796-medal b { color: var(--lb-gold-dark); }
-.rank-2 .leaderboard-v796-medal b { color: var(--lb-silver-dark); }
-.rank-3 .leaderboard-v796-medal b { color: var(--lb-bronze-dark); }
+.leaderboard-medal-icon {
+  display: block;
+  flex: 0 0 auto;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+}
+.leaderboard-medal-icon.is-podium { width: 58px; height: 58px; }
+.leaderboard-medal-icon.is-row { width: 36px; height: 36px; filter: drop-shadow(0 4px 6px rgba(17, 41, 58, .1)); }
 
 .leaderboard-avatar { display: grid; flex: 0 0 auto; width: 44px; height: 44px; place-items: center; overflow: hidden; border: 1px solid var(--lb-line); border-radius: 15px; color: var(--lb-deep); background: #e8f1f4; font-size: 1rem; font-weight: 950; }
 .leaderboard-avatar img { display: block; width: 100%; height: 100%; object-fit: cover; }
@@ -128,10 +131,9 @@
 .leaderboard-v66-rows article:hover { background: #f8fbfc; }
 .leaderboard-v66-rows article.is-current { background: #f0f7f8; }
 .leaderboard-v66-row-rank { display: inline-flex; width: 40px; height: 40px; align-items: center; justify-content: center; gap: 2px; color: #657184; font-weight: 950; }
-.leaderboard-v66-row-rank svg { fill: transparent; }
-.leaderboard-v66-row-rank.rank-1 svg { color: var(--lb-gold-dark); fill: #f7cb42; }
-.leaderboard-v66-row-rank.rank-2 svg { color: var(--lb-silver-dark); fill: #cbd4db; }
-.leaderboard-v66-row-rank.rank-3 svg { color: var(--lb-bronze-dark); fill: #d8895a; }
+.leaderboard-v66-row-rank.rank-1,
+.leaderboard-v66-row-rank.rank-2,
+.leaderboard-v66-row-rank.rank-3 { width: 44px; height: 44px; }
 .leaderboard-v66-player { display: grid; gap: 3px; min-width: 0; }
 .leaderboard-v66-player strong { display: flex; align-items: center; gap: 7px; }
 .leaderboard-v66-player small,
