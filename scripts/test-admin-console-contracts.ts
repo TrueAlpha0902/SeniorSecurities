@@ -32,6 +32,7 @@ const randomPractice = read("src/pages/RandomPracticePage.tsx");
 const vercel = read("vercel.json");
 const adminCss = read("src/styles/admin-premium-v65.css");
 const currentThemeCss = read("src/styles/theme-current.css");
+const adminToolsCss = read("src/styles/admin-tools.css");
 const goldMedalSvg = read("public/icons/medal-gold.svg");
 const silverMedalSvg = read("public/icons/medal-silver.svg");
 const bronzeMedalSvg = read("public/icons/medal-bronze.svg");
@@ -130,6 +131,10 @@ assertIncludes(adminPanel, "草稿解析", "The editor must show the edited expl
 assertIncludes(adminPanel, "原頁裁切定位", "The crop editor must include the full source-page context view.");
 assertIncludes(adminPanel, "question-page-crop-box", "The full-page context view must mark crop regions with an overlay.");
 assertIncludes(adminPanel, "目前裁切", "The active crop region must be identified clearly.");
+assertIncludes(adminToolsCss, ".question-page-context-canvas .question-page-crop-box.is-active", "The source-page context must define a sufficiently specific active crop window.");
+assertIncludes(adminToolsCss, "background: transparent !important", "The crop window must remain transparent so source text stays visible.");
+assertIncludes(adminToolsCss, "0 0 0 9999px", "The crop context must dim only the area outside the transparent crop window.");
+assertNotIncludes(adminToolsCss, "background: rgba(214, 47, 64, .08)", "The active crop window must not use a filled overlay.");
 assertIncludes(adminPanel, 'className="crop-edge-button"', "Vertical crop-edge actions must use the high-contrast button treatment.");
 assertIncludes(adminPanel, "發布題庫", "The primary administrator must have one clear publication action.");
 assertNotIncludes(adminPanel, "第二人核准", "The editor must not require a second-person approval step.");

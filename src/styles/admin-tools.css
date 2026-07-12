@@ -732,7 +732,7 @@
   height: 12px;
   border: 2px solid #d73343;
   border-radius: 2px;
-  background: rgba(215, 51, 67, .08);
+  background: transparent;
 }
 .question-page-context-canvas {
   min-height: 0;
@@ -767,22 +767,27 @@
 }
 .question-page-crop-box {
   position: absolute;
-  z-index: 2;
+  z-index: 4;
   min-width: 8px;
   min-height: 8px;
-  border: 2px dashed rgba(207, 51, 63, .82);
-  background: rgba(217, 47, 61, .055);
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, .72) inset;
+  border: 2px dashed rgba(207, 51, 63, .9);
+  background: transparent;
+  box-shadow: none;
   pointer-events: none;
 }
-.question-page-crop-box.is-active {
+.question-editor-v797 .question-page-context-canvas .question-page-crop-box.is-active {
   z-index: 3;
-  border: 3px solid #d62f40;
-  background: rgba(214, 47, 64, .08);
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, .88), 0 4px 14px rgba(145, 25, 37, .2);
+  border: 3px solid #e02f43;
+  border-color: #e02f43 !important;
+  background: transparent !important;
+  box-shadow:
+    0 0 0 9999px rgba(20, 43, 59, .15),
+    0 0 0 1px rgba(255, 255, 255, .92) inset,
+    0 4px 14px rgba(145, 25, 37, .2);
 }
 .question-page-crop-box > span {
   position: absolute;
+  z-index: 2;
   top: -27px;
   left: -3px;
   padding: 3px 7px;
