@@ -238,7 +238,6 @@ textarea {
 progress { accent-color: var(--primary); }
 progress::-webkit-progress-value { background: var(--primary) !important; }
 progress::-moz-progress-bar { background: var(--primary) !important; }
-.random-switch,
 .random-answer-toggle input:checked + .random-toggle-copy + .random-switch,
 .settings-switch input:checked + span,
 .toggle-switch input:checked + span {
