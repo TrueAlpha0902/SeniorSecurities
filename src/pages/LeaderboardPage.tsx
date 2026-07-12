@@ -10,6 +10,7 @@ import {
   Trophy,
 } from "lucide-react";
 import { type ChangeEvent, type FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import { AvatarCropDialog } from "../components/AvatarCropDialog";
 import { ErrorState } from "../components/ErrorState";
 import { GlassButton } from "../components/GlassButton";
 import { GlassCard } from "../components/GlassCard";
@@ -21,6 +22,7 @@ import {
   removeLeaderboardAvatar,
   updateLeaderboardAvatar,
   updateLeaderboardDisplayName,
+  validateLeaderboardAvatarFile,
   type LeaderboardEntry,
 } from "../lib/leaderboard";
 import { formatTotalPracticeTime } from "../lib/practiceTime";
@@ -87,6 +89,7 @@ export function LeaderboardPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [avatarBusy, setAvatarBusy] = useState(false);
+  const [pendingAvatarFile, setPendingAvatarFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -122,17 +125,29 @@ export function LeaderboardPage() {
     } finally { setSaving(false); }
   }
 
-  async function handleAvatar(event: ChangeEvent<HTMLInputElement>) {
+  function handleAvatar(event: ChangeEvent<HTMLInputElement>) {
     const file = event.currentTarget.files?.[0];
     event.currentTarget.value = "";
     if (!file) return;
+    setError(null); setMessage(null);
+    try {
+      validateLeaderboardAvatarFile(file);
+      setPendingAvatarFile(file);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : String(caught));
+    }
+  }
+
+  async function handleAvatarCrop(blob: Blob): Promise<void> {
     setAvatarBusy(true); setError(null); setMessage(null);
     try {
-      await updateLeaderboardAvatar(file);
+      await updateLeaderboardAvatar(blob);
+      setPendingAvatarFile(null);
       setMessage("頭像已更新。");
       await refresh();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught));
+      throw caught;
     } finally { setAvatarBusy(false); }
   }
 
@@ -209,7 +224,7 @@ export function LeaderboardPage() {
             <Avatar entry={{ avatarUrl, displayName }} size="profile" />
             <button type="button" disabled={avatarBusy} onClick={() => fileInputRef.current?.click()} aria-label="上傳排行榜頭像"><Camera size={18} /></button>
           </div>
-          <div><p className="eyebrow">Public Profile</p><h2>我的排行榜資料</h2><p>頭像會自動裁成正方形並壓縮，不會公開你的 Email。</p></div>
+          <div><p className="eyebrow">Public Profile</p><h2>我的排行榜資料</h2></div>
         </div>
         <input ref={fileInputRef} className="leaderboard-avatar-input" type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => void handleAvatar(event)} />
         <form onSubmit={(event) => void handleSubmit(event)}>
@@ -222,6 +237,15 @@ export function LeaderboardPage() {
         </form>
         {message ? <p className="form-success" role="status">{message}</p> : null}
       </GlassCard>
+
+      {pendingAvatarFile ? (
+        <AvatarCropDialog
+          file={pendingAvatarFile}
+          busy={avatarBusy}
+          onCancel={() => setPendingAvatarFile(null)}
+          onConfirm={handleAvatarCrop}
+        />
+      ) : null}
 
       <GlassCard className="leaderboard-v66-list" as="section">
         <div className="leaderboard-v66-list-head"><div><p className="eyebrow">Full Ranking</p><h2>{activeTab === "streak" ? "連續答對排行" : "累積練習時數排行"}</h2></div><span>{entries.length} 位</span></div>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import {
+  applyAppUpdateAndReload,
   dismissPendingAppUpdate,
   getPendingAppUpdate,
   subscribeToAppUpdate,
@@ -16,7 +17,7 @@ export function AppUpdateNotice() {
   async function handleApplyUpdate(): Promise<void> {
     setUpdating(true);
     try {
-      await applyUpdate?.();
+      if (applyUpdate) await applyAppUpdateAndReload(applyUpdate);
     } catch (error) {
       console.error("Unable to apply app update", error);
       setUpdating(false);
@@ -24,7 +25,7 @@ export function AppUpdateNotice() {
   }
 
   return (
-    <aside className="app-update-notice" role="status" aria-live="polite">
+    <aside className="app-update-notice" role="status" aria-live="polite" aria-busy={updating}>
       <div>
         <strong>新版本已準備完成</strong>
         <span>完成目前操作後更新，可避免頁面在版本切換時變成空白。</span>
@@ -34,7 +35,7 @@ export function AppUpdateNotice() {
           稍後
         </button>
         <button type="button" className="is-primary" onClick={() => void handleApplyUpdate()} disabled={updating}>
-          {updating ? "更新中" : "更新 App"}
+          {updating ? "更新中…" : "更新 App"}
         </button>
       </div>
     </aside>

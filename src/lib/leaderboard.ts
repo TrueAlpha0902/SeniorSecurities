@@ -105,9 +105,13 @@ function mapLeaderboardRows(
   });
 }
 
-async function imageToAvatarBlob(file: File): Promise<Blob> {
+export function validateLeaderboardAvatarFile(file: File): void {
   if (!file.type.startsWith("image/")) throw new Error("請選擇 JPG、PNG 或 WebP 圖片。");
   if (file.size > MAX_AVATAR_BYTES) throw new Error("頭像原始檔不可超過 5 MB。");
+}
+
+async function imageToAvatarBlob(file: File): Promise<Blob> {
+  validateLeaderboardAvatarFile(file);
 
   const bitmap = await createImageBitmap(file);
   const side = Math.min(bitmap.width, bitmap.height);
@@ -155,19 +159,21 @@ export async function updateLeaderboardDisplayName(name: string): Promise<void> 
   if (error) throw error;
 }
 
-export async function updateLeaderboardAvatar(file: File): Promise<void> {
+export async function updateLeaderboardAvatar(source: Blob): Promise<void> {
   if (!supabase) throw new Error("尚未設定 Supabase。");
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError) throw userError;
   const userId = userData.user?.id;
   if (!userId) throw new Error("請先登入後再上傳頭像。");
 
-  const blob = await imageToAvatarBlob(file);
+  const blob = source instanceof File ? await imageToAvatarBlob(source) : source;
+  if (!blob.type.startsWith("image/")) throw new Error("頭像格式不正確。");
+  if (blob.size > MAX_AVATAR_BYTES) throw new Error("處理後的頭像不可超過 5 MB。");
   const path = `${userId}/avatar.webp`;
   const { error: uploadError } = await supabase.storage.from(AVATAR_BUCKET).upload(path, blob, {
     upsert: true,
     cacheControl: "3600",
-    contentType: "image/webp",
+    contentType: blob.type || "image/webp",
   });
   if (uploadError) throw uploadError;
   const { error: profileError } = await supabase.rpc("update_leaderboard_avatar_v797", { p_avatar_path: path });

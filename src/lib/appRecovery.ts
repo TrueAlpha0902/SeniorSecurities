@@ -73,6 +73,48 @@ export async function clearRuntimeCachesAndReload(): Promise<void> {
   }
 }
 
+
+function wait(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
+}
+
+export async function applyAppUpdateAndReload(applyUpdate: UpdateHandler): Promise<void> {
+  if (typeof window === "undefined") {
+    await applyUpdate();
+    return;
+  }
+
+  let removeControllerListener: () => void = () => {};
+  let controllerChanged: Promise<void> = Promise.resolve();
+  if ("serviceWorker" in navigator) {
+    controllerChanged = new Promise((resolve) => {
+      let settled = false;
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        navigator.serviceWorker.removeEventListener("controllerchange", finish);
+        resolve();
+      };
+      removeControllerListener = () => navigator.serviceWorker.removeEventListener("controllerchange", finish);
+      navigator.serviceWorker.addEventListener("controllerchange", finish);
+      window.setTimeout(finish, 1_500);
+    });
+  }
+
+  try {
+    await Promise.race([
+      (async () => {
+        await applyUpdate();
+        await controllerChanged;
+      })(),
+      wait(3_000),
+    ]);
+  } finally {
+    removeControllerListener();
+    window.location.reload();
+  }
+}
+
 export function getPendingAppUpdate(): UpdateHandler | null {
   return currentUpdateHandler;
 }

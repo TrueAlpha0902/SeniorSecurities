@@ -22,6 +22,7 @@ const questionEditorApi = read("api/admin/question-editor.ts");
 const adminPage = read("src/pages/AdminPage.tsx");
 const leaderboard = read("src/pages/LeaderboardPage.tsx");
 const leaderboardLib = read("src/lib/leaderboard.ts");
+const avatarCropDialog = read("src/components/AvatarCropDialog.tsx");
 const adminPanel = read("src/components/AdminToolsPanel.tsx");
 const imageQuiz = read("src/lib/imageQuiz.ts");
 const segmentStack = read("src/components/PdfSegmentStack.tsx");
@@ -74,9 +75,10 @@ assertIncludes(leaderboard, '"/icons/medal-gold.svg"', "First place must use the
 assertIncludes(leaderboard, '"/icons/medal-silver.svg"', "Second place must use the dedicated silver medal icon.");
 assertIncludes(leaderboard, '"/icons/medal-bronze.svg"', "Third place must use the dedicated bronze medal icon.");
 
-assertIncludes(adminCss, ".admin-overview-strip > div > span", "The operations center must retain explicit KPI icon-tile styling.");
-assertIncludes(adminCss, "background: #ffffff;", "Operations-center KPI icon tiles must use a white background.");
-assertIncludes(currentThemeCss, "background: #ffffff !important;", "The operations-center title emblem must use a white background.");
+assertIncludes(adminCss, "flat transparent operations symbols", "The operations summary must use the flat symbol treatment.");
+assertIncludes(adminCss, "background: transparent;", "Operations-summary symbols must blend into the white surface.");
+assertIncludes(currentThemeCss, "flat transparent operations emblem", "The operations-center title emblem must use the flat treatment.");
+assertIncludes(currentThemeCss, "background: transparent !important;", "The operations-center title emblem must blend into the page surface.");
 for (const medalSvg of [goldMedalSvg, silverMedalSvg, bronzeMedalSvg]) {
   assertIncludes(medalSvg, 'stop-color="#d63f49"', "Every podium medal must use the shared red ribbon.");
   assertIncludes(medalSvg, 'stop-color="#8e1f2d"', "Every podium medal ribbon must retain a dark-red lower edge.");
@@ -84,6 +86,11 @@ for (const medalSvg of [goldMedalSvg, silverMedalSvg, bronzeMedalSvg]) {
 assertNotIncludes(leaderboard, "本期", "Leaderboard copy must not use period-specific wording.");
 assertNotIncludes(leaderboard, 'return "金牌"', "Medal identity must come from the symbol rather than a text label.");
 assertIncludes(leaderboard, "updateLeaderboardAvatar", "Users must be able to upload a leaderboard avatar.");
+assertIncludes(leaderboard, "AvatarCropDialog", "Avatar uploads must open the user-controlled crop workspace.");
+assertNotIncludes(leaderboard, "頭像會自動裁成正方形並壓縮", "The removed automatic-crop explanation must not return.");
+assertIncludes(avatarCropDialog, "setPointerCapture", "The avatar crop workspace must support direct drag positioning.");
+assertIncludes(avatarCropDialog, 'type="range"', "The avatar crop workspace must provide user-controlled zoom.");
+assertIncludes(avatarCropDialog, "context.drawImage", "The selected avatar crop must be rendered locally before upload.");
 assertIncludes(leaderboardLib, 'const AVATAR_BUCKET = "leaderboard-avatars"', "Avatar uploads must use the dedicated storage bucket.");
 assertIncludes(vercel, "img-src 'self' data: blob: https://*.supabase.co", "CSP must allow Supabase-hosted leaderboard avatars.");
 assertIncludes(leaderboard, "onError={() => setFailed(true)}", "Avatar rendering must fall back safely when an image cannot load.");

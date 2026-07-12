@@ -1489,3 +1489,18 @@
   .admin-overview-strip > div { min-height: 88px; padding: 16px 12px; }
   .admin-member-user small { display: none; }
 }
+
+/* v79.11 flat transparent operations symbols */
+.admin-overview-strip > div > span {
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.admin-overview-strip > div > span svg {
+  width: 22px;
+  height: 22px;
+}
+.admin-overview-strip > div.is-live > span { background: transparent; }
