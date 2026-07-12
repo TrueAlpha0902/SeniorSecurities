@@ -104,6 +104,15 @@ assertIncludes(restoreMigration, "public.admin_users", "Restoration migration mu
 assertIncludes(restoreMigration, "primary_admin", "Restoration migration must bootstrap the primary administrator role.");
 assertIncludes(questionEditorApi, "listQuestionOverrides", "The editor must load private current changes, not only the public release.");
 assertIncludes(adminPanel, "loadImageQuizEditorCatalog", "The editor must load a lightweight catalog.");
+
+assertIncludes(questionEditorApi, 'mode === "index"', "The editor must load a lightweight draft index before downloading draft payloads.");
+assertIncludes(questionEditorApi, 'action === "load-overrides"', "The editor must request only draft payloads for the selected chapter.");
+assertIncludes(adminPanel, 'useDeferredValue(editable)', "Heavy draft previews must be deferred so crop controls remain responsive.");
+assertIncludes(adminPanel, 'question-editor-preview-skeleton', "The editor must paint its controls before mounting expensive image previews.");
+assertIncludes(imageQuiz, 'loadQuestionOverridesByIds', "Published overrides for the editor must be fetched only for the selected chapter.");
+assertIncludes(segmentStack, 'key={`${segment.src}-${segment.page}-${index}`}', "Crop previews must keep stable React keys while crop coordinates change.");
+assertNotIncludes(segmentStack, 'key={`${segment.src}-${segment.x}-${segment.y}-${segment.width}-${segment.height}`}', "Crop adjustments must not remount and decode the source image on every click.");
+assertIncludes(segmentStack, '}, [segment.src]);', "Crop image retry state must reset only when the source page changes.");
 assertIncludes(adminPanel, "loadImageQuizEditorChapter", "The editor must load only the selected chapter.");
 assertNotIncludes(adminPanel, "loadImageQuizEditorBanks", "The editor must not eagerly load every full question bank.");
 assertIncludes(imageQuiz, "loadImageQuizEditorCatalog", "The lightweight editor catalog service must remain available.");
@@ -116,6 +125,12 @@ assertIncludes(adminPanel, '<details className="question-editor-advanced">', "Lo
 assertIncludes(adminPanel, "自動貼合前段接縫", "The focused crop editor must keep the cross-page seam workflow prominent.");
 assertIncludes(adminPanel, "儲存修改", "The focused editor must keep its save action visible.");
 assertIncludes(adminPanel, "本次修改", "The editor must expose the current change list.");
+assertIncludes(adminPanel, "草稿題目", "The editor must show the edited question draft as it will appear in the app.");
+assertIncludes(adminPanel, "草稿解析", "The editor must show the edited explanation draft as it will appear in the app.");
+assertIncludes(adminPanel, "原頁裁切定位", "The crop editor must include the full source-page context view.");
+assertIncludes(adminPanel, "question-page-crop-box", "The full-page context view must mark crop regions with an overlay.");
+assertIncludes(adminPanel, "目前裁切", "The active crop region must be identified clearly.");
+assertIncludes(adminPanel, 'className="crop-edge-button"', "Vertical crop-edge actions must use the high-contrast button treatment.");
 assertIncludes(adminPanel, "發布題庫", "The primary administrator must have one clear publication action.");
 assertNotIncludes(adminPanel, "第二人核准", "The editor must not require a second-person approval step.");
 assertNotIncludes(adminPanel, 'className="admin-tool-actions question-editor-save-actions"', "The obsolete bottom sticky save bar must not return to the crop workspace.");

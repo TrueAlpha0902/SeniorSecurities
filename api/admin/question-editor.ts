@@ -1,5 +1,7 @@
 import {
   deleteQuestionOverride,
+  getQuestionOverridesByIds,
+  listQuestionOverrideIds,
   listQuestionOverrides,
   saveQuestionOverride,
   type QuestionOverrideSegment,
@@ -73,6 +75,13 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
   try {
     if (req.method === "GET") {
       const admin = await requireAdminUser(req);
+      const modeValue = req.query?.mode;
+      const mode = Array.isArray(modeValue) ? String(modeValue[0] || "") : String(modeValue || "");
+      if (mode === "index") {
+        const overrideIds = await listQuestionOverrideIds(admin.supabase);
+        sendJson(res, 200, { overrideIds, role: admin.role, isPrimaryAdmin: admin.isPrimaryAdmin });
+        return;
+      }
       const overrides = await listQuestionOverrides(admin.supabase, { bypassCache: true });
       sendJson(res, 200, { overrides, role: admin.role, isPrimaryAdmin: admin.isPrimaryAdmin });
       return;
@@ -86,6 +95,15 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     const { supabase, user } = await requireAdminUser(req);
     const body = parseBody(req);
     const action = String(body.action || "save");
+
+    if (action === "load-overrides") {
+      const values = Array.isArray(body.questionIds) ? body.questionIds : [];
+      const questionIds = Array.from(new Set(values.map(normalizeQuestionId))).slice(0, 250);
+      const overrides = await getQuestionOverridesByIds(supabase, questionIds);
+      sendJson(res, 200, { overrides });
+      return;
+    }
+
     const questionId = normalizeQuestionId(body.questionId);
 
     if (action === "delete") {

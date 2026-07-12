@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties } from "react";
+import { memo, useEffect, useState, type CSSProperties } from "react";
 import type { PdfCropSegment } from "../lib/imageQuiz";
 import { pdfImageUrl } from "../lib/pdfAssets";
 
@@ -9,12 +9,12 @@ type PdfSegmentStackProps = {
   activeIndex?: number;
 };
 
-export function PdfSegmentStack({ label, segments, priority = "auto", activeIndex }: PdfSegmentStackProps) {
+export const PdfSegmentStack = memo(function PdfSegmentStack({ label, segments, priority = "auto", activeIndex }: PdfSegmentStackProps) {
   return (
     <div className="pdf-segment-stack" aria-label={label}>
       {segments.map((segment, index) => (
         <PdfCrop
-          key={`${segment.src}-${segment.x}-${segment.y}-${segment.width}-${segment.height}`}
+          key={`${segment.src}-${segment.page}-${index}`}
           segment={segment}
           priority={index === 0 ? priority : priority === "high" ? "auto" : priority}
           isActive={activeIndex === index}
@@ -23,10 +23,10 @@ export function PdfSegmentStack({ label, segments, priority = "auto", activeInde
       ))}
     </div>
   );
-}
+});
 
 
-function PdfCrop({
+const PdfCrop = memo(function PdfCrop({
   segment,
   priority,
   isActive,
@@ -49,7 +49,7 @@ function PdfCrop({
   useEffect(() => {
     setRetryToken(0);
     setFailed(false);
-  }, [segment.src, segment.x, segment.y, segment.width, segment.height]);
+  }, [segment.src]);
 
   return (
     <div
@@ -77,5 +77,4 @@ function PdfCrop({
       {failed ? <div className="pdf-crop-fallback">題目圖片載入中斷，請重新整理或重新部署新版。</div> : null}
     </div>
   );
-}
-
+});

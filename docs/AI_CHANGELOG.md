@@ -1,3 +1,20 @@
+## 2026-07-12 — v79.13 題目編輯器效能優化
+
+- 題目編輯器初始請求改為 draft ID index；只在選定章節時讀取該章節的 draft payload。
+- Public published overrides 新增 question-id subset 查詢，editor 不再抓取整個 release payload。
+- `PdfSegmentStack` 使用穩定 key 與 memo，裁切座標改變時保留既有圖片節點，避免重複下載／解碼。
+- 草稿題目、草稿解析及原頁定位改為 deferred／lazy preview，控制區先完成首屏繪製。
+- 新增效能契約測試，防止 full override loading、coordinate-based image key 與 eager full-page preview 回歸。
+- 本版為 v79.11 可直接套用的累積更新，包含 v79.12 雙預覽與紅框定位。
+
+## 2026-07-12 — v79.12 題目草稿雙預覽與原頁裁切定位
+
+- 管理後台題目編輯器新增題目／解析雙成品預覽，直接呈現目前草稿套用後在 App 內的顯示結果。
+- 新增完整原頁預覽，依頁面尺寸等比例顯示來源圖片，使用紅框標出目前欲裁切範圍與同頁其他段落。
+- 預覽卡可直接切換題目或解析編輯模式，並維持單畫面雙欄裁切工作區。
+- 修正上下裁邊按鈕對比不足；新增管理後台契約，防止雙預覽與紅框定位功能回歸。
+- `npm run verify` 全數通過，initial bundle 維持約 166.1 KiB gzip。
+
 ## 2026-07-12 — v79.11 更新可靠性、頭像自訂裁切與扁平化管理圖示
 
 - 修正 PWA 更新按鈕可能等待 Service Worker 而看似無反應的問題；加入 bounded activation、controller-change 等待與強制 reload fallback。

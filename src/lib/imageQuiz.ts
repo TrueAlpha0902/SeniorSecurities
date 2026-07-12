@@ -156,6 +156,7 @@ const planningIndexCache: { promise?: Promise<ImageQuizPlanningQuestion[]> } =
 const questionOverridesCache: {
   promise?: Promise<Map<string, ImageQuizQuestionOverride>>;
 } = {};
+const questionOverrideSubsetCache = new Map<string, Promise<Map<string, ImageQuizQuestionOverride>>>();
 const SECURITIES_COMBINED_BANK_ID = "securities-laws-practice";
 const SECURITIES_COMBINED_BANK_TITLE =
   "\u8b49\u5238\u76f8\u95dc\u6cd5\u898f\u8207\u5be6\u52d9";
@@ -343,15 +344,33 @@ export async function loadImageQuizEditorCatalog(): Promise<ImageQuizEditorBankS
   }));
 }
 
+
+async function loadQuestionOverridesByIds(questionIds: readonly string[]): Promise<Map<string, ImageQuizQuestionOverride>> {
+  const ids = Array.from(new Set(questionIds)).sort();
+  if (!ids.length) return new Map();
+  const key = ids.join(",");
+  let promise = questionOverrideSubsetCache.get(key);
+  if (!promise) {
+    promise = Promise.all(
+      Array.from({ length: Math.ceil(ids.length / 75) }, (_, index) => ids.slice(index * 75, index * 75 + 75))
+        .map(async (batch) => {
+          const response = await fetch(`${assetUrl("api/question-overrides")}?ids=${encodeURIComponent(batch.join(","))}`, { cache: "no-store" });
+          if (!response.ok || !(response.headers.get("content-type") || "").includes("application/json")) return [] as ImageQuizQuestionOverride[];
+          const payload = await response.json() as QuestionOverridesResponse;
+          return payload.overrides || [];
+        }),
+    ).then((pages) => new Map(pages.flat().map((override) => [override.questionId, override])));
+    questionOverrideSubsetCache.set(key, promise);
+  }
+  return promise;
+}
 export async function loadImageQuizEditorChapter(
   bankId: string,
   chapterId: string,
 ): Promise<ImageQuizChapter | undefined> {
-  const [chapter, overrides] = await Promise.all([
-    loadImageQuizChapter(bankId, chapterId),
-    loadQuestionOverrides(),
-  ]);
+  const chapter = await loadImageQuizChapter(bankId, chapterId);
   if (!chapter) return undefined;
+  const overrides = await loadQuestionOverridesByIds(chapter.questions.map((question) => question.id));
   const bank: ImageQuizBank = { bankId: chapter.bankId, bankTitle: chapter.bankTitle, chapters: [chapter] };
   return applyQuestionOverrides({ banks: [bank] }, overrides).banks[0]?.chapters[0];
 }

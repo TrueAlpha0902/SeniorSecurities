@@ -1,5 +1,5 @@
 import { Activity, Clipboard, KeyRound, RefreshCcw, Save, ShieldCheck, Trash2, UsersRound, X } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, startTransition, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import {
   loadImageQuizEditorCatalog,
   loadImageQuizEditorChapter,
@@ -69,6 +69,7 @@ type ApiPayload = {
   activationCodes?: ActivationCodeRow[];
   isPrimaryAdmin?: boolean;
   overrides?: ImageQuizQuestionOverride[];
+  overrideIds?: string[];
   override?: ImageQuizQuestionOverride;
   publishedCount?: number;
   cleanupWarning?: string;
@@ -405,6 +406,7 @@ function AdminAccountTool({ accessToken }: { accessToken: string }) {
 function QuestionEditorTool({ accessToken, isPrimaryAdmin }: { accessToken: string; isPrimaryAdmin: boolean }) {
   const [catalog, setCatalog] = useState<ImageQuizEditorBankSummary[]>([]);
   const [chapter, setChapter] = useState<ImageQuizChapter | null>(null);
+  const [draftOverrideIds, setDraftOverrideIds] = useState<string[]>([]);
   const [draftOverrides, setDraftOverrides] = useState<ImageQuizQuestionOverride[]>([]);
   const [bankId, setBankId] = useState("");
   const [chapterId, setChapterId] = useState("");
@@ -431,7 +433,7 @@ function QuestionEditorTool({ accessToken, isPrimaryAdmin }: { accessToken: stri
     () => new Map(draftOverrides.map((override) => [override.questionId, override])),
     [draftOverrides],
   );
-  const overrideIds = useMemo(() => new Set(draftOverrides.map((override) => override.questionId)), [draftOverrides]);
+  const overrideIds = useMemo(() => new Set(draftOverrideIds), [draftOverrideIds]);
 
   useEffect(() => { draftOverridesRef.current = draftOverrideMap; }, [draftOverrideMap]);
 
@@ -441,10 +443,11 @@ function QuestionEditorTool({ accessToken, isPrimaryAdmin }: { accessToken: stri
     try {
       const [nextCatalog, payload] = await Promise.all([
         loadImageQuizEditorCatalog(),
-        adminRequest(accessToken, "/api/admin/question-editor"),
+        adminRequest(accessToken, "/api/admin/question-editor?mode=index"),
       ]);
       setCatalog(nextCatalog);
-      setDraftOverrides(payload.overrides || []);
+      setDraftOverrideIds(payload.overrideIds || []);
+      setDraftOverrides([]);
       setBankId((current) => nextCatalog.some((bank) => bank.bankId === current) ? current : nextCatalog[0]?.bankId || "");
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "題目編輯器載入失敗。");
@@ -457,7 +460,8 @@ function QuestionEditorTool({ accessToken, isPrimaryAdmin }: { accessToken: stri
 
   const bank = useMemo(() => catalog.find((item) => item.bankId === bankId), [bankId, catalog]);
   const chapterSummary = useMemo(() => bank?.chapters.find((item) => item.chapterId === chapterId), [bank, chapterId]);
-  const question = useMemo(() => chapter?.questions.find((item) => item.id === questionId), [chapter, questionId]);
+  const questionById = useMemo(() => new Map((chapter?.questions || []).map((item) => [item.id, item])), [chapter]);
+  const question = questionById.get(questionId);
 
   useEffect(() => {
     if (!bank) return;
@@ -470,10 +474,25 @@ function QuestionEditorTool({ accessToken, isPrimaryAdmin }: { accessToken: stri
     setChapterLoading(true);
     setError("");
     void loadImageQuizEditorChapter(bankId, chapterId)
-      .then((loaded) => {
-        if (!active) return;
+      .then(async (loaded) => {
         if (!loaded) throw new Error("找不到這個題庫章節。");
-        const drafts = draftOverridesRef.current;
+        const payload = await adminRequest(accessToken, "/api/admin/question-editor", {
+          method: "POST",
+          body: JSON.stringify({ action: "load-overrides", questionIds: loaded.questions.map((item) => item.id) }),
+        });
+        return { loaded, chapterDrafts: payload.overrides || [] };
+      })
+      .then(({ loaded, chapterDrafts }) => {
+        if (!active) return;
+        if (chapterDrafts.length) {
+          setDraftOverrides((current) => {
+            const next = new Map(current.map((item) => [item.questionId, item]));
+            chapterDrafts.forEach((item) => next.set(item.questionId, item));
+            return Array.from(next.values());
+          });
+        }
+        const drafts = new Map(draftOverridesRef.current);
+        chapterDrafts.forEach((item) => drafts.set(item.questionId, item));
         const merged: ImageQuizChapter = {
           ...loaded,
           questions: loaded.questions.map((sourceQuestion) => {
@@ -486,17 +505,19 @@ function QuestionEditorTool({ accessToken, isPrimaryAdmin }: { accessToken: stri
             } : sourceQuestion;
           }),
         };
-        setChapter(merged);
-        const pending = pendingQuestionIdRef.current;
-        pendingQuestionIdRef.current = null;
-        setQuestionId((current) => merged.questions.some((item) => item.id === pending) ? pending! : merged.questions.some((item) => item.id === current) ? current : merged.questions[0]?.id || "");
+        startTransition(() => {
+          setChapter(merged);
+          const pending = pendingQuestionIdRef.current;
+          pendingQuestionIdRef.current = null;
+          setQuestionId((current) => merged.questions.some((item) => item.id === pending) ? pending! : merged.questions.some((item) => item.id === current) ? current : merged.questions[0]?.id || "");
+        });
       })
       .catch((loadError) => {
         if (active) setError(loadError instanceof Error ? loadError.message : "章節載入失敗。");
       })
       .finally(() => { if (active) setChapterLoading(false); });
     return () => { active = false; };
-  }, [bankId, chapterId, chapterReloadKey]);
+  }, [accessToken, bankId, chapterId, chapterReloadKey]);
 
   useEffect(() => {
     setEditable(question ? cloneQuestion(question) : null);
@@ -513,7 +534,21 @@ function QuestionEditorTool({ accessToken, isPrimaryAdmin }: { accessToken: stri
   const segmentKey = mode === "question" ? "questionSegments" : "explanationSegments";
   const segments = editable?.[segmentKey] || [];
   const segment = segments[segmentIndex];
-  const hasUnsavedChanges = Boolean(editable && question && JSON.stringify(editable) !== JSON.stringify(question));
+  const originalSignature = useMemo(() => question ? questionEditSignature(question) : "", [question]);
+  const editableSignature = useMemo(() => editable ? questionEditSignature(editable) : "", [editable]);
+  const hasUnsavedChanges = Boolean(editable && question && editableSignature !== originalSignature);
+  const deferredEditable = useDeferredValue(editable);
+  const [previewReady, setPreviewReady] = useState(false);
+
+  useEffect(() => {
+    setPreviewReady(false);
+    const timer = window.setTimeout(() => setPreviewReady(true), 70);
+    return () => window.clearTimeout(timer);
+  }, [questionId]);
+
+  const previewEditable = deferredEditable || editable;
+  const previewSegments = previewEditable?.[segmentKey] || [];
+  const previewSegment = previewSegments[segmentIndex];
 
   function updateSegment(patch: Partial<PdfCropSegment>): void {
     setEditable((current) => {
@@ -531,7 +566,7 @@ function QuestionEditorTool({ accessToken, isPrimaryAdmin }: { accessToken: stri
   ): void {
     if (!editable) return;
     const before = cloneQuestion(editable);
-    const nextSegments = transform(editable[segmentKey].map((item) => ({ ...item })), segmentIndex);
+    const nextSegments = transform(editable[segmentKey].slice(), segmentIndex);
     setCropUndoStack((current) => [...current.slice(-29), before]);
     setEditable({ ...editable, [segmentKey]: nextSegments });
     setCropMessage(successMessage);
@@ -649,17 +684,19 @@ function QuestionEditorTool({ accessToken, isPrimaryAdmin }: { accessToken: stri
     else setError("本章找不到這個題號。");
   }
 
-  function openChangedQuestion(override: ImageQuizQuestionOverride): void {
-    const matchedBank = catalog.find((candidate) => override.questionId.startsWith(`${candidate.bankId}-`));
-    const matchedChapter = matchedBank?.chapters.find((candidate) => override.questionId.includes(`-${candidate.chapterId}-`));
+  function openChangedQuestion(questionIdToOpen: string): void {
+    const matchedBank = catalog.find((candidate) => questionIdToOpen.startsWith(`${candidate.bankId}-`));
+    const matchedChapter = matchedBank?.chapters.find((candidate) => questionIdToOpen.includes(`-${candidate.chapterSlug}-`));
     if (!matchedBank || !matchedChapter) {
-      setError(`無法定位 ${override.questionId}，請使用題號或科目選單前往。`);
+      setError(`無法定位 ${questionIdToOpen}，請使用題號或科目選單前往。`);
       return;
     }
-    pendingQuestionIdRef.current = override.questionId;
-    setBankId(matchedBank.bankId);
-    setChapterId(matchedChapter.chapterId);
-    if (matchedBank.bankId === bankId && matchedChapter.chapterId === chapterId) setQuestionId(override.questionId);
+    pendingQuestionIdRef.current = questionIdToOpen;
+    startTransition(() => {
+      setBankId(matchedBank.bankId);
+      setChapterId(matchedChapter.chapterId);
+      if (matchedBank.bankId === bankId && matchedChapter.chapterId === chapterId) setQuestionId(questionIdToOpen);
+    });
   }
 
   async function saveOverride(): Promise<void> {
@@ -692,6 +729,7 @@ function QuestionEditorTool({ accessToken, isPrimaryAdmin }: { accessToken: stri
         updatedAt: new Date().toISOString(),
         updatedBy: "current-admin",
       };
+      setDraftOverrideIds((current) => current.includes(editable.id) ? current : [...current, editable.id]);
       setDraftOverrides((current) => [...current.filter((item) => item.questionId !== editable.id), savedOverride]);
       setChapter((current) => current ? {
         ...current,
@@ -715,6 +753,7 @@ function QuestionEditorTool({ accessToken, isPrimaryAdmin }: { accessToken: stri
         method: "POST",
         body: JSON.stringify({ action: "delete", questionId: editable.id }),
       });
+      setDraftOverrideIds((current) => current.filter((item) => item !== editable.id));
       setDraftOverrides((current) => current.filter((item) => item.questionId !== editable.id));
       pendingQuestionIdRef.current = editable.id;
       setChapterReloadKey((value) => value + 1);
@@ -731,7 +770,7 @@ function QuestionEditorTool({ accessToken, isPrimaryAdmin }: { accessToken: stri
       setError("只有主要管理員可以發布題庫。");
       return;
     }
-    if (!draftOverrides.length) {
+    if (!draftOverrideIds.length) {
       setError("目前沒有尚未發布的修改。");
       return;
     }
@@ -739,7 +778,7 @@ function QuestionEditorTool({ accessToken, isPrimaryAdmin }: { accessToken: stri
       setError("目前題目還有未儲存調整，請先按「儲存修改」。");
       return;
     }
-    if (!window.confirm(`確定發布本次 ${draftOverrides.length} 題修改？發布後所有使用者會立即讀取新版題庫。`)) return;
+    if (!window.confirm(`確定發布本次 ${draftOverrideIds.length} 題修改？發布後所有使用者會立即讀取新版題庫。`)) return;
     setPublishBusy(true);
     setError("");
     setMessage("");
@@ -748,6 +787,7 @@ function QuestionEditorTool({ accessToken, isPrimaryAdmin }: { accessToken: stri
         method: "POST",
         body: JSON.stringify({ action: "publish-current" }),
       });
+      setDraftOverrideIds([]);
       setDraftOverrides([]);
       setMessage(payload.message || `已發布 ${payload.publishedCount || 0} 題修改。`);
     } catch (publishError) {
@@ -768,24 +808,24 @@ function QuestionEditorTool({ accessToken, isPrimaryAdmin }: { accessToken: stri
 
       <div className="question-editor-workflow-bar">
         <details className="question-change-menu">
-          <summary><span>本次修改</span><strong>{draftOverrides.length} 題</strong></summary>
+          <summary><span>本次修改</span><strong>{draftOverrideIds.length} 題</strong></summary>
           <div className="question-change-list">
-            {draftOverrides.length ? draftOverrides
-              .slice()
-              .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
-              .map((override) => (
-                <button key={override.questionId} type="button" onClick={() => openChangedQuestion(override)}>
-                  <strong>{override.bankTitle || override.questionId}</strong>
-                  <span>{override.chapterTitle ? `${override.chapterTitle} · ` : ""}{override.questionNumber ? `第 ${override.questionNumber} 題` : override.questionId}</span>
+            {draftOverrideIds.length ? draftOverrideIds.map((changedId) => {
+              const override = draftOverrideMap.get(changedId);
+              return (
+                <button key={changedId} type="button" onClick={() => openChangedQuestion(changedId)}>
+                  <strong>{override?.bankTitle || changedId}</strong>
+                  <span>{override?.chapterTitle ? `${override.chapterTitle} · ` : ""}{override?.questionNumber ? `第 ${override.questionNumber} 題` : "已儲存修改"}</span>
                 </button>
-              )) : <p>目前沒有尚未發布的修改。</p>}
+              );
+            }) : <p>目前沒有尚未發布的修改。</p>}
           </div>
         </details>
         <div className="question-editor-publish-copy">
-          <strong>{draftOverrides.length ? `已儲存 ${draftOverrides.length} 題修改` : "題庫目前沒有待發布修改"}</strong>
+          <strong>{draftOverrideIds.length ? `已儲存 ${draftOverrideIds.length} 題修改` : "題庫目前沒有待發布修改"}</strong>
           <span>{isPrimaryAdmin ? "確認修改內容後，可直接發布到線上題庫。" : "只有主要管理員可以執行發布。"}</span>
         </div>
-        <GlassButton variant="primary" disabled={publishBusy || !isPrimaryAdmin || !draftOverrides.length || hasUnsavedChanges} onClick={() => void publishCurrentChanges()}>
+        <GlassButton variant="primary" disabled={publishBusy || !isPrimaryAdmin || !draftOverrideIds.length || hasUnsavedChanges} onClick={() => void publishCurrentChanges()}>
           <ShieldCheck size={18} />{publishBusy ? "發布中" : "發布題庫"}
         </GlassButton>
       </div>
@@ -822,7 +862,7 @@ function QuestionEditorTool({ accessToken, isPrimaryAdmin }: { accessToken: stri
               {segment ? (
                 <>
                   <section className="focus-control-section"><div className="focus-control-heading"><strong>上下位置</strong><span>移動整個截圖</span></div><div className="focus-control-grid"><button type="button" onClick={() => updateActiveSegment((current) => movePdfCropSegment(current, 0, -cropStep))}>上移 {cropStep}</button><button type="button" onClick={() => updateActiveSegment((current) => movePdfCropSegment(current, 0, cropStep))}>下移 {cropStep}</button></div></section>
-                  <section className="focus-control-section is-crop-primary"><div className="focus-control-heading"><strong>裁掉空白</strong><span>保留另一側內容</span></div><div className="focus-control-grid"><button type="button" onClick={() => updateActiveSegment((current) => trimPdfCropEdge(current, "top", cropStep))}>裁上 {cropStep}</button><button type="button" onClick={() => updateActiveSegment((current) => trimPdfCropEdge(current, "bottom", cropStep))}>裁下 {cropStep}</button><button type="button" onClick={() => updateActiveSegment((current) => resizePdfCropSegment(current, 0, -cropStep))}>減高 {cropStep}</button><button type="button" onClick={() => updateActiveSegment((current) => resizePdfCropSegment(current, 0, cropStep))}>加高 {cropStep}</button></div></section>
+                  <section className="focus-control-section is-crop-primary"><div className="focus-control-heading"><strong>裁掉空白</strong><span>保留另一側內容</span></div><div className="focus-control-grid"><button type="button" className="crop-edge-button" onClick={() => updateActiveSegment((current) => trimPdfCropEdge(current, "top", cropStep))}>裁上 {cropStep}</button><button type="button" className="crop-edge-button" onClick={() => updateActiveSegment((current) => trimPdfCropEdge(current, "bottom", cropStep))}>裁下 {cropStep}</button><button type="button" className="crop-size-button" onClick={() => updateActiveSegment((current) => resizePdfCropSegment(current, 0, -cropStep))}>減高 {cropStep}</button><button type="button" className="crop-size-button" onClick={() => updateActiveSegment((current) => resizePdfCropSegment(current, 0, cropStep))}>加高 {cropStep}</button></div></section>
                   {segmentIndex > 0 ? (
                     <section className="focus-control-section is-seam-primary"><div className="focus-control-heading"><strong>跨頁接縫</strong><span>前段底部＋本段頂部</span></div><button type="button" className="focus-wide-action" disabled={cropBusy} onClick={() => applyCropAction((items, activeIndex) => { const next = [...items]; const previousItem = next[activeIndex - 1]; const currentItem = next[activeIndex]; if (!previousItem || !currentItem) return next; const [previousSegment, currentSegment] = compressPdfCropSeam(previousItem, currentItem, cropStep); next[activeIndex - 1] = previousSegment; next[activeIndex] = currentSegment; return next; }, `前段底部與本段頂部各裁除 ${cropStep}px。`)}>接縫兩側各裁 {cropStep}</button><button type="button" className="focus-wide-action is-primary" disabled={cropBusy} onClick={() => void autoCompressPreviousSeam()}>{cropBusy ? "分析中…" : "自動貼合前段接縫"}</button></section>
                   ) : <p className="focus-seam-hint">切換到段落 2 後即可使用跨頁接縫工具。</p>}
@@ -831,7 +871,44 @@ function QuestionEditorTool({ accessToken, isPrimaryAdmin }: { accessToken: stri
                 </>
               ) : <div className="question-editor-empty-segment"><p>目前沒有段落。</p><button type="button" onClick={addSegment}>新增第一個段落</button></div>}
             </aside>
-            <section className="question-editor-preview question-editor-focus-preview" aria-label="App 實際顯示預覽"><div className="question-preview-head"><div><strong>即時預覽</strong><span>{mode === "question" ? "題目截圖" : "解析截圖"}・段落 {Math.min(segmentIndex + 1, Math.max(1, segments.length))}/{Math.max(1, segments.length)}</span></div>{segment ? <span className="question-preview-page">第 {segment.page} 頁</span> : null}</div><div className="question-preview-canvas"><PdfSegmentStack segments={segments} label={`第 ${editable.number} 題預覽`} priority="auto" activeIndex={segmentIndex} /></div></section>
+            <section className="question-editor-preview question-editor-focus-preview" aria-label="草稿成品與原頁裁切預覽">
+              <div className="question-preview-head">
+                <div><strong>草稿與裁切定位</strong><span>同步查看題目、解析成品，以及目前段落在原頁的位置。</span></div>
+                {previewSegment ? <span className="question-preview-page">第 {previewSegment.page} 頁</span> : null}
+              </div>
+              {!previewReady ? <div className="question-editor-preview-skeleton" aria-live="polite">準備預覽中…</div> : <div className="question-editor-preview-scroll">
+                <div className="question-editor-draft-previews" aria-label="草稿成品預覽">
+                  <DraftOutputPreview
+                    title="草稿題目"
+                    active={mode === "question"}
+                    segments={previewEditable!.questionSegments}
+                    label={`第 ${previewEditable!.number} 題草稿題目`}
+                    onEdit={() => { setMode("question"); setSegmentIndex(0); }}
+                  />
+                  <DraftOutputPreview
+                    title="草稿解析"
+                    active={mode === "explanation"}
+                    segments={previewEditable!.explanationSegments}
+                    label={`第 ${previewEditable!.number} 題草稿解析`}
+                    onEdit={() => { setMode("explanation"); setSegmentIndex(0); }}
+                  />
+                </div>
+                <div className="question-page-context-section">
+                  <div className="question-page-context-head">
+                    <div><strong>原頁裁切定位</strong><span>紅框即為目前欲裁切的範圍；可先掌握整頁內容，再進行微調。</span></div>
+                    <span className="question-page-context-legend"><i aria-hidden="true" />欲裁切位置</span>
+                  </div>
+                  {previewSegment ? (
+                    <PdfPageCropContext
+                      segment={previewSegment}
+                      segments={previewSegments}
+                      activeIndex={segmentIndex}
+                      label={`第 ${previewEditable!.number} 題第 ${previewSegment.page} 頁裁切定位`}
+                    />
+                  ) : <div className="question-page-context-empty">目前沒有可定位的裁切段落。</div>}
+                </div>
+              </div>}
+            </section>
           </div>
         </>
       ) : null}
@@ -839,6 +916,75 @@ function QuestionEditorTool({ accessToken, isPrimaryAdmin }: { accessToken: stri
     </div>
   );
 }
+
+const DraftOutputPreview = memo(function DraftOutputPreview({
+  title,
+  active,
+  segments,
+  label,
+  onEdit,
+}: {
+  title: string;
+  active: boolean;
+  segments: PdfCropSegment[];
+  label: string;
+  onEdit: () => void;
+}) {
+  return (
+    <section className={`question-draft-preview-card${active ? " is-active" : ""}`}>
+      <div className="question-draft-preview-head">
+        <div><strong>{title}</strong><span>{segments.length} 段</span></div>
+        <button type="button" onClick={onEdit}>{active ? "編輯中" : "切換編輯"}</button>
+      </div>
+      <div className="question-draft-preview-canvas">
+        {segments.length ? <PdfSegmentStack segments={segments} label={label} priority={active ? "high" : "low"} /> : <p>尚未建立截圖段落。</p>}
+      </div>
+    </section>
+  );
+});
+
+const PdfPageCropContext = memo(function PdfPageCropContext({
+  segment,
+  segments,
+  activeIndex,
+  label,
+}: {
+  segment: PdfCropSegment;
+  segments: PdfCropSegment[];
+  activeIndex: number;
+  label: string;
+}) {
+  const pageSegments = segments
+    .map((item, index) => ({ item, index }))
+    .filter(({ item }) => item.page === segment.page && item.src === segment.src);
+  const pageStyle: CSSProperties = { aspectRatio: `${segment.pageWidth} / ${segment.pageHeight}` };
+
+  return (
+    <div className="question-page-context-canvas" aria-label={label}>
+      <div className="question-page-context-page" style={pageStyle}>
+        <img src={pdfImageUrl(segment.src)} alt="" loading="lazy" decoding="async" fetchPriority="low" />
+        {pageSegments.map(({ item, index }) => {
+          const boxStyle: CSSProperties = {
+            left: `${item.x / Math.max(1, item.pageWidth) * 100}%`,
+            top: `${item.y / Math.max(1, item.pageHeight) * 100}%`,
+            width: `${item.width / Math.max(1, item.pageWidth) * 100}%`,
+            height: `${item.height / Math.max(1, item.pageHeight) * 100}%`,
+          };
+          return (
+            <div
+              key={`${item.src}-${item.page}-${index}`}
+              className={`question-page-crop-box${index === activeIndex ? " is-active" : ""}`}
+              style={boxStyle}
+              aria-hidden="true"
+            >
+              <span>{index === activeIndex ? "目前裁切" : `段落 ${index + 1}`}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+});
 
 function SegmentFields({ segment, onChange }: { segment: PdfCropSegment; onChange: (patch: Partial<PdfCropSegment>) => void }) {
   const numericFields: { key: keyof PdfCropSegment; label: string; min: number }[] = [
@@ -868,6 +1014,14 @@ function loadCropAnalysisImage(src: string): Promise<HTMLImageElement> {
 
 function ToolMessages({ message, error }: { message: string; error: string }) {
   return <>{message ? <p className="form-success">{message}</p> : null}{error ? <p className="form-error">{error}</p> : null}</>;
+}
+
+function questionEditSignature(question: ImageQuizQuestion): string {
+  return JSON.stringify({
+    answer: question.answer,
+    questionSegments: question.questionSegments,
+    explanationSegments: question.explanationSegments,
+  });
 }
 
 function cloneQuestion(question: ImageQuizQuestion): ImageQuizQuestion {

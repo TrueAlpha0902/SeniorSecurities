@@ -56,16 +56,10 @@ async function bucketExists(supabase: SupabaseClient): Promise<boolean> {
   return false;
 }
 
-export async function listQuestionOverrides(
-  supabase: SupabaseClient,
-  options: { bypassCache?: boolean } = {},
-): Promise<QuestionOverride[]> {
-  if (!options.bypassCache && overrideCache && overrideCache.expiresAt > Date.now()) {
-    return overrideCache.value;
-  }
+export async function listQuestionOverrideIds(supabase: SupabaseClient): Promise<string[]> {
   if (!(await bucketExists(supabase))) return [];
 
-  const fileNames: string[] = [];
+  const questionIds: string[] = [];
   let offset = 0;
   const limit = 100;
   while (true) {
@@ -75,23 +69,48 @@ export async function listQuestionOverrides(
       sortBy: { column: "name", order: "asc" },
     });
     if (error) throw error;
-    const names = (data || []).map((file) => file.name).filter((name) => name.endsWith(".json"));
-    fileNames.push(...names);
-    if ((data || []).length < limit) break;
+    const page = data || [];
+    for (const file of page) {
+      if (!file.name.endsWith(".json")) continue;
+      questionIds.push(file.name.slice(0, -5));
+    }
+    if (page.length < limit) break;
     offset += limit;
   }
+  return questionIds;
+}
 
+export async function getQuestionOverridesByIds(
+  supabase: SupabaseClient,
+  questionIds: readonly string[],
+): Promise<QuestionOverride[]> {
+  if (!(await bucketExists(supabase))) return [];
+  const uniqueIds = Array.from(new Set(questionIds.map((value) => value.trim()).filter(Boolean)));
   const overrides: QuestionOverride[] = [];
-  for (let index = 0; index < fileNames.length; index += 20) {
-    const batch = fileNames.slice(index, index + 20);
-    const values = await Promise.all(batch.map(async (name) => {
-      const { data, error } = await supabase.storage.from(BUCKET_NAME).download(name);
-      if (error) throw error;
+  for (let index = 0; index < uniqueIds.length; index += 20) {
+    const batch = uniqueIds.slice(index, index + 20);
+    const values = await Promise.all(batch.map(async (questionId) => {
+      const { data, error } = await supabase.storage.from(BUCKET_NAME).download(`${questionId}.json`);
+      if (error) {
+        if (/not found|does not exist/i.test(String(error.message || ""))) return null;
+        throw error;
+      }
       return JSON.parse(await data.text()) as QuestionOverride;
     }));
-    overrides.push(...values);
+    overrides.push(...values.filter((value): value is QuestionOverride => Boolean(value)));
   }
+  return overrides;
+}
 
+export async function listQuestionOverrides(
+  supabase: SupabaseClient,
+  options: { bypassCache?: boolean } = {},
+): Promise<QuestionOverride[]> {
+  if (!options.bypassCache && overrideCache && overrideCache.expiresAt > Date.now()) {
+    return overrideCache.value;
+  }
+  const questionIds = await listQuestionOverrideIds(supabase);
+  const overrides = await getQuestionOverridesByIds(supabase, questionIds);
   overrideCache = { expiresAt: Date.now() + CACHE_TTL_MS, value: overrides };
   return overrides;
 }

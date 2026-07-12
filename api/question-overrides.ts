@@ -11,7 +11,7 @@ function isMissingReleaseTable(error: unknown): boolean {
   return message.includes("question_release_pointer") || message.includes("question_release_items") || message.includes("Could not find the table");
 }
 
-async function listPublishedOverrides(): Promise<{ overrides: QuestionOverride[]; releaseId: string | null }> {
+async function listPublishedOverrides(questionIds: string[] = []): Promise<{ overrides: QuestionOverride[]; releaseId: string | null }> {
   const supabase = getAdminClient();
   const { data: pointer, error: pointerError } = await supabase
     .from("question_release_pointer")
@@ -25,22 +25,39 @@ async function listPublishedOverrides(): Promise<{ overrides: QuestionOverride[]
   if (!pointer?.active_release_id) return { overrides: [], releaseId: null };
 
   const overrides: QuestionOverride[] = [];
-  let offset = 0;
-  while (true) {
-    const { data: rows, error } = await supabase
-      .from("question_release_items")
-      .select("payload")
-      .eq("release_id", pointer.active_release_id)
-      .order("question_id", { ascending: true })
-      .range(offset, offset + PAGE_SIZE - 1);
-    if (error) {
-      if (isMissingReleaseTable(error)) return { overrides: [], releaseId: null };
-      throw error;
+  if (questionIds.length) {
+    for (let index = 0; index < questionIds.length; index += 100) {
+      const ids = questionIds.slice(index, index + 100);
+      const { data: rows, error } = await supabase
+        .from("question_release_items")
+        .select("payload")
+        .eq("release_id", pointer.active_release_id)
+        .in("question_id", ids)
+        .order("question_id", { ascending: true });
+      if (error) {
+        if (isMissingReleaseTable(error)) return { overrides: [], releaseId: null };
+        throw error;
+      }
+      overrides.push(...(rows || []).map((row) => row.payload as QuestionOverride));
     }
-    const page = rows || [];
-    overrides.push(...page.map((row) => row.payload as QuestionOverride));
-    if (page.length < PAGE_SIZE) break;
-    offset += PAGE_SIZE;
+  } else {
+    let offset = 0;
+    while (true) {
+      const { data: rows, error } = await supabase
+        .from("question_release_items")
+        .select("payload")
+        .eq("release_id", pointer.active_release_id)
+        .order("question_id", { ascending: true })
+        .range(offset, offset + PAGE_SIZE - 1);
+      if (error) {
+        if (isMissingReleaseTable(error)) return { overrides: [], releaseId: null };
+        throw error;
+      }
+      const page = rows || [];
+      overrides.push(...page.map((row) => row.payload as QuestionOverride));
+      if (page.length < PAGE_SIZE) break;
+      offset += PAGE_SIZE;
+    }
   }
   return { overrides, releaseId: pointer.active_release_id };
 }
@@ -57,7 +74,10 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
   }
 
   try {
-    const published = await listPublishedOverrides();
+    const idsValue = req.query?.ids;
+    const idsText = Array.isArray(idsValue) ? idsValue.join(",") : String(idsValue || "");
+    const questionIds = Array.from(new Set(idsText.split(",").map((value) => value.trim()).filter((value) => /^[A-Za-z0-9][A-Za-z0-9_-]{1,160}$/.test(value)))).slice(0, 250);
+    const published = await listPublishedOverrides(questionIds);
     const payload = {
       overrides: published.overrides,
       releaseId: published.releaseId,
