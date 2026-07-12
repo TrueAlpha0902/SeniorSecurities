@@ -183,7 +183,7 @@ type UserDetailResponse = Partial<UserDetail> & { error?: string };
 type LeaderboardResponse = { entries?: LeaderboardAdminEntry[]; error?: string };
 type AuditResponse = { events?: AdminAuditEvent[]; error?: string };
 type ActionResponse = { ok?: boolean; message?: string; error?: string };
-type UserFilter = "all" | "online" | "active" | "inactive";
+type UserFilter = "all" | "active" | "inactive";
 type UserAction = "revoke" | "restore" | "send-password-reset" | "reset-devices" | "revoke-device";
 
 function formatDate(value: string | null): string {
@@ -247,6 +247,7 @@ function auditActionLabel(action: string): string {
     "question_release.submit-review": "題庫批次送審",
     "question_release.approve": "核准題庫發布批次",
     "question_release.publish": "發布題庫版本",
+    "question_release.publish_direct": "主要管理員直接發布題庫",
     "question_release.rollback": "回復上一題庫版本",
     "admin_account.upsert": "新增或恢復管理員",
     "admin_account.disable": "停用管理員",
@@ -329,16 +330,15 @@ function AdminContent() {
 
   const summary = useMemo(() => ({
     total: users.length,
-    online: users.filter((row) => row.isOnline).length,
     active: users.filter((row) => row.entitlementStatus === "active").length,
     practiced: users.reduce((sum, row) => sum + (row.totalAnswered || row.practicedQuestionCount || 0), 0),
+    practiceSeconds: users.reduce((sum, row) => sum + (row.totalPracticeSeconds || 0), 0),
   }), [users]);
 
   const filteredUsers = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
     return users
       .filter((row) => {
-        if (userFilter === "online" && !row.isOnline) return false;
         if (userFilter === "active" && row.entitlementStatus !== "active") return false;
         if (userFilter === "inactive" && row.entitlementStatus === "active") return false;
         if (!normalizedQuery) return true;
@@ -471,11 +471,9 @@ function AdminContent() {
     const refreshWhenVisible = () => {
       if (document.visibilityState === "visible") void loadUsers(true);
     };
-    const timer = window.setInterval(refreshWhenVisible, 30_000);
     document.addEventListener("visibilitychange", refreshWhenVisible);
     window.addEventListener("focus", refreshWhenVisible);
     return () => {
-      window.clearInterval(timer);
       document.removeEventListener("visibilitychange", refreshWhenVisible);
       window.removeEventListener("focus", refreshWhenVisible);
     };
@@ -604,7 +602,6 @@ function AdminContent() {
             </div>
           </div>
           <div className="admin-premium-command">
-            <span className="admin-control-status"><span aria-hidden="true" />系統運作中</span>
             <div className="admin-premium-actions">
               <GlassButton variant="primary" onClick={() => setToolsOpen(true)}>
                 <Wrench size={18} aria-hidden="true" />
@@ -628,9 +625,9 @@ function AdminContent() {
 
         <div className="admin-premium-kpis">
           <div className="admin-kpi-card"><span className="admin-kpi-icon"><UsersRound size={19} /></span><span className="admin-kpi-copy"><small>全部帳號</small><strong>{summary.total}</strong><em>目前管理範圍</em></span></div>
-          <div className="admin-kpi-card is-live"><span className="admin-kpi-icon"><Activity size={19} /></span><span className="admin-kpi-copy"><small>目前在線</small><strong>{summary.online}</strong><em>正在使用服務</em></span></div>
           <div className="admin-kpi-card"><span className="admin-kpi-icon"><KeyRound size={19} /></span><span className="admin-kpi-copy"><small>有效授權</small><strong>{summary.active}</strong><em>{summary.total ? Math.round(summary.active / summary.total * 100) : 0}% 已開通</em></span></div>
           <div className="admin-kpi-card"><span className="admin-kpi-icon"><BookOpenCheck size={19} /></span><span className="admin-kpi-copy"><small>累積作答</small><strong>{summary.practiced.toLocaleString("zh-TW")}</strong><em>全體學習活動</em></span></div>
+          <div className="admin-kpi-card"><span className="admin-kpi-icon"><Clock3 size={19} /></span><span className="admin-kpi-copy"><small>練習投入</small><strong>{formatTotalPracticeTime(summary.practiceSeconds)}</strong><em>全體累積時間</em></span></div>
         </div>
         <p className="admin-premium-session"><ShieldCheck size={15} aria-hidden="true" />登入管理員 <strong>{user?.email}</strong></p>
       </GlassCard>
@@ -644,7 +641,6 @@ function AdminContent() {
           </div>
           <div className="admin-directory-heading-meta">
             <span className="admin-directory-count"><UsersRound size={16} />{filteredUsers.length} 位會員</span>
-            <span className="admin-live-sync"><span /> 每 30 秒同步</span>
           </div>
         </div>
 
@@ -660,7 +656,6 @@ function AdminContent() {
           <div className="admin-filter-tabs" role="group" aria-label="使用者篩選">
             {([
               ["all", "全部", summary.total],
-              ["online", "在線", summary.online],
               ["active", "已開通", summary.active],
               ["inactive", "未啟用", summary.total - summary.active],
             ] as const).map(([filter, label, count]) => (
@@ -680,16 +675,7 @@ function AdminContent() {
         {message ? <p className="form-success admin-premium-notice">{message}</p> : null}
         {error ? <p className="form-error admin-premium-notice">{error}</p> : null}
 
-        <div className="admin-user-table-head" aria-hidden="true">
-          <span>使用者</span>
-          <span>學習成效</span>
-          <span>練習時間</span>
-          <span>最後活動</span>
-          <span>狀態</span>
-          <span />
-        </div>
-
-        <div className="admin-premium-user-list">
+        <div className="admin-member-grid">
           {filteredUsers.length === 0 ? (
             <div className="admin-premium-empty">
               <Search size={24} aria-hidden="true" />
@@ -702,12 +688,12 @@ function AdminContent() {
             return (
               <button
                 type="button"
-                className="admin-premium-user-row"
+                className="admin-member-card"
                 key={row.id}
                 onClick={() => setSelectedUserId(row.id)}
                 aria-label={"查看 " + row.email + " 的活動資料"}
               >
-                <span className="admin-user-primary">
+                <span className="admin-member-identity">
                   <span className={"admin-user-avatar " + (row.isOnline ? "is-online" : "")}>
                     {(row.email[0] || "U").toUpperCase()}
                     {row.isOnline ? <i aria-label="在線" /> : null}
@@ -716,28 +702,27 @@ function AdminContent() {
                     <strong>{row.email || "未命名帳號"}</strong>
                     <small>#{row.id.slice(0, 8).toUpperCase()} · IP {row.lastIp || "未記錄"}</small>
                   </span>
-                </span>
-                <span className="admin-row-metric admin-row-learning">
-                  <span className="admin-row-metric-main"><BookOpenCheck size={16} aria-hidden="true" /><strong>{answered.toLocaleString("zh-TW")} 題</strong></span>
-                  <span className="admin-row-progress" aria-label={`正確率 ${accuracy}%`}><i style={{ width: `${accuracy}%` }} /></span>
-                  <small>{row.totalAnswered > 0 ? accuracy + "% 正確率" : "尚無完整統計"}</small>
-                </span>
-                <span className="admin-row-metric">
-                  <span className="admin-row-metric-main"><Clock3 size={16} aria-hidden="true" /><strong>{formatTotalPracticeTime(row.totalPracticeSeconds || 0)}</strong></span>
-                  <small>最高連對 {row.bestCorrectStreak || 0} 題</small>
-                </span>
-                <span className="admin-row-metric">
-                  <span className="admin-row-metric-main"><Activity size={16} aria-hidden="true" /><strong>{row.isOnline ? "正在使用" : relativeActivity(row.lastActivityAt)}</strong></span>
-                  <small>{formatShortDate(row.lastActivityAt || row.lastEventAt || row.lastSignInAt)}</small>
-                </span>
-                <span className="admin-row-statuses">
                   <span className={"admin-status admin-status-" + row.entitlementStatus}>{statusLabel(row.entitlementStatus)}</span>
-                  <span className={"admin-online-pill " + (row.isOnline ? "is-online" : "is-offline")}>
-                    <span className="admin-online-dot" aria-hidden="true" />
-                    {row.isOnline ? "Online" : "Offline"}
+                </span>
+                <span className="admin-member-metrics">
+                  <span className="admin-member-metric">
+                    <small><BookOpenCheck size={15} aria-hidden="true" />學習成效</small>
+                    <strong>{answered.toLocaleString("zh-TW")} 題</strong>
+                    <span className="admin-row-progress" aria-label={`正確率 ${accuracy}%`}><i style={{ width: `${accuracy}%` }} /></span>
+                    <em>{row.totalAnswered > 0 ? accuracy + "% 正確率" : "尚無完整統計"}</em>
+                  </span>
+                  <span className="admin-member-metric">
+                    <small><Clock3 size={15} aria-hidden="true" />練習投入</small>
+                    <strong>{formatTotalPracticeTime(row.totalPracticeSeconds || 0)}</strong>
+                    <em>最高連對 {row.bestCorrectStreak || 0} 題</em>
+                  </span>
+                  <span className="admin-member-metric">
+                    <small><Activity size={15} aria-hidden="true" />最近活動</small>
+                    <strong>{row.isOnline ? "正在使用" : relativeActivity(row.lastActivityAt)}</strong>
+                    <em>{formatShortDate(row.lastActivityAt || row.lastEventAt || row.lastSignInAt)}</em>
                   </span>
                 </span>
-                <ChevronRight className="admin-row-chevron" size={21} aria-hidden="true" />
+                <span className="admin-member-open"><span>查看完整資料</span><ChevronRight size={20} aria-hidden="true" /></span>
               </button>
             );
           })}
@@ -765,9 +750,6 @@ function AdminContent() {
                   <h2 id="admin-user-detail-title">{selectedUser.email}</h2>
                   <div className="admin-drawer-badges">
                     <span className={"admin-status admin-status-" + selectedUser.entitlementStatus}>{statusLabel(selectedUser.entitlementStatus)}</span>
-                    <span className={"admin-online-pill " + (selectedUser.isOnline ? "is-online" : "is-offline")}>
-                      <span className="admin-online-dot" />{selectedUser.isOnline ? "目前在線" : "目前離線"}
-                    </span>
                   </div>
                 </div>
               </div>
@@ -833,7 +815,7 @@ function AdminContent() {
                     <div className="admin-detail-mini-stats">
                       <span><Target size={15} />錯題 {userDetail.learning.wrongQuestionCount ?? "—"}</span>
                       <span><BookOpenCheck size={15} />收藏 {userDetail.learning.favoriteQuestionCount ?? "—"}</span>
-                      <span><Clock3 size={15} />最後心跳 {formatDate(userDetail.user.lastSeenAt)}</span>
+                      <span><Clock3 size={15} />最近連線 {formatDate(userDetail.user.lastSeenAt)}</span>
                     </div>
                   </section>
 

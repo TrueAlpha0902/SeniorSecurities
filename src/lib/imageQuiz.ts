@@ -60,6 +60,9 @@ type ImageQuizData = {
 
 export type ImageQuizQuestionOverride = {
   questionId: string;
+  bankTitle?: string;
+  chapterTitle?: string;
+  questionNumber?: number;
   answer: NumericAnswer;
   questionSegments: PdfCropSegment[];
   explanationSegments: PdfCropSegment[];
@@ -111,6 +114,18 @@ type QuestionShardManifestBank = {
   bankTitle: string;
   questionCount: number;
   chapters: QuestionShardManifestChapter[];
+};
+
+
+export type ImageQuizEditorChapterSummary = Pick<
+  ImageQuizChapter,
+  "bankId" | "bankTitle" | "chapterId" | "chapterTitle" | "chapterSlug" | "sourceFile" | "questionCount"
+>;
+
+export type ImageQuizEditorBankSummary = {
+  bankId: string;
+  bankTitle: string;
+  chapters: ImageQuizEditorChapterSummary[];
 };
 
 export type QuestionReleaseManifest = {
@@ -309,6 +324,36 @@ export async function loadImageQuizEditorBanks(): Promise<ImageQuizBank[]> {
     )
   ).filter((bank): bank is ImageQuizBank => Boolean(bank));
   return applyQuestionOverrides({ banks: sourceBanks }, overrides).banks;
+}
+
+export async function loadImageQuizEditorCatalog(): Promise<ImageQuizEditorBankSummary[]> {
+  const manifest = await loadQuestionReleaseManifest();
+  return manifest.banks.map((bank) => ({
+    bankId: bank.bankId,
+    bankTitle: bank.bankTitle,
+    chapters: bank.chapters.map((chapter) => ({
+      bankId: bank.bankId,
+      bankTitle: bank.bankTitle,
+      chapterId: chapter.chapterId,
+      chapterTitle: chapter.chapterTitle,
+      chapterSlug: chapter.chapterSlug,
+      sourceFile: chapter.sourceFile,
+      questionCount: chapter.questionCount,
+    })),
+  }));
+}
+
+export async function loadImageQuizEditorChapter(
+  bankId: string,
+  chapterId: string,
+): Promise<ImageQuizChapter | undefined> {
+  const [chapter, overrides] = await Promise.all([
+    loadImageQuizChapter(bankId, chapterId),
+    loadQuestionOverrides(),
+  ]);
+  if (!chapter) return undefined;
+  const bank: ImageQuizBank = { bankId: chapter.bankId, bankTitle: chapter.bankTitle, chapters: [chapter] };
+  return applyQuestionOverrides({ banks: [bank] }, overrides).banks[0]?.chapters[0];
 }
 
 export async function loadImageQuizBankSummaries(): Promise<ImageQuizBank[]> {

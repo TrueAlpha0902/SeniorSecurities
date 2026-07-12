@@ -1,18 +1,17 @@
 import {
   Award,
+  Camera,
   ChevronLeft,
   ChevronRight,
   Clock3,
   Flame,
+  Medal,
   RefreshCw,
   Save,
-  Sparkles,
-  Target,
+  Trash2,
   Trophy,
-  UserRound,
-  UsersRound,
 } from "lucide-react";
-import { type FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { type ChangeEvent, type FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { ErrorState } from "../components/ErrorState";
 import { GlassButton } from "../components/GlassButton";
 import { GlassCard } from "../components/GlassCard";
@@ -21,6 +20,8 @@ import {
   getCurrentLeaderboardProfile,
   listLeaderboard,
   listPracticeTimeLeaderboard,
+  removeLeaderboardAvatar,
+  updateLeaderboardAvatar,
   updateLeaderboardDisplayName,
   type LeaderboardEntry,
 } from "../lib/leaderboard";
@@ -40,29 +41,46 @@ function metricValue(entry: LeaderboardEntry, tab: LeaderboardTab): string {
 }
 
 function secondaryMetric(entry: LeaderboardEntry, tab: LeaderboardTab): string {
-  if (tab === "streak") return `目前連勝 ${entry.currentCorrectStreak} 題 · 累計答對 ${entry.totalCorrect.toLocaleString("zh-TW")} 題`;
-  return `累計作答 ${entry.totalAnswered.toLocaleString("zh-TW")} 題 · 答對率 ${entry.totalAnswered ? Math.round(entry.totalCorrect / entry.totalAnswered * 100) : 0}%`;
+  if (tab === "streak") return `目前連對 ${entry.currentCorrectStreak} 題 · 累計答對 ${entry.totalCorrect.toLocaleString("zh-TW")} 題`;
+  return `累計作答 ${entry.totalAnswered.toLocaleString("zh-TW")} 題 · 正確率 ${entry.totalAnswered ? Math.round(entry.totalCorrect / entry.totalAnswered * 100) : 0}%`;
+}
+
+function rankLabel(rank: number): string {
+  if (rank === 1) return "金牌";
+  if (rank === 2) return "銀牌";
+  return "銅牌";
+}
+
+function Avatar({ entry, size = "normal" }: { entry: Pick<LeaderboardEntry, "avatarUrl" | "displayName">; size?: "normal" | "large" }) {
+  return (
+    <span className={`leaderboard-avatar is-${size}`} aria-hidden="true">
+      {entry.avatarUrl ? <img src={entry.avatarUrl} alt="" loading="lazy" decoding="async" /> : entry.displayName.slice(0, 1).toUpperCase()}
+    </span>
+  );
 }
 
 export function LeaderboardPage() {
   const [streakEntries, setStreakEntries] = useState<LeaderboardEntry[]>([]);
   const [timeEntries, setTimeEntries] = useState<LeaderboardEntry[]>([]);
   const [displayName, setDisplayName] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<LeaderboardTab>("streak");
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [avatarBusy, setAvatarBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const refresh = useCallback(async (initial = false) => {
-    if (initial) setLoading(true);
-    else setRefreshing(true);
+    if (initial) setLoading(true); else setRefreshing(true);
     setError(null);
     try {
       const [profile, streak, time] = await Promise.all([getCurrentLeaderboardProfile(), listLeaderboard(100), listPracticeTimeLeaderboard(100)]);
       setDisplayName(profile.displayName);
+      setAvatarUrl(profile.avatarUrl);
       setStreakEntries(streak);
       setTimeEntries(time);
     } catch (caught) {
@@ -87,37 +105,47 @@ export function LeaderboardPage() {
     } finally { setSaving(false); }
   }
 
+  async function handleAvatar(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.currentTarget.files?.[0];
+    event.currentTarget.value = "";
+    if (!file) return;
+    setAvatarBusy(true); setError(null); setMessage(null);
+    try {
+      await updateLeaderboardAvatar(file);
+      setMessage("頭像已更新。");
+      await refresh();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : String(caught));
+    } finally { setAvatarBusy(false); }
+  }
+
+  async function handleRemoveAvatar() {
+    if (!window.confirm("確定要移除排行榜頭像？")) return;
+    setAvatarBusy(true); setError(null); setMessage(null);
+    try {
+      await removeLeaderboardAvatar();
+      setMessage("頭像已移除。");
+      await refresh();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : String(caught));
+    } finally { setAvatarBusy(false); }
+  }
+
   const entries = activeTab === "streak" ? streakEntries : timeEntries;
-  const currentIndex = entries.findIndex((entry) => entry.isCurrentUser);
-  const currentEntry = currentIndex >= 0 ? entries[currentIndex] : null;
   const pageCount = Math.max(1, Math.ceil(entries.length / PAGE_SIZE));
   const currentPage = Math.min(page, pageCount);
   const visibleEntries = entries.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
-  const nextEntry = currentIndex > 0 ? entries[currentIndex - 1] : null;
-  const progressToNext = useMemo(() => {
-    if (!currentEntry || !nextEntry) return 100;
-    const current = activeTab === "streak" ? currentEntry.bestCorrectStreak : currentEntry.totalPracticeSeconds;
-    const next = activeTab === "streak" ? nextEntry.bestCorrectStreak : nextEntry.totalPracticeSeconds;
-    return next <= 0 ? 100 : Math.min(100, Math.max(0, current / next * 100));
-  }, [activeTab, currentEntry, nextEntry]);
   const podiumEntries = entries.slice(0, 3);
   const podiumOrder = [1, 0, 2].filter((index) => index < podiumEntries.length);
-  const currentRank = currentIndex >= 0 ? currentIndex + 1 : null;
-  const currentPercentile = currentRank && entries.length ? Math.max(1, Math.ceil(currentRank / entries.length * 100)) : null;
-  const achievementMessage = currentRank === 1
-    ? "你正在領先榜單，繼續守住自己的學習節奏。"
-    : currentRank
-      ? `你已進入前 ${currentPercentile}%，再累積一點就能向上一名靠近。`
-      : "完成一場練習後，你的努力就會出現在榜單上。";
 
   if (loading) return <LoadingState label="載入排行榜" />;
 
   return (
-    <div className="page-stack leaderboard-v66-page">
+    <div className="page-stack leaderboard-v66-page leaderboard-v797-page">
       <GlassCard className="leaderboard-v66-hero" as="section">
         <div className="leaderboard-v66-heading">
           <span className="leaderboard-v66-icon"><Trophy size={24} /></span>
-          <div><p className="eyebrow">Learning League</p><h1>學習榮耀榜</h1><p>每一次答題與每一分鐘投入，都會累積成看得見的成就。</p></div>
+          <div><p className="eyebrow">Learning League</p><h1>學習榮耀榜</h1><p>穩定練習、持續累積，讓每一次進步都值得被看見。</p></div>
         </div>
         <div className="leaderboard-v66-actions">
           <div className="leaderboard-v66-tabs" role="tablist" aria-label="排行榜類型">
@@ -130,25 +158,10 @@ export function LeaderboardPage() {
 
       {error ? <ErrorState message={error} /> : null}
 
-      <section className="leaderboard-v66-overview" aria-label="排行榜摘要">
-        <GlassCard className="leaderboard-v66-my-card">
-          <div className="leaderboard-v796-my-top">
-            <div className="leaderboard-v66-card-label"><Target size={18} />我的成就</div>
-            {currentRank ? <span className="leaderboard-v796-achievement-badge"><Award size={15} />{currentRank === 1 ? "榜首" : `前 ${currentPercentile}%`}</span> : null}
-          </div>
-          <div className="leaderboard-v66-my-main"><strong>{currentRank ? `#${currentRank}` : "尚未上榜"}</strong><span>{currentEntry ? metricValue(currentEntry, activeTab) : "完成一場練習即可開始累積"}</span></div>
-          <p className="leaderboard-v796-motivation">{achievementMessage}</p>
-          {currentEntry && nextEntry ? <><div className="leaderboard-v66-progress-copy"><span>距離上一名</span><strong>{activeTab === "streak" ? `${Math.max(0, nextEntry.bestCorrectStreak - currentEntry.bestCorrectStreak)} 題` : formatTotalPracticeTime(Math.max(0, nextEntry.totalPracticeSeconds - currentEntry.totalPracticeSeconds))}</strong></div><progress value={progressToNext} max={100} /></> : null}
-        </GlassCard>
-
-        <GlassCard className="leaderboard-v66-stat-card"><span><UsersRound size={18} />參與學習者</span><strong>{entries.length}</strong><small>一起累積進步</small></GlassCard>
-        <GlassCard className="leaderboard-v66-stat-card"><span><Sparkles size={18} />本期標竿</span><strong>{entries[0] ? metricValue(entries[0], activeTab) : "—"}</strong><small>{entries[0]?.displayName ?? "等待第一筆紀錄"}</small></GlassCard>
-      </section>
-
       {podiumEntries.length ? (
         <GlassCard className={`leaderboard-v796-podium count-${podiumEntries.length}`} as="section">
           <div className="leaderboard-v796-podium-head">
-            <div><p className="eyebrow">Hall of Achievement</p><h2>本期榮耀殿堂</h2><p>穩定累積比一次衝高更值得肯定，向每一位持續練習的人致敬。</p></div>
+            <div><p className="eyebrow">Hall of Achievement</p><h2>本期榮耀殿堂</h2><p>前三名分別獲得金牌、銀牌與銅牌，向持續投入的學習者致敬。</p></div>
             <span><Trophy size={17} />Top {podiumEntries.length}</span>
           </div>
           <div className="leaderboard-v796-podium-grid">
@@ -158,10 +171,10 @@ export function LeaderboardPage() {
               const rank = entryIndex + 1;
               return (
                 <article key={entry.userId} className={`rank-${rank}${entry.isCurrentUser ? " is-current" : ""}`}>
-                  <span className="leaderboard-v796-medal"><Award size={20} />{rank}</span>
-                  <span className="leaderboard-v796-avatar">{entry.displayName.slice(0, 1).toUpperCase()}</span>
+                  <span className="leaderboard-v796-medal"><Medal size={20} />{rankLabel(rank)}</span>
+                  <Avatar entry={entry} size="large" />
                   <div className="leaderboard-v796-podium-player">
-                    <small>{rank === 1 ? "本期冠軍" : rank === 2 ? "榮耀第二名" : "榮耀第三名"}</small>
+                    <small>{rank === 1 ? "本期冠軍" : `本期第 ${rank} 名`}</small>
                     <strong>{entry.displayName}{entry.isCurrentUser ? <em>你</em> : null}</strong>
                     <span>{secondaryMetric(entry, activeTab)}</span>
                   </div>
@@ -173,9 +186,23 @@ export function LeaderboardPage() {
         </GlassCard>
       ) : null}
 
-      <GlassCard className="leaderboard-v66-name-editor" as="section">
-        <div><span className="leaderboard-v66-section-icon"><UserRound size={20} /></span><div><p className="eyebrow">Display Name</p><h2>排行榜顯示名稱</h2><p>使用不含個資、容易辨識的暱稱，最多 24 個字。</p></div></div>
-        <form onSubmit={(event) => void handleSubmit(event)}><label><input value={displayName} minLength={2} maxLength={24} required onChange={(event) => setDisplayName(event.currentTarget.value)} /><small>{displayName.length}/24</small></label><GlassButton type="submit" variant="primary" disabled={saving || displayName.trim().length < 2}><Save size={17} />{saving ? "儲存中" : "儲存名稱"}</GlassButton></form>
+      <GlassCard className="leaderboard-profile-editor" as="section">
+        <div className="leaderboard-profile-heading">
+          <div className="leaderboard-profile-avatar-wrap">
+            <span className="leaderboard-avatar is-profile">{avatarUrl ? <img src={avatarUrl} alt="目前排行榜頭像" /> : displayName.slice(0, 1).toUpperCase()}</span>
+            <button type="button" disabled={avatarBusy} onClick={() => fileInputRef.current?.click()} aria-label="上傳排行榜頭像"><Camera size={18} /></button>
+          </div>
+          <div><p className="eyebrow">Public Profile</p><h2>我的排行榜資料</h2><p>頭像會自動裁成正方形並壓縮，不會公開你的 Email。</p></div>
+        </div>
+        <input ref={fileInputRef} className="leaderboard-avatar-input" type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => void handleAvatar(event)} />
+        <form onSubmit={(event) => void handleSubmit(event)}>
+          <label><span>顯示名稱</span><input value={displayName} minLength={2} maxLength={24} required onChange={(event) => setDisplayName(event.currentTarget.value)} /><small>{displayName.length}/24</small></label>
+          <div className="leaderboard-profile-actions">
+            <GlassButton type="button" variant="secondary" disabled={avatarBusy} onClick={() => fileInputRef.current?.click()}><Camera size={17} />{avatarBusy ? "處理中" : "更換頭像"}</GlassButton>
+            {avatarUrl ? <GlassButton type="button" variant="secondary" disabled={avatarBusy} onClick={() => void handleRemoveAvatar()}><Trash2 size={17} />移除頭像</GlassButton> : null}
+            <GlassButton type="submit" variant="primary" disabled={saving || displayName.trim().length < 2}><Save size={17} />{saving ? "儲存中" : "儲存資料"}</GlassButton>
+          </div>
+        </form>
         {message ? <p className="form-success" role="status">{message}</p> : null}
       </GlassCard>
 
@@ -187,6 +214,7 @@ export function LeaderboardPage() {
             const rank = (currentPage - 1) * PAGE_SIZE + index + 1;
             return <article key={entry.userId} className={`${entry.isCurrentUser ? "is-current " : ""}${rank <= 3 ? `is-podium rank-${rank}` : ""}`.trim()}>
               <span className={`leaderboard-v66-row-rank rank-${rank <= 3 ? rank : "other"}`}>{rank <= 3 ? <Award size={17} /> : null}{rank}</span>
+              <Avatar entry={entry} />
               <div className="leaderboard-v66-player"><strong>{entry.displayName}{entry.isCurrentUser ? <em>你</em> : null}</strong><small>{secondaryMetric(entry, activeTab)}</small></div>
               <div className="leaderboard-v66-row-score"><strong>{metricValue(entry, activeTab)}</strong><small>{formatDate(entry.updatedAt)}</small></div>
             </article>;

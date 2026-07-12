@@ -1,5 +1,6 @@
 import {
   deleteQuestionOverride,
+  listQuestionOverrides,
   saveQuestionOverride,
   type QuestionOverrideSegment,
 } from "../_questionOverrides.js";
@@ -63,13 +64,25 @@ function normalizeSegments(value: unknown): QuestionOverrideSegment[] {
   });
 }
 
-export default async function handler(req: ApiRequest, res: ApiResponse) {
-  if (req.method !== "POST") {
-    sendJson(res, 405, { error: "Method not allowed" });
-    return;
-  }
+function optionalLabel(value: unknown, maxLength: number): string | undefined {
+  const label = String(value || "").trim().slice(0, maxLength);
+  return label || undefined;
+}
 
+export default async function handler(req: ApiRequest, res: ApiResponse) {
   try {
+    if (req.method === "GET") {
+      const admin = await requireAdminUser(req);
+      const overrides = await listQuestionOverrides(admin.supabase, { bypassCache: true });
+      sendJson(res, 200, { overrides, role: admin.role, isPrimaryAdmin: admin.isPrimaryAdmin });
+      return;
+    }
+
+    if (req.method !== "POST") {
+      sendJson(res, 405, { error: "Method not allowed" });
+      return;
+    }
+
     const { supabase, user } = await requireAdminUser(req);
     const body = parseBody(req);
     const action = String(body.action || "save");
@@ -77,19 +90,17 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
 
     if (action === "delete") {
       await deleteQuestionOverride(supabase, questionId);
-      await writeAdminAudit({
-        supabase,
-        actor: user,
-        req,
-        action: "question_override.delete",
-        metadata: { questionId },
-      });
-      sendJson(res, 200, { ok: true, message: "已移除線上修改，題目將恢復部署版本。" });
+      await writeAdminAudit({ supabase, actor: user, req, action: "question_override.delete", metadata: { questionId } });
+      sendJson(res, 200, { ok: true, message: "已移除這筆未發布修改。" });
       return;
     }
 
+    const questionNumber = Math.trunc(Number(body.questionNumber));
     const override = {
       questionId,
+      bankTitle: optionalLabel(body.bankTitle, 120),
+      chapterTitle: optionalLabel(body.chapterTitle, 160),
+      questionNumber: Number.isFinite(questionNumber) && questionNumber > 0 ? questionNumber : undefined,
       answer: normalizeAnswer(body.answer),
       questionSegments: normalizeSegments(body.questionSegments),
       explanationSegments: normalizeSegments(body.explanationSegments),
@@ -109,7 +120,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
         explanationSegments: override.explanationSegments.length,
       },
     });
-    sendJson(res, 200, { ok: true, override, message: "題目工作草稿已儲存。請到發布流程建立版本快照並完成雙人覆核。" });
+    sendJson(res, 200, { ok: true, override, message: "題目修改已儲存，確認本次修改清單後即可由主要管理員發布。" });
   } catch (error) {
     console.error("/api/admin/question-editor failed:", error);
     sendError(res, error);

@@ -161,28 +161,22 @@ export function RandomPracticePage() {
 
   return (
     <div className="page-stack learner-page random-practice-page mock-exam-v68-page">
-      <GlassCard className="mock-rules-card-v68" as="section" aria-labelledby="mock-rules-title">
-        <div className="mock-rules-heading-v68">
-          <span className="learner-section-icon" aria-hidden="true"><ClipboardList size={20} /></span>
-          <div>
-            <p className="eyebrow">Mock Exam Rules</p>
-            <h1 id="mock-rules-title">模擬考規則</h1>
+      <GlassCard className="mock-exam-console-v797" as="section" aria-labelledby="mock-exam-title">
+        <div className="mock-exam-console-head-v797">
+          <div className="mock-exam-console-title-v797">
+            <span className="learner-section-icon" aria-hidden="true"><ClipboardList size={21} /></span>
+            <div>
+              <p className="eyebrow">Professional Mock Exam</p>
+              <h1 id="mock-exam-title">專業模擬考</h1>
+              <p>依各章節題量比例抽題，建立接近正式應試節奏的個人測驗。</p>
+            </div>
           </div>
-        </div>
-      </GlassCard>
-
-      <GlassCard className="random-builder-card mock-builder-v68" as="section" aria-labelledby="random-builder-title">
-        <div className="random-builder-heading">
-          <div className="learner-section-icon" aria-hidden="true"><ListFilter size={20} /></div>
-          <div>
-            <p className="eyebrow">Setup</p>
-            <h2 id="random-builder-title">設定模擬考</h2>
-          </div>
+          <span className="mock-exam-method-v797"><ListFilter size={16} aria-hidden="true" />依章節比例抽題</span>
         </div>
 
-        <div className="mock-settings-grid-v68">
-          <label className="random-count-input-label mock-count-only-v68">
-            <span>{T.customQuestionCount}</span>
+        <div className="mock-settings-grid-v797">
+          <label className="mock-setting-card-v797 is-count">
+            <span className="mock-setting-copy-v797"><small>題目數量</small><strong>自訂本次測驗規模</strong></span>
             <span className="random-number-input">
               <input
                 type="number"
@@ -200,15 +194,15 @@ export function RandomPracticePage() {
             </span>
           </label>
 
-          <label className="random-answer-toggle">
+          <label className="mock-setting-card-v797">
+            <span className="mock-setting-copy-v797"><small>抽題策略</small><strong>{T.avoidAnswered}</strong></span>
             <input type="checkbox" checked={avoidAnswered} onChange={(event) => setAvoidAnswered(event.currentTarget.checked)} />
-            <span className="random-toggle-copy"><strong>{T.avoidAnswered}</strong></span>
             <span className="random-switch" aria-hidden="true" />
           </label>
 
-          <label className="random-answer-toggle">
+          <label className="mock-setting-card-v797">
+            <span className="mock-setting-copy-v797"><small>批改方式</small><strong>交卷後統一批改</strong></span>
             <input type="checkbox" checked={deferredFeedback} onChange={(event) => setDeferredFeedback(event.currentTarget.checked)} />
-            <span className="random-toggle-copy"><strong>交卷後統一批改</strong></span>
             <span className="random-switch" aria-hidden="true" />
           </label>
         </div>

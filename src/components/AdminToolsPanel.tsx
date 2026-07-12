@@ -1,12 +1,14 @@
 import { Activity, Clipboard, KeyRound, RefreshCcw, Save, ShieldCheck, Trash2, UsersRound, X } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  loadImageQuizEditorBanks,
-  type ImageQuizBank,
-  ImageQuizQuestion,
-  ImageQuizQuestionOverride,
-  NumericAnswer,
-  PdfCropSegment,
+  loadImageQuizEditorCatalog,
+  loadImageQuizEditorChapter,
+  type ImageQuizChapter,
+  type ImageQuizEditorBankSummary,
+  type ImageQuizQuestion,
+  type ImageQuizQuestionOverride,
+  type NumericAnswer,
+  type PdfCropSegment,
 } from "../lib/imageQuiz";
 import { GlassButton } from "./GlassButton";
 import { pdfImageUrl } from "../lib/pdfAssets";
@@ -68,40 +70,18 @@ type ApiPayload = {
   activationCodes?: ActivationCodeRow[];
   isPrimaryAdmin?: boolean;
   overrides?: ImageQuizQuestionOverride[];
-  releases?: ReleaseRow[];
-  pointer?: ReleasePointer | null;
+  override?: ImageQuizQuestionOverride;
+  publishedCount?: number;
+  cleanupWarning?: string;
   role?: string;
   health?: SystemHealthPayload;
 };
 
 
-type ReleaseRow = {
-  id: string;
-  version: string;
-  status: "draft" | "in_review" | "approved" | "published" | "rolled_back";
-  title: string;
-  notes: string | null;
-  created_by: string | null;
-  reviewed_by: string | null;
-  approved_by: string | null;
-  published_by: string | null;
-  created_at: string;
-  reviewed_at: string | null;
-  approved_at: string | null;
-  published_at: string | null;
-  rolled_back_at: string | null;
-};
-
-type ReleasePointer = {
-  active_release_id: string | null;
-  previous_release_id: string | null;
-  updated_at: string;
-};
-
 const TOOL_TABS: { id: ToolId; label: string; description: string; primaryOnly?: boolean }[] = [
   { id: "activation", label: "啟用碼", description: "建立與查看啟用碼" },
   { id: "admins", label: "管理員", description: "新增、恢復或停用管理員", primaryOnly: true },
-  { id: "questions", label: "題目編輯", description: "編輯、覆核與發布題庫" },
+  { id: "questions", label: "題目編輯", description: "儲存修改並由主要管理員直接發布" },
   { id: "health", label: "系統狀態", description: "版本、資料庫與安全檢查" },
 ];
 
@@ -427,8 +407,9 @@ function AdminAccountTool({ accessToken }: { accessToken: string }) {
 }
 
 function QuestionEditorTool({ accessToken, isPrimaryAdmin }: { accessToken: string; isPrimaryAdmin: boolean }) {
-  const [banks, setBanks] = useState<ImageQuizBank[]>([]);
-  const [overrideIds, setOverrideIds] = useState<Set<string>>(new Set());
+  const [catalog, setCatalog] = useState<ImageQuizEditorBankSummary[]>([]);
+  const [chapter, setChapter] = useState<ImageQuizChapter | null>(null);
+  const [draftOverrides, setDraftOverrides] = useState<ImageQuizQuestionOverride[]>([]);
   const [bankId, setBankId] = useState("");
   const [chapterId, setChapterId] = useState("");
   const [questionId, setQuestionId] = useState("");
@@ -437,48 +418,49 @@ function QuestionEditorTool({ accessToken, isPrimaryAdmin }: { accessToken: stri
   const [mode, setMode] = useState<"question" | "explanation">("question");
   const [segmentIndex, setSegmentIndex] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [chapterLoading, setChapterLoading] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [publishBusy, setPublishBusy] = useState(false);
   const [cropBusy, setCropBusy] = useState(false);
   const [cropStep, setCropStep] = useState(5);
   const [cropUndoStack, setCropUndoStack] = useState<ImageQuizQuestion[]>([]);
   const [cropMessage, setCropMessage] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [chapterReloadKey, setChapterReloadKey] = useState(0);
+  const draftOverridesRef = useRef<Map<string, ImageQuizQuestionOverride>>(new Map());
+  const pendingQuestionIdRef = useRef<string | null>(null);
+
+  const draftOverrideMap = useMemo(
+    () => new Map(draftOverrides.map((override) => [override.questionId, override])),
+    [draftOverrides],
+  );
+  const overrideIds = useMemo(() => new Set(draftOverrides.map((override) => override.questionId)), [draftOverrides]);
+
+  useEffect(() => { draftOverridesRef.current = draftOverrideMap; }, [draftOverrideMap]);
 
   const loadEditorData = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
-      const [source, overrideResponse] = await Promise.all([
-        loadImageQuizEditorBanks(),
-        fetch("/api/question-overrides", { cache: "no-store" }),
+      const [nextCatalog, payload] = await Promise.all([
+        loadImageQuizEditorCatalog(),
+        adminRequest(accessToken, "/api/admin/question-editor"),
       ]);
-      const payload = overrideResponse.ok ? await overrideResponse.json() as ApiPayload : {};
-      const overrideMap = new Map((payload.overrides || []).map((override) => [override.questionId, override]));
-      const merged = source.map((bank) => ({
-        ...bank,
-        chapters: bank.chapters.map((chapter) => ({
-          ...chapter,
-          questions: chapter.questions.map((question) => {
-            const override = overrideMap.get(question.id);
-            return override ? { ...question, answer: override.answer, questionSegments: override.questionSegments, explanationSegments: override.explanationSegments } : question;
-          }),
-        })),
-      }));
-      setBanks(merged);
-      setOverrideIds(new Set(overrideMap.keys()));
-      setBankId((current) => merged.some((bank) => bank.bankId === current) ? current : merged[0]?.bankId || "");
+      setCatalog(nextCatalog);
+      setDraftOverrides(payload.overrides || []);
+      setBankId((current) => nextCatalog.some((bank) => bank.bankId === current) ? current : nextCatalog[0]?.bankId || "");
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "題目編輯器載入失敗。 ");
+      setError(loadError instanceof Error ? loadError.message : "題目編輯器載入失敗。");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [accessToken]);
 
   useEffect(() => { void loadEditorData(); }, [loadEditorData]);
 
-  const bank = useMemo(() => banks.find((item) => item.bankId === bankId), [bankId, banks]);
-  const chapter = useMemo(() => bank?.chapters.find((item) => item.chapterId === chapterId), [bank, chapterId]);
+  const bank = useMemo(() => catalog.find((item) => item.bankId === bankId), [bankId, catalog]);
+  const chapterSummary = useMemo(() => bank?.chapters.find((item) => item.chapterId === chapterId), [bank, chapterId]);
   const question = useMemo(() => chapter?.questions.find((item) => item.id === questionId), [chapter, questionId]);
 
   useEffect(() => {
@@ -487,9 +469,38 @@ function QuestionEditorTool({ accessToken, isPrimaryAdmin }: { accessToken: stri
   }, [bank, chapterId]);
 
   useEffect(() => {
-    if (!chapter) return;
-    if (!chapter.questions.some((item) => item.id === questionId)) setQuestionId(chapter.questions[0]?.id || "");
-  }, [chapter, questionId]);
+    if (!bankId || !chapterId) return;
+    let active = true;
+    setChapterLoading(true);
+    setError("");
+    void loadImageQuizEditorChapter(bankId, chapterId)
+      .then((loaded) => {
+        if (!active) return;
+        if (!loaded) throw new Error("找不到這個題庫章節。");
+        const drafts = draftOverridesRef.current;
+        const merged: ImageQuizChapter = {
+          ...loaded,
+          questions: loaded.questions.map((sourceQuestion) => {
+            const draft = drafts.get(sourceQuestion.id);
+            return draft ? {
+              ...sourceQuestion,
+              answer: draft.answer,
+              questionSegments: draft.questionSegments.map((segment) => ({ ...segment })),
+              explanationSegments: draft.explanationSegments.map((segment) => ({ ...segment })),
+            } : sourceQuestion;
+          }),
+        };
+        setChapter(merged);
+        const pending = pendingQuestionIdRef.current;
+        pendingQuestionIdRef.current = null;
+        setQuestionId((current) => merged.questions.some((item) => item.id === pending) ? pending! : merged.questions.some((item) => item.id === current) ? current : merged.questions[0]?.id || "");
+      })
+      .catch((loadError) => {
+        if (active) setError(loadError instanceof Error ? loadError.message : "章節載入失敗。");
+      })
+      .finally(() => { if (active) setChapterLoading(false); });
+    return () => { active = false; };
+  }, [bankId, chapterId, chapterReloadKey]);
 
   useEffect(() => {
     setEditable(question ? cloneQuestion(question) : null);
@@ -506,6 +517,7 @@ function QuestionEditorTool({ accessToken, isPrimaryAdmin }: { accessToken: stri
   const segmentKey = mode === "question" ? "questionSegments" : "explanationSegments";
   const segments = editable?.[segmentKey] || [];
   const segment = segments[segmentIndex];
+  const hasUnsavedChanges = Boolean(editable && question && JSON.stringify(editable) !== JSON.stringify(question));
 
   function updateSegment(patch: Partial<PdfCropSegment>): void {
     setEditable((current) => {
@@ -518,7 +530,7 @@ function QuestionEditorTool({ accessToken, isPrimaryAdmin }: { accessToken: stri
   }
 
   function applyCropAction(
-    transform: (segments: PdfCropSegment[], activeIndex: number) => PdfCropSegment[],
+    transform: (segmentsToEdit: PdfCropSegment[], activeIndex: number) => PdfCropSegment[],
     successMessage = "截圖範圍已調整。",
   ): void {
     if (!editable) return;
@@ -638,7 +650,20 @@ function QuestionEditorTool({ accessToken, isPrimaryAdmin }: { accessToken: stri
     const numeric = Number(questionNumber);
     const target = chapter?.questions.find((item) => item.number === numeric);
     if (target) setQuestionId(target.id);
-    else setError("本章找不到這個題號。 ");
+    else setError("本章找不到這個題號。");
+  }
+
+  function openChangedQuestion(override: ImageQuizQuestionOverride): void {
+    const matchedBank = catalog.find((candidate) => override.questionId.startsWith(`${candidate.bankId}-`));
+    const matchedChapter = matchedBank?.chapters.find((candidate) => override.questionId.includes(`-${candidate.chapterId}-`));
+    if (!matchedBank || !matchedChapter) {
+      setError(`無法定位 ${override.questionId}，請使用題號或科目選單前往。`);
+      return;
+    }
+    pendingQuestionIdRef.current = override.questionId;
+    setBankId(matchedBank.bankId);
+    setChapterId(matchedChapter.chapterId);
+    if (matchedBank.bankId === bankId && matchedChapter.chapterId === chapterId) setQuestionId(override.questionId);
   }
 
   async function saveOverride(): Promise<void> {
@@ -652,23 +677,40 @@ function QuestionEditorTool({ accessToken, isPrimaryAdmin }: { accessToken: stri
         body: JSON.stringify({
           action: "save",
           questionId: editable.id,
+          bankTitle: editable.bankTitle,
+          chapterTitle: editable.chapterTitle,
+          questionNumber: editable.number,
           answer: editable.answer,
           questionSegments: editable.questionSegments,
           explanationSegments: editable.explanationSegments,
         }),
       });
-      setMessage(payload.message || "題目修改已儲存。 ");
-      setOverrideIds((current) => new Set(current).add(editable.id));
-      setBanks((current) => replaceQuestion(current, editable));
+      const savedOverride = payload.override || {
+        questionId: editable.id,
+        bankTitle: editable.bankTitle,
+        chapterTitle: editable.chapterTitle,
+        questionNumber: editable.number,
+        answer: editable.answer,
+        questionSegments: editable.questionSegments,
+        explanationSegments: editable.explanationSegments,
+        updatedAt: new Date().toISOString(),
+        updatedBy: "current-admin",
+      };
+      setDraftOverrides((current) => [...current.filter((item) => item.questionId !== editable.id), savedOverride]);
+      setChapter((current) => current ? {
+        ...current,
+        questions: current.questions.map((item) => item.id === editable.id ? cloneQuestion(editable) : item),
+      } : current);
+      setMessage(payload.message || "題目修改已儲存。");
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : "題目儲存失敗。 ");
+      setError(saveError instanceof Error ? saveError.message : "題目儲存失敗。");
     } finally {
       setBusy(false);
     }
   }
 
   async function revertOverride(): Promise<void> {
-    if (!editable || !window.confirm(`確定要讓第 ${editable.number} 題恢復成部署版本？`)) return;
+    if (!editable || !window.confirm(`確定要移除第 ${editable.number} 題尚未發布的修改？`)) return;
     setBusy(true);
     setMessage("");
     setError("");
@@ -677,42 +719,94 @@ function QuestionEditorTool({ accessToken, isPrimaryAdmin }: { accessToken: stri
         method: "POST",
         body: JSON.stringify({ action: "delete", questionId: editable.id }),
       });
-      setMessage(payload.message || "已恢復部署版本。 ");
-      await loadEditorData();
+      setDraftOverrides((current) => current.filter((item) => item.questionId !== editable.id));
+      pendingQuestionIdRef.current = editable.id;
+      setChapterReloadKey((value) => value + 1);
+      setMessage(payload.message || "已移除這筆修改。");
     } catch (revertError) {
-      setError(revertError instanceof Error ? revertError.message : "無法恢復部署版本。 ");
+      setError(revertError instanceof Error ? revertError.message : "無法移除修改。");
     } finally {
       setBusy(false);
     }
   }
 
+  async function publishCurrentChanges(): Promise<void> {
+    if (!isPrimaryAdmin) {
+      setError("只有主要管理員可以發布題庫。");
+      return;
+    }
+    if (!draftOverrides.length) {
+      setError("目前沒有尚未發布的修改。");
+      return;
+    }
+    if (hasUnsavedChanges) {
+      setError("目前題目還有未儲存調整，請先按「儲存修改」。");
+      return;
+    }
+    if (!window.confirm(`確定發布本次 ${draftOverrides.length} 題修改？發布後所有使用者會立即讀取新版題庫。`)) return;
+    setPublishBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const payload = await adminRequest(accessToken, "/api/admin/releases", {
+        method: "POST",
+        body: JSON.stringify({ action: "publish-current" }),
+      });
+      setDraftOverrides([]);
+      setMessage(payload.message || `已發布 ${payload.publishedCount || 0} 題修改。`);
+    } catch (publishError) {
+      setError(publishError instanceof Error ? publishError.message : "題庫發布失敗。");
+    } finally {
+      setPublishBusy(false);
+    }
+  }
+
   return (
-    <div className="admin-tool-pane question-editor-pane" role="tabpanel">
-      {loading ? <p className="admin-tool-loading">載入 3526 題題庫中…</p> : null}
+    <div className="admin-tool-pane question-editor-pane question-editor-v797" role="tabpanel">
       <div className="question-editor-selectors">
-        <label>科目<select value={bankId} onChange={(event) => setBankId(event.target.value)}>{banks.map((item) => <option key={item.bankId} value={item.bankId}>{item.bankTitle}</option>)}</select></label>
+        <label>科目<select value={bankId} onChange={(event) => setBankId(event.target.value)}>{catalog.map((item) => <option key={item.bankId} value={item.bankId}>{item.bankTitle}</option>)}</select></label>
         <label>章節<select value={chapterId} onChange={(event) => setChapterId(event.target.value)}>{(bank?.chapters || []).map((item) => <option key={item.chapterId} value={item.chapterId}>{item.chapterTitle}</option>)}</select></label>
-        <label>題目<select value={questionId} onChange={(event) => setQuestionId(event.target.value)}>{(chapter?.questions || []).map((item) => <option key={item.id} value={item.id}>第 {item.number} 題・答案 {item.answer}{overrideIds.has(item.id) ? "・已修改" : ""}</option>)}</select></label>
+        <label>題目<select value={questionId} disabled={chapterLoading} onChange={(event) => setQuestionId(event.target.value)}>{(chapter?.questions || []).map((item) => <option key={item.id} value={item.id}>第 {item.number} 題・答案 {item.answer}{overrideIds.has(item.id) ? "・已修改" : ""}</option>)}</select></label>
         <label>跳到題號<div className="question-jump-control"><input inputMode="numeric" value={questionNumber} onChange={(event) => setQuestionNumber(event.target.value)} /><button type="button" onClick={jumpToQuestion}>前往</button></div></label>
       </div>
+
+      <div className="question-editor-workflow-bar">
+        <details className="question-change-menu">
+          <summary><span>本次修改</span><strong>{draftOverrides.length} 題</strong></summary>
+          <div className="question-change-list">
+            {draftOverrides.length ? draftOverrides
+              .slice()
+              .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+              .map((override) => (
+                <button key={override.questionId} type="button" onClick={() => openChangedQuestion(override)}>
+                  <strong>{override.bankTitle || override.questionId}</strong>
+                  <span>{override.chapterTitle ? `${override.chapterTitle} · ` : ""}{override.questionNumber ? `第 ${override.questionNumber} 題` : override.questionId}</span>
+                </button>
+              )) : <p>目前沒有尚未發布的修改。</p>}
+          </div>
+        </details>
+        <div className="question-editor-publish-copy">
+          <strong>{draftOverrides.length ? `已儲存 ${draftOverrides.length} 題修改` : "題庫目前沒有待發布修改"}</strong>
+          <span>{isPrimaryAdmin ? "確認修改內容後，可直接發布到線上題庫。" : "只有主要管理員可以執行發布。"}</span>
+        </div>
+        <GlassButton variant="primary" disabled={publishBusy || !isPrimaryAdmin || !draftOverrides.length || hasUnsavedChanges} onClick={() => void publishCurrentChanges()}>
+          <ShieldCheck size={18} />{publishBusy ? "發布中" : "發布題庫"}
+        </GlassButton>
+      </div>
+
+      {loading ? <p className="admin-tool-loading">載入題庫目錄中…</p> : null}
+      {chapterLoading ? <p className="admin-tool-loading is-inline">載入 {chapterSummary?.chapterTitle || "章節"}…</p> : null}
 
       {editable ? (
         <>
           <div className="question-editor-focus-header">
             <div className="question-editor-summary question-editor-summary-compact">
-              <div>
-                <strong>{editable.bankTitle}／{editable.chapterTitle}／第 {editable.number} 題</strong>
-                <span>{editable.id}</span>
-              </div>
-              <label>正確答案
-                <select value={editable.answer} onChange={(event) => setEditable({ ...editable, answer: event.target.value as NumericAnswer })}>
-                  <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option>
-                </select>
-              </label>
+              <div><strong>{editable.bankTitle}／{editable.chapterTitle}／第 {editable.number} 題</strong><span>{editable.id}</span></div>
+              <label>正確答案<select value={editable.answer} onChange={(event) => setEditable({ ...editable, answer: event.target.value as NumericAnswer })}><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></label>
             </div>
             <div className="question-editor-header-actions">
               <GlassButton variant="secondary" disabled={!cropUndoStack.length || cropBusy} onClick={undoCropAction}>復原</GlassButton>
-              <GlassButton variant="primary" disabled={busy} onClick={() => void saveOverride()}><Save size={18} />儲存草稿</GlassButton>
+              <GlassButton variant="primary" disabled={busy || !hasUnsavedChanges} onClick={() => void saveOverride()}><Save size={18} />{busy ? "儲存中" : "儲存修改"}</GlassButton>
             </div>
           </div>
 
@@ -721,267 +815,33 @@ function QuestionEditorTool({ accessToken, isPrimaryAdmin }: { accessToken: stri
               <button type="button" className={mode === "question" ? "is-active" : ""} onClick={() => { setMode("question"); setSegmentIndex(0); }}>題目</button>
               <button type="button" className={mode === "explanation" ? "is-active" : ""} onClick={() => { setMode("explanation"); setSegmentIndex(0); }}>解析</button>
             </div>
-            <label className="question-editor-toolbar-select">段落
-              <select value={segmentIndex} onChange={(event) => setSegmentIndex(Number(event.target.value))}>
-                {segments.map((_, index) => <option key={index} value={index}>段落 {index + 1}</option>)}
-              </select>
-              <span>{segments.length} 段</span>
-            </label>
-            <label className="question-editor-toolbar-select">步長
-              <select value={cropStep} onChange={(event) => setCropStep(Number(event.target.value))}>
-                <option value={1}>1 px</option>
-                <option value={5}>5 px</option>
-                <option value={10}>10 px</option>
-                <option value={20}>20 px</option>
-              </select>
-            </label>
-            <button type="button" className="question-editor-toolbar-action" disabled={!segment || cropBusy} onClick={() => void autoTrimActiveSegment()}>
-              {cropBusy ? "分析中…" : "自動裁白邊"}
-            </button>
-            <button type="button" className="question-editor-toolbar-action is-primary" disabled={cropBusy || segmentIndex < 1} onClick={() => void autoCompressPreviousSeam()}>
-              自動壓縮接縫
-            </button>
+            <label className="question-editor-toolbar-select">段落<select value={segmentIndex} onChange={(event) => setSegmentIndex(Number(event.target.value))}>{segments.map((_, index) => <option key={index} value={index}>段落 {index + 1}</option>)}</select><span>{segments.length} 段</span></label>
+            <label className="question-editor-toolbar-select">步長<select value={cropStep} onChange={(event) => setCropStep(Number(event.target.value))}><option value={1}>1 px</option><option value={5}>5 px</option><option value={10}>10 px</option><option value={20}>20 px</option></select></label>
+            <button type="button" className="question-editor-toolbar-action" disabled={!segment || cropBusy} onClick={() => void autoTrimActiveSegment()}>{cropBusy ? "分析中…" : "自動裁白邊"}</button>
+            <button type="button" className="question-editor-toolbar-action is-primary" disabled={cropBusy || segmentIndex < 1} onClick={() => void autoCompressPreviousSeam()}>自動壓縮接縫</button>
           </div>
 
           <div className="question-editor-workspace question-editor-focus-workspace">
             <aside className="question-editor-fields question-editor-focus-controls" aria-label="裁切控制">
               {segment ? (
                 <>
-                  <section className="focus-control-section">
-                    <div className="focus-control-heading">
-                      <strong>上下位置</strong>
-                      <span>移動整個截圖</span>
-                    </div>
-                    <div className="focus-control-grid">
-                      <button type="button" onClick={() => updateActiveSegment((current) => movePdfCropSegment(current, 0, -cropStep))}>上移 {cropStep}</button>
-                      <button type="button" onClick={() => updateActiveSegment((current) => movePdfCropSegment(current, 0, cropStep))}>下移 {cropStep}</button>
-                    </div>
-                  </section>
-
-                  <section className="focus-control-section is-crop-primary">
-                    <div className="focus-control-heading">
-                      <strong>裁掉空白</strong>
-                      <span>保留另一側內容</span>
-                    </div>
-                    <div className="focus-control-grid">
-                      <button type="button" onClick={() => updateActiveSegment((current) => trimPdfCropEdge(current, "top", cropStep))}>裁上 {cropStep}</button>
-                      <button type="button" onClick={() => updateActiveSegment((current) => trimPdfCropEdge(current, "bottom", cropStep))}>裁下 {cropStep}</button>
-                      <button type="button" onClick={() => updateActiveSegment((current) => resizePdfCropSegment(current, 0, -cropStep))}>減高 {cropStep}</button>
-                      <button type="button" onClick={() => updateActiveSegment((current) => resizePdfCropSegment(current, 0, cropStep))}>加高 {cropStep}</button>
-                    </div>
-                  </section>
-
+                  <section className="focus-control-section"><div className="focus-control-heading"><strong>上下位置</strong><span>移動整個截圖</span></div><div className="focus-control-grid"><button type="button" onClick={() => updateActiveSegment((current) => movePdfCropSegment(current, 0, -cropStep))}>上移 {cropStep}</button><button type="button" onClick={() => updateActiveSegment((current) => movePdfCropSegment(current, 0, cropStep))}>下移 {cropStep}</button></div></section>
+                  <section className="focus-control-section is-crop-primary"><div className="focus-control-heading"><strong>裁掉空白</strong><span>保留另一側內容</span></div><div className="focus-control-grid"><button type="button" onClick={() => updateActiveSegment((current) => trimPdfCropEdge(current, "top", cropStep))}>裁上 {cropStep}</button><button type="button" onClick={() => updateActiveSegment((current) => trimPdfCropEdge(current, "bottom", cropStep))}>裁下 {cropStep}</button><button type="button" onClick={() => updateActiveSegment((current) => resizePdfCropSegment(current, 0, -cropStep))}>減高 {cropStep}</button><button type="button" onClick={() => updateActiveSegment((current) => resizePdfCropSegment(current, 0, cropStep))}>加高 {cropStep}</button></div></section>
                   {segmentIndex > 0 ? (
-                    <section className="focus-control-section is-seam-primary">
-                      <div className="focus-control-heading">
-                        <strong>跨頁接縫</strong>
-                        <span>前段底部＋本段頂部</span>
-                      </div>
-                      <button type="button" className="focus-wide-action" disabled={cropBusy} onClick={() => applyCropAction((items, activeIndex) => {
-                        const next = [...items];
-                        const previousItem = next[activeIndex - 1];
-                        const currentItem = next[activeIndex];
-                        if (!previousItem || !currentItem) return next;
-                        const [previousSegment, currentSegment] = compressPdfCropSeam(previousItem, currentItem, cropStep);
-                        next[activeIndex - 1] = previousSegment;
-                        next[activeIndex] = currentSegment;
-                        return next;
-                      }, `前段底部與本段頂部各裁除 ${cropStep}px。`)}>接縫兩側各裁 {cropStep}</button>
-                      <button type="button" className="focus-wide-action is-primary" disabled={cropBusy} onClick={() => void autoCompressPreviousSeam()}>
-                        {cropBusy ? "分析中…" : "自動貼合前段接縫"}
-                      </button>
-                    </section>
-                  ) : (
-                    <p className="focus-seam-hint">切換到段落 2 之後，這裡會出現跨頁接縫工具。</p>
-                  )}
-
+                    <section className="focus-control-section is-seam-primary"><div className="focus-control-heading"><strong>跨頁接縫</strong><span>前段底部＋本段頂部</span></div><button type="button" className="focus-wide-action" disabled={cropBusy} onClick={() => applyCropAction((items, activeIndex) => { const next = [...items]; const previousItem = next[activeIndex - 1]; const currentItem = next[activeIndex]; if (!previousItem || !currentItem) return next; const [previousSegment, currentSegment] = compressPdfCropSeam(previousItem, currentItem, cropStep); next[activeIndex - 1] = previousSegment; next[activeIndex] = currentSegment; return next; }, `前段底部與本段頂部各裁除 ${cropStep}px。`)}>接縫兩側各裁 {cropStep}</button><button type="button" className="focus-wide-action is-primary" disabled={cropBusy} onClick={() => void autoCompressPreviousSeam()}>{cropBusy ? "分析中…" : "自動貼合前段接縫"}</button></section>
+                  ) : <p className="focus-seam-hint">切換到段落 2 後即可使用跨頁接縫工具。</p>}
                   {cropMessage ? <p className="segment-crop-message" role="status">{cropMessage}</p> : null}
-
-                  <details className="question-editor-advanced">
-                    <summary>進階設定</summary>
-                    <div className="question-editor-advanced-body">
-                      <div className="segment-toolbar segment-management-toolbar">
-                        <strong>段落管理</strong>
-                        <div>
-                          <button type="button" onClick={addSegment}>新增／複製</button>
-                          <button type="button" className="is-danger" disabled={!segment} onClick={removeSegment}>移除</button>
-                        </div>
-                      </div>
-                      <SegmentFields segment={segment} onChange={updateSegment} />
-                      <section className="segment-control-group">
-                        <strong>左右與寬度微調</strong>
-                        <div className="segment-nudges">
-                          <button type="button" onClick={() => updateActiveSegment((current) => movePdfCropSegment(current, -cropStep, 0))}>左移 {cropStep}</button>
-                          <button type="button" onClick={() => updateActiveSegment((current) => movePdfCropSegment(current, cropStep, 0))}>右移 {cropStep}</button>
-                          <button type="button" onClick={() => updateActiveSegment((current) => trimPdfCropEdge(current, "left", cropStep))}>裁左 {cropStep}</button>
-                          <button type="button" onClick={() => updateActiveSegment((current) => trimPdfCropEdge(current, "right", cropStep))}>裁右 {cropStep}</button>
-                          <button type="button" onClick={() => updateActiveSegment((current) => resizePdfCropSegment(current, -cropStep, 0))}>減寬 {cropStep}</button>
-                          <button type="button" onClick={() => updateActiveSegment((current) => resizePdfCropSegment(current, cropStep, 0))}>加寬 {cropStep}</button>
-                        </div>
-                      </section>
-                      <div className="question-editor-advanced-actions">
-                        {overrideIds.has(editable.id) ? <GlassButton variant="danger" disabled={busy} onClick={() => void revertOverride()}><Trash2 size={17} />恢復部署版本</GlassButton> : null}
-                        <GlassButton variant="secondary" disabled={busy || loading} onClick={() => void loadEditorData()}><RefreshCcw size={17} />重新載入</GlassButton>
-                      </div>
-                    </div>
-                  </details>
+                  <details className="question-editor-advanced"><summary>進階設定</summary><div className="question-editor-advanced-body"><div className="segment-toolbar segment-management-toolbar"><strong>段落管理</strong><div><button type="button" onClick={addSegment}>新增／複製</button><button type="button" className="is-danger" disabled={!segment} onClick={removeSegment}>移除</button></div></div><SegmentFields segment={segment} onChange={updateSegment} /><section className="segment-control-group"><strong>左右與寬度微調</strong><div className="segment-nudges"><button type="button" onClick={() => updateActiveSegment((current) => movePdfCropSegment(current, -cropStep, 0))}>左移 {cropStep}</button><button type="button" onClick={() => updateActiveSegment((current) => movePdfCropSegment(current, cropStep, 0))}>右移 {cropStep}</button><button type="button" onClick={() => updateActiveSegment((current) => trimPdfCropEdge(current, "left", cropStep))}>裁左 {cropStep}</button><button type="button" onClick={() => updateActiveSegment((current) => trimPdfCropEdge(current, "right", cropStep))}>裁右 {cropStep}</button><button type="button" onClick={() => updateActiveSegment((current) => resizePdfCropSegment(current, -cropStep, 0))}>減寬 {cropStep}</button><button type="button" onClick={() => updateActiveSegment((current) => resizePdfCropSegment(current, cropStep, 0))}>加寬 {cropStep}</button></div></section><div className="question-editor-advanced-actions">{overrideIds.has(editable.id) ? <GlassButton variant="danger" disabled={busy} onClick={() => void revertOverride()}><Trash2 size={17} />移除未發布修改</GlassButton> : null}<GlassButton variant="secondary" disabled={busy || loading || chapterLoading} onClick={() => setChapterReloadKey((value) => value + 1)}><RefreshCcw size={17} />重新載入章節</GlassButton></div></div></details>
                 </>
-              ) : (
-                <div className="question-editor-empty-segment">
-                  <p>目前沒有段落。</p>
-                  <button type="button" onClick={addSegment}>新增第一個段落</button>
-                </div>
-              )}
+              ) : <div className="question-editor-empty-segment"><p>目前沒有段落。</p><button type="button" onClick={addSegment}>新增第一個段落</button></div>}
             </aside>
-
-            <section className="question-editor-preview question-editor-focus-preview" aria-label="App 實際顯示預覽">
-              <div className="question-preview-head">
-                <div>
-                  <strong>即時預覽</strong>
-                  <span>{mode === "question" ? "題目截圖" : "解析截圖"}・段落 {Math.min(segmentIndex + 1, Math.max(1, segments.length))}/{Math.max(1, segments.length)}</span>
-                </div>
-                {segment ? <span className="question-preview-page">第 {segment.page} 頁</span> : null}
-              </div>
-              <div className="question-preview-canvas">
-                <PdfSegmentStack segments={segments} label={`第 ${editable.number} 題預覽`} priority="auto" activeIndex={segmentIndex} />
-              </div>
-            </section>
+            <section className="question-editor-preview question-editor-focus-preview" aria-label="App 實際顯示預覽"><div className="question-preview-head"><div><strong>即時預覽</strong><span>{mode === "question" ? "題目截圖" : "解析截圖"}・段落 {Math.min(segmentIndex + 1, Math.max(1, segments.length))}/{Math.max(1, segments.length)}</span></div>{segment ? <span className="question-preview-page">第 {segment.page} 頁</span> : null}</div><div className="question-preview-canvas"><PdfSegmentStack segments={segments} label={`第 ${editable.number} 題預覽`} priority="auto" activeIndex={segmentIndex} /></div></section>
           </div>
         </>
       ) : null}
       <ToolMessages message={message} error={error} />
-      <details className="question-release-collapsible">
-        <summary>題庫發布管理</summary>
-        <QuestionReleaseControls accessToken={accessToken} isPrimaryAdmin={isPrimaryAdmin} />
-      </details>
     </div>
   );
-}
-
-
-function QuestionReleaseControls({ accessToken, isPrimaryAdmin }: { accessToken: string; isPrimaryAdmin: boolean }) {
-  const [rows, setRows] = useState<ReleaseRow[]>([]);
-  const [pointer, setPointer] = useState<ReleasePointer | null>(null);
-  const [version, setVersion] = useState(() => `v${new Date().toISOString().slice(0, 10).replace(/-/g, ".")}`);
-  const [title, setTitle] = useState("題庫內容更新");
-  const [notes, setNotes] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
-
-  const loadRows = useCallback(async () => {
-    setError("");
-    try {
-      const payload = await adminRequest(accessToken, "/api/admin/releases");
-      setRows(payload.releases || []);
-      setPointer(payload.pointer || null);
-    } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "無法載入發布流程。");
-    }
-  }, [accessToken]);
-
-  useEffect(() => { void loadRows(); }, [loadRows]);
-
-  async function run(action: "create-draft" | "submit-review" | "approve" | "publish" | "rollback", releaseId?: string): Promise<void> {
-    const labels = { "create-draft": "建立發布草稿", "submit-review": "送交覆核", approve: "核准", publish: "正式發布", rollback: "回滾上一版" };
-    if ((action === "publish" || action === "rollback") && !window.confirm(`確定要${labels[action]}？這會改變所有使用者看到的線上題庫。`)) return;
-    setBusy(true);
-    setMessage("");
-    setError("");
-    try {
-      const payload = await adminRequest(accessToken, "/api/admin/releases", {
-        method: "POST",
-        body: JSON.stringify({ action, releaseId, version, title, notes }),
-      });
-      setMessage(payload.message || `${labels[action]}完成。`);
-      await loadRows();
-    } catch (actionError) {
-      setError(actionError instanceof Error ? actionError.message : `${labels[action]}失敗。`);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  const publishableRelease = rows.find((row) => row.status === "approved") || null;
-  const activeRelease = rows.find((row) => pointer?.active_release_id === row.id) || null;
-
-  return (
-    <section className="question-release-section" aria-labelledby="question-release-title">
-      <div className="question-release-heading">
-        <div>
-          <p className="eyebrow">Publish</p>
-          <h3 id="question-release-title">題庫發布</h3>
-          <p>工作草稿建立快照並完成覆核後，由主要管理員直接發布。</p>
-        </div>
-        {activeRelease ? <span className="release-live-badge">線上：{activeRelease.version}</span> : null}
-      </div>
-
-      <div className="admin-tool-form-grid question-release-form">
-        <label>版本名稱<input value={version} onChange={(event) => setVersion(event.target.value)} placeholder="v2026.07.11" /></label>
-        <label>發布標題<input value={title} onChange={(event) => setTitle(event.target.value)} /></label>
-        <label className="admin-tool-wide">版本說明<input value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="本次修正內容與驗證方式" /></label>
-      </div>
-
-      <div className="admin-tool-actions">
-        <GlassButton variant="secondary" disabled={busy} onClick={() => void run("create-draft")}><Save size={18} />建立版本快照</GlassButton>
-        <GlassButton variant="secondary" disabled={busy} onClick={() => void loadRows()}><RefreshCcw size={18} />重新整理</GlassButton>
-      </div>
-
-      <ToolMessages message={message} error={error} />
-
-      <div className="release-list compact-release-list">
-        {rows.slice(0, 8).map((row) => {
-          const isActive = pointer?.active_release_id === row.id;
-          return (
-            <article key={row.id} className={isActive ? "is-active-release" : ""}>
-              <div className="release-row-main">
-                <div>
-                  <span className={`release-status status-${row.status}`}>{releaseStatusLabel(row.status)}</span>
-                  {isActive ? <span className="release-live-badge">線上版本</span> : null}
-                  <strong>{row.version} · {row.title}</strong>
-                  <small>{row.notes || "無版本說明"}</small>
-                </div>
-                <time>{new Intl.DateTimeFormat("zh-TW", { dateStyle: "medium", timeStyle: "short" }).format(new Date(row.created_at))}</time>
-              </div>
-              <div className="release-row-actions">
-                {row.status === "draft" ? <button disabled={busy} onClick={() => void run("submit-review", row.id)}>送交覆核</button> : null}
-                {row.status === "in_review" ? <button disabled={busy} onClick={() => void run("approve", row.id)}>第二人核准</button> : null}
-              </div>
-            </article>
-          );
-        })}
-        {!rows.length ? <p className="admin-tool-empty">尚無發布版本。先儲存工作草稿，再建立版本快照。</p> : null}
-      </div>
-
-      <div className="question-publish-footer">
-        <div>
-          <strong>{publishableRelease ? `${publishableRelease.version} 已可發布` : "尚無已核准版本"}</strong>
-          <span>{isPrimaryAdmin ? "主要管理員可直接發布，完成後立即成為線上題庫版本。" : "只有主要管理員可以執行正式發布。"}</span>
-        </div>
-        <div className="question-publish-actions">
-          {activeRelease && pointer?.previous_release_id && isPrimaryAdmin ? (
-            <GlassButton variant="secondary" disabled={busy} onClick={() => void run("rollback", activeRelease.id)}>回滾上一版</GlassButton>
-          ) : null}
-          <GlassButton
-            variant="primary"
-            disabled={busy || !isPrimaryAdmin || !publishableRelease}
-            onClick={() => publishableRelease ? void run("publish", publishableRelease.id) : undefined}
-          >
-            <ShieldCheck size={18} />
-            發布題庫
-          </GlassButton>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function releaseStatusLabel(status: ReleaseRow["status"]): string {
-  if (status === "draft") return "草稿";
-  if (status === "in_review") return "覆核中";
-  if (status === "approved") return "已核准";
-  if (status === "published") return "已發布";
-  return "已回滾";
 }
 
 function SegmentFields({ segment, onChange }: { segment: PdfCropSegment; onChange: (patch: Partial<PdfCropSegment>) => void }) {
@@ -1023,12 +883,3 @@ function cloneQuestion(question: ImageQuizQuestion): ImageQuizQuestion {
   };
 }
 
-function replaceQuestion(banks: ImageQuizBank[], replacement: ImageQuizQuestion): ImageQuizBank[] {
-  return banks.map((bank) => ({
-    ...bank,
-    chapters: bank.chapters.map((chapter) => ({
-      ...chapter,
-      questions: chapter.questions.map((question) => question.id === replacement.id ? cloneQuestion(replacement) : question),
-    })),
-  }));
-}

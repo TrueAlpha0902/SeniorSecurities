@@ -16,6 +16,9 @@ export type QuestionOverrideSegment = {
 
 export type QuestionOverride = {
   questionId: string;
+  bankTitle?: string;
+  chapterTitle?: string;
+  questionNumber?: number;
   answer: "1" | "2" | "3" | "4";
   questionSegments: QuestionOverrideSegment[];
   explanationSegments: QuestionOverrideSegment[];
@@ -109,5 +112,15 @@ export async function deleteQuestionOverride(supabase: SupabaseClient, questionI
   if (!(await bucketExists(supabase))) return;
   const { error } = await supabase.storage.from(BUCKET_NAME).remove([`${questionId}.json`]);
   if (error) throw error;
+  overrideCache = undefined;
+}
+
+export async function deleteQuestionOverrides(supabase: SupabaseClient, questionIds: string[]): Promise<void> {
+  if (!questionIds.length || !(await bucketExists(supabase))) return;
+  for (let index = 0; index < questionIds.length; index += 100) {
+    const paths = questionIds.slice(index, index + 100).map((questionId) => `${questionId}.json`);
+    const { error } = await supabase.storage.from(BUCKET_NAME).remove(paths);
+    if (error) throw error;
+  }
   overrideCache = undefined;
 }

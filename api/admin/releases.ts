@@ -1,12 +1,15 @@
 import { createHash } from "node:crypto";
-import { listQuestionOverrides, type QuestionOverride } from "../_questionOverrides.js";
+import {
+  deleteQuestionOverrides,
+  listQuestionOverrides,
+  type QuestionOverride,
+} from "../_questionOverrides.js";
 import {
   HttpError,
   requireAdminUser,
+  requestIpAddress,
   sendError,
   sendJson,
-  writeAdminAudit,
-  requestIpAddress,
   type ApiRequest,
   type ApiResponse,
 } from "../_adminClient.js";
@@ -42,7 +45,8 @@ function idValue(value: unknown): string {
 }
 
 function releaseVersion(value: unknown): string {
-  const fallback = `v${new Date().toISOString().replace(/[-:TZ.]/g, "").slice(0, 14)}`;
+  const now = new Date();
+  const fallback = `v${now.toISOString().slice(0, 10).replace(/-/g, ".")}.${now.toISOString().slice(11, 19).replace(/:/g, "")}`;
   const version = String(value || fallback).trim().slice(0, 80);
   if (!/^[A-Za-z0-9._-]{3,80}$/.test(version)) throw new HttpError("版本名稱只能使用英數字、點、底線與連字號。", 400);
   return version;
@@ -57,7 +61,7 @@ async function listReleases(supabase: Awaited<ReturnType<typeof requireAdminUser
     supabase.from("question_release_batches")
       .select("id, version, status, title, notes, created_by, reviewed_by, approved_by, published_by, created_at, reviewed_at, approved_at, published_at, rolled_back_at")
       .order("created_at", { ascending: false })
-      .limit(40),
+      .limit(20),
     supabase.from("question_release_pointer").select("active_release_id, previous_release_id, updated_at").eq("singleton", true).maybeSingle(),
   ]);
   if (error) throw error;
@@ -73,6 +77,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       sendJson(res, 200, { ...result, role: admin.role, isPrimaryAdmin: admin.isPrimaryAdmin });
       return;
     }
+
     if (req.method !== "POST") {
       sendJson(res, 405, { error: "Method not allowed" });
       return;
@@ -80,80 +85,71 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
 
     const body = parseBody(req);
     const action = String(body.action || "");
-    const admin = await requireAdminUser(req, {
-      roles: ["primary_admin", "admin"],
-      requireAal2: ["approve", "rollback"].includes(action),
-      allowPrimaryAdminWithoutAal2: action === "publish",
-    });
-    const { supabase, user, isPrimaryAdmin } = admin;
 
-    if (action === "create-draft") {
-      const overrides = await listQuestionOverrides(supabase, { bypassCache: true });
-      if (!overrides.length) throw new HttpError("目前沒有題目草稿可建立發布批次。", 400);
+    if (action === "publish-current") {
+      const admin = await requireAdminUser(req, {
+        roles: ["primary_admin"],
+        allowPrimaryAdminWithoutAal2: true,
+      });
+      if (!admin.isPrimaryAdmin) throw new HttpError("只有主要管理員可以發布題庫。", 403);
+
+      const overrides = await listQuestionOverrides(admin.supabase, { bypassCache: true });
+      if (!overrides.length) throw new HttpError("目前沒有尚未發布的題目修改。", 400);
+
       const version = releaseVersion(body.version);
-      const title = String(body.title || `題庫發布 ${version}`).trim().slice(0, 160);
-      const notes = String(body.notes || "").trim().slice(0, 1200) || null;
-      const { data: batch, error } = await supabase.from("question_release_batches").insert({
-        version,
-        title,
-        notes,
-        status: "draft",
-        created_by: user.id,
-      }).select("id").single();
-      if (error) throw error;
+      const title = String(body.title || "題庫內容更新").trim().slice(0, 160) || "題庫內容更新";
+      const notes = String(body.notes || `主要管理員直接發布，共 ${overrides.length} 題修改。`).trim().slice(0, 1200);
       const items = overrides.map((override) => ({
-        release_id: batch.id,
-        question_id: override.questionId,
+        questionId: override.questionId,
         payload: override,
-        payload_hash: payloadHash(override),
+        payloadHash: payloadHash(override),
       }));
-      const { error: itemError } = await supabase.from("question_release_items").insert(items);
-      if (itemError) throw itemError;
-      await writeAdminAudit({ supabase, actor: user, req, action: "question_release.create", metadata: { releaseId: batch.id, version, itemCount: items.length } });
-      sendJson(res, 200, { ok: true, message: `已建立 ${version} 草稿，共 ${items.length} 題。` });
+
+      const { data, error } = await admin.supabase.rpc("publish_question_overrides_v797", {
+        p_version: version,
+        p_title: title,
+        p_notes: notes || null,
+        p_items: items,
+        p_actor_user_id: admin.user.id,
+        p_actor_email: admin.user.email || admin.user.id,
+        p_ip_address: requestIpAddress(req),
+      });
+      if (error) throw error;
+
+      let cleanupWarning = "";
+      try {
+        await deleteQuestionOverrides(admin.supabase, overrides.map((override) => override.questionId));
+      } catch (cleanupError) {
+        console.error("Published release but draft cleanup failed:", cleanupError);
+        cleanupWarning = "發布已完成，但未發布清單清理失敗；重新整理後若仍顯示舊項目，可再次移除草稿。";
+      }
+
+      sendJson(res, 200, {
+        ok: true,
+        release: data,
+        publishedCount: overrides.length,
+        message: cleanupWarning || `已發布 ${overrides.length} 題修改，線上題庫已更新。`,
+        cleanupWarning: cleanupWarning || undefined,
+      });
       return;
     }
 
-    const releaseId = idValue(body.releaseId);
-    const { data: release, error: releaseError } = await supabase.from("question_release_batches").select("*").eq("id", releaseId).single();
-    if (releaseError || !release) throw new HttpError("找不到發布批次。", 404);
-
-    if (action === "submit-review") {
-      if (release.status !== "draft") throw new HttpError("只有草稿可以送審。", 400);
-      const { error } = await supabase.from("question_release_batches").update({ status: "in_review", reviewed_by: user.id, reviewed_at: new Date().toISOString() }).eq("id", releaseId).eq("status", "draft");
-      if (error) throw error;
-    } else if (action === "approve") {
-      if (release.status !== "in_review") throw new HttpError("只有審核中的批次可以核准。", 400);
-      if (release.created_by === user.id) throw new HttpError("雙人覆核規則：建立者不可核准自己的發布批次。", 400);
-      const { error } = await supabase.from("question_release_batches").update({ status: "approved", approved_by: user.id, approved_at: new Date().toISOString() }).eq("id", releaseId).eq("status", "in_review");
-      if (error) throw error;
-    } else if (action === "publish") {
-      if (!isPrimaryAdmin) throw new HttpError("只有主要管理員可以正式發布題庫。", 403);
-      if (release.status !== "approved") throw new HttpError("發布前必須完成雙人核准。", 400);
-      const { error: publishError } = await supabase.rpc("publish_question_release_v75", {
+    if (action === "rollback") {
+      const admin = await requireAdminUser(req, { roles: ["primary_admin"], requireAal2: true });
+      if (!admin.isPrimaryAdmin) throw new HttpError("只有主要管理員可以回滾題庫。", 403);
+      const releaseId = idValue(body.releaseId);
+      const { error } = await admin.supabase.rpc("rollback_question_release_v75", {
         p_release_id: releaseId,
-        p_actor_user_id: user.id,
-        p_actor_email: user.email || user.id,
+        p_actor_user_id: admin.user.id,
+        p_actor_email: admin.user.email || admin.user.id,
         p_ip_address: requestIpAddress(req),
       });
-      if (publishError) throw publishError;
-    } else if (action === "rollback") {
-      if (!isPrimaryAdmin) throw new HttpError("只有主要管理員可以回滾題庫。", 403);
-      const { error: rollbackError } = await supabase.rpc("rollback_question_release_v75", {
-        p_release_id: releaseId,
-        p_actor_user_id: user.id,
-        p_actor_email: user.email || user.id,
-        p_ip_address: requestIpAddress(req),
-      });
-      if (rollbackError) throw rollbackError;
-    } else {
-      throw new HttpError("未知的發布操作。", 400);
+      if (error) throw error;
+      sendJson(res, 200, { ok: true, message: "已回滾上一個題庫版本。" });
+      return;
     }
 
-    if (action !== "publish" && action !== "rollback") {
-      await writeAdminAudit({ supabase, actor: user, req, action: `question_release.${action}`, metadata: { releaseId, version: release.version } });
-    }
-    sendJson(res, 200, { ok: true, message: "發布流程狀態已更新。" });
+    throw new HttpError("未知的發布操作。", 400);
   } catch (error) {
     console.error("/api/admin/releases failed:", error);
     sendError(res, error);

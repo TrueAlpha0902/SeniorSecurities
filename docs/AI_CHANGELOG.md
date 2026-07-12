@@ -1,3 +1,13 @@
+## 2026-07-12 — v79.7 專業一致化體驗
+
+- 排行榜加入公開頭像上傳、正方形 WebP 壓縮與個人資料管理，並將前三名明確呈現為金牌、銀牌、銅牌。
+- 移除排行榜多餘的個人成就摘要，保留榮耀殿堂、個人資料與完整排名。
+- 管理控制中心與會員目錄改為對稱、乾淨的專業資訊卡；移除 30 秒同步文案與 Online／Offline 文字徽章。
+- 模擬考設定重整為單一控制台，科目與紀錄卡片統一專案視覺語言。
+- 題目編輯器改為 lightweight catalog + selected chapter loading，降低管理頁初次載入與切題卡頓。
+- 發布流程改為主要管理員一鍵發布目前修改，不再建立送審／第二人核准流程；發布由 PostgreSQL transaction RPC 原子建立 release、items、pointer 與 audit。
+- 新增 migration `20260712230000_professional_experience_v797.sql`；完整 `npm run verify`、PWA build 與 166.2 KiB initial bundle budget 通過。
+
 ## 2026-07-12 — v79.6 管理體驗與學習榮耀介面
 
 - 新增 publish-only 的主要管理員 MFA 豁免；正式發布仍要求 `primary_admin` 且批次必須已完成雙人核准。
