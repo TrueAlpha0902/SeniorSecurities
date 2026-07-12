@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title">
   <title id="title">第三名銅色獎牌</title>
   <defs>
-    <linearGradient id="ribbon" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#7f4d3a"/><stop offset="1" stop-color="#4e2d26"/></linearGradient>
+    <linearGradient id="ribbon" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f06567"/><stop offset=".48" stop-color="#d63f49"/><stop offset="1" stop-color="#8e1f2d"/></linearGradient>
     <radialGradient id="metal" cx="35%" cy="28%" r="72%"><stop stop-color="#ffd5aa"/><stop offset=".48" stop-color="#d98a52"/><stop offset="1" stop-color="#93451f"/></radialGradient>
   </defs>
   <path d="M37 69 25 118l22-11 14 17 7-47Z" fill="url(#ribbon)"/>

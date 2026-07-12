@@ -29,6 +29,11 @@ const restoreMigration = read("supabase/migrations/20260712160000_restore_admin_
 const professionalMigration = read("supabase/migrations/20260712230000_professional_experience_v797.sql");
 const randomPractice = read("src/pages/RandomPracticePage.tsx");
 const vercel = read("vercel.json");
+const adminCss = read("src/styles/admin-premium-v65.css");
+const currentThemeCss = read("src/styles/theme-current.css");
+const goldMedalSvg = read("public/icons/medal-gold.svg");
+const silverMedalSvg = read("public/icons/medal-silver.svg");
+const bronzeMedalSvg = read("public/icons/medal-bronze.svg");
 
 assertIncludes(app, 'path="/admin"', "Admin route must remain registered.");
 assertIncludes(account, 'fetch("/api/admin/tools?tool=access"', "Account page must use server-side admin access discovery.");
@@ -68,6 +73,14 @@ assertIncludes(leaderboard, 'className="leaderboard-v796-medal"', "The podium mu
 assertIncludes(leaderboard, '"/icons/medal-gold.svg"', "First place must use the dedicated gold medal icon.");
 assertIncludes(leaderboard, '"/icons/medal-silver.svg"', "Second place must use the dedicated silver medal icon.");
 assertIncludes(leaderboard, '"/icons/medal-bronze.svg"', "Third place must use the dedicated bronze medal icon.");
+
+assertIncludes(adminCss, ".admin-overview-strip > div > span", "The operations center must retain explicit KPI icon-tile styling.");
+assertIncludes(adminCss, "background: #ffffff;", "Operations-center KPI icon tiles must use a white background.");
+assertIncludes(currentThemeCss, "background: #ffffff !important;", "The operations-center title emblem must use a white background.");
+for (const medalSvg of [goldMedalSvg, silverMedalSvg, bronzeMedalSvg]) {
+  assertIncludes(medalSvg, 'stop-color="#d63f49"', "Every podium medal must use the shared red ribbon.");
+  assertIncludes(medalSvg, 'stop-color="#8e1f2d"', "Every podium medal ribbon must retain a dark-red lower edge.");
+}
 assertNotIncludes(leaderboard, "本期", "Leaderboard copy must not use period-specific wording.");
 assertNotIncludes(leaderboard, 'return "金牌"', "Medal identity must come from the symbol rather than a text label.");
 assertIncludes(leaderboard, "updateLeaderboardAvatar", "Users must be able to upload a leaderboard avatar.");

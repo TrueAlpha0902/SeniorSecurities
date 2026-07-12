@@ -1368,9 +1368,11 @@
   width: 42px;
   height: 42px;
   place-items: center;
+  border: 1px solid rgba(20, 48, 67, 0.12);
   border-radius: 13px;
   color: var(--admin-teal);
-  background: #eef6f8;
+  background: #ffffff;
+  box-shadow: 0 7px 18px rgba(20, 48, 67, 0.06);
 }
 .admin-overview-strip small { grid-area: label; color: #748195; font-size: .74rem; font-weight: 850; }
 .admin-overview-strip strong {
@@ -1384,7 +1386,7 @@
 }
 .admin-overview-strip > div.is-live > span {
   color: #13805a;
-  background: #eaf8f2;
+  background: #ffffff;
 }
 .admin-overview-strip > div.is-live strong { color: #126c4e; }
 .admin-overview-strip > div.is-duration strong {
