@@ -798,3 +798,21 @@ progress::-moz-progress-bar { background: var(--primary) !important; }
   .daily-countdown-panel-v70 { padding: 26px 34px 26px 56px; }
   .daily-compact-main-v70 { padding-left: 34px; }
 }
+
+.mock-setting-state-v797 {
+  display: block;
+  margin-top: 4px;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.mock-setting-card-v797 > input:disabled ~ .random-switch {
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
+.mock-setting-card-v797:has(> input:disabled) {
+  cursor: default;
+}

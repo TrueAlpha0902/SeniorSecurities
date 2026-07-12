@@ -31,6 +31,9 @@ async function main(): Promise<void> {
     telemetry,
     clientError,
     vite,
+    appSettings,
+    randomPractice,
+    imageQuizPage,
   ] = await Promise.all([
     read("src/lib/db.ts"),
     read("src/lib/reliabilityStore.ts"),
@@ -50,6 +53,9 @@ async function main(): Promise<void> {
     read("src/lib/telemetry.ts"),
     read("api/client-error.ts"),
     read("vite.config.ts"),
+    read("src/lib/appSettings.ts"),
+    read("src/pages/RandomPracticePage.tsx"),
+    read("src/pages/ImageQuizPage.tsx"),
   ]);
 
   assert(
@@ -218,6 +224,25 @@ async function main(): Promise<void> {
       vite.includes("editor source") &&
       vite.includes("rm(editorSourceOutputPath"),
     "Raw editor question data must be removed from production output.",
+  );
+
+
+  assert(
+    appSettings.includes("MOCK_EXAM_DEFERRED_FEEDBACK_KEY") &&
+      appSettings.includes("getMockExamDeferredFeedbackEnabled") &&
+      appSettings.includes("setMockExamDeferredFeedbackEnabled"),
+    "Mock-exam grading preference must persist in user-scoped settings.",
+  );
+  assert(
+    randomPractice.includes("getMockExamDeferredFeedbackEnabled") &&
+      randomPractice.includes("setMockExamDeferredFeedbackEnabled") &&
+      randomPractice.includes('feedbackMode: answerModeEnabled || !deferredFeedback ? "immediate" : "deferred"'),
+    "Mock-exam grading mode must persist and positive-answer mode must force immediate feedback.",
+  );
+  assert(
+    imageQuizPage.includes('data?.session?.feedbackMode === "deferred"') &&
+      imageQuizPage.includes("&&\n    !answerModeEnabled"),
+    "Positive-answer mode must override deferred grading inside an existing mock-exam session.",
   );
 
   console.log("v79 security, synchronization and deployment integrity contracts passed.");

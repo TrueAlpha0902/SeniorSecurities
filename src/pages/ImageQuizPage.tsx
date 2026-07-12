@@ -722,7 +722,9 @@ export function ImageQuizPage() {
 
   const savedAnswer = answers[currentQuestion.id];
   const isDeferredExam =
-    mode === "random" && data?.session?.feedbackMode === "deferred";
+    mode === "random" &&
+    data?.session?.feedbackMode === "deferred" &&
+    !answerModeEnabled;
   const examAnsweredCount = Object.keys(answers).length;
   const examUnansweredCount = Math.max(0, questions.length - examAnsweredCount);
   const currentIsMarked = markedQuestionIds.has(currentQuestion.id);

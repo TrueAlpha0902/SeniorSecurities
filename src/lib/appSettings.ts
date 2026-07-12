@@ -2,11 +2,13 @@ import { readScopedStorageItem, writeScopedStorageItem } from "./userScopedStora
 
 const ANSWER_MODE_ENABLED_KEY = "quizpwa:answer-mode-enabled";
 const AUTO_NEXT_CORRECT_ENABLED_KEY = "quizpwa:auto-next-correct-enabled";
+const MOCK_EXAM_DEFERRED_FEEDBACK_KEY = "quizpwa:mock-exam-deferred-feedback";
 const SETTINGS_DEFAULTS_VERSION_KEY = "quizpwa:settings-defaults-version";
 const SETTINGS_DEFAULTS_VERSION = "2026-07-06-default-off-v1";
 
 export const ANSWER_MODE_SETTING_CHANGED = "quizpwa:answer-mode-setting-changed";
 export const AUTO_NEXT_CORRECT_SETTING_CHANGED = "quizpwa:auto-next-correct-setting-changed";
+export const MOCK_EXAM_FEEDBACK_SETTING_CHANGED = "quizpwa:mock-exam-feedback-setting-changed";
 
 function ensureSettingsDefaultsInitialized(): void {
   if (typeof window === "undefined") return;
@@ -43,4 +45,19 @@ export function setAutoNextCorrectEnabled(enabled: boolean): void {
   ensureSettingsDefaultsInitialized();
   writeScopedStorageItem(AUTO_NEXT_CORRECT_ENABLED_KEY, enabled ? "true" : "false");
   window.dispatchEvent(new CustomEvent<{ enabled: boolean }>(AUTO_NEXT_CORRECT_SETTING_CHANGED, { detail: { enabled } }));
+}
+
+export function getMockExamDeferredFeedbackEnabled(): boolean {
+  if (typeof window === "undefined") return true;
+  return readScopedStorageItem(MOCK_EXAM_DEFERRED_FEEDBACK_KEY) !== "false";
+}
+
+export function setMockExamDeferredFeedbackEnabled(enabled: boolean): void {
+  if (typeof window === "undefined") return;
+  writeScopedStorageItem(MOCK_EXAM_DEFERRED_FEEDBACK_KEY, enabled ? "true" : "false");
+  window.dispatchEvent(
+    new CustomEvent<{ enabled: boolean }>(MOCK_EXAM_FEEDBACK_SETTING_CHANGED, {
+      detail: { enabled },
+    }),
+  );
 }

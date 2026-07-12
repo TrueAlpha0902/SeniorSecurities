@@ -7,7 +7,7 @@ import {
   RotateCcw,
   Trash2,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ErrorState } from "../components/ErrorState";
 import { GlassButton, GlassLinkButton } from "../components/GlassButton";
@@ -27,6 +27,13 @@ import {
   type ImageQuizBank,
   type ImageQuizQuestion,
 } from "../lib/imageQuiz";
+import {
+  ANSWER_MODE_SETTING_CHANGED,
+  MOCK_EXAM_FEEDBACK_SETTING_CHANGED,
+  getAnswerModeEnabled,
+  getMockExamDeferredFeedbackEnabled,
+  setMockExamDeferredFeedbackEnabled,
+} from "../lib/appSettings";
 import { buildSessionId, calculateAccuracy, shuffleQuestions } from "../lib/quiz";
 import type { UserAnswer } from "../types";
 import "../styles/learner-experience-v65.css";
@@ -84,11 +91,44 @@ export function RandomPracticePage() {
   const navigate = useNavigate();
   const [refreshKey, setRefreshKey] = useState(0);
   const [avoidAnswered, setAvoidAnswered] = useState(true);
-  const [deferredFeedback, setDeferredFeedback] = useState(true);
+  const [answerModeEnabled, setAnswerModeEnabledState] = useState(() => getAnswerModeEnabled());
+  const [deferredFeedback, setDeferredFeedback] = useState(() =>
+    getAnswerModeEnabled() ? false : getMockExamDeferredFeedbackEnabled(),
+  );
   const [questionCount, setQuestionCount] = useState<number | "">(DEFAULT_RANDOM_SIZE);
   const [deleteMode, setDeleteMode] = useState(false);
   const [selectedSessionIds, setSelectedSessionIds] = useState<Set<string>>(new Set());
   const { data, error, loading } = useAsync(loadRandomPracticeData, [refreshKey]);
+
+  useEffect(() => {
+    function refreshMockExamSettings(): void {
+      const nextAnswerModeEnabled = getAnswerModeEnabled();
+      const nextDeferredFeedback = getMockExamDeferredFeedbackEnabled();
+      setAnswerModeEnabledState(nextAnswerModeEnabled);
+      setDeferredFeedback(nextAnswerModeEnabled ? false : nextDeferredFeedback);
+    }
+
+    window.addEventListener(ANSWER_MODE_SETTING_CHANGED, refreshMockExamSettings);
+    window.addEventListener(MOCK_EXAM_FEEDBACK_SETTING_CHANGED, refreshMockExamSettings);
+    window.addEventListener("storage", refreshMockExamSettings);
+    return () => {
+      window.removeEventListener(ANSWER_MODE_SETTING_CHANGED, refreshMockExamSettings);
+      window.removeEventListener(MOCK_EXAM_FEEDBACK_SETTING_CHANGED, refreshMockExamSettings);
+      window.removeEventListener("storage", refreshMockExamSettings);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!answerModeEnabled || !deferredFeedback) return;
+    setDeferredFeedback(false);
+    setMockExamDeferredFeedbackEnabled(false);
+  }, [answerModeEnabled, deferredFeedback]);
+
+  function handleDeferredFeedbackChange(enabled: boolean): void {
+    const nextEnabled = answerModeEnabled ? false : enabled;
+    setDeferredFeedback(nextEnabled);
+    setMockExamDeferredFeedbackEnabled(nextEnabled);
+  }
 
   function normalizeQuestionCount(value: number): number {
     if (!Number.isFinite(value)) return DEFAULT_RANDOM_SIZE;
@@ -126,7 +166,7 @@ export function RandomPracticePage() {
       correctCount: 0,
       wrongCount: 0,
       accuracy: 0,
-      feedbackMode: deferredFeedback ? "deferred" : "immediate",
+      feedbackMode: answerModeEnabled || !deferredFeedback ? "immediate" : "deferred",
       markedQuestionIds: [],
     });
     navigate(`/image-quiz/random/${bank.bankId}/${sessionId}`);
@@ -200,8 +240,24 @@ export function RandomPracticePage() {
           </label>
 
           <label className="mock-setting-card-v797">
-            <span className="mock-setting-copy-v797"><small>批改方式</small><strong>交卷後統一批改</strong></span>
-            <input type="checkbox" checked={deferredFeedback} onChange={(event) => setDeferredFeedback(event.currentTarget.checked)} />
+            <span className="mock-setting-copy-v797">
+              <small>批改方式</small>
+              <strong>交卷後統一批改</strong>
+              <span id="mock-exam-feedback-state" className="mock-setting-state-v797">
+                {answerModeEnabled
+                  ? "正解模式開啟時自動改為即時顯示"
+                  : deferredFeedback
+                    ? "作答期間不顯示正解"
+                    : "每題立即顯示正解與解析"}
+              </span>
+            </span>
+            <input
+              type="checkbox"
+              checked={deferredFeedback && !answerModeEnabled}
+              disabled={answerModeEnabled}
+              aria-describedby="mock-exam-feedback-state"
+              onChange={(event) => handleDeferredFeedbackChange(event.currentTarget.checked)}
+            />
             <span className="random-switch" aria-hidden="true" />
           </label>
         </div>

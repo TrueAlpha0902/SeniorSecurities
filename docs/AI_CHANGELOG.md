@@ -1,3 +1,11 @@
+## 2026-07-12 — v79.16 模擬考批改設定與正解模式一致化
+
+- 修正「交卷後統一批改」只存在 React component state，頁面重新進入後固定回到開啟的問題。
+- 新增 user-scoped mock exam feedback preference 與跨頁設定事件。
+- 正解模式優先於 deferred grading：正解模式開啟時，新 session 使用 immediate feedback，既有 session 也不再遮蔽正解與解析。
+- 保留 v79.15 的開關顏色修正，OFF／ON 視覺與實際 checked state 一致。
+- 新增 integrity contracts 防止設定持久化與正解模式優先規則回歸。
+
 ## 2026-07-12 — v79.14.1 原頁透明裁切窗 CSS 預算修正
 
 - 修正 v79.14 因新增 6 個 `!important`，使 CSS maintenance budget 由 213 增至 219 而無法通過驗證的問題。
