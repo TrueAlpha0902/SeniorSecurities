@@ -32,6 +32,8 @@ async function main(): Promise<void> {
     clientError,
     vite,
     appSettings,
+    mockExam,
+    uuid,
     randomPractice,
     imageQuizPage,
   ] = await Promise.all([
@@ -54,6 +56,8 @@ async function main(): Promise<void> {
     read("api/client-error.ts"),
     read("vite.config.ts"),
     read("src/lib/appSettings.ts"),
+    read("src/lib/mockExam.ts"),
+    read("src/lib/uuid.ts"),
     read("src/pages/RandomPracticePage.tsx"),
     read("src/pages/ImageQuizPage.tsx"),
   ]);
@@ -236,13 +240,30 @@ async function main(): Promise<void> {
   assert(
     randomPractice.includes("getMockExamDeferredFeedbackEnabled") &&
       randomPractice.includes("setMockExamDeferredFeedbackEnabled") &&
-      randomPractice.includes('feedbackMode: answerModeEnabled || !deferredFeedback ? "immediate" : "deferred"'),
+      randomPractice.includes("resolveMockExamFeedbackMode("),
     "Mock-exam grading mode must persist and positive-answer mode must force immediate feedback.",
   );
   assert(
-    imageQuizPage.includes('data?.session?.feedbackMode === "deferred"') &&
-      imageQuizPage.includes("&&\n    !answerModeEnabled"),
-    "Positive-answer mode must override deferred grading inside an existing mock-exam session.",
+    mockExam.includes('feedbackMode === "deferred" && !answerModeEnabled && !isSubmitted') &&
+      imageQuizPage.includes("shouldDeferMockExamFeedback(") &&
+      imageQuizPage.includes("canChooseImageQuizAnswer({"),
+    "Mock exams must reveal immediate feedback, defer results when requested, and allow revisions before submission.",
+  );
+  assert(
+    db.includes("learningEventId") &&
+      db.includes("ensureImageQuizLearningEvent(") &&
+      uuid.includes("crypto?.randomUUID") &&
+      uuid.includes("UUID_PATTERN") &&
+      db.includes('["imageQuizSessions", "userAnswers", "wrongQuestions", "syncIntents"]') &&
+      db.includes("learningRecorded: true"),
+    "Mock-exam learning commits must use persisted UUIDs and atomically mark the session answer with domain sync intents.",
+  );
+  assert(
+    db.includes("queueImageQuizSessionMutation(") &&
+      db.includes("updateImageQuizSession(") &&
+      imageQuizPage.indexOf("await saveRandomSessionResult(") <
+        imageQuizPage.lastIndexOf("await commitImageQuizSessionLearningAnswers("),
+    "Mock-exam session mutations must be serialized and local submission must finish before learning records commit.",
   );
 
   console.log("v79 security, synchronization and deployment integrity contracts passed.");

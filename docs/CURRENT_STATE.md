@@ -1,3 +1,26 @@
+## v79.18 模擬考續考、改選與交卷一致性
+
+- 模擬考只以 `finishedAt` 判定已交卷；即使所有題目都已選完，只要尚未明確交卷，紀錄仍顯示「未完成」與「繼續測驗」，並保留題號、答案及待檢標記。
+- 未勾選「交卷後統一批改」時，選答後立即顯示正解與解析；勾選時則到交卷前都隱藏正解、解析與紀錄卡成績。兩種模式在交卷前都可改選，交卷後才鎖定。
+- 模擬考 provisional answers 不再提前寫入 FSRS、錯題與排行榜；明確交卷後才以最後答案一次寫入。舊版未完成 session 改選時只 reconcile 最後的 user answer／錯題，不重複新增 learning 或 leaderboard attempt。
+- `imageQuizSessions` 的答案、標記、暫存、交卷與刪除改為 per-session serialization，並在 `imageQuizSessions + syncIntents` 單一 IndexedDB transaction 原子合併；快速切題、交卷或刪除不再互相覆蓋。
+- learning event 使用持久化 RFC 4122 UUID；提交期間鎖定切題與離開，已提交但尚待整理的紀錄會在模擬考首頁自動補寫，完成前也不能被刪除。
+- 題庫共 3,526 題；已人工覆核手機分段 9 題，尚餘 3,517 題（若以題目／解析欄位計為 7,037 欄）待彙整／逐欄覆核。OCR 仍只作候選分析，沒有直接取代正式截圖。
+- `npm run verify` 與完整 `npm run test:e2e` 通過；E2E 為 19 passed、9 device-conditional skipped，並包含真實 route 的 immediate／deferred、改選、離開續考與交卷重載流程。
+- 無 Supabase migration、無新增 npm 套件。
+
+## v79.17 手機圖片題閱讀與裁切完整性
+
+- 圖片測驗在 `600px` 以下採手機專用排版：題目以人工視覺覆核的橫列分段等寬呈現、答案改為 2 × 2、操作列固定於底部；`601px` 以上的平板與桌面維持原排版。
+- 首批已覆核 9 題、15 個題目／解析欄位，共 64 個 mobile segments；表格、公式或無安全切點的內容不會自動套用，保留原圖並支援觸控、鍵盤水平瀏覽。
+- mobile segments 只能來自 bundled release，並以來源圖片、分段座標、候選報告與 reviewer approval 的 SHA-256 證據鏈驗證；遠端 override 與管理端 payload 不得自行標記為已覆核。
+- 修正 6 個高信心既有裁切問題：移除頁碼／空白尾端／空白接縫，並補回遺漏的三角形圖示；手機與平板讀取相同修正版來源裁切。
+- OCR 初評確認簡單表格的數字與儲存格關係可重建，但繁體字形與公式仍會誤辨；因此 OCR 文字只供候選分析，沒有取代正式題庫原圖或保存為已校對內容。
+- 全題庫 dry-run：7,052 個題目／解析欄位中 4,794 個可形成候選、2,258 個因表格／公式／覆蓋不足等原因維持原圖；未執行未覆核的大量套用。
+- 修正設定視窗在題庫清單非同步載入時將離線內容子頁重設回首頁的競態。
+- release id 為 `a13fcc5826142433`；`npm run verify` 與完整 `npm run test:e2e`（18 passed、6 device-conditional skipped）通過。
+- 無 Supabase migration、無新增 npm 套件。
+
 ## v79.16 模擬考批改設定與正解模式一致化
 
 - 「交卷後統一批改」改為使用者分帳號持久設定，離開模擬考頁再返回不會自行恢復開啟。

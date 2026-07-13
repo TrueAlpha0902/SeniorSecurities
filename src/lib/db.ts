@@ -8,6 +8,8 @@ import type {
   WrongQuestionRecord,
 } from "../types";
 import type { ImageQuizQuestion, NumericAnswer } from "./imageQuiz";
+import { isMockExamLearningRecorded } from "./mockExam";
+import { createUuid, isUuid } from "./uuid";
 import { supabase } from "./supabase";
 import {
   mergeCloudLearningStates,
@@ -38,6 +40,8 @@ export type StoredImageAnswer = {
   correct: NumericAnswer;
   isCorrect: boolean;
   answeredAt: string;
+  learningRecorded?: boolean;
+  learningEventId?: string;
 };
 
 export type ImageQuizSessionRecord = {
@@ -2367,18 +2371,28 @@ export async function recordImageUserAnswer(
       );
   }
   await tx.done;
-  if (userId) await drainLocalSyncIntents(userId, db);
-  await recordLearningAndLeaderboard({
-    userId,
-    questionId: question.id,
-    bankId: question.bankId,
-    chapterId: question.chapterId,
-    selectedAnswer,
-    correctAnswer: question.answer,
-    isCorrect,
-    answeredAt,
-    options,
-  });
+  if (userId) {
+    try {
+      await drainLocalSyncIntents(userId, db);
+    } catch (error) {
+      console.warn("Image-answer sync intents remain queued for retry", error);
+    }
+  }
+  try {
+    await recordLearningAndLeaderboard({
+      userId,
+      questionId: question.id,
+      bankId: question.bankId,
+      chapterId: question.chapterId,
+      selectedAnswer,
+      correctAnswer: question.answer,
+      isCorrect,
+      answeredAt,
+      options,
+    });
+  } catch (error) {
+    console.warn("Image-answer learning state could not be updated", error);
+  }
   notifyRecordChange();
   return userAnswer;
 }
@@ -2634,7 +2648,83 @@ async function persistImageQuizSession(
     );
   }
   await tx.done;
-  if (userId) await drainLocalSyncIntents(userId, db);
+  if (userId) {
+    try {
+      await drainLocalSyncIntents(userId, db);
+    } catch (error) {
+      console.warn("Image-quiz sync intents remain queued for retry", error);
+    }
+  }
+}
+
+type ImageQuizSessionUpdater = (
+  current: ImageQuizSessionRecord,
+) => ImageQuizSessionRecord | undefined;
+
+const imageQuizSessionMutationChains = new Map<string, Promise<void>>();
+
+function queueImageQuizSessionMutation<T>(
+  sessionId: string,
+  mutation: () => Promise<T>,
+): Promise<T> {
+  const previous = imageQuizSessionMutationChains.get(sessionId);
+  const queued = (previous ?? Promise.resolve())
+    .catch(() => undefined)
+    .then(mutation);
+  const tail = queued.then(
+    () => undefined,
+    () => undefined,
+  );
+  imageQuizSessionMutationChains.set(sessionId, tail);
+  void tail.then(() => {
+    if (imageQuizSessionMutationChains.get(sessionId) === tail) {
+      imageQuizSessionMutationChains.delete(sessionId);
+    }
+  });
+  return queued;
+}
+
+async function updateImageQuizSession(
+  sessionId: string,
+  updater: ImageQuizSessionUpdater,
+): Promise<ImageQuizSessionRecord | undefined> {
+  const { db, userId } = await getDbContext();
+  const tx = db.transaction(["imageQuizSessions", "syncIntents"], "readwrite");
+  const sessionStore = tx.objectStore("imageQuizSessions");
+  const current = await sessionStore.get(sessionId);
+  if (!current) {
+    await tx.done;
+    return undefined;
+  }
+
+  const updated = updater(current);
+  if (!updated) {
+    await tx.done;
+    return undefined;
+  }
+  if (updated.sessionId !== sessionId) {
+    tx.abort();
+    throw new Error("Image-quiz session updater cannot change the session id");
+  }
+
+  await sessionStore.put(updated);
+  if (userId) {
+    await tx.objectStore("syncIntents").put(
+      createSyncIntentRecord(userId, {
+        kind: "upsert-image-session",
+        record: updated,
+      }),
+    );
+  }
+  await tx.done;
+  if (userId) {
+    try {
+      await drainLocalSyncIntents(userId, db);
+    } catch (error) {
+      console.warn("Image-quiz sync intents remain queued for retry", error);
+    }
+  }
+  return updated;
 }
 
 export async function createImageQuizSession(
@@ -2687,87 +2777,413 @@ function summarizeImageAnswers(
 export async function saveImageQuizSessionMarks(
   sessionId: string,
   markedQuestionIds: string[],
-): Promise<void> {
-  const db = await getDb();
-  const session = await db.get("imageQuizSessions", sessionId);
-  if (!session) return;
-  await persistImageQuizSession({
-    ...session,
-    markedQuestionIds: Array.from(new Set(markedQuestionIds)),
-    lastSettledAt: new Date().toISOString(),
-  });
+): Promise<ImageQuizSessionRecord | undefined> {
+  return queueImageQuizSessionMutation(sessionId, () =>
+    updateImageQuizSession(sessionId, (session) =>
+      session.finishedAt
+        ? undefined
+        : {
+            ...session,
+            markedQuestionIds: Array.from(new Set(markedQuestionIds)),
+            lastSettledAt: new Date().toISOString(),
+          },
+    ),
+  );
 }
 
 export async function saveImageQuizSessionAnswer(
   sessionId: string,
   questionId: string,
   answer: StoredImageAnswer,
+): Promise<ImageQuizSessionRecord | undefined> {
+  const candidateLearningEventId =
+    answer.learningRecorded === false
+      ? (isUuid(answer.learningEventId) ? answer.learningEventId : createUuid())
+      : answer.learningEventId;
+  return queueImageQuizSessionMutation(sessionId, () =>
+    updateImageQuizSession(sessionId, (session) => {
+      if (session.finishedAt || !session.questionIds.includes(questionId)) {
+        return undefined;
+      }
+      const previousAnswer = session.answers[questionId];
+      const previousLearningWasRecorded =
+        Boolean(previousAnswer) &&
+        isMockExamLearningRecorded(previousAnswer?.learningRecorded);
+      const nextAnswer: StoredImageAnswer = {
+        ...answer,
+        learningRecorded: previousLearningWasRecorded
+          ? previousAnswer?.learningRecorded
+          : answer.learningRecorded,
+        learningEventId:
+          (isUuid(previousAnswer?.learningEventId)
+            ? previousAnswer.learningEventId
+            : candidateLearningEventId),
+      };
+      const answers = { ...session.answers, [questionId]: nextAnswer };
+      return {
+        ...session,
+        ...summarizeImageAnswers(answers),
+        answers,
+        lastSettledAt: new Date().toISOString(),
+      };
+    }),
+  );
+}
+
+async function ensureImageQuizLearningEvent(
+  sessionId: string,
+  questionId: string,
+): Promise<ImageQuizSessionRecord | undefined> {
+  const candidateEventId = createUuid();
+  return updateImageQuizSession(sessionId, (session) => {
+    const answer = session.answers[questionId];
+    if (
+      !session.finishedAt ||
+      !answer ||
+      isMockExamLearningRecorded(answer.learningRecorded)
+    ) {
+      return undefined;
+    }
+    const answers = {
+      ...session.answers,
+      [questionId]: {
+        ...answer,
+        learningEventId: isUuid(answer.learningEventId)
+          ? answer.learningEventId
+          : candidateEventId,
+      },
+    };
+    return {
+      ...session,
+      answers,
+    };
+  });
+}
+
+async function commitImageQuizSessionLearningAnswer(
+  sessionId: string,
+  question: ImageQuizQuestion,
 ): Promise<void> {
-  const db = await getDb();
-  const session = await db.get("imageQuizSessions", sessionId);
-  if (!session) return;
-  const answers = { ...session.answers, [questionId]: answer };
-  await persistImageQuizSession({
+  const { db, userId } = await getDbContext();
+  let session = await db.get("imageQuizSessions", sessionId);
+  let storedAnswer = session?.answers[question.id];
+  if (!session?.finishedAt || !storedAnswer) return;
+  if (storedAnswer.learningRecorded === undefined) {
+    await reconcileLegacyImageQuizSessionLearningAnswer(
+      db,
+      userId,
+      sessionId,
+      question,
+    );
+    return;
+  }
+  if (storedAnswer.learningRecorded) return;
+  if (!isUuid(storedAnswer.learningEventId)) {
+    session = await ensureImageQuizLearningEvent(sessionId, question.id);
+    storedAnswer = session?.answers[question.id];
+  }
+  const eventId = storedAnswer?.learningEventId;
+  if (!session || !storedAnswer || !isUuid(eventId)) return;
+
+  await recordLearningAndLeaderboard({
+    userId,
+    questionId: question.id,
+    bankId: question.bankId,
+    chapterId: question.chapterId,
+    selectedAnswer: storedAnswer.selected,
+    correctAnswer: storedAnswer.correct,
+    isCorrect: storedAnswer.isCorrect,
+    answeredAt: storedAnswer.answeredAt,
+    options: {
+      eventId,
+      sessionId,
+      sessionMode: session.mode,
+    },
+  });
+
+  const tx = db.transaction(
+    ["imageQuizSessions", "userAnswers", "wrongQuestions", "syncIntents"],
+    "readwrite",
+  );
+  const sessionStore = tx.objectStore("imageQuizSessions");
+  const latestSession = await sessionStore.get(sessionId);
+  const latestAnswer = latestSession?.answers[question.id];
+  if (
+    !latestSession?.finishedAt ||
+    !latestAnswer ||
+    latestAnswer.learningEventId !== eventId ||
+    isMockExamLearningRecorded(latestAnswer.learningRecorded)
+  ) {
+    await tx.done;
+    return;
+  }
+
+  const answeredAt = latestAnswer.answeredAt;
+  const userAnswer: UserAnswer = {
+    questionId: question.id,
+    selectedAnswer: numericToAnswerKey[latestAnswer.selected],
+    correctAnswer: numericToAnswerKey[latestAnswer.correct],
+    isCorrect: latestAnswer.isCorrect,
+    answeredAt,
+    bankId: question.bankId,
+    chapter: question.chapterId,
+  };
+  await tx.objectStore("userAnswers").put(userAnswer);
+
+  const wrongStore = tx.objectStore("wrongQuestions");
+  let wrongRecord: WrongQuestionRecord | null = null;
+  if (!latestAnswer.isCorrect) {
+    const existing = await wrongStore.get(question.id);
+    wrongRecord = {
+      questionId: question.id,
+      bankId: question.bankId,
+      chapter: question.chapterId,
+      lastWrongAt: answeredAt,
+      wrongCount: (existing?.wrongCount ?? 0) + 1,
+    };
+    await wrongStore.put(wrongRecord);
+  } else {
+    await wrongStore.delete(question.id);
+  }
+
+  const answers = {
+    ...latestSession.answers,
+    [question.id]: {
+      ...latestAnswer,
+      learningRecorded: true,
+    },
+  };
+  const lastSettledAt = new Date().toISOString();
+  const updatedSession: ImageQuizSessionRecord = {
+    ...latestSession,
+    ...summarizeImageAnswers(answers),
+    answers,
+    lastSettledAt,
+  };
+  await sessionStore.put(updatedSession);
+
+  if (userId) {
+    const syncStore = tx.objectStore("syncIntents");
+    await syncStore.put(
+      createSyncIntentRecord(userId, {
+        kind: "upsert-answer",
+        record: userAnswer,
+      }),
+    );
+    await syncStore.put(
+      createSyncIntentRecord(
+        userId,
+        wrongRecord
+          ? { kind: "upsert-wrong", record: wrongRecord }
+          : { kind: "delete-wrong", questionId: question.id },
+      ),
+    );
+    await syncStore.put(
+      createSyncIntentRecord(userId, {
+        kind: "upsert-image-session",
+        record: updatedSession,
+      }),
+    );
+  }
+
+  await tx.done;
+  if (userId) {
+    try {
+      await drainLocalSyncIntents(userId, db);
+    } catch (error) {
+      console.warn("Mock-exam sync intents remain queued for retry", error);
+    }
+  }
+  notifyRecordChange();
+}
+
+async function reconcileLegacyImageQuizSessionLearningAnswer(
+  db: IDBPDatabase<QuizPwaDatabase>,
+  userId: string | null,
+  sessionId: string,
+  question: ImageQuizQuestion,
+): Promise<void> {
+  const tx = db.transaction(
+    ["imageQuizSessions", "userAnswers", "wrongQuestions", "syncIntents"],
+    "readwrite",
+  );
+  const sessionStore = tx.objectStore("imageQuizSessions");
+  const session = await sessionStore.get(sessionId);
+  const answer = session?.answers[question.id];
+  if (!session?.finishedAt || !answer || answer.learningRecorded !== undefined) {
+    await tx.done;
+    return;
+  }
+
+  const userAnswer: UserAnswer = {
+    questionId: question.id,
+    selectedAnswer: numericToAnswerKey[answer.selected],
+    correctAnswer: numericToAnswerKey[answer.correct],
+    isCorrect: answer.isCorrect,
+    answeredAt: answer.answeredAt,
+    bankId: question.bankId,
+    chapter: question.chapterId,
+  };
+  await tx.objectStore("userAnswers").put(userAnswer);
+
+  const wrongStore = tx.objectStore("wrongQuestions");
+  let wrongRecord: WrongQuestionRecord | null = null;
+  if (!answer.isCorrect) {
+    const existing = await wrongStore.get(question.id);
+    wrongRecord = {
+      questionId: question.id,
+      bankId: question.bankId,
+      chapter: question.chapterId,
+      lastWrongAt: answer.answeredAt,
+      wrongCount: Math.max(1, existing?.wrongCount ?? 0),
+    };
+    await wrongStore.put(wrongRecord);
+  } else {
+    await wrongStore.delete(question.id);
+  }
+
+  const answers = {
+    ...session.answers,
+    [question.id]: {
+      ...answer,
+      learningRecorded: true,
+    },
+  };
+  const updatedSession: ImageQuizSessionRecord = {
     ...session,
     ...summarizeImageAnswers(answers),
     answers,
     lastSettledAt: new Date().toISOString(),
+  };
+  await sessionStore.put(updatedSession);
+
+  if (userId) {
+    const syncStore = tx.objectStore("syncIntents");
+    await syncStore.put(
+      createSyncIntentRecord(userId, {
+        kind: "upsert-answer",
+        record: userAnswer,
+      }),
+    );
+    await syncStore.put(
+      createSyncIntentRecord(
+        userId,
+        wrongRecord
+          ? { kind: "upsert-wrong", record: wrongRecord }
+          : { kind: "delete-wrong", questionId: question.id },
+      ),
+    );
+    await syncStore.put(
+      createSyncIntentRecord(userId, {
+        kind: "upsert-image-session",
+        record: updatedSession,
+      }),
+    );
+  }
+
+  await tx.done;
+  if (userId) {
+    try {
+      await drainLocalSyncIntents(userId, db);
+    } catch (error) {
+      console.warn("Legacy mock-exam reconciliation remains queued", error);
+    }
+  }
+  notifyRecordChange();
+}
+
+export async function commitImageQuizSessionLearningAnswers(
+  sessionId: string,
+  questions: ImageQuizQuestion[],
+): Promise<void> {
+  await queueImageQuizSessionMutation(sessionId, async () => {
+    for (const question of questions) {
+      await commitImageQuizSessionLearningAnswer(sessionId, question);
+    }
   });
 }
 
 export async function finishImageQuizSession(
   sessionId: string,
-  result: Pick<
-    ImageQuizSessionRecord,
-    "correctCount" | "wrongCount" | "accuracy" | "wrongQuestionIds"
-  >,
-): Promise<void> {
-  const db = await getDb();
-  const session = await db.get("imageQuizSessions", sessionId);
-  if (!session) return;
-  const finishedAt = new Date().toISOString();
-  await persistImageQuizSession({
-    ...session,
-    ...result,
-    finishedAt,
-    lastSettledAt: finishedAt,
-  });
+): Promise<ImageQuizSessionRecord | undefined> {
+  return queueImageQuizSessionMutation(sessionId, () =>
+    updateImageQuizSession(sessionId, (session) => {
+      if (session.finishedAt) return session;
+      const finishedAt = new Date().toISOString();
+      return {
+        ...session,
+        ...summarizeImageAnswers(session.answers),
+        finishedAt,
+        lastSettledAt: finishedAt,
+      };
+    }),
+  );
 }
 
 export async function settleImageQuizSession(
   sessionId: string,
 ): Promise<ImageQuizSessionRecord | undefined> {
-  const db = await getDb();
-  const session = await db.get("imageQuizSessions", sessionId);
-  if (!session) return undefined;
-  const settledSession: ImageQuizSessionRecord = {
-    ...session,
-    ...summarizeImageAnswers(session.answers),
-    lastSettledAt: new Date().toISOString(),
-  };
-  await persistImageQuizSession(settledSession);
-  return settledSession;
+  return queueImageQuizSessionMutation(sessionId, () =>
+    updateImageQuizSession(sessionId, (session) =>
+      session.finishedAt
+        ? undefined
+        : {
+            ...session,
+            ...summarizeImageAnswers(session.answers),
+            lastSettledAt: new Date().toISOString(),
+          },
+    ),
+  );
 }
 
 export async function deleteImageQuizSessions(
   sessionIds: string[],
-): Promise<void> {
-  if (sessionIds.length === 0) return;
-  const { db, userId } = await getDbContext();
-  const tx = db.transaction(["imageQuizSessions", "syncIntents"], "readwrite");
+): Promise<string[]> {
+  const skippedSessionIds: string[] = [];
   for (const sessionId of sessionIds) {
-    await tx.objectStore("imageQuizSessions").delete(sessionId);
-    if (userId) {
-      await tx.objectStore("syncIntents").put(
-        createSyncIntentRecord(userId, {
-          kind: "delete-image-session",
-          sessionId,
-        }),
-      );
-    }
+    const deleted = await queueImageQuizSessionMutation(
+      sessionId,
+      async (): Promise<boolean> => {
+        const { db, userId } = await getDbContext();
+        const tx = db.transaction(
+          ["imageQuizSessions", "syncIntents"],
+          "readwrite",
+        );
+        const sessionStore = tx.objectStore("imageQuizSessions");
+        const session = await sessionStore.get(sessionId);
+        const hasPendingSubmittedLearning =
+          Boolean(session?.finishedAt) &&
+          Object.values(session?.answers ?? {}).some(
+            (answer) => answer.learningRecorded === false,
+          );
+        if (hasPendingSubmittedLearning) {
+          await tx.done;
+          return false;
+        }
+
+        await sessionStore.delete(sessionId);
+        if (userId) {
+          await tx.objectStore("syncIntents").put(
+            createSyncIntentRecord(userId, {
+              kind: "delete-image-session",
+              sessionId,
+            }),
+          );
+        }
+        await tx.done;
+        if (userId) {
+          try {
+            await drainLocalSyncIntents(userId, db);
+          } catch (error) {
+            console.warn("Image-session deletion remains queued for retry", error);
+          }
+        }
+        return true;
+      },
+    );
+    if (!deleted) skippedSessionIds.push(sessionId);
   }
-  await tx.done;
-  if (userId) await drainLocalSyncIntents(userId, db);
+  return skippedSessionIds;
 }
 
 export async function clearChapterMemory(ref: {

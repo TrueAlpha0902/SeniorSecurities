@@ -1,3 +1,27 @@
+## 2026-07-13 — v79.18 模擬考續考、改選與交卷一致性
+
+- 修正以「已選答案數等於總題數」誤判交卷、導致完整作答後離開看不到「繼續測驗」的問題；現在只認 `finishedAt`，且離開文案明確表示儲存進度。
+- Immediate feedback 在選答後立即顯示正解與解析；deferred feedback 在交卷前隱藏正解、解析及紀錄卡成績。兩者都可在交卷前反覆改選，交卷後 UI 與 DB 同時拒絕修改。
+- 將 mock provisional answer 與正式 learning attempt 分離：先原子完成本機交卷，再依最後答案寫入 user answer、wrong record、FSRS 與 leaderboard；重試使用答案內持久化 UUID 去重。
+- 新增 per-session mutation chain 與 IndexedDB atomic updater，修正快速答兩題、答案與標記、答案與交卷互相覆蓋的競態；交卷期間鎖定切題／跳題／答題卡／離開，自動取消過期的 auto-next timer。
+- completed session 若仍有 pending learning records，會在結果頁或模擬考首頁自動恢復；刪除會等待 active commit，且不允許刪除尚未完成本機 learning commit 的已交卷紀錄。
+- 舊版 `learningRecorded` 缺欄位的未完成 session 在改選後會 reconcile 最終 user answer／錯題，但保留原 learning／leaderboard attempt，避免重複計分。
+- 新增 mock exam UUID、提交 gate、改選、legacy reconcile、answer／mark／finish／delete concurrency tests，以及有假 Supabase 已開通 session 的 focused Playwright route flow。
+- 題庫 3,526 題中尚有 3,517 題未完成手機分段人工覆核；若按題目＋解析兩欄計，尚有 7,037 欄。OCR 文字未寫回正式題庫。
+- 完整 `npm run verify` 與 `npm run test:e2e` 通過；E2E 為 19 passed、9 device-conditional skipped。無 migration、無新增 npm 套件。
+
+## 2026-07-13 — v79.17 手機圖片題閱讀、覆核裁切與 OCR 初評
+
+- 圖片測驗新增精確的 `max-width: 600px` 手機排版；題目、選項與固定操作列針對窄螢幕重排，iPad 與桌面仍使用既有題圖比例與頁面佈局。
+- `PdfSegmentStack` 新增等寬橫列與安全 fallback；首批 9 題的 15 個欄位經接觸表視覺覆核後啟用 64 個分段，公式被切開的 `investment-ch01-pdf-0006` 解析明確拒絕套用。
+- 新增 mobile segment 候選產生器、版本鎖定的 OCR 依賴、候選／approval 證據檔、資料驗證及 integrity tests；OCR 只使用 layout boxes，不寫回未校對文字。
+- 強化 runtime 與 API 護欄：分段必須有限值、包含於來源裁切、依序排列且通過 tracked SHA-256 approval chain；client／remote override 無法鑄造 reviewed 狀態。
+- 修正投資學 ch01 q4、ch04 q2、財務分析 ch08 q47，以及法規 ch02 q97／q125、ch04 q125 共 6 個高信心裁切瑕疵，並重新產生 release manifest、索引與 shards。
+- 全題庫只執行 dry-run，不大量套用：4,794／7,052 欄位可產生候選；其餘表格、公式、頁尾、覆蓋不足或無安全空白切點者保留原圖。
+- OCR 實測可正確保留簡單表格的數字與欄列配對，但繁體字、特殊字形與公式尚不足以直接成為正式題庫文字，故仍要求逐欄人工校對。
+- 修正 `SettingsPanel` 初始化 effect 被非同步題庫衍生資料重觸發，導致離線內容子頁偶發跳回設定首頁的競態；E2E 恢復以一般點擊驗證往返。
+- 完整 `npm run verify` 與 `npm run test:e2e` 通過；E2E 為 18 passed、6 device-conditional skipped。無 migration、無新增 npm 套件。
+
 ## 2026-07-12 — v79.16 模擬考批改設定與正解模式一致化
 
 - 修正「交卷後統一批改」只存在 React component state，頁面重新進入後固定回到開啟的問題。

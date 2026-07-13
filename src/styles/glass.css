@@ -1413,7 +1413,7 @@ p {
   .numeric-option-grid .glass-answer-button {
     min-height: 70px;
   }
-  .image-quiz-controls {
+  .image-quiz-layout .image-quiz-controls {
     display: grid;
     grid-template-columns: 1fr 1fr;
   }
@@ -4087,4 +4087,176 @@ p {
   .account-sync-inline { grid-template-columns: 1fr; }
   .account-sync-inline > div + div { border-top: 1px solid rgba(20, 43, 59, .08); border-left: 0; }
   .account-sync-inline > div { padding-inline: 8px; }
+}
+
+/* Phone-only image quiz layout. Tablet and desktop keep the existing composition. */
+@media (max-width: 600px) {
+  .glass-page.image-quiz-layout {
+    padding-inline: max(8px, env(safe-area-inset-left)) max(8px, env(safe-area-inset-right));
+    padding-bottom: 0;
+  }
+  .image-quiz-layout .glass-navbar {
+    min-height: 46px;
+    margin-bottom: 8px;
+    padding: 3px 5px;
+    border-radius: 17px;
+  }
+  .image-quiz-layout .nav-actions { gap: 4px; }
+  .image-quiz-layout .nav-icon-button {
+    width: 40px;
+    height: 40px;
+  }
+  .image-quiz-layout .brand-link {
+    min-height: 40px;
+    padding-inline: 10px;
+    font-size: 0.86rem;
+  }
+  .image-quiz-layout .image-quiz-page {
+    gap: 8px;
+    padding-bottom: calc(78px + env(safe-area-inset-bottom));
+  }
+  .image-quiz-layout .image-quiz-card {
+    gap: 10px;
+    padding: 12px 8px;
+    border-radius: 18px;
+  }
+  .image-quiz-layout .image-quiz-header {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: center;
+  }
+  .image-quiz-layout .quiz-title-block { min-width: 0; }
+  .image-quiz-layout .image-quiz-header .eyebrow {
+    overflow: hidden;
+    margin-bottom: 2px;
+    font-size: 0.62rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .image-quiz-layout .quiz-title-line { gap: 5px 6px; }
+  .image-quiz-layout .image-quiz-header h1 {
+    margin: 0;
+    font-size: 1.3rem;
+    line-height: 1.15;
+  }
+  .image-quiz-layout .image-quiz-header .glass-badge {
+    min-height: 28px;
+    padding: 3px 8px;
+    font-size: 0.75rem;
+  }
+  .image-quiz-layout .image-quiz-header .daily-count-badge {
+    flex-basis: 100%;
+    width: fit-content;
+    white-space: normal;
+  }
+  .image-quiz-layout .image-quiz-header .timer-pause-button {
+    width: 24px;
+    min-height: 24px;
+    margin-left: 2px;
+    padding: 0;
+    justify-content: center;
+  }
+  .image-quiz-layout .image-quiz-header .timer-pause-button span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .image-quiz-layout .image-quiz-page .quiz-header-actions {
+    width: auto;
+    flex-wrap: nowrap;
+    gap: 5px;
+    justify-content: flex-end;
+  }
+  .image-quiz-layout .image-quiz-page .quiz-exam-action,
+  .image-quiz-layout .image-quiz-page .quiz-favorite-button {
+    width: 42px;
+    height: 42px;
+    min-height: 42px;
+    padding: 0;
+    justify-content: center;
+  }
+  .image-quiz-layout .daily-quiz-subtitle,
+  .image-quiz-layout .deferred-exam-notice {
+    margin-block: 0;
+    padding-block: 8px;
+    font-size: 0.76rem;
+    line-height: 1.45;
+  }
+  .image-quiz-layout .image-quiz-card .encouragement-note {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 14px;
+  }
+  .image-quiz-layout .image-quiz-card .encouragement-kicker { justify-self: auto; min-height: 28px; font-size: 0.75rem; }
+  .image-quiz-layout .image-quiz-card .encouragement-copy { gap: 4px; }
+  .image-quiz-layout .image-quiz-card .encouragement-note strong { font-size: 0.86rem; line-height: 1.35; }
+  .image-quiz-layout .image-quiz-card .progress-wrap { gap: 5px; }
+  .image-quiz-layout .image-quiz-card > .pdf-segment-stack { margin-inline: -2px; }
+  .image-quiz-layout .pdf-segment-stack.is-fit-to-width { overflow-x: hidden; align-items: flex-start; }
+  .image-quiz-layout .pdf-segment-stack.is-fit-to-width .pdf-crop-viewport { width: min(100%, var(--pdf-mobile-crop-width)); min-width: 0; }
+  .image-quiz-layout .numeric-option-grid { gap: 8px; }
+  .image-quiz-layout .numeric-option-grid .glass-answer-button {
+    min-height: 58px;
+    padding: 7px 10px;
+    border-radius: 15px;
+  }
+  .image-quiz-layout .image-answer-panel { gap: 8px; }
+  .image-quiz-layout .image-quiz-controls {
+    right: 0;
+    bottom: 0;
+    left: 0;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    gap: 6px;
+    padding: 8px max(8px, env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+    border-top: 1px solid rgba(20, 43, 59, 0.1);
+    background: rgba(244, 246, 248, 0.94);
+    box-shadow: 0 -8px 24px rgba(17, 41, 58, 0.08);
+    backdrop-filter: blur(18px) saturate(130%);
+    -webkit-backdrop-filter: blur(18px) saturate(130%);
+  }
+  .image-quiz-layout .image-quiz-controls > .glass-button:first-child,
+  .image-quiz-layout .image-quiz-controls > .glass-button:last-child {
+    justify-self: stretch;
+    width: 100%;
+    min-width: 0;
+    min-height: 46px;
+    padding-inline: 8px;
+    font-size: 0.84rem;
+  }
+  .image-quiz-layout .image-quiz-controls > .glass-button:nth-child(3):last-child { grid-column: auto; }
+  .image-quiz-layout .image-quiz-controls .question-jump-form {
+    justify-self: center;
+    width: auto;
+    flex-wrap: nowrap;
+    gap: 4px;
+    padding: 3px;
+    border-radius: 14px;
+  }
+  .image-quiz-layout .image-quiz-controls .inline-jump-form label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .image-quiz-layout .image-quiz-controls .inline-jump-form input {
+    flex: 0 0 52px;
+    width: 52px;
+    min-height: 40px;
+    padding-inline: 5px;
+    text-align: center;
+  }
+  .image-quiz-layout .image-quiz-controls .inline-jump-form .glass-button {
+    flex: 0 0 auto;
+    width: auto;
+    min-height: 40px;
+    padding-inline: 8px;
+    font-size: 0.78rem;
+  }
+  .image-quiz-layout .jump-error-fixed { bottom: calc(72px + env(safe-area-inset-bottom)); }
 }

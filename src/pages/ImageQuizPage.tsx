@@ -10,8 +10,8 @@ import {
   Play,
   RotateCcw,
 } from "lucide-react";
-import { type FormEvent, useEffect, useMemo, useState } from "react";
-import { useLocation, useParams } from "react-router-dom";
+import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
@@ -25,6 +25,7 @@ import { ProgressBar } from "../components/ProgressBar";
 import { useAsync } from "../hooks/useAsync";
 import {
   clearQuizProgress,
+  commitImageQuizSessionLearningAnswers,
   finishImageQuizSession,
   getImageQuizSession,
   getQuizProgress,
@@ -41,6 +42,8 @@ import {
 } from "../lib/db";
 import {
   formatImageQuizQuestionSource,
+  getImageQuizSegments,
+  hasVerifiedMobileImageQuizSegments,
   loadAllImageQuestions,
   loadImageQuestionsByIds,
   loadImageQuizPlanningIndex,
@@ -63,15 +66,43 @@ import {
   getAutoNextCorrectEnabled,
 } from "../lib/appSettings";
 import { type AnswerConfidence } from "../lib/learningEngine";
+import {
+  canChooseImageQuizAnswer,
+  isMockExamLearningRecorded,
+  isMockExamSessionSubmitted,
+  shouldDeferMockExamFeedback,
+  shouldPromptMockExamExit,
+} from "../lib/mockExam";
 import type { UserAnswer } from "../types";
 
 const ANSWERS: NumericAnswer[] = ["1", "2", "3", "4"];
+const PHONE_SEGMENT_MEDIA_QUERY = "(max-width: 600px)";
 const answerKeyToNumeric = {
   A: "1",
   B: "2",
   C: "3",
   D: "4",
 } as const;
+
+function usePhoneSegmentLayout(): boolean {
+  const [matches, setMatches] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      typeof window.matchMedia === "function" &&
+      window.matchMedia(PHONE_SEGMENT_MEDIA_QUERY).matches,
+  );
+
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+    const mediaQuery = window.matchMedia(PHONE_SEGMENT_MEDIA_QUERY);
+    const updateMatch = () => setMatches(mediaQuery.matches);
+    updateMatch();
+    mediaQuery.addEventListener("change", updateMatch);
+    return () => mediaQuery.removeEventListener("change", updateMatch);
+  }, []);
+
+  return matches;
+}
 
 const T = {
   wrongTitle: "\u5f31\u9ede\u7df4\u7fd2",
@@ -135,10 +166,11 @@ const T = {
   next: "\u4e0b\u4e00\u984c",
   finish: "\u5b8c\u6210",
   settleConfirm:
-    "\u8981\u5148\u7d50\u7b97\u9019\u6b21\u6a21\u64ec\u8003\u518d\u96e2\u958b\u55ce\uff1f\u78ba\u5b9a\u5f8c\u6703\u4fdd\u7559\u76ee\u524d\u7b54\u5c0d\u7387\uff0c\u4e4b\u5f8c\u4ecd\u53ef\u7e7c\u7e8c\u672a\u4f5c\u7b54\u984c\u76ee\u3002",
-  settleSummaryTitle: "\u6a21\u64ec\u8003\u7d50\u7b97",
-  answerRate: "\u7b54\u5c0d\u7387",
-  answered: "\u5df2\u4f5c\u7b54",
+    "要儲存目前進度並離開模擬考嗎？之後可從測驗紀錄點選「繼續測驗」。",
+  settleSummaryTitle: "模擬考進度已儲存，之後可繼續作答。",
+  submitSaveError: "交卷資料尚未完整儲存，請稍後再試。",
+  answerSaveError: "答案尚未儲存成功，請再選一次。",
+  answerSaving: "答案正在儲存，請稍候再切換頁面。",
   randomTitle: "模擬考測驗",
   randomSubtitle:
     "\u5f9e\u672c\u79d1\u6240\u6709\u7ae0\u7bc0\u96a8\u6a5f\u62bd\u984c",
@@ -157,6 +189,7 @@ type AnswerRecord = {
   selected: NumericAnswer;
   correct: NumericAnswer;
   isCorrect: boolean;
+  learningRecorded?: boolean;
 };
 
 type ImageQuizMode =
@@ -189,8 +222,10 @@ type ImageQuizData = {
 
 export function ImageQuizPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { bankId = "", chapterId = "", sessionId = "" } = useParams();
   const location = useLocation();
+  const phoneSegmentLayout = usePhoneSegmentLayout();
   const mode: ImageQuizMode = location.pathname.includes("/trial")
     ? "trial"
     : location.pathname.includes("/session-wrong")
@@ -437,6 +472,9 @@ export function ImageQuizPage() {
   }, [bankId, chapterId, mode, sessionId, user?.id]);
 
   const questions = useMemo(() => data?.questions ?? [], [data]);
+  const isSubmittedMockExam =
+    mode === "random" &&
+    isMockExamSessionSubmitted({ finishedAt: data?.session?.finishedAt });
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, AnswerRecord>>({});
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
@@ -458,6 +496,12 @@ export function ImageQuizPage() {
   const [autoNextCorrectEnabled, setAutoNextCorrectEnabled] = useState(() =>
     getAutoNextCorrectEnabled(),
   );
+  const answerWritePendingRef = useRef<string | null>(null);
+  const [answerWritePendingQuestionId, setAnswerWritePendingQuestionId] =
+    useState<string | null>(null);
+  const submissionPendingRef = useRef(false);
+  const [submissionPending, setSubmissionPending] = useState(false);
+  const autoNextTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     setElapsedSeconds(0);
@@ -467,7 +511,31 @@ export function ImageQuizPage() {
     setRetryQueue([]);
     setMarkedQuestionIds(new Set());
     setAnswerCardOpen(false);
+    answerWritePendingRef.current = null;
+    setAnswerWritePendingQuestionId(null);
+    submissionPendingRef.current = false;
+    setSubmissionPending(false);
+    if (autoNextTimerRef.current !== null) {
+      window.clearTimeout(autoNextTimerRef.current);
+      autoNextTimerRef.current = null;
+    }
   }, [progressKey]);
+
+  useEffect(
+    () => () => {
+      if (autoNextTimerRef.current !== null) {
+        window.clearTimeout(autoNextTimerRef.current);
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (autoNextTimerRef.current !== null) {
+      window.clearTimeout(autoNextTimerRef.current);
+      autoNextTimerRef.current = null;
+    }
+  }, [currentIndex]);
 
   useEffect(() => {
     function refreshAnswerModeSetting(): void {
@@ -556,6 +624,7 @@ export function ImageQuizPage() {
         new Set(favoriteRecords.map((record) => record.questionId)),
       );
       setMarkedQuestionIds(new Set(data?.session?.markedQuestionIds ?? []));
+      setFinished(isSubmittedMockExam);
       setProgressRestored(true);
     }
 
@@ -567,6 +636,7 @@ export function ImageQuizPage() {
   }, [
     data?.answerRecords,
     data?.session?.markedQuestionIds,
+    isSubmittedMockExam,
     mode,
     progressKey,
     questions,
@@ -580,6 +650,35 @@ export function ImageQuizPage() {
     void saveQuizProgress(progressKey, currentIndex, questions.length);
   }, [currentIndex, finished, progressKey, progressRestored, questions.length]);
 
+  useEffect(() => {
+    const session = data?.session;
+    if (
+      !progressRestored ||
+      mode !== "random" ||
+      !isSubmittedMockExam ||
+      !session
+    ) {
+      return;
+    }
+    const pendingQuestions = questions.filter(
+      (question) => session.answers[question.id]?.learningRecorded === false,
+    );
+    if (!pendingQuestions.length) return;
+
+    void commitImageQuizSessionLearningAnswers(
+      session.sessionId,
+      pendingQuestions,
+    ).catch((reason) => {
+      console.warn("Submitted mock-exam learning records will retry", reason);
+    });
+  }, [
+    data?.session,
+    isSubmittedMockExam,
+    mode,
+    progressRestored,
+    questions,
+  ]);
+
   const answeredRecords = Object.values(answers);
   const correctCount = answeredRecords.filter(
     (record) => record.isCorrect,
@@ -589,12 +688,12 @@ export function ImageQuizPage() {
   const accuracy = resultTotal
     ? calculateAccuracy(correctCount, resultTotal)
     : 0;
-  const shouldPromptRandomExit =
-    mode === "random" &&
-    !finished &&
-    resultTotal > 0 &&
-    resultTotal < questions.length &&
-    Boolean(data?.session);
+  const shouldPromptRandomExit = shouldPromptMockExamExit({
+    hasSession: mode === "random" && Boolean(data?.session),
+    isFinishedView: finished,
+    isSubmitted: isSubmittedMockExam,
+    answeredCount: resultTotal,
+  });
   const dailyAnsweredIds = useMemo(
     () => new Set(Object.keys(answers)),
     [answers],
@@ -632,7 +731,7 @@ export function ImageQuizPage() {
       : currentIndex + 1;
 
   useEffect(() => {
-    if (!shouldPromptRandomExit) {
+    if (!shouldPromptRandomExit && !submissionPending) {
       return;
     }
 
@@ -643,10 +742,15 @@ export function ImageQuizPage() {
 
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [shouldPromptRandomExit]);
+  }, [shouldPromptRandomExit, submissionPending]);
 
   useEffect(() => {
     function handleNavigationAttempt(event: Event): void {
+      if (submissionPendingRef.current) {
+        event.preventDefault();
+        window.alert(T.answerSaving);
+        return;
+      }
       if (!shouldPromptRandomExit) {
         return;
       }
@@ -655,6 +759,10 @@ export function ImageQuizPage() {
         continueNavigation?: () => void;
       }>;
       event.preventDefault();
+      if (answerWritePendingRef.current !== null) {
+        window.alert(T.answerSaving);
+        return;
+      }
 
       async function confirmSettlement(): Promise<void> {
         const confirmed = window.confirm(T.settleConfirm);
@@ -665,9 +773,7 @@ export function ImageQuizPage() {
         if (data?.session) {
           await settleImageQuizSession(data.session.sessionId);
         }
-        window.alert(
-          `${T.settleSummaryTitle}\n${T.answered} ${resultTotal} / ${questions.length} ${T.total}\n${T.correctCount} ${correctCount}\n${T.wrongCount} ${wrongCount}\n${T.answerRate} ${accuracy}%`,
-        );
+        window.alert(T.settleSummaryTitle);
         navigationEvent.detail?.continueNavigation?.();
       }
 
@@ -681,13 +787,8 @@ export function ImageQuizPage() {
         handleNavigationAttempt,
       );
   }, [
-    accuracy,
-    correctCount,
     data?.session,
-    questions.length,
-    resultTotal,
     shouldPromptRandomExit,
-    wrongCount,
   ]);
 
   useEffect(() => {
@@ -720,11 +821,34 @@ export function ImageQuizPage() {
     );
   }
 
+  const interactionPending =
+    answerWritePendingQuestionId !== null || submissionPending;
+
+  const usesMobileQuestionSegments =
+    phoneSegmentLayout &&
+    hasVerifiedMobileImageQuizSegments(currentQuestion, "question");
+  const usesMobileExplanationSegments =
+    phoneSegmentLayout &&
+    hasVerifiedMobileImageQuizSegments(currentQuestion, "explanation");
+  const renderedQuestionSegments = getImageQuizSegments(
+    currentQuestion,
+    "question",
+    phoneSegmentLayout,
+  );
+  const renderedExplanationSegments = getImageQuizSegments(
+    currentQuestion,
+    "explanation",
+    phoneSegmentLayout,
+  );
+
   const savedAnswer = answers[currentQuestion.id];
   const isDeferredExam =
     mode === "random" &&
-    data?.session?.feedbackMode === "deferred" &&
-    !answerModeEnabled;
+    shouldDeferMockExamFeedback(
+      data?.session?.feedbackMode,
+      answerModeEnabled,
+      isSubmittedMockExam || finished,
+    );
   const examAnsweredCount = Object.keys(answers).length;
   const examUnansweredCount = Math.max(0, questions.length - examAnsweredCount);
   const currentIsMarked = markedQuestionIds.has(currentQuestion.id);
@@ -742,6 +866,12 @@ export function ImageQuizPage() {
       }
     : undefined;
   const currentAnswer = savedAnswer ?? answerModeRecord;
+  const canChooseCurrentAnswer = canChooseImageQuizAnswer({
+    isMockExam: mode === "random",
+    isSubmitted: isSubmittedMockExam || finished,
+    hasSavedAnswer: Boolean(savedAnswer),
+    answerModeAllowed,
+  });
   const currentConfidence = confidenceByQuestion[currentQuestion.id] ?? "sure";
   const revealCurrentAnswer = !isDeferredExam;
   const isFavorite = favoriteIds.has(currentQuestion.id);
@@ -786,40 +916,83 @@ export function ImageQuizPage() {
             : questionSourceLabel;
 
   async function handleAnswer(selected: NumericAnswer): Promise<void> {
-    if (!currentQuestion || answers[currentQuestion.id] || answerModeAllowed) {
+    if (
+      !currentQuestion ||
+      !canChooseCurrentAnswer ||
+      answerWritePendingRef.current !== null ||
+      submissionPendingRef.current
+    ) {
       return;
     }
+
+    if (autoNextTimerRef.current !== null) {
+      window.clearTimeout(autoNextTimerRef.current);
+      autoNextTimerRef.current = null;
+    }
+
+    const previousAnswer = answers[currentQuestion.id];
+    if (previousAnswer?.selected === selected) return;
 
     const record: AnswerRecord = {
       selected,
       correct: currentQuestion.answer,
       isCorrect: selected === currentQuestion.answer,
+      learningRecorded:
+        mode === "random"
+          ? (previousAnswer?.learningRecorded ?? false)
+          : undefined,
     };
 
     setAnswers((previous) => ({
       ...previous,
       [currentQuestion.id]: record,
     }));
-    await recordImageUserAnswer(currentQuestion, selected, {
-      confidence: currentConfidence,
-      sessionId: data?.session?.sessionId ?? null,
-      sessionMode: data?.session?.mode ?? mode,
-    });
-    if (mode === "random" && data?.session) {
-      await saveImageQuizSessionAnswer(
-        data.session.sessionId,
-        currentQuestion.id,
-        {
-          ...record,
-          answeredAt: new Date().toISOString(),
-        },
-      );
+    answerWritePendingRef.current = currentQuestion.id;
+    setAnswerWritePendingQuestionId(currentQuestion.id);
+    try {
+      if (mode === "random" && data?.session) {
+        const savedSession = await saveImageQuizSessionAnswer(
+          data.session.sessionId,
+          currentQuestion.id,
+          {
+            ...record,
+            answeredAt: new Date().toISOString(),
+          },
+        );
+        if (!savedSession) {
+          throw new Error("Mock-exam answer could not be saved");
+        }
+      } else {
+        await recordImageUserAnswer(currentQuestion, selected, {
+          confidence: currentConfidence,
+          sessionId: data?.session?.sessionId ?? null,
+          sessionMode: data?.session?.mode ?? mode,
+        });
+      }
+    } catch {
+      setAnswers((current) => {
+        if (current[currentQuestion.id]?.selected !== selected) return current;
+        const next = { ...current };
+        if (previousAnswer) next[currentQuestion.id] = previousAnswer;
+        else delete next[currentQuestion.id];
+        return next;
+      });
+      window.alert(T.answerSaveError);
+      return;
+    } finally {
+      if (answerWritePendingRef.current === currentQuestion.id) {
+        answerWritePendingRef.current = null;
+        setAnswerWritePendingQuestionId(null);
+      }
     }
-    if (!isDeferredExam && !record.isCorrect) {
+
+    if (!isDeferredExam && mode !== "random") {
       setRetryQueue((current) =>
-        current.includes(currentQuestion.id)
-          ? current
-          : [...current, currentQuestion.id],
+        record.isCorrect
+          ? current.filter((questionId) => questionId !== currentQuestion.id)
+          : current.includes(currentQuestion.id)
+            ? current
+            : [...current, currentQuestion.id],
       );
     }
 
@@ -829,7 +1002,8 @@ export function ImageQuizPage() {
       record.isCorrect &&
       currentIndex < questions.length - 1
     ) {
-      window.setTimeout(() => {
+      autoNextTimerRef.current = window.setTimeout(() => {
+        autoNextTimerRef.current = null;
         setCurrentIndex((index) =>
           index === currentIndex
             ? Math.min(index + 1, questions.length - 1)
@@ -840,6 +1014,12 @@ export function ImageQuizPage() {
   }
 
   function goPrevious(): void {
+    if (
+      answerWritePendingRef.current !== null ||
+      submissionPendingRef.current
+    ) {
+      return;
+    }
     setJumpError("");
     setCurrentIndex((index) => Math.max(0, index - 1));
   }
@@ -866,6 +1046,12 @@ export function ImageQuizPage() {
   }
 
   async function goNext(): Promise<void> {
+    if (
+      answerWritePendingRef.current !== null ||
+      submissionPendingRef.current
+    ) {
+      return;
+    }
     const shouldRetryNow =
       !isDeferredExam &&
       retryQueue.length > 0 &&
@@ -886,14 +1072,32 @@ export function ImageQuizPage() {
         if (!confirmed) return;
       }
       if (mode === "random" && data?.session) {
-        await saveRandomSessionResult(
-          data.session.sessionId,
-          questions,
-          answers,
-        );
+        submissionPendingRef.current = true;
+        setSubmissionPending(true);
+        try {
+          await saveRandomSessionResult(data.session.sessionId);
+        } catch {
+          window.alert(T.submitSaveError);
+          submissionPendingRef.current = false;
+          setSubmissionPending(false);
+          return;
+        }
+        void clearQuizProgress(progressKey);
+        try {
+          await commitImageQuizSessionLearningAnswers(
+            data.session.sessionId,
+            questions,
+          );
+        } catch (reason) {
+          console.warn("Submitted mock-exam learning records will retry", reason);
+        }
+        setFinished(true);
+        submissionPendingRef.current = false;
+        setSubmissionPending(false);
+      } else {
+        setFinished(true);
+        void clearQuizProgress(progressKey);
       }
-      setFinished(true);
-      void clearQuizProgress(progressKey);
       return;
     }
 
@@ -903,6 +1107,12 @@ export function ImageQuizPage() {
 
   function handleJump(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
+    if (
+      answerWritePendingRef.current !== null ||
+      submissionPendingRef.current
+    ) {
+      return;
+    }
     const value = Number(jumpInput.trim());
     if (!Number.isInteger(value) || value < 1 || value > questions.length) {
       setJumpError(T.jumpError.replace("{total}", questions.length.toString()));
@@ -915,7 +1125,15 @@ export function ImageQuizPage() {
 
   async function toggleExamMark(): Promise<void> {
     const question = questions[currentIndex];
-    if (!isDeferredExam || !data?.session || !question) return;
+    if (
+      !isDeferredExam ||
+      !data?.session ||
+      !question ||
+      answerWritePendingRef.current !== null ||
+      submissionPendingRef.current
+    ) {
+      return;
+    }
     const next = new Set(markedQuestionIds);
     if (next.has(question.id)) next.delete(question.id);
     else next.add(question.id);
@@ -924,6 +1142,12 @@ export function ImageQuizPage() {
   }
 
   function jumpFromAnswerCard(index: number): void {
+    if (
+      answerWritePendingRef.current !== null ||
+      submissionPendingRef.current
+    ) {
+      return;
+    }
     setCurrentIndex(index);
     setJumpError("");
     if (window.innerWidth < 760) setAnswerCardOpen(false);
@@ -953,6 +1177,10 @@ export function ImageQuizPage() {
   }
 
   async function restartQuiz(): Promise<void> {
+    if (mode === "random") {
+      navigate("/random");
+      return;
+    }
     setAnswers({});
     setCurrentIndex(0);
     setFinished(false);
@@ -994,7 +1222,7 @@ export function ImageQuizPage() {
     <div className="image-quiz-page">
       <GlassCard className="image-quiz-card">
         <div className="image-quiz-header">
-          <div>
+          <div className="quiz-title-block">
             <p className="eyebrow">{contextLabel}</p>
             <div className="quiz-title-line">
               <h1>
@@ -1046,6 +1274,7 @@ export function ImageQuizPage() {
                   className={`quiz-exam-action${answerCardOpen ? " is-active" : ""}`}
                   aria-label="開啟答題卡"
                   aria-expanded={answerCardOpen}
+                  disabled={interactionPending}
                   onClick={() => setAnswerCardOpen((open) => !open)}
                 >
                   <ListChecks aria-hidden="true" size={19} />
@@ -1056,6 +1285,7 @@ export function ImageQuizPage() {
                   className={`quiz-exam-action${currentIsMarked ? " is-marked" : ""}`}
                   aria-label={currentIsMarked ? "取消待檢標記" : "標記為待檢"}
                   aria-pressed={currentIsMarked}
+                  disabled={interactionPending}
                   onClick={() => void toggleExamMark()}
                 >
                   <Flag
@@ -1106,7 +1336,7 @@ export function ImageQuizPage() {
           />
         ) : (
           <p className="deferred-exam-notice">
-            考試模式：作答後只鎖定選項，交卷前不顯示正解與解析。
+            考試模式：交卷前可隨時修改答案，不顯示正解與解析。
           </p>
         )}
 
@@ -1157,6 +1387,7 @@ export function ImageQuizPage() {
                     key={question.id}
                     className={`${answered ? "is-answered" : ""}${marked ? " is-marked" : ""}${index === currentIndex ? " is-current" : ""}`}
                     aria-label={`第 ${index + 1} 題${answered ? "，已作答" : "，未作答"}${marked ? "，待檢" : ""}`}
+                    disabled={interactionPending}
                     onClick={() => jumpFromAnswerCard(index)}
                   >
                     {index + 1}
@@ -1170,8 +1401,10 @@ export function ImageQuizPage() {
 
         <PdfSegmentStack
           label={`${"\u7b2c"} ${currentQuestion.number} ${"\u984c\u984c\u76ee"}`}
-          segments={currentQuestion.questionSegments}
+          segments={renderedQuestionSegments}
           priority="high"
+          fitToWidth={usesMobileQuestionSegments}
+          horizontalScrollHint={phoneSegmentLayout && !usesMobileQuestionSegments}
         />
 
         <div className="numeric-option-grid" aria-label={T.answerOptions}>
@@ -1184,7 +1417,15 @@ export function ImageQuizPage() {
                 currentAnswer,
                 revealCurrentAnswer,
               )}
-              disabled={Boolean(currentAnswer)}
+              disabled={
+                !canChooseCurrentAnswer ||
+                interactionPending
+              }
+              aria-busy={
+                answerWritePendingQuestionId === currentQuestion.id
+                  ? "true"
+                  : undefined
+              }
               aria-pressed={currentAnswer?.selected === answer}
               aria-label={`${T.choose} (${answer})`}
               onClick={() => void handleAnswer(answer)}
@@ -1223,8 +1464,10 @@ export function ImageQuizPage() {
               <h2>{T.explanation}</h2>
               <PdfSegmentStack
                 label={`${"\u7b2c"} ${currentQuestion.number} ${"\u984c\u89e3\u6790"}`}
-                segments={currentQuestion.explanationSegments}
+                segments={renderedExplanationSegments}
                 priority="auto"
+                fitToWidth={usesMobileExplanationSegments}
+                horizontalScrollHint={phoneSegmentLayout && !usesMobileExplanationSegments}
               />
             </div>
           </div>
@@ -1236,14 +1479,14 @@ export function ImageQuizPage() {
           {jumpError}
         </p>
       ) : null}
-      <div className="image-quiz-controls" aria-label={T.navigation}>
+      <nav className="image-quiz-controls" aria-label={T.navigation}>
         <GlassButton
           variant="secondary"
           onClick={goPrevious}
-          disabled={currentIndex === 0}
+          disabled={currentIndex === 0 || interactionPending}
         >
           <ArrowLeft aria-hidden="true" size={18} />
-          <span>{T.previous}</span>
+          <span className="quiz-control-label">{T.previous}</span>
         </GlassButton>
         <form
           className="question-jump-form inline-jump-form"
@@ -1258,18 +1501,24 @@ export function ImageQuizPage() {
             max={questions.length}
             value={jumpInput}
             placeholder={T.jumpPlaceholder}
+            disabled={interactionPending}
             onChange={(event) => setJumpInput(event.currentTarget.value)}
           />
           <GlassButton
             variant="secondary"
             type="submit"
-            disabled={!jumpInput.trim()}
+            disabled={!jumpInput.trim() || interactionPending}
           >
             {T.jumpAction}
           </GlassButton>
         </form>
-        <GlassButton variant="primary" onClick={() => void goNext()}>
-          <span>
+        <GlassButton
+          variant="primary"
+          disabled={interactionPending}
+          aria-busy={submissionPending ? "true" : undefined}
+          onClick={() => void goNext()}
+        >
+          <span className="quiz-control-label">
             {currentIndex >= questions.length - 1
               ? isDeferredExam
                 ? "交卷"
@@ -1278,7 +1527,7 @@ export function ImageQuizPage() {
           </span>
           <ArrowRight aria-hidden="true" size={18} />
         </GlassButton>
-      </div>
+      </nav>
     </div>
   );
 }
@@ -1395,6 +1644,7 @@ function sessionAnswersToRecords(
       selected: answer.selected,
       correct: answer.correct,
       isCorrect: answer.isCorrect,
+      learningRecorded: isMockExamLearningRecorded(answer.learningRecorded),
     };
   }
   return records;
@@ -1402,27 +1652,11 @@ function sessionAnswersToRecords(
 
 async function saveRandomSessionResult(
   sessionId: string,
-  questions: ImageQuizQuestion[],
-  answers: Record<string, AnswerRecord>,
 ): Promise<void> {
-  const answered = questions
-    .map((question) => ({ question, answer: answers[question.id] }))
-    .filter(
-      (item): item is { question: ImageQuizQuestion; answer: AnswerRecord } =>
-        Boolean(item.answer),
-    );
-  const correctCount = answered.filter((item) => item.answer.isCorrect).length;
-  const wrongQuestionIds = answered
-    .filter((item) => !item.answer.isCorrect)
-    .map((item) => item.question.id);
-  const answeredCount = answered.length;
-  const wrongCount = answeredCount - correctCount;
-  await finishImageQuizSession(sessionId, {
-    correctCount,
-    wrongCount,
-    accuracy: calculateAccuracy(correctCount, answeredCount),
-    wrongQuestionIds,
-  });
+  const session = await finishImageQuizSession(sessionId);
+  if (!session) {
+    throw new Error("Mock-exam session could not be submitted");
+  }
 }
 
 function calculateConsecutiveCorrectStreak(

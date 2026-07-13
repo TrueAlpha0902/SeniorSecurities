@@ -15,6 +15,7 @@ import { GlassCard } from "../components/GlassCard";
 import { LoadingState } from "../components/LoadingState";
 import { useAsync } from "../hooks/useAsync";
 import {
+  commitImageQuizSessionLearningAnswers,
   createImageQuizSession,
   deleteImageQuizSessions,
   listImageQuizSessions,
@@ -23,6 +24,7 @@ import {
 } from "../lib/db";
 import {
   loadImageBankQuestions,
+  loadImageQuestionsByIds,
   loadImageQuizBanks,
   type ImageQuizBank,
   type ImageQuizQuestion,
@@ -35,6 +37,11 @@ import {
   setMockExamDeferredFeedbackEnabled,
 } from "../lib/appSettings";
 import { buildSessionId, calculateAccuracy, shuffleQuestions } from "../lib/quiz";
+import {
+  isMockExamSessionSubmitted,
+  resolveMockExamFeedbackMode,
+  shouldHidePendingMockExamResults,
+} from "../lib/mockExam";
 import type { UserAnswer } from "../types";
 import "../styles/learner-experience-v65.css";
 import "../styles/mock-exam-v66.css";
@@ -68,6 +75,8 @@ const T = {
   deleteSelected: "刪除選取",
   cancelDelete: "取消",
   deleteConfirm: "確定要刪除選取的模擬考測驗紀錄嗎？",
+  deletePending:
+    "部分測驗的學習紀錄仍在整理，已先保留；請稍後再試一次。",
   proportionalHint: "依章節比例抽題",
 };
 
@@ -79,9 +88,32 @@ type RandomPracticeData = {
 };
 
 async function loadRandomPracticeData(): Promise<RandomPracticeData> {
-  const [banks, sessions, answers] = await Promise.all([
+  const [banks, loadedSessions] = await Promise.all([
     loadImageQuizBanks(),
     listImageQuizSessions(),
+  ]);
+  const sessionsWithPendingLearning = loadedSessions.filter(
+    (session) =>
+      Boolean(session.finishedAt) &&
+      Object.values(session.answers).some(
+        (answer) => answer.learningRecorded === false,
+      ),
+  );
+  for (const session of sessionsWithPendingLearning) {
+    try {
+      const pendingQuestionIds = session.questionIds.filter(
+        (questionId) => session.answers[questionId]?.learningRecorded === false,
+      );
+      const questions = await loadImageQuestionsByIds(pendingQuestionIds);
+      await commitImageQuizSessionLearningAnswers(session.sessionId, questions);
+    } catch (reason) {
+      console.warn("Submitted mock-exam learning records will retry", reason);
+    }
+  }
+  const [sessions, answers] = await Promise.all([
+    sessionsWithPendingLearning.length
+      ? listImageQuizSessions()
+      : Promise.resolve(loadedSessions),
     listUserAnswers(),
   ]);
   return { banks, sessions, answers };
@@ -166,7 +198,10 @@ export function RandomPracticePage() {
       correctCount: 0,
       wrongCount: 0,
       accuracy: 0,
-      feedbackMode: answerModeEnabled || !deferredFeedback ? "immediate" : "deferred",
+      feedbackMode: resolveMockExamFeedbackMode(
+        answerModeEnabled,
+        deferredFeedback,
+      ),
       markedQuestionIds: [],
     });
     navigate(`/image-quiz/random/${bank.bankId}/${sessionId}`);
@@ -175,9 +210,10 @@ export function RandomPracticePage() {
   async function handleDeleteSelected(): Promise<void> {
     const sessionIds = Array.from(selectedSessionIds);
     if (sessionIds.length === 0 || !window.confirm(T.deleteConfirm)) return;
-    await deleteImageQuizSessions(sessionIds);
-    setSelectedSessionIds(new Set());
-    setDeleteMode(false);
+    const skippedSessionIds = await deleteImageQuizSessions(sessionIds);
+    setSelectedSessionIds(new Set(skippedSessionIds));
+    setDeleteMode(skippedSessionIds.length > 0);
+    if (skippedSessionIds.length > 0) window.alert(T.deletePending);
     setRefreshKey((key) => key + 1);
   }
 
@@ -344,7 +380,11 @@ export function RandomPracticePage() {
 function SessionRecordCard({ session, showSelection, selected, onSelectedChange }: { session: ImageQuizSessionRecord; showSelection: boolean; selected: boolean; onSelectedChange: (sessionId: string, selected: boolean) => void }) {
   const date = new Intl.DateTimeFormat("zh-TW", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(session.finishedAt ?? session.startedAt));
   const answeredCount = Object.keys(session.answers).length;
-  const isCompleted = Boolean(session.finishedAt) || answeredCount >= session.totalQuestions;
+  const isCompleted = isMockExamSessionSubmitted(session);
+  const hidePendingResults = shouldHidePendingMockExamResults(
+    session.feedbackMode,
+    isCompleted,
+  );
   const completionRate = calculateAccuracy(answeredCount, session.totalQuestions);
 
   return (
@@ -354,7 +394,7 @@ function SessionRecordCard({ session, showSelection, selected, onSelectedChange 
         <div className="random-record-heading"><div><p className="eyebrow">{date}</p><h3>{session.bankTitle}</h3></div><span className={`random-session-status ${isCompleted ? "is-completed" : "is-pending"}`}>{isCompleted ? T.completed : T.unfinished}</span></div>
         <div className="random-session-progress"><span>{T.answered} <strong>{answeredCount} / {session.totalQuestions}</strong></span><span>{completionRate}%</span><progress value={answeredCount} max={Math.max(session.totalQuestions, 1)} aria-label={`${session.bankTitle} 作答進度 ${completionRate}%`} /></div>
       </div>
-      <dl className="record-metrics"><div><dt>{T.accuracy}</dt><dd>{session.accuracy}%</dd></div><div><dt>{T.correct}</dt><dd>{session.correctCount}</dd></div><div><dt>{T.wrong}</dt><dd>{session.wrongCount}</dd></div></dl>
+      <dl className="record-metrics"><div><dt>{T.accuracy}</dt><dd>{hidePendingResults ? "—" : `${session.accuracy}%`}</dd></div><div><dt>{T.correct}</dt><dd>{hidePendingResults ? "—" : session.correctCount}</dd></div><div><dt>{T.wrong}</dt><dd>{hidePendingResults ? "—" : session.wrongCount}</dd></div></dl>
       <div className="button-row random-record-actions">
         {!isCompleted ? (
           <GlassLinkButton to={`/image-quiz/random/${session.bankId}/${session.sessionId}`} variant="primary"><RotateCcw aria-hidden="true" size={18} /><span>{T.continueTest}</span></GlassLinkButton>

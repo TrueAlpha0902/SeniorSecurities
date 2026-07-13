@@ -18,6 +18,10 @@ export type PdfMaskRect = {
   height: number;
 };
 
+export type MobileSegmentVerification = `pixel-and-visual-reviewed:v2:${string}`;
+
+const MOBILE_SEGMENT_VERIFICATION_PATTERN = /^pixel-and-visual-reviewed:v2:[a-f0-9]{64}:[a-f0-9]{64}:\d{1,6}:[a-f0-9]{64}$/;
+
 export type ImageQuizQuestion = {
   id: string;
   bankId: string;
@@ -30,6 +34,10 @@ export type ImageQuizQuestion = {
   sourceFile: string;
   questionSegments: PdfCropSegment[];
   explanationSegments: PdfCropSegment[];
+  mobileQuestionSegments?: PdfCropSegment[];
+  mobileExplanationSegments?: PdfCropSegment[];
+  mobileQuestionSegmentsVerification?: MobileSegmentVerification;
+  mobileExplanationSegmentsVerification?: MobileSegmentVerification;
   answerMask: PdfMaskRect | null;
 };
 
@@ -66,9 +74,99 @@ export type ImageQuizQuestionOverride = {
   answer: NumericAnswer;
   questionSegments: PdfCropSegment[];
   explanationSegments: PdfCropSegment[];
+  mobileQuestionSegments?: PdfCropSegment[];
+  mobileExplanationSegments?: PdfCropSegment[];
+  mobileQuestionSegmentsVerification?: MobileSegmentVerification;
+  mobileExplanationSegmentsVerification?: MobileSegmentVerification;
   updatedAt: string;
   updatedBy: string;
 };
+
+export type ImageQuizSegmentKind = "question" | "explanation";
+
+function haveSameSegmentGeometry(left: PdfCropSegment[], right: PdfCropSegment[]): boolean {
+  return left.length === right.length && left.every((segment, index) => {
+    const candidate = right[index];
+    return candidate !== undefined &&
+      segment.page === candidate.page &&
+      segment.src === candidate.src &&
+      segment.x === candidate.x &&
+      segment.y === candidate.y &&
+      segment.width === candidate.width &&
+      segment.height === candidate.height &&
+      segment.pageWidth === candidate.pageWidth &&
+      segment.pageHeight === candidate.pageHeight;
+  });
+}
+
+function mobileSegmentsStayInsideSource(
+  mobileSegments: PdfCropSegment[],
+  sourceSegments: PdfCropSegment[],
+): boolean {
+  let previousOrder: [number, number, number] | undefined;
+  for (const segment of mobileSegments) {
+    const sourceIndex = sourceSegments.findIndex((source) => (
+      source.page === segment.page &&
+      source.src === segment.src &&
+      source.pageWidth === segment.pageWidth &&
+      source.pageHeight === segment.pageHeight &&
+      segment.x >= source.x &&
+      segment.y >= source.y &&
+      segment.x + segment.width <= source.x + source.width &&
+      segment.y + segment.height <= source.y + source.height
+    ));
+    if (sourceIndex < 0) return false;
+    const order: [number, number, number] = [sourceIndex, segment.y, segment.x];
+    if (previousOrder && (
+      order[0] < previousOrder[0] ||
+      (order[0] === previousOrder[0] && order[1] < previousOrder[1]) ||
+      (order[0] === previousOrder[0] && order[1] === previousOrder[1] && order[2] < previousOrder[2])
+    )) return false;
+    previousOrder = order;
+  }
+  return true;
+}
+
+export function hasVerifiedMobileImageQuizSegments(
+  question: ImageQuizQuestion,
+  kind: ImageQuizSegmentKind,
+): boolean {
+  const segments = kind === "question"
+    ? question.mobileQuestionSegments
+    : question.mobileExplanationSegments;
+  const verification = kind === "question"
+    ? question.mobileQuestionSegmentsVerification
+    : question.mobileExplanationSegmentsVerification;
+  const sourceSegments = kind === "question"
+    ? question.questionSegments
+    : question.explanationSegments;
+  return Boolean(
+    segments?.length &&
+    verification &&
+    MOBILE_SEGMENT_VERIFICATION_PATTERN.test(verification) &&
+    mobileSegmentsStayInsideSource(segments, sourceSegments),
+  );
+}
+
+/**
+ * Selects the reviewed mobile crop sequence when available. Missing or empty
+ * alternates always fall back to the original crop so data generation can be
+ * rolled out question-by-question without changing tablet/desktop rendering.
+ */
+export function getImageQuizSegments(
+  question: ImageQuizQuestion,
+  kind: ImageQuizSegmentKind,
+  preferMobile: boolean,
+): PdfCropSegment[] {
+  const original = kind === "question"
+    ? question.questionSegments
+    : question.explanationSegments;
+  if (!preferMobile || !hasVerifiedMobileImageQuizSegments(question, kind)) return original;
+  const mobile = kind === "question"
+    ? question.mobileQuestionSegments
+    : question.mobileExplanationSegments;
+  return mobile?.length ? mobile : original;
+}
 
 type QuestionOverridesResponse = {
   overrides?: ImageQuizQuestionOverride[];
@@ -630,12 +728,24 @@ function applyQuestionOverrides(
         ...chapter,
         questions: chapter.questions.map((question) => {
           const override = overrides.get(question.id);
+          const keepsQuestionCrop = override
+            ? haveSameSegmentGeometry(override.questionSegments, question.questionSegments)
+            : false;
+          const keepsExplanationCrop = override
+            ? haveSameSegmentGeometry(override.explanationSegments, question.explanationSegments)
+            : false;
           return override
             ? {
                 ...question,
                 answer: override.answer,
                 questionSegments: override.questionSegments,
                 explanationSegments: override.explanationSegments,
+                // Remote overrides cannot create reviewed mobile fields. Preserve
+                // the bundled evidence only while the corresponding crop is exact.
+                mobileQuestionSegments: keepsQuestionCrop ? question.mobileQuestionSegments : undefined,
+                mobileExplanationSegments: keepsExplanationCrop ? question.mobileExplanationSegments : undefined,
+                mobileQuestionSegmentsVerification: keepsQuestionCrop ? question.mobileQuestionSegmentsVerification : undefined,
+                mobileExplanationSegmentsVerification: keepsExplanationCrop ? question.mobileExplanationSegmentsVerification : undefined,
               }
             : question;
         }),

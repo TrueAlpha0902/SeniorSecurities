@@ -142,7 +142,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
     setSelectedParts(new Set());
     setSelectedChapterKeys(new Set());
     setSelectedGlobalScopeIds(new Set());
-  }, [bankPracticeScopes, clearChapterOptions, globalClearScopes, open]);
+  }, [open]);
 
   if (!open) {
     return null;

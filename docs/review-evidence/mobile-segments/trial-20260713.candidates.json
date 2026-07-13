@@ -1,0 +1,943 @@
+{
+  "schemaVersion": 4,
+  "mode": "dry-run",
+  "scope": "trial",
+  "reviewStatus": "needs-review",
+  "ocrUsage": "layout-location-only; recognized text is not stored",
+  "reviewedReportHash": null,
+  "reviewEvidenceHash": null,
+  "previewPolicy": "candidate-contact-sheet-sha256",
+  "generator": {
+    "scriptSha256": "30e0e6e56aece97d5551eaadd8c9c20fddfe9708d9532b5ee0806ed5f76eab0e",
+    "python": "3.11.15",
+    "packages": {
+      "numpy": "2.4.6",
+      "onnxruntime": "1.27.0",
+      "Pillow": "12.2.0",
+      "rapidocr-onnxruntime": "1.4.4"
+    }
+  },
+  "settings": {
+    "targetCssWidth": 352,
+    "minTextPx": 18,
+    "minCoverage": 0.965,
+    "maxSegments": 64
+  },
+  "summary": {
+    "questions": 10,
+    "candidateFields": 16,
+    "fallbackFields": 4,
+    "existingFieldsPreserved": 0,
+    "appliedFields": 0
+  },
+  "questions": [
+    {
+      "questionId": "investment-ch01-pdf-0001",
+      "number": 1,
+      "question": {
+        "status": "candidate",
+        "reason": "passed",
+        "coverage": 1.0,
+        "segments": [
+          {
+            "page": 1,
+            "src": "pdf-pages/investment/ch01/page-01.webp",
+            "x": 205,
+            "y": 447,
+            "width": 441,
+            "height": 53,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          },
+          {
+            "page": 1,
+            "src": "pdf-pages/investment/ch01/page-01.webp",
+            "x": 646,
+            "y": 447,
+            "width": 534,
+            "height": 53,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          },
+          {
+            "page": 1,
+            "src": "pdf-pages/investment/ch01/page-01.webp",
+            "x": 239,
+            "y": 495,
+            "width": 394,
+            "height": 50,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          }
+        ],
+        "sourceSignature": "4248511b1d5637118a2ec38f35c83d39b469dc022e4b32746ddad806c07a371b",
+        "segmentsSignature": "4b8713ba8a446f086c5ea696213bc3c087abfe9dc0ef0a27a62ffd179566b4f2",
+        "previewSha256": "d1d240683a16a9ab94c7cf4dc3ce0ecae725cb60e5a6161f80abc19fff6f85c4"
+      },
+      "explanation": {
+        "status": "candidate",
+        "reason": "passed",
+        "coverage": 1.0,
+        "segments": [
+          {
+            "page": 1,
+            "src": "pdf-pages/investment/ch01/page-01.webp",
+            "x": 249,
+            "y": 544,
+            "width": 555,
+            "height": 51,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          },
+          {
+            "page": 1,
+            "src": "pdf-pages/investment/ch01/page-01.webp",
+            "x": 804,
+            "y": 544,
+            "width": 375,
+            "height": 51,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          },
+          {
+            "page": 1,
+            "src": "pdf-pages/investment/ch01/page-01.webp",
+            "x": 234,
+            "y": 594,
+            "width": 402,
+            "height": 47,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          },
+          {
+            "page": 1,
+            "src": "pdf-pages/investment/ch01/page-01.webp",
+            "x": 636,
+            "y": 594,
+            "width": 544,
+            "height": 47,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          },
+          {
+            "page": 1,
+            "src": "pdf-pages/investment/ch01/page-01.webp",
+            "x": 235,
+            "y": 642,
+            "width": 556,
+            "height": 44,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          }
+        ],
+        "sourceSignature": "f062f54f6c8a7652e665e2cc67e5334289943b828472ad7a5c4beedfcb41c2e5",
+        "segmentsSignature": "5728fb2d89575b0ffce35119ddc7ec6c8ea06d6247b72a29c466083664297dcb",
+        "previewSha256": "9fb9a526e7c49dda5e132169b2185748ce3bf33b33dadcf4a0a5b74937b3ad56"
+      }
+    },
+    {
+      "questionId": "investment-ch01-pdf-0002",
+      "number": 2,
+      "question": {
+        "status": "candidate",
+        "reason": "passed",
+        "coverage": 0.99976,
+        "segments": [
+          {
+            "page": 1,
+            "src": "pdf-pages/investment/ch01/page-01.webp",
+            "x": 201,
+            "y": 703,
+            "width": 482,
+            "height": 49,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          },
+          {
+            "page": 1,
+            "src": "pdf-pages/investment/ch01/page-01.webp",
+            "x": 683,
+            "y": 703,
+            "width": 493,
+            "height": 49,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          },
+          {
+            "page": 1,
+            "src": "pdf-pages/investment/ch01/page-01.webp",
+            "x": 242,
+            "y": 749,
+            "width": 490,
+            "height": 49,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          },
+          {
+            "page": 1,
+            "src": "pdf-pages/investment/ch01/page-01.webp",
+            "x": 732,
+            "y": 749,
+            "width": 447,
+            "height": 49,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          },
+          {
+            "page": 1,
+            "src": "pdf-pages/investment/ch01/page-01.webp",
+            "x": 238,
+            "y": 795,
+            "width": 518,
+            "height": 50,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          },
+          {
+            "page": 1,
+            "src": "pdf-pages/investment/ch01/page-01.webp",
+            "x": 756,
+            "y": 795,
+            "width": 424,
+            "height": 50,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          },
+          {
+            "page": 1,
+            "src": "pdf-pages/investment/ch01/page-01.webp",
+            "x": 237,
+            "y": 842,
+            "width": 150,
+            "height": 52,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          }
+        ],
+        "sourceSignature": "748220be25207f3360229497761983e95411d070b1f3a4e9f216aaeb81bb3d97",
+        "segmentsSignature": "83b0c206bb61fff60358666cacee51338bed3cc3ea92279a97cd97ac1208d2e6",
+        "previewSha256": "59a06dcc3caf4cb2f3da0b7e21b859a503b53280ed33bf14940a7e4f42415380"
+      },
+      "explanation": {
+        "status": "candidate",
+        "reason": "passed",
+        "coverage": 1.0,
+        "segments": [
+          {
+            "page": 1,
+            "src": "pdf-pages/investment/ch01/page-01.webp",
+            "x": 249,
+            "y": 895,
+            "width": 421,
+            "height": 47,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          },
+          {
+            "page": 1,
+            "src": "pdf-pages/investment/ch01/page-01.webp",
+            "x": 670,
+            "y": 895,
+            "width": 366,
+            "height": 47,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          }
+        ],
+        "sourceSignature": "9811aaed416f78311bfd27f60ede69d492c71e8b0ea197785cbc4b3cf778b820",
+        "segmentsSignature": "24ab4dcd7b6da443a7fec0926a03b82c766d47e0ff9e88325e93a07a02e21693",
+        "previewSha256": "83cfcb1354d81d5e16aea4062c1cde982126c1bdf61e8a37b3c3b449d1f587eb"
+      }
+    },
+    {
+      "questionId": "investment-ch01-pdf-0003",
+      "number": 3,
+      "question": {
+        "status": "candidate",
+        "reason": "passed",
+        "coverage": 1.0,
+        "segments": [
+          {
+            "page": 1,
+            "src": "pdf-pages/investment/ch01/page-01.webp",
+            "x": 202,
+            "y": 958,
+            "width": 556,
+            "height": 49,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          },
+          {
+            "page": 1,
+            "src": "pdf-pages/investment/ch01/page-01.webp",
+            "x": 758,
+            "y": 958,
+            "width": 421,
+            "height": 49,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          },
+          {
+            "page": 1,
+            "src": "pdf-pages/investment/ch01/page-01.webp",
+            "x": 238,
+            "y": 1001,
+            "width": 468,
+            "height": 52,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          },
+          {
+            "page": 1,
+            "src": "pdf-pages/investment/ch01/page-01.webp",
+            "x": 706,
+            "y": 1001,
+            "width": 473,
+            "height": 52,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          },
+          {
+            "page": 1,
+            "src": "pdf-pages/investment/ch01/page-01.webp",
+            "x": 243,
+            "y": 1047,
+            "width": 481,
+            "height": 54,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          },
+          {
+            "page": 1,
+            "src": "pdf-pages/investment/ch01/page-01.webp",
+            "x": 724,
+            "y": 1047,
+            "width": 455,
+            "height": 54,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          },
+          {
+            "page": 1,
+            "src": "pdf-pages/investment/ch01/page-01.webp",
+            "x": 237,
+            "y": 1095,
+            "width": 267,
+            "height": 53,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          }
+        ],
+        "sourceSignature": "b3b05cfbb66af1d36302ea5460a45d96e2d5cc955053a0941ceb1069db6301c8",
+        "segmentsSignature": "f273d3084f52dcee8429e0407adde76d2e2379ed8ff6a94444dd1d4a8e8ae86f",
+        "previewSha256": "24c39515c5a16cba03d2bbd1af45329c4e28d00d739fcbd4395ef2402ea146b8"
+      },
+      "explanation": {
+        "status": "fallback",
+        "reason": "no-safe-whitespace-cut",
+        "coverage": 0,
+        "segments": [],
+        "sourceSignature": "ce0b6a3a78f0fbfbf95047e6f859adb1662c23b4e3c1b057b1caaa4875f2aeb7"
+      }
+    },
+    {
+      "questionId": "investment-ch01-pdf-0004",
+      "number": 4,
+      "question": {
+        "status": "candidate",
+        "reason": "passed",
+        "coverage": 1.0,
+        "segments": [
+          {
+            "page": 1,
+            "src": "pdf-pages/investment/ch01/page-01.webp",
+            "x": 205,
+            "y": 1397,
+            "width": 470,
+            "height": 55,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          },
+          {
+            "page": 1,
+            "src": "pdf-pages/investment/ch01/page-01.webp",
+            "x": 675,
+            "y": 1397,
+            "width": 508,
+            "height": 55,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          },
+          {
+            "page": 1,
+            "src": "pdf-pages/investment/ch01/page-01.webp",
+            "x": 243,
+            "y": 1444,
+            "width": 422,
+            "height": 53,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          },
+          {
+            "page": 1,
+            "src": "pdf-pages/investment/ch01/page-01.webp",
+            "x": 665,
+            "y": 1444,
+            "width": 492,
+            "height": 53,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          }
+        ],
+        "sourceSignature": "276d28ab30c3e5ca7c3c3c2126ffdb8befcb43429dad3417199cb05128d12da4",
+        "segmentsSignature": "fba3d4b6a3d6f225ac06039cfc04ea5f62fa5c0efae7db1fc3a080859c8943bf",
+        "previewSha256": "b3c94d400b0cfc2d9d979131d6c7254dba2cdc0dc4b5d85be763090344a77d13"
+      },
+      "explanation": {
+        "status": "candidate",
+        "reason": "passed",
+        "coverage": 1.0,
+        "segments": [
+          {
+            "page": 1,
+            "src": "pdf-pages/investment/ch01/page-01.webp",
+            "x": 254,
+            "y": 1496,
+            "width": 393,
+            "height": 53,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          },
+          {
+            "page": 1,
+            "src": "pdf-pages/investment/ch01/page-01.webp",
+            "x": 647,
+            "y": 1496,
+            "width": 536,
+            "height": 53,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          },
+          {
+            "page": 1,
+            "src": "pdf-pages/investment/ch01/page-01.webp",
+            "x": 240,
+            "y": 1542,
+            "width": 345,
+            "height": 54,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          },
+          {
+            "page": 1,
+            "src": "pdf-pages/investment/ch01/page-01.webp",
+            "x": 585,
+            "y": 1542,
+            "width": 598,
+            "height": 54,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          },
+          {
+            "page": 1,
+            "src": "pdf-pages/investment/ch01/page-01.webp",
+            "x": 241,
+            "y": 1591,
+            "width": 493,
+            "height": 47,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          }
+        ],
+        "sourceSignature": "2915c739229a46a4497033e730e4f2f2832fef59f4480204b9b9d48ec5411583",
+        "segmentsSignature": "4d36f1a7e8af9bd86a3bf6bc6e34eb08d393b7209ac6816d108f3aec96052141",
+        "previewSha256": "7b32410be422f042f632b1273e9807a5017359a54f41880b227819710979fcc5"
+      }
+    },
+    {
+      "questionId": "investment-ch01-pdf-0005",
+      "number": 5,
+      "question": {
+        "status": "candidate",
+        "reason": "passed",
+        "coverage": 1.0,
+        "segments": [
+          {
+            "page": 2,
+            "src": "pdf-pages/investment/ch01/page-02.webp",
+            "x": 170,
+            "y": 216,
+            "width": 457,
+            "height": 53,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          },
+          {
+            "page": 2,
+            "src": "pdf-pages/investment/ch01/page-02.webp",
+            "x": 627,
+            "y": 216,
+            "width": 468,
+            "height": 53,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          },
+          {
+            "page": 2,
+            "src": "pdf-pages/investment/ch01/page-02.webp",
+            "x": 203,
+            "y": 260,
+            "width": 411,
+            "height": 54,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          }
+        ],
+        "sourceSignature": "a54896059cb2252ce80595d8c333eed913162c16fcafc836a2425bf5f1ce2d37",
+        "segmentsSignature": "3890543932697526e6fc07b6e4c64849404bd12a33041ee9499c41354323c8b9",
+        "previewSha256": "f7ecfd3e738ecb1bf1b4351c70b75756955d69b3db2547d835484388ab67595e"
+      },
+      "explanation": {
+        "status": "candidate",
+        "reason": "passed",
+        "coverage": 1.0,
+        "segments": [
+          {
+            "page": 2,
+            "src": "pdf-pages/investment/ch01/page-02.webp",
+            "x": 213,
+            "y": 312,
+            "width": 462,
+            "height": 52,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          },
+          {
+            "page": 2,
+            "src": "pdf-pages/investment/ch01/page-02.webp",
+            "x": 675,
+            "y": 312,
+            "width": 418,
+            "height": 52,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          },
+          {
+            "page": 2,
+            "src": "pdf-pages/investment/ch01/page-02.webp",
+            "x": 199,
+            "y": 356,
+            "width": 705,
+            "height": 53,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          }
+        ],
+        "sourceSignature": "63f6788e30154879a8eb490d1501f0e6e727d4589abfcd8c56933eaf3f60a751",
+        "segmentsSignature": "19f434ecb26c98af105f471a3b518a7d1bca2245b656075963be4e698d72af57",
+        "previewSha256": "ed85b67d43877cda32ac419105dcd181503f8788989909ef17a2d2484bb46286"
+      }
+    },
+    {
+      "questionId": "investment-ch01-pdf-0006",
+      "number": 6,
+      "question": {
+        "status": "candidate",
+        "reason": "passed",
+        "coverage": 1.0,
+        "segments": [
+          {
+            "page": 2,
+            "src": "pdf-pages/investment/ch01/page-02.webp",
+            "x": 169,
+            "y": 417,
+            "width": 445,
+            "height": 60,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          },
+          {
+            "page": 2,
+            "src": "pdf-pages/investment/ch01/page-02.webp",
+            "x": 614,
+            "y": 417,
+            "width": 481,
+            "height": 60,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          },
+          {
+            "page": 2,
+            "src": "pdf-pages/investment/ch01/page-02.webp",
+            "x": 203,
+            "y": 467,
+            "width": 451,
+            "height": 51,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          },
+          {
+            "page": 2,
+            "src": "pdf-pages/investment/ch01/page-02.webp",
+            "x": 654,
+            "y": 467,
+            "width": 441,
+            "height": 51,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          },
+          {
+            "page": 2,
+            "src": "pdf-pages/investment/ch01/page-02.webp",
+            "x": 203,
+            "y": 513,
+            "width": 443,
+            "height": 50,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          },
+          {
+            "page": 2,
+            "src": "pdf-pages/investment/ch01/page-02.webp",
+            "x": 646,
+            "y": 513,
+            "width": 448,
+            "height": 50,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          },
+          {
+            "page": 2,
+            "src": "pdf-pages/investment/ch01/page-02.webp",
+            "x": 202,
+            "y": 560,
+            "width": 485,
+            "height": 50,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          },
+          {
+            "page": 2,
+            "src": "pdf-pages/investment/ch01/page-02.webp",
+            "x": 687,
+            "y": 560,
+            "width": 369,
+            "height": 50,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          }
+        ],
+        "sourceSignature": "6c9af9cf1fa8bba07eeb0bf16c757875a248d52497bbbb196e7cbfb9c5ef4692",
+        "segmentsSignature": "71065599518c2d00ccf47cd7d3482bf052281c427ccd737b24b7d47a5c7f3c2d",
+        "previewSha256": "1bae01268f7a186e03621d448dff4ab90a0b9b0e6cf3fe0e8aad629fa8a51cde"
+      },
+      "explanation": {
+        "status": "candidate",
+        "reason": "passed",
+        "coverage": 1.0,
+        "segments": [
+          {
+            "page": 2,
+            "src": "pdf-pages/investment/ch01/page-02.webp",
+            "x": 212,
+            "y": 612,
+            "width": 497,
+            "height": 47,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          },
+          {
+            "page": 2,
+            "src": "pdf-pages/investment/ch01/page-02.webp",
+            "x": 709,
+            "y": 612,
+            "width": 385,
+            "height": 47,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          },
+          {
+            "page": 2,
+            "src": "pdf-pages/investment/ch01/page-02.webp",
+            "x": 198,
+            "y": 658,
+            "width": 415,
+            "height": 48,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          },
+          {
+            "page": 2,
+            "src": "pdf-pages/investment/ch01/page-02.webp",
+            "x": 613,
+            "y": 658,
+            "width": 468,
+            "height": 48,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          }
+        ],
+        "sourceSignature": "f508455765510956e1eb242bf6f31cac257e76b62c5af795d374aad399f24e9d",
+        "segmentsSignature": "5d6a9e55484bf1a70023c6e39e5e91d9e6f9098ed8d886d6199a2088f1cd88fc",
+        "previewSha256": "3a906951a09ab2991af42f43b41c084870683aad5095e5471f67cc2838868cd7"
+      }
+    },
+    {
+      "questionId": "investment-ch01-pdf-0007",
+      "number": 7,
+      "question": {
+        "status": "candidate",
+        "reason": "passed",
+        "coverage": 1.0,
+        "segments": [
+          {
+            "page": 2,
+            "src": "pdf-pages/investment/ch01/page-02.webp",
+            "x": 168,
+            "y": 722,
+            "width": 557,
+            "height": 47,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          },
+          {
+            "page": 2,
+            "src": "pdf-pages/investment/ch01/page-02.webp",
+            "x": 725,
+            "y": 722,
+            "width": 371,
+            "height": 47,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          },
+          {
+            "page": 2,
+            "src": "pdf-pages/investment/ch01/page-02.webp",
+            "x": 203,
+            "y": 768,
+            "width": 448,
+            "height": 47,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          },
+          {
+            "page": 2,
+            "src": "pdf-pages/investment/ch01/page-02.webp",
+            "x": 651,
+            "y": 768,
+            "width": 446,
+            "height": 47,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          },
+          {
+            "page": 2,
+            "src": "pdf-pages/investment/ch01/page-02.webp",
+            "x": 202,
+            "y": 814,
+            "width": 465,
+            "height": 47,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          },
+          {
+            "page": 2,
+            "src": "pdf-pages/investment/ch01/page-02.webp",
+            "x": 667,
+            "y": 814,
+            "width": 429,
+            "height": 47,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          },
+          {
+            "page": 2,
+            "src": "pdf-pages/investment/ch01/page-02.webp",
+            "x": 203,
+            "y": 861,
+            "width": 469,
+            "height": 44,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          }
+        ],
+        "sourceSignature": "2bd02ea1ab910bcd46762e052ea6cbe3cbf3553c35561211d51b623b4d1531a4",
+        "segmentsSignature": "1f2ead15d9800d04605de1d7d415464b734697beb196eb5414bfa56813a50ae1",
+        "previewSha256": "f4abcf5e47acafece80f037c3ba20b493319d43334365657dc50c862b4384f30"
+      },
+      "explanation": {
+        "status": "fallback",
+        "reason": "no-safe-whitespace-cut",
+        "coverage": 0,
+        "segments": [],
+        "sourceSignature": "9c92c4810da35706b61f94bb7e35f89e81aaf669e8721fdcf35035f2c752ecfe"
+      }
+    },
+    {
+      "questionId": "investment-ch01-pdf-0008",
+      "number": 8,
+      "question": {
+        "status": "fallback",
+        "reason": "table-or-grid-detected",
+        "coverage": 0,
+        "segments": [],
+        "sourceSignature": "26c238e166f8bb42e377ed203480b0630493e16f2e4f3bf7651d4718e52564b3"
+      },
+      "explanation": {
+        "status": "fallback",
+        "reason": "insufficient-ink-coverage",
+        "coverage": 0.19111,
+        "segments": [],
+        "sourceSignature": "d0ae3626ec30c0420587b3e3d634689aca8291956cd6d5fb6338374164a19ab1"
+      }
+    },
+    {
+      "questionId": "investment-ch01-pdf-0009",
+      "number": 9,
+      "question": {
+        "status": "candidate",
+        "reason": "passed",
+        "coverage": 1.0,
+        "segments": [
+          {
+            "page": 3,
+            "src": "pdf-pages/investment/ch01/page-03.webp",
+            "x": 222,
+            "y": 225,
+            "width": 465,
+            "height": 52,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          },
+          {
+            "page": 3,
+            "src": "pdf-pages/investment/ch01/page-03.webp",
+            "x": 687,
+            "y": 225,
+            "width": 497,
+            "height": 52,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          },
+          {
+            "page": 3,
+            "src": "pdf-pages/investment/ch01/page-03.webp",
+            "x": 258,
+            "y": 270,
+            "width": 453,
+            "height": 53,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          },
+          {
+            "page": 3,
+            "src": "pdf-pages/investment/ch01/page-03.webp",
+            "x": 711,
+            "y": 270,
+            "width": 474,
+            "height": 53,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          },
+          {
+            "page": 3,
+            "src": "pdf-pages/investment/ch01/page-03.webp",
+            "x": 257,
+            "y": 314,
+            "width": 340,
+            "height": 57,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          }
+        ],
+        "sourceSignature": "0d1318ffd5863421b62aeb900a4b60b856053c2b2c7b7264239e1bebaddb53d9",
+        "segmentsSignature": "660ab54d132819e7f71b12249244d530a54137cadf1c6eb1bf68197133bc9d33",
+        "previewSha256": "d17746501c02a958768f3d6346097cb4ebaae0f212967e8190cc482f84129f69"
+      },
+      "explanation": {
+        "status": "candidate",
+        "reason": "passed",
+        "coverage": 1.0,
+        "segments": [
+          {
+            "page": 3,
+            "src": "pdf-pages/investment/ch01/page-03.webp",
+            "x": 269,
+            "y": 368,
+            "width": 535,
+            "height": 49,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          }
+        ],
+        "sourceSignature": "e380c8d6dc19c10d175c7c5687ea6fa11c50828318817a8ae31583caffbaa3cb",
+        "segmentsSignature": "fb412eebeb8e74e1b8cd2010bbba48375af43bdd42fdbd07beed174924296189",
+        "previewSha256": "09c5ed16b3483f4401ac4eeb5b312f42c37183fe39a1ff4957bf185e344b6a08"
+      }
+    },
+    {
+      "questionId": "investment-ch01-pdf-0010",
+      "number": 10,
+      "question": {
+        "status": "candidate",
+        "reason": "passed",
+        "coverage": 1.0,
+        "segments": [
+          {
+            "page": 3,
+            "src": "pdf-pages/investment/ch01/page-03.webp",
+            "x": 214,
+            "y": 427,
+            "width": 489,
+            "height": 62,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          },
+          {
+            "page": 3,
+            "src": "pdf-pages/investment/ch01/page-03.webp",
+            "x": 703,
+            "y": 427,
+            "width": 478,
+            "height": 62,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          },
+          {
+            "page": 3,
+            "src": "pdf-pages/investment/ch01/page-03.webp",
+            "x": 258,
+            "y": 477,
+            "width": 335,
+            "height": 53,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          }
+        ],
+        "sourceSignature": "aeabea90380b0ead20a78372db59e757f9bedb4d8de90ab336e3c42dfc0f8450",
+        "segmentsSignature": "56b8eb968c3a786ec1364ef317d34c802b57ede391bae88becd7d3a1c03feb46",
+        "previewSha256": "a38f372b3388d97fed57c5688c7084832c344d568f3acb54c78a550504a1192d"
+      },
+      "explanation": {
+        "status": "candidate",
+        "reason": "passed",
+        "coverage": 1.0,
+        "segments": [
+          {
+            "page": 3,
+            "src": "pdf-pages/investment/ch01/page-03.webp",
+            "x": 269,
+            "y": 527,
+            "width": 654,
+            "height": 48,
+            "pageWidth": 1239,
+            "pageHeight": 1752
+          }
+        ],
+        "sourceSignature": "9229379a3f5171a88ced466be162d200318ad8580d6f85c0badeae16d6865198",
+        "segmentsSignature": "51268edbe8b33ef7652c46d44b4cf46148cae3867d6261be028a8adb3ec695ed",
+        "previewSha256": "45b05eb21a6359c462f5bf996197e622e23ae7e4a306fc887b8aaf01301c16c5"
+      }
+    }
+  ]
+}
