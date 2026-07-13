@@ -241,13 +241,16 @@ async function main(): Promise<void> {
     randomPractice.includes("getMockExamDeferredFeedbackEnabled") &&
       randomPractice.includes("setMockExamDeferredFeedbackEnabled") &&
       randomPractice.includes("resolveMockExamFeedbackMode("),
-    "Mock-exam grading mode must persist and positive-answer mode must force immediate feedback.",
+    "Mock-exam grading mode must persist and be stored on each session.",
   );
   assert(
-    mockExam.includes('feedbackMode === "deferred" && !answerModeEnabled && !isSubmitted') &&
+    mockExam.includes('feedbackMode !== "immediate"') &&
+      mockExam.includes("getMockExamAnswerCardStatus") &&
       imageQuizPage.includes("shouldDeferMockExamFeedback(") &&
-      imageQuizPage.includes("canChooseImageQuizAnswer({"),
-    "Mock exams must reveal immediate feedback, defer results when requested, and allow revisions before submission.",
+      imageQuizPage.includes("canChooseImageQuizAnswer({") &&
+      imageQuizPage.includes("submitted-exam-answer-card") &&
+      imageQuizPage.includes("reviewingSubmittedExam"),
+    "Mock exams must fail closed before submission, allow revisions, and expose a post-submit review answer card.",
   );
   assert(
     db.includes("learningEventId") &&

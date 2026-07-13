@@ -18,6 +18,7 @@ import type { ImageQuizQuestion, NumericAnswer } from "../src/lib/imageQuiz";
 import { initializeLearningStore } from "../src/lib/learningStateStore";
 import {
   canChooseImageQuizAnswer,
+  getMockExamAnswerCardStatus,
   isMockExamLearningRecorded,
   isMockExamSessionSubmitted,
   resolveMockExamFeedbackMode,
@@ -29,7 +30,11 @@ import { createUuid, isUuid } from "../src/lib/uuid";
 
 assert.equal(resolveMockExamFeedbackMode(false, true), "deferred");
 assert.equal(resolveMockExamFeedbackMode(false, false), "immediate");
-assert.equal(resolveMockExamFeedbackMode(true, true), "immediate");
+assert.equal(
+  resolveMockExamFeedbackMode(true, true),
+  "deferred",
+  "The explicit deferred-grading switch must win over stale answer-mode state.",
+);
 
 assert.equal(
   isMockExamSessionSubmitted({ answeredCount: 80, totalQuestions: 80 }),
@@ -42,10 +47,18 @@ assert.equal(
 );
 
 assert.equal(shouldDeferMockExamFeedback("deferred", false, false), true);
-assert.equal(shouldDeferMockExamFeedback("deferred", true, false), false);
+assert.equal(
+  shouldDeferMockExamFeedback("deferred", true, false),
+  true,
+  "A deferred session must never leak answers because a global setting changed.",
+);
 assert.equal(shouldDeferMockExamFeedback("deferred", false, true), false);
 assert.equal(shouldDeferMockExamFeedback("immediate", false, false), false);
-assert.equal(shouldDeferMockExamFeedback(undefined, false, false), false);
+assert.equal(
+  shouldDeferMockExamFeedback(undefined, false, false),
+  true,
+  "Legacy sessions without feedbackMode must fail closed until submission.",
+);
 
 assert.equal(
   canChooseImageQuizAnswer({
@@ -88,6 +101,11 @@ assert.equal(
 assert.equal(shouldHidePendingMockExamResults("deferred", false), true);
 assert.equal(shouldHidePendingMockExamResults("deferred", true), false);
 assert.equal(shouldHidePendingMockExamResults("immediate", false), false);
+assert.equal(shouldHidePendingMockExamResults(undefined, false), true);
+
+assert.equal(getMockExamAnswerCardStatus(undefined), "unanswered");
+assert.equal(getMockExamAnswerCardStatus({ isCorrect: true }), "correct");
+assert.equal(getMockExamAnswerCardStatus({ isCorrect: false }), "wrong");
 
 assert.equal(
   shouldPromptMockExamExit({

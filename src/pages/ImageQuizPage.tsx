@@ -68,6 +68,7 @@ import {
 import { type AnswerConfidence } from "../lib/learningEngine";
 import {
   canChooseImageQuizAnswer,
+  getMockExamAnswerCardStatus,
   isMockExamLearningRecorded,
   isMockExamSessionSubmitted,
   shouldDeferMockExamFeedback,
@@ -141,6 +142,13 @@ const T = {
   questionErrorMessage:
     "\u76ee\u524d\u984c\u865f\u8d85\u51fa\u984c\u5eab\u7bc4\u570d\uff0c\u8acb\u56de\u9996\u9801\u91cd\u65b0\u9078\u64c7\u984c\u5eab\u3002",
   finished: "\u7df4\u7fd2\u5b8c\u6210",
+  resultAnswerCard: "\u4ea4\u5377\u7b54\u6848\u5361",
+  resultAnswerCardHint:
+    "\u7d05\u8272\u662f\u7b54\u932f\u984c\uff0c\u9ede\u64ca\u984c\u865f\u53ef\u56de\u5230\u984c\u76ee\u67e5\u770b\u4f5c\u7b54\u3001\u6b63\u89e3\u8207\u89e3\u6790\u3002",
+  submittedReviewNotice:
+    "\u4ea4\u5377\u5f8c\u8907\u67e5\uff1a\u7b54\u6848\u5df2\u9396\u5b9a\uff0c\u76ee\u524d\u53ea\u986f\u793a\u4f60\u7684\u4f5c\u7b54\u3001\u6b63\u89e3\u8207\u89e3\u6790\u3002",
+  backToResultCard: "\u8fd4\u56de\u4ea4\u5377\u7b54\u6848\u5361",
+  unanswered: "\u672a\u4f5c\u7b54",
   total: "\u7e3d\u984c\u6578",
   correctCount: "\u672c\u6b21\u7b54\u5c0d",
   wrongCount: "\u672c\u6b21\u7b54\u932f",
@@ -493,6 +501,7 @@ export function ImageQuizPage() {
     new Set(),
   );
   const [answerCardOpen, setAnswerCardOpen] = useState(false);
+  const [reviewingSubmittedExam, setReviewingSubmittedExam] = useState(false);
   const [autoNextCorrectEnabled, setAutoNextCorrectEnabled] = useState(() =>
     getAutoNextCorrectEnabled(),
   );
@@ -511,6 +520,7 @@ export function ImageQuizPage() {
     setRetryQueue([]);
     setMarkedQuestionIds(new Set());
     setAnswerCardOpen(false);
+    setReviewingSubmittedExam(false);
     answerWritePendingRef.current = null;
     setAnswerWritePendingQuestionId(null);
     submissionPendingRef.current = false;
@@ -588,6 +598,7 @@ export function ImageQuizPage() {
       setProgressRestored(false);
       setAnswers({});
       setFinished(false);
+      setReviewingSubmittedExam(false);
 
       if (!questions.length) {
         setCurrentIndex(0);
@@ -685,6 +696,7 @@ export function ImageQuizPage() {
   ).length;
   const resultTotal = answeredRecords.length;
   const wrongCount = resultTotal - correctCount;
+  const unansweredCount = Math.max(0, questions.length - resultTotal);
   const accuracy = resultTotal
     ? calculateAccuracy(correctCount, resultTotal)
     : 0;
@@ -821,6 +833,9 @@ export function ImageQuizPage() {
     );
   }
 
+  const isSubmittedReview =
+    mode === "random" && finished && reviewingSubmittedExam;
+
   const interactionPending =
     answerWritePendingQuestionId !== null || submissionPending;
 
@@ -850,11 +865,13 @@ export function ImageQuizPage() {
       isSubmittedMockExam || finished,
     );
   const examAnsweredCount = Object.keys(answers).length;
-  const examUnansweredCount = Math.max(0, questions.length - examAnsweredCount);
+  const examUnansweredCount = unansweredCount;
   const currentIsMarked = markedQuestionIds.has(currentQuestion.id);
   const answerModeAllowed =
     answerModeEnabled &&
     !isDeferredExam &&
+    !isSubmittedMockExam &&
+    !finished &&
     mode !== "wrong" &&
     mode !== "todayWrong" &&
     mode !== "sessionWrong";
@@ -1153,6 +1170,24 @@ export function ImageQuizPage() {
     if (window.innerWidth < 760) setAnswerCardOpen(false);
   }
 
+  function openSubmittedReview(index: number): void {
+    setCurrentIndex(index);
+    setJumpError("");
+    setReviewingSubmittedExam(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function returnToSubmittedResult(): void {
+    setReviewingSubmittedExam(false);
+    setJumpError("");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function goNextSubmittedReview(): void {
+    setJumpError("");
+    setCurrentIndex((index) => Math.min(questions.length - 1, index + 1));
+  }
+
   async function toggleFavorite(): Promise<void> {
     const question = questions[currentIndex];
     if (!question) {
@@ -1184,10 +1219,11 @@ export function ImageQuizPage() {
     setAnswers({});
     setCurrentIndex(0);
     setFinished(false);
+    setReviewingSubmittedExam(false);
     await clearQuizProgress(progressKey);
   }
 
-  if (finished) {
+  if (finished && !isSubmittedReview) {
     return (
       <GlassCard className="image-quiz-card">
         <div className="quiz-result-hero">
@@ -1199,8 +1235,57 @@ export function ImageQuizPage() {
           <StatCard label={T.total} value={questions.length.toString()} />
           <StatCard label={T.correctCount} value={correctCount.toString()} />
           <StatCard label={T.wrongCount} value={wrongCount.toString()} />
+          {mode === "random" ? (
+            <StatCard label={T.unanswered} value={unansweredCount.toString()} />
+          ) : null}
           <StatCard label={T.accuracy} value={`${accuracy}%`} />
         </div>
+        {mode === "random" ? (
+          <section
+            className="exam-answer-card submitted-exam-answer-card"
+            aria-labelledby="submitted-exam-answer-card-title"
+          >
+            <div className="exam-answer-card-head">
+              <div>
+                <strong id="submitted-exam-answer-card-title">
+                  {T.resultAnswerCard}
+                </strong>
+                <span>{T.resultAnswerCardHint}</span>
+              </div>
+            </div>
+            <div className="exam-answer-card-legend submitted-exam-answer-card-legend">
+              <span className="is-correct">{T.correctCount}</span>
+              <span className="is-wrong">{T.wrongCount}</span>
+              <span className="is-unanswered">{T.unanswered}</span>
+            </div>
+            <div className="exam-answer-card-grid submitted-exam-answer-card-grid">
+              {questions.map((question, index) => {
+                const answer = answers[question.id];
+                const status = getMockExamAnswerCardStatus(answer);
+                const statusLabel =
+                  status === "correct"
+                    ? T.correctCount
+                    : status === "wrong"
+                      ? T.wrongCount
+                      : T.unanswered;
+                return (
+                  <button
+                    type="button"
+                    key={question.id}
+                    className={`is-${status}${markedQuestionIds.has(question.id) ? " is-marked" : ""}`}
+                    aria-label={`第 ${index + 1} 題，${statusLabel}，點擊複查`}
+                    onClick={() => openSubmittedReview(index)}
+                  >
+                    {index + 1}
+                    {markedQuestionIds.has(question.id) ? (
+                      <Flag size={10} fill="currentColor" aria-hidden="true" />
+                    ) : null}
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        ) : null}
         <div className="result-actions">
           <GlassButton variant="primary" onClick={() => void restartQuiz()}>
             <RotateCcw aria-hidden="true" size={18} />
@@ -1230,29 +1315,31 @@ export function ImageQuizPage() {
                 {displayedQuestionNumber}
                 {" \u984c"}
               </h1>
-              <span
-                className="glass-badge quiz-timer-badge"
-                aria-label={`練習時間 ${formatElapsedTime(elapsedSeconds)}`}
-              >
-                <Clock3 aria-hidden="true" size={15} />
-                {formatElapsedTime(elapsedSeconds)}
-                {!isDeferredExam ? (
-                  <button
-                    type="button"
-                    className="timer-pause-button"
-                    aria-label={timerPaused ? T.resumeTimer : T.pauseTimer}
-                    title={timerPaused ? T.resumeTimer : T.pauseTimer}
-                    onClick={() => setTimerPaused((paused) => !paused)}
-                  >
-                    {timerPaused ? (
-                      <Play aria-hidden="true" size={13} />
-                    ) : (
-                      <Pause aria-hidden="true" size={13} />
-                    )}
-                    <span>{timerPaused ? T.resumeTimer : T.pauseTimer}</span>
-                  </button>
-                ) : null}
-              </span>
+              {!isSubmittedReview ? (
+                <span
+                  className="glass-badge quiz-timer-badge"
+                  aria-label={`練習時間 ${formatElapsedTime(elapsedSeconds)}`}
+                >
+                  <Clock3 aria-hidden="true" size={15} />
+                  {formatElapsedTime(elapsedSeconds)}
+                  {!isDeferredExam ? (
+                    <button
+                      type="button"
+                      className="timer-pause-button"
+                      aria-label={timerPaused ? T.resumeTimer : T.pauseTimer}
+                      title={timerPaused ? T.resumeTimer : T.pauseTimer}
+                      onClick={() => setTimerPaused((paused) => !paused)}
+                    >
+                      {timerPaused ? (
+                        <Play aria-hidden="true" size={13} />
+                      ) : (
+                        <Pause aria-hidden="true" size={13} />
+                      )}
+                      <span>{timerPaused ? T.resumeTimer : T.pauseTimer}</span>
+                    </button>
+                  ) : null}
+                </span>
+              ) : null}
               {mode === "daily" ? (
                 <span className="glass-badge daily-count-badge">
                   今日剩餘 {dailyRemainingCount ?? 0} 題 / 答對 {correctCount}{" "}
@@ -1267,7 +1354,17 @@ export function ImageQuizPage() {
             </div>
           </div>
           <div className="quiz-header-actions">
-            {isDeferredExam ? (
+            {isSubmittedReview ? (
+              <button
+                type="button"
+                className="quiz-exam-action is-active"
+                aria-label={T.backToResultCard}
+                onClick={returnToSubmittedResult}
+              >
+                <ListChecks aria-hidden="true" size={19} />
+                <span>{T.backToResultCard}</span>
+              </button>
+            ) : isDeferredExam ? (
               <>
                 <button
                   type="button"
@@ -1327,7 +1424,11 @@ export function ImageQuizPage() {
           </div>
         ) : null}
 
-        {!isDeferredExam ? (
+        {isSubmittedReview ? (
+          <p className="deferred-exam-notice submitted-exam-review-notice">
+            {T.submittedReviewNotice}
+          </p>
+        ) : !isDeferredExam ? (
           <EncouragementNote
             isCorrect={encouragementIsCorrect}
             seed={`${currentQuestion.id}:${encouragementCorrectStreak}:top`}
@@ -1416,6 +1517,7 @@ export function ImageQuizPage() {
                 answer,
                 currentAnswer,
                 revealCurrentAnswer,
+                isSubmittedReview ? currentQuestion.answer : undefined,
               )}
               disabled={
                 !canChooseCurrentAnswer ||
@@ -1431,12 +1533,13 @@ export function ImageQuizPage() {
               onClick={() => void handleAnswer(answer)}
             >
               <span className="answer-key">({answer})</span>
-              {currentAnswer ? (
+              {currentAnswer || isSubmittedReview ? (
                 <span className="answer-status-label">
                   {answerStatusLabel(
                     answer,
                     currentAnswer,
                     revealCurrentAnswer,
+                    isSubmittedReview ? currentQuestion.answer : undefined,
                   )}
                 </span>
               ) : null}
@@ -1444,16 +1547,18 @@ export function ImageQuizPage() {
           ))}
         </div>
 
-        {currentAnswer && revealCurrentAnswer ? (
+        {(currentAnswer || isSubmittedReview) && revealCurrentAnswer ? (
           <div className="image-answer-panel">
             <div className="result-line">
               <span className="glass-badge">
-                {T.yourAnswer} ({currentAnswer.selected})
+                {T.yourAnswer}{" "}
+                {currentAnswer ? `(${currentAnswer.selected})` : T.unanswered}
               </span>
               <span className="glass-badge">
-                {T.correctAnswer} ({currentAnswer.correct})
+                {T.correctAnswer} ({currentAnswer?.correct ?? currentQuestion.answer})
               </span>
-              {!currentAnswer.isCorrect &&
+              {currentAnswer &&
+              !currentAnswer.isCorrect &&
               retryQueue.includes(currentQuestion.id) ? (
                 <span className="glass-badge retry-queued-badge">
                   已加入本次重試
@@ -1479,55 +1584,83 @@ export function ImageQuizPage() {
           {jumpError}
         </p>
       ) : null}
-      <nav className="image-quiz-controls" aria-label={T.navigation}>
-        <GlassButton
-          variant="secondary"
-          onClick={goPrevious}
-          disabled={currentIndex === 0 || interactionPending}
+      {isSubmittedReview ? (
+        <nav
+          className="image-quiz-controls submitted-review-controls"
+          aria-label={T.navigation}
         >
-          <ArrowLeft aria-hidden="true" size={18} />
-          <span className="quiz-control-label">{T.previous}</span>
-        </GlassButton>
-        <form
-          className="question-jump-form inline-jump-form"
-          onSubmit={handleJump}
-        >
-          <label htmlFor="question-jump-input">{T.jumpLabel}</label>
-          <input
-            id="question-jump-input"
-            type="number"
-            inputMode="numeric"
-            min={1}
-            max={questions.length}
-            value={jumpInput}
-            placeholder={T.jumpPlaceholder}
-            disabled={interactionPending}
-            onChange={(event) => setJumpInput(event.currentTarget.value)}
-          />
           <GlassButton
             variant="secondary"
-            type="submit"
-            disabled={!jumpInput.trim() || interactionPending}
+            onClick={goPrevious}
+            disabled={currentIndex === 0}
           >
-            {T.jumpAction}
+            <ArrowLeft aria-hidden="true" size={18} />
+            <span className="quiz-control-label">{T.previous}</span>
           </GlassButton>
-        </form>
-        <GlassButton
-          variant="primary"
-          disabled={interactionPending}
-          aria-busy={submissionPending ? "true" : undefined}
-          onClick={() => void goNext()}
-        >
-          <span className="quiz-control-label">
-            {currentIndex >= questions.length - 1
-              ? isDeferredExam
-                ? "交卷"
-                : T.finish
-              : T.next}
-          </span>
-          <ArrowRight aria-hidden="true" size={18} />
-        </GlassButton>
-      </nav>
+          <GlassButton variant="secondary" onClick={returnToSubmittedResult}>
+            <ListChecks aria-hidden="true" size={18} />
+            <span>{T.backToResultCard}</span>
+          </GlassButton>
+          <GlassButton
+            variant="primary"
+            onClick={goNextSubmittedReview}
+            disabled={currentIndex >= questions.length - 1}
+          >
+            <span className="quiz-control-label">{T.next}</span>
+            <ArrowRight aria-hidden="true" size={18} />
+          </GlassButton>
+        </nav>
+      ) : (
+        <nav className="image-quiz-controls" aria-label={T.navigation}>
+          <GlassButton
+            variant="secondary"
+            onClick={goPrevious}
+            disabled={currentIndex === 0 || interactionPending}
+          >
+            <ArrowLeft aria-hidden="true" size={18} />
+            <span className="quiz-control-label">{T.previous}</span>
+          </GlassButton>
+          <form
+            className="question-jump-form inline-jump-form"
+            onSubmit={handleJump}
+          >
+            <label htmlFor="question-jump-input">{T.jumpLabel}</label>
+            <input
+              id="question-jump-input"
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={questions.length}
+              value={jumpInput}
+              placeholder={T.jumpPlaceholder}
+              disabled={interactionPending}
+              onChange={(event) => setJumpInput(event.currentTarget.value)}
+            />
+            <GlassButton
+              variant="secondary"
+              type="submit"
+              disabled={!jumpInput.trim() || interactionPending}
+            >
+              {T.jumpAction}
+            </GlassButton>
+          </form>
+          <GlassButton
+            variant="primary"
+            disabled={interactionPending}
+            aria-busy={submissionPending ? "true" : undefined}
+            onClick={() => void goNext()}
+          >
+            <span className="quiz-control-label">
+              {currentIndex >= questions.length - 1
+                ? isDeferredExam
+                  ? "交卷"
+                  : T.finish
+                : T.next}
+            </span>
+            <ArrowRight aria-hidden="true" size={18} />
+          </GlassButton>
+        </nav>
+      )}
     </div>
   );
 }
@@ -1704,22 +1837,29 @@ function answerButtonClass(
   answer: NumericAnswer,
   record: AnswerRecord | undefined,
   revealAnswer = true,
+  revealedCorrectAnswer?: NumericAnswer,
 ): string {
   const classes = ["glass-answer-button"];
-  if (!record) {
+  const correctAnswer = record?.correct ?? revealedCorrectAnswer;
+  if (!record && !correctAnswer) {
     return classes.join(" ");
   }
 
-  if (answer === record.selected) {
+  if (record && answer === record.selected) {
     classes.push("glass-answer-selected");
   }
-  if (revealAnswer && answer === record.correct) {
+  if (revealAnswer && answer === correctAnswer) {
     classes.push("glass-answer-correct");
   }
-  if (revealAnswer && answer === record.selected && !record.isCorrect) {
+  if (
+    revealAnswer &&
+    record &&
+    answer === record.selected &&
+    !record.isCorrect
+  ) {
     classes.push("glass-answer-wrong");
   }
-  if (!revealAnswer && answer === record.selected) {
+  if (!revealAnswer && record && answer === record.selected) {
     classes.push("glass-answer-deferred");
   }
 
@@ -1728,17 +1868,23 @@ function answerButtonClass(
 
 function answerStatusLabel(
   answer: NumericAnswer,
-  record: AnswerRecord,
+  record: AnswerRecord | undefined,
   revealAnswer = true,
+  revealedCorrectAnswer?: NumericAnswer,
 ): string {
-  if (!revealAnswer) return answer === record.selected ? "已選擇" : "";
-  if (answer === record.selected && answer === record.correct) {
+  const correctAnswer = record?.correct ?? revealedCorrectAnswer;
+  if (!revealAnswer) return answer === record?.selected ? "已選擇" : "";
+  if (
+    record &&
+    answer === record.selected &&
+    answer === correctAnswer
+  ) {
     return T.selectedCorrect;
   }
-  if (answer === record.correct) {
+  if (answer === correctAnswer) {
     return T.correct;
   }
-  if (answer === record.selected) {
+  if (answer === record?.selected) {
     return T.selected;
   }
   return "";

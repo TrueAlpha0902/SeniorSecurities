@@ -187,8 +187,21 @@ test("mock exam resumes, permits revisions, and honors both feedback modes", asy
     .click();
   await expect(page.getByRole("heading", { name: "練習完成" })).toBeVisible();
   await expect(page.locator(".glass-answer-button")).toHaveCount(0);
+  const submittedAnswerCard = page.locator(".submitted-exam-answer-card");
+  await expect(submittedAnswerCard).toBeVisible();
+  const submittedQuestion = submittedAnswerCard
+    .locator(".submitted-exam-answer-card-grid button")
+    .first();
+  await expect(submittedQuestion).toHaveClass(/is-(correct|wrong)/);
+  await submittedQuestion.click();
+  await expect(page.locator(".image-answer-panel")).toBeVisible();
+  await expect(page.locator(".glass-answer-button")).toHaveCount(4);
+  await expect(page.locator(".glass-answer-button").first()).toBeDisabled();
+  await page.getByRole("button", { name: "返回交卷答案卡" }).first().click();
+  await expect(submittedAnswerCard).toBeVisible();
 
   await page.reload();
   await expect(page.getByRole("heading", { name: "練習完成" })).toBeVisible();
   await expect(page.locator(".glass-answer-button")).toHaveCount(0);
+  await expect(page.locator(".submitted-exam-answer-card")).toBeVisible();
 });

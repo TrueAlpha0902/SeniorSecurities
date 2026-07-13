@@ -1,4 +1,5 @@
 export type MockExamFeedbackMode = "immediate" | "deferred";
+export type MockExamAnswerCardStatus = "correct" | "wrong" | "unanswered";
 
 type MockExamSessionState = {
   finishedAt?: string | null;
@@ -21,10 +22,10 @@ type MockExamExitState = {
 };
 
 export function resolveMockExamFeedbackMode(
-  answerModeEnabled: boolean,
+  _answerModeEnabled: boolean,
   deferredFeedbackEnabled: boolean,
 ): MockExamFeedbackMode {
-  return answerModeEnabled || !deferredFeedbackEnabled ? "immediate" : "deferred";
+  return deferredFeedbackEnabled ? "deferred" : "immediate";
 }
 
 export function isMockExamSessionSubmitted(
@@ -35,10 +36,12 @@ export function isMockExamSessionSubmitted(
 
 export function shouldDeferMockExamFeedback(
   feedbackMode: MockExamFeedbackMode | undefined,
-  answerModeEnabled: boolean,
+  _answerModeEnabled: boolean,
   isSubmitted: boolean,
 ): boolean {
-  return feedbackMode === "deferred" && !answerModeEnabled && !isSubmitted;
+  // Fail closed: legacy or partially synchronized sessions without a mode must
+  // not reveal answers before an explicit submission.
+  return !isSubmitted && feedbackMode !== "immediate";
 }
 
 export function canChooseImageQuizAnswer({
@@ -55,7 +58,14 @@ export function shouldHidePendingMockExamResults(
   feedbackMode: MockExamFeedbackMode | undefined,
   isSubmitted: boolean,
 ): boolean {
-  return feedbackMode === "deferred" && !isSubmitted;
+  return !isSubmitted && feedbackMode !== "immediate";
+}
+
+export function getMockExamAnswerCardStatus(
+  answer: { isCorrect: boolean } | undefined,
+): MockExamAnswerCardStatus {
+  if (!answer) return "unanswered";
+  return answer.isCorrect ? "correct" : "wrong";
 }
 
 export function shouldPromptMockExamExit({

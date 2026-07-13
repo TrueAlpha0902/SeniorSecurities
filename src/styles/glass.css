@@ -4260,3 +4260,13 @@ p {
   }
   .image-quiz-layout .jump-error-fixed { bottom: calc(72px + env(safe-area-inset-bottom)); }
 }
+/* v79.18 submitted mock-exam answer card and read-only review */
+.submitted-exam-answer-card{margin-top:22px;border-color:rgba(24,80,97,.16);background:linear-gradient(145deg,rgba(252,254,255,.99),rgba(239,247,249,.94))}
+.submitted-exam-answer-card .exam-answer-card-head{margin-bottom:14px}.submitted-exam-answer-card .exam-answer-card-head span{max-width:760px;line-height:1.55}
+.submitted-exam-answer-card-legend .is-correct::before{border-color:#1f8a63;background:#1f8a63}.submitted-exam-answer-card-legend .is-wrong::before{border-color:#c94a55;background:#c94a55}.submitted-exam-answer-card-legend .is-unanswered::before{border-color:#aab3bf;background:#eef1f4}
+.submitted-exam-answer-card-grid{grid-template-columns:repeat(12,minmax(34px,1fr))}.submitted-exam-answer-card-grid button{min-height:38px;transition:transform .14s ease,box-shadow .14s ease,border-color .14s ease}.submitted-exam-answer-card-grid button:hover{transform:translateY(-1px);box-shadow:0 7px 16px rgba(24,54,70,.12)}
+.submitted-exam-answer-card-grid button.is-correct{border-color:#1f8a63;color:#fff;background:#1f8a63}.submitted-exam-answer-card-grid button.is-wrong{border-color:#c94a55;color:#fff;background:#c94a55}.submitted-exam-answer-card-grid button.is-unanswered{border-color:#b6bec8;color:#5d6876;background:#eef1f4}
+.submitted-exam-answer-card-grid button.is-marked svg{color:#ffd36b;filter:drop-shadow(0 1px 1px rgba(36,43,52,.28))}.submitted-exam-review-notice{border-color:rgba(27,117,143,.2);color:#275468;background:#edf8fa}
+.submitted-review-controls{grid-template-columns:minmax(0,1fr) minmax(190px,auto) minmax(0,1fr)}.submitted-review-controls>.glass-button:nth-child(2){justify-self:center}
+@media(max-width:900px){.submitted-exam-answer-card-grid{grid-template-columns:repeat(10,minmax(32px,1fr))}}
+@media(max-width:620px){.submitted-exam-answer-card-grid{grid-template-columns:repeat(6,minmax(34px,1fr))}.submitted-review-controls{grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)}.submitted-review-controls>.glass-button:nth-child(2) span{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}}
