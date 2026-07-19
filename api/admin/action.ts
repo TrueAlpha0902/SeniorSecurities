@@ -12,6 +12,18 @@ const DEFAULT_PASSWORD_RESET_URL = "https://senior-securities.vercel.app/reset-p
 const EMAIL_LIMIT_PER_HOUR = Number(process.env.PASSWORD_RESET_EMAIL_LIMIT_PER_HOUR || 3);
 type AdminClient = Awaited<ReturnType<typeof requireAdminUser>>["supabase"];
 type JsonObject = Record<string, unknown>;
+type ExamId = "senior-securities" | "junior-foreign-exchange";
+
+const EXAM_LABELS: Record<ExamId, string> = {
+  "senior-securities": "證券高業",
+  "junior-foreign-exchange": "初階外匯",
+};
+
+function normalizeExamId(value: unknown): ExamId {
+  const examId = String(value || "senior-securities").trim().toLowerCase();
+  if (examId === "senior-securities" || examId === "junior-foreign-exchange") return examId;
+  throw new HttpError("題庫種類不正確。", 400);
+}
 
 function getEnv(name: string): string {
   return String(process.env[name] || "").trim();
@@ -112,13 +124,23 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     if (!userId) throw new Error("缺少 userId 或 email。 ");
 
     if (action === "revoke") {
+      const examId = normalizeExamId(body.examId);
       const { data: updatedEntitlements, error: entitlementError } = await supabase
-        .from("user_entitlements")
+        .from("user_exam_entitlements")
         .update({ status: "revoked" })
         .eq("user_id", userId)
+        .eq("exam_id", examId)
         .select("user_id");
       if (entitlementError) throw entitlementError;
-      if (!updatedEntitlements?.length) throw new HttpError("找不到可取消的有效授權。", 404);
+      if (!updatedEntitlements?.length) throw new HttpError(`找不到可取消的${EXAM_LABELS[examId]}授權。`, 404);
+
+      if (examId === "senior-securities") {
+        const { error: legacyError } = await supabase
+          .from("user_entitlements")
+          .update({ status: "revoked" })
+          .eq("user_id", userId);
+        if (legacyError) throw legacyError;
+      }
 
       await writeAdminAudit({
         supabase,
@@ -127,21 +149,36 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
         action: "user.entitlement.revoke",
         targetUserId: userId,
         targetEmail: email,
+        metadata: { examId },
       });
 
-      sendJson(res, 200, { ok: true, message: "已取消完整題庫權限。" });
+      sendJson(res, 200, { ok: true, message: `${EXAM_LABELS[examId]}權限已取消。` });
       return;
     }
 
     if (action === "restore") {
-      const { error: upsertError } = await supabase.from("user_entitlements").upsert({
+      const examId = normalizeExamId(body.examId);
+      const grantedAt = new Date().toISOString();
+      const { error: upsertError } = await supabase.from("user_exam_entitlements").upsert({
         user_id: userId,
+        exam_id: examId,
         plan: "full",
         status: "active",
-        granted_at: new Date().toISOString(),
+        granted_at: grantedAt,
         expires_at: null,
-      });
+      }, { onConflict: "user_id,exam_id" });
       if (upsertError) throw upsertError;
+
+      if (examId === "senior-securities") {
+        const { error: legacyError } = await supabase.from("user_entitlements").upsert({
+          user_id: userId,
+          plan: "full",
+          status: "active",
+          granted_at: grantedAt,
+          expires_at: null,
+        }, { onConflict: "user_id" });
+        if (legacyError) throw legacyError;
+      }
 
       await writeAdminAudit({
         supabase,
@@ -150,9 +187,10 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
         action: "user.entitlement.restore",
         targetUserId: userId,
         targetEmail: email,
+        metadata: { examId },
       });
 
-      sendJson(res, 200, { ok: true, message: "已恢復永久完整題庫權限。" });
+      sendJson(res, 200, { ok: true, message: `${EXAM_LABELS[examId]}權限已開通。` });
       return;
     }
 

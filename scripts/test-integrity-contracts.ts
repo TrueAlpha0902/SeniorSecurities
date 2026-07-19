@@ -28,6 +28,7 @@ async function main(): Promise<void> {
     css,
     migrationV78,
     migrationV79,
+    migrationV80,
     telemetry,
     clientError,
     vite,
@@ -52,6 +53,7 @@ async function main(): Promise<void> {
     read("src/styles/glass.css"),
     read("supabase/migrations/20260712090000_stabilization_final.sql"),
     read("supabase/migrations/20260712130000_final_hardening_v79.sql"),
+    read("supabase/migrations/20260719120000_exam_scoped_entitlements_v80.sql"),
     read("src/lib/telemetry.ts"),
     read("api/client-error.ts"),
     read("vite.config.ts"),
@@ -146,7 +148,7 @@ async function main(): Promise<void> {
   assert(
     adminTools.includes('roles: ["primary_admin"]') &&
       !adminTools.includes("requireAal2") &&
-      adminTools.includes("create_activation_code_v79") &&
+      adminTools.includes("create_activation_code_v80") &&
       adminTools.includes("set_admin_access_v79"),
     "Sensitive admin tools must require the primary-admin role and atomic RPCs without MFA coupling.",
   );
@@ -210,6 +212,13 @@ async function main(): Promise<void> {
       migrationV79.includes("create_activation_code_v79") &&
       migrationV79.includes("to service_role"),
     "The v79 server-cursor, image-session and atomic-admin migration is incomplete.",
+  );
+  assert(
+    migrationV80.includes("user_exam_entitlements") &&
+      migrationV80.includes("create_activation_code_v80") &&
+      migrationV80.includes("junior-foreign-exchange") &&
+      migrationV80.includes("primary key (user_id, exam_id)"),
+    "The v80 exam-scoped entitlement migration is incomplete.",
   );
 
   assert(

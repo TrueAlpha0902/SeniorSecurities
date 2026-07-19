@@ -1,0 +1,3222 @@
+{
+  "schemaVersion": 1,
+  "examId": "junior-foreign-exchange",
+  "canonicalExtractor": "pdftotext -raw",
+  "independentExtractors": [
+    "PyMuPDF",
+    "pypdf"
+  ],
+  "ocrUsed": false,
+  "aiUsedForQuestionOrAnswerText": false,
+  "questionCount": 390,
+  "answerCount": 390,
+  "explanationCount": 390,
+  "verifiedTextFields": 1950,
+  "expectedTextFields": 1950,
+  "answerEngineChecks": [
+    {
+      "session": 45,
+      "answerCount": 130,
+      "pdftotext": "matched",
+      "pymupdf": "matched",
+      "pypdf": "matched"
+    },
+    {
+      "session": 46,
+      "answerCount": 130,
+      "pdftotext": "matched",
+      "pymupdf": "matched",
+      "pypdf": "matched"
+    },
+    {
+      "session": 47,
+      "answerCount": 130,
+      "pdftotext": "matched",
+      "pymupdf": "matched",
+      "pypdf": "matched"
+    }
+  ],
+  "sourceFiles": {
+    "624444-3.pdf": {
+      "sha256": "c69e65b73ebcd7ee46cb13e03b077cd1e22c9e353774ab9a016b8d90b2846830",
+      "officialUrl": "https://service.tabf.org.tw/BEExam/Doc/ExamHistoryEdit/624444-3.pdf",
+      "pages": 2,
+      "kind": "questions"
+    },
+    "624444-4.pdf": {
+      "sha256": "ca2994c76aa294bd165bbf82086921878b8866313d57e3312737ddb5c05a22ee",
+      "officialUrl": "https://service.tabf.org.tw/BEExam/Doc/ExamHistoryEdit/624444-4.pdf",
+      "pages": 2,
+      "kind": "questions"
+    },
+    "644261-3.pdf": {
+      "sha256": "4310ac72daafe3ee1777ff5ec2a76c0436f1fdc185dd0d40ac18c9617fc02c9b",
+      "officialUrl": "https://service.tabf.org.tw/BEExam/Doc/ExamHistoryEdit/644261-3.pdf",
+      "pages": 2,
+      "kind": "questions"
+    },
+    "644261-4.pdf": {
+      "sha256": "36fecf8de1ba03dcd9232535f5b66fbf3cda324eddc7c007c10a9da5a307a7c1",
+      "officialUrl": "https://service.tabf.org.tw/BEExam/Doc/ExamHistoryEdit/644261-4.pdf",
+      "pages": 2,
+      "kind": "questions"
+    },
+    "666077-3.pdf": {
+      "sha256": "71207a7e4643e6d26e676b8de342167f4700330ce4bb62fb22c042e786043c95",
+      "officialUrl": "https://service.tabf.org.tw/BEExam/Doc/ExamHistoryEdit/666077-3.pdf",
+      "pages": 2,
+      "kind": "questions"
+    },
+    "666077-4.pdf": {
+      "sha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
+      "officialUrl": "https://service.tabf.org.tw/BEExam/Doc/ExamHistoryEdit/666077-4.pdf",
+      "pages": 2,
+      "kind": "questions"
+    },
+    "624444-5.pdf": {
+      "sha256": "414b0fa6c68180fd9399a4bfa3b60777910548073ff9f7bc597788d78265139a",
+      "officialUrl": "https://service.tabf.org.tw/BEExam/Doc/ExamHistoryEdit/624444-5.pdf",
+      "pages": 1,
+      "kind": "answers",
+      "session": 45
+    },
+    "644261-5.pdf": {
+      "sha256": "acb091f24fa3fea78efdeff2dad33b0b34d3b9098655481e74341f3744526850",
+      "officialUrl": "https://service.tabf.org.tw/BEExam/Doc/ExamHistoryEdit/644261-5.pdf",
+      "pages": 1,
+      "kind": "answers",
+      "session": 46
+    },
+    "666077-5.pdf": {
+      "sha256": "446d3346a9e61b2577ee19df07ff82052d3a03076f859749dda90f5d081d92c5",
+      "officialUrl": "https://service.tabf.org.tw/BEExam/Doc/ExamHistoryEdit/666077-5.pdf",
+      "pages": 1,
+      "kind": "answers",
+      "session": 47
+    }
+  },
+  "humanDoubleEntryProofreading": false,
+  "verificationScope": "Every question stem and each of four options matched the expected PDF page in both independent Unicode extractors after compatibility/whitespace normalization. Every official answer matched all three extraction paths.",
+  "questions": [
+    {
+      "id": "fx-45-remittance-001",
+      "sourceFile": "624444-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "17dd0c951345554430612790807d3697912bc02e37cbf31f7846330f97717024",
+      "answer": "D",
+      "explanationSha256": "415fa38599d2f27293e0d3ba144db3bde27942292b0906bfa79b679575c40986"
+    },
+    {
+      "id": "fx-45-remittance-002",
+      "sourceFile": "624444-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "c27f3b869b9bafa74e7ff869dfc3cc72771056f0c26d585fff69f4f69adf34dc",
+      "answer": "D",
+      "explanationSha256": "f372efa0df660cad81865cf9bd0eaeae44531386777ddf17f8c0786d5797dc16"
+    },
+    {
+      "id": "fx-45-remittance-003",
+      "sourceFile": "624444-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "6ccca67153cd4c71b01b39362dd3222e07daeb5dac80bfedd1498df4ccde39bb",
+      "answer": "A",
+      "explanationSha256": "cc52f4cc21c9cec1c8b3427d23420752c6f45693fd5c88f85d4468aa3ddcf6a2"
+    },
+    {
+      "id": "fx-45-remittance-004",
+      "sourceFile": "624444-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "8501bc14ca761ffc2bf02a53574b13e1b24e11cbf6711cbc966aabf12282f568",
+      "answer": "D",
+      "explanationSha256": "aed56e819dc02bac4879b96aca68b1efbb052b67559f6ed485f43d0a5f9f0ab9"
+    },
+    {
+      "id": "fx-45-remittance-005",
+      "sourceFile": "624444-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "b2bda5ea05f094bd05d3e50b0571ff04f296033db682082b81e2729a733edfcf",
+      "answer": "D",
+      "explanationSha256": "fba0bce7b6fc49f3cc851fe2d876b4a1dea45c907cb707452db7f0b2ebf5a78e"
+    },
+    {
+      "id": "fx-45-remittance-006",
+      "sourceFile": "624444-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "b56fd226fe663edee3538e81847bfb72fef79ea92f7a6ed9ad307fbe4c30d7a4",
+      "answer": "B",
+      "explanationSha256": "1f62bcedcff9cb818a99a5e1ae6103bd4df82cb9ec0a040a0b52fca12833fc44"
+    },
+    {
+      "id": "fx-45-remittance-007",
+      "sourceFile": "624444-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "bac1ca47baddda3020e9cd2a4ec75ffc628bac4e541a6c268426965263bced22",
+      "answer": "C",
+      "explanationSha256": "0b1a73cd1dd720b6a014b5f6cb3a371e47c36e470b4df882054eac00d620cdbf"
+    },
+    {
+      "id": "fx-45-remittance-008",
+      "sourceFile": "624444-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "efd349d8b57264ba6167e2f1066d92c8c2f79732227b4df92aab950459ece88e",
+      "answer": "B",
+      "explanationSha256": "8a122d947b3b620ebd62b141f1bf609edd362d09211fd1b7b5689a47dafe27ad"
+    },
+    {
+      "id": "fx-45-remittance-009",
+      "sourceFile": "624444-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "58de4b111ca86c9b48b1bae852376a23fe6f5702cfad1494809874bf8d0eeaca",
+      "answer": "B",
+      "explanationSha256": "e043a66ec9000f1988889f3311edbd083a2863fed035232b27e697ef91fd653e"
+    },
+    {
+      "id": "fx-45-remittance-010",
+      "sourceFile": "624444-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "19b5cfeebc5f7d74d5ce03a169e99525a8d898f9ad70faa7af126bd29cb76252",
+      "answer": "B",
+      "explanationSha256": "c2ea1bab5f734688ffe920235f749897538dd7d5ab1b7e6d181082be9d71ca45"
+    },
+    {
+      "id": "fx-45-remittance-011",
+      "sourceFile": "624444-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "3872a121a9129a4743a6af13dd918594ddbcc525deda2924a6d98024fd24c72e",
+      "answer": "C",
+      "explanationSha256": "01d4a81132655b264bc964ccdfd23ed1177b477c71622364435a3df3c121902f"
+    },
+    {
+      "id": "fx-45-remittance-012",
+      "sourceFile": "624444-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "be43ef4f21b351ef636ec6d02222d82c919ba711cd46daa665bb52487cc8491d",
+      "answer": "B",
+      "explanationSha256": "8691c2c0bef0ba5b96fe0bb193e7388443334b9077c7ef01c2c728d0b0e243f8"
+    },
+    {
+      "id": "fx-45-remittance-013",
+      "sourceFile": "624444-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "71dad2c75fb02f1c30fc4fdcebeec73f899dc31d7d711bf782d177adff2de43a",
+      "answer": "C",
+      "explanationSha256": "ca1af6ad3d3b9ad6f41ab1168dedfec8db04acdc835195e06265cb84907bad81"
+    },
+    {
+      "id": "fx-45-remittance-014",
+      "sourceFile": "624444-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "a3a81846fd91d96069a9d67b28afc584b52fadec85c4213c09f15d68eeac5895",
+      "answer": "D",
+      "explanationSha256": "60e69cbc8794c9d28f4a33d9f96e10975c8366382113d8779ef595c768832ed1"
+    },
+    {
+      "id": "fx-45-remittance-015",
+      "sourceFile": "624444-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "4621029ac28fe71fcc0df37bc46cf2faa575c874d9c8bb08367c883aa7c67643",
+      "answer": "D",
+      "explanationSha256": "f4d6a1e7c660dbc032bef868e251b746a57c4dc2358b017412efd0427cc2e628"
+    },
+    {
+      "id": "fx-45-remittance-016",
+      "sourceFile": "624444-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "cc2e467bb111949fcb4ea3af8764d73b78012dfd4490abdc7295144b3e7baf9f",
+      "answer": "D",
+      "explanationSha256": "d3aab6f52caf10145bf0c9801136b0ffd919125f6df77c4f8b761e9f92a291a2"
+    },
+    {
+      "id": "fx-45-remittance-017",
+      "sourceFile": "624444-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "9108abfaeb14257ae67a330fc8be9bcaa2af50a367380ff9e109f360d2cf9d68",
+      "answer": "B",
+      "explanationSha256": "21488d4b1b03ea179942c6576b61419f7e8e7d3f140f1c2af2bc4ce0379289ba"
+    },
+    {
+      "id": "fx-45-remittance-018",
+      "sourceFile": "624444-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "f54090887330b5fefe05fdbc0d45cf80e01d4310d24165958aa6632bf8fa3629",
+      "answer": "B",
+      "explanationSha256": "38a28a00f3d6b1cbaf77d45a0612adea911c06d1b4d5d241430105f08c6b1cfa"
+    },
+    {
+      "id": "fx-45-remittance-019",
+      "sourceFile": "624444-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "2e2bbf9796ae40f1350e2c93c23184f2f84cd484cb41dbd05df125ba1d03878c",
+      "answer": "B",
+      "explanationSha256": "0f929c85e9d945bad831017781b2cf7cab6d76fb05ae1f9f590606bf67235fb2"
+    },
+    {
+      "id": "fx-45-remittance-020",
+      "sourceFile": "624444-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "8f751ac1b817a89de54ffd0dbcdae82193ca78b90cf7ccbcee270e68174d8521",
+      "answer": "D",
+      "explanationSha256": "73033755c40652888895eba7e8051440a4d09c85293e72def81069cf300232c4"
+    },
+    {
+      "id": "fx-45-remittance-021",
+      "sourceFile": "624444-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "c5d999600bb8985059b5340dea154c0b331c17d248a4f8eaf4fed257cf85ea59",
+      "answer": "D",
+      "explanationSha256": "386c5dd7780d71ca3e3103735d8c2e2825d7e2eefc2e47564126f85318a3c545"
+    },
+    {
+      "id": "fx-45-remittance-022",
+      "sourceFile": "624444-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "1cc6a7a0e61506b6d995b55a09353c324dd76c9a35d1ba160af0f9df3e5f9337",
+      "answer": "B",
+      "explanationSha256": "cb9286ab462b4b36b406c81bf1df8bfd19c492591fabf555ea37bc3ec12f2e89"
+    },
+    {
+      "id": "fx-45-remittance-023",
+      "sourceFile": "624444-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "f236b5dd7fee33c9911d5af928421b3d7612ceb4ca75c8955c49c345f0811ca9",
+      "answer": "B",
+      "explanationSha256": "1e1500c19809786e50c181e2d2c0b3e1321b956b4aa3252f32341b99167ea2d6"
+    },
+    {
+      "id": "fx-45-remittance-024",
+      "sourceFile": "624444-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "9c4124e102c7dbaa9c8d855edf873c0adf3cc8112e4255dc843f0ec2cb51e151",
+      "answer": "C",
+      "explanationSha256": "d4460f15ce24e292be47e677dc4ee2d3e77108a7a2755081a66d779485a9e618"
+    },
+    {
+      "id": "fx-45-remittance-025",
+      "sourceFile": "624444-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "96a28d6de06005170d48ea7ef830a1b4467aa81f46cc90921b3353ff0ab0f58b",
+      "answer": "C",
+      "explanationSha256": "545a482496d38c1d1d12cad1330c133b9569730d2307a59e7195ce62c56f0df1"
+    },
+    {
+      "id": "fx-45-remittance-026",
+      "sourceFile": "624444-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "61609cdc7aae15867b56a01be0fa8419cad53a5c1c4a6d61a443d31a077fc5dd",
+      "answer": "C",
+      "explanationSha256": "c2b71a503d4c23bccb9c5c4e04050039e875d0c16fedf77ef2e5a7de33387672"
+    },
+    {
+      "id": "fx-45-remittance-027",
+      "sourceFile": "624444-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "e0c88f29c5a32c83ec64a10b3da79114829ae90366d77bfb97d62182cc4e8812",
+      "answer": "A",
+      "explanationSha256": "96a062b42481e1acb640f8db0eb06932ea6b3e5f2a02b33a4e674c5913d9e34c"
+    },
+    {
+      "id": "fx-45-remittance-028",
+      "sourceFile": "624444-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "7fda314aa64af57eaf8158e96ee25feb6c253358f8b574364962921c2fa2e034",
+      "answer": "B",
+      "explanationSha256": "6559c10eba9bdd9ce855bcab58a3a96e4b5e0b5e89598b8855145477b6ed0612"
+    },
+    {
+      "id": "fx-45-remittance-029",
+      "sourceFile": "624444-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "ebdf34e9ed72755812b9f6f8284e46fb7b5fd22a3b793663172bafca6b664057",
+      "answer": "D",
+      "explanationSha256": "dea3a3bf2266ab3957ffe6abd297af0802b068c9a6b37ba56cc84d0818b13198"
+    },
+    {
+      "id": "fx-45-remittance-030",
+      "sourceFile": "624444-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "31dbd51a46a8bc5352a73206dfce725e27b0a8c33252a3a84a3b79bb60d29ad8",
+      "answer": "C",
+      "explanationSha256": "51e1e567e6218548f36053e369a88cda0a0a4a919fb440c285a16ad4ac936549"
+    },
+    {
+      "id": "fx-45-remittance-031",
+      "sourceFile": "624444-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "31b67969a5b8f031810ce2c44415860df4ee30315eb1413fb117577247d8ffcf",
+      "answer": "C",
+      "explanationSha256": "9a447361b88fc24badef1197e06bb9854584cf9dc82a70a6da89f2cc7e011747"
+    },
+    {
+      "id": "fx-45-remittance-032",
+      "sourceFile": "624444-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "1f3ade25140b232f19ee1d21ebb83d916bc6c3f7cdb93a8fedea20e57171ef80",
+      "answer": "A",
+      "explanationSha256": "3d301a1ecc6b70eafad1c315ccb4b7434aeb71982a69b0193c86b8ac256768e4"
+    },
+    {
+      "id": "fx-45-remittance-033",
+      "sourceFile": "624444-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "099ef3de2a306171326ad3e69b41bfb81f0b91343617341f67fa48446bf8db0e",
+      "answer": "A",
+      "explanationSha256": "8297eef20488644e7440fbd2d3de38c126578c50ae86b34b8e012a70a32006b6"
+    },
+    {
+      "id": "fx-45-remittance-034",
+      "sourceFile": "624444-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "e9abfb8349bcaec59d5dfe0b88502a98f6671b732c08cc824b8f033293589746",
+      "answer": "D",
+      "explanationSha256": "44b0f29dbb053ee9fb462acd463e64754d9ec9a2eb66f188521708cb815820da"
+    },
+    {
+      "id": "fx-45-remittance-035",
+      "sourceFile": "624444-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "14f0c272e04beea277014c2340a99f0f439e21988c27311bb5dafcd4a8c177f6",
+      "answer": "C",
+      "explanationSha256": "f0fffa6007c854db8a590731858d9bad64666555db09bd6fcec8342211a5df20"
+    },
+    {
+      "id": "fx-45-remittance-036",
+      "sourceFile": "624444-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "2d8e3386a2835c2b2c0206a18c87a4b96a7618a8ef53f6ba6535f125151444f7",
+      "answer": "A",
+      "explanationSha256": "c9df69b8fe27bb7ed0cf03b3c3bea5ea29f79911d77e804f6ae8933607084597"
+    },
+    {
+      "id": "fx-45-remittance-037",
+      "sourceFile": "624444-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "3df919abcacff835192af395d243d455ff0a9c415e1c897ed68bcaf82bc28ce5",
+      "answer": "B",
+      "explanationSha256": "6de845fd680ce08d0a0bfcab1d6175f41fee265390e84e6bf53d361dffe939ee"
+    },
+    {
+      "id": "fx-45-remittance-038",
+      "sourceFile": "624444-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "0e5cbf43068ca130bf6dbcbfec90c83c44061bb13c7a2a906ce93e8049aa4edf",
+      "answer": "C",
+      "explanationSha256": "965405c56f6e292574c29946c87a3f14599b3978ec7754547477a9948b0634ed"
+    },
+    {
+      "id": "fx-45-remittance-039",
+      "sourceFile": "624444-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "cb20fc6433c4e3a9b6958d367d338f784be8ff599fee6a7d59b0a306632b7951",
+      "answer": "C",
+      "explanationSha256": "49ecfe16907939c0d5e8ce7f9541cbc474d23b5f0f81e13e031a90be4e3ba2c5"
+    },
+    {
+      "id": "fx-45-remittance-040",
+      "sourceFile": "624444-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "02b6a9f34bbfd5fca3bdac9fba5d4d3fa9a31f0a4f7980e97bb1f01f588bdb25",
+      "answer": "B",
+      "explanationSha256": "0f914438d9b0c5851c0e9f6ea190093bab6cbca8d279cb1374788db82d09d65a"
+    },
+    {
+      "id": "fx-45-remittance-041",
+      "sourceFile": "624444-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "3e45f5e8b190344f46cdec617e79b7389950adab46c0c7659f7a36f171baa23b",
+      "answer": "C",
+      "explanationSha256": "8cb876f74ab0792e505ceddcb6181f310c0bdff0a2e70db1aa0ad94510574ded"
+    },
+    {
+      "id": "fx-45-remittance-042",
+      "sourceFile": "624444-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "40e223f9cae6718945bd2f5f637d620b661dd8792fd77818b6a4fcd106585d5d",
+      "answer": "A",
+      "explanationSha256": "e78dbcb341c7aac6f1ddf9f64a5fb590b0e37b628613185f65065bfebceb8b90"
+    },
+    {
+      "id": "fx-45-remittance-043",
+      "sourceFile": "624444-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "1946bb51c2437bf2a82919ee99f8dddb345972650fef5e63b22211c010cacfe4",
+      "answer": "D",
+      "explanationSha256": "fd4c858714b60b10a635cdb03755d0049d65792c9a1651cb3c1d61633b640c0a"
+    },
+    {
+      "id": "fx-45-remittance-044",
+      "sourceFile": "624444-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "b9b99b98f1be35ff65ec05beaf43a36e6ed64c9e0cc6d41b58a1130f01f4dacd",
+      "answer": "A",
+      "explanationSha256": "d003dd20f03753b23716525c301fd7123fbfce698c078d3381d40510547a1742"
+    },
+    {
+      "id": "fx-45-remittance-045",
+      "sourceFile": "624444-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "dfda0d5aaa8dfa75c647ee5d986a9eb8c83f29e78083035109560f46f1c6779c",
+      "answer": "C",
+      "explanationSha256": "3c2f74f0697de7a2ef14168d3eec7babf06bf13888e9a53e6eee694bea309d78"
+    },
+    {
+      "id": "fx-45-remittance-046",
+      "sourceFile": "624444-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "29e852c66b1501aa995e6b8073f1091558dbd16aadf97ff5161b4f402346a55d",
+      "answer": "A",
+      "explanationSha256": "de7163993739fb14db82aff9c53119db37ecabd690c38b502342b734825cedbe"
+    },
+    {
+      "id": "fx-45-remittance-047",
+      "sourceFile": "624444-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "e112ca9d9bb6013842808b8ac1f028d91791791d6de28a3fb1db64147253f04e",
+      "answer": "C",
+      "explanationSha256": "3e78e48dee9ba017fa666bb99887a3e9d78b668b0d7a5a7be63bc0679ac36e3d"
+    },
+    {
+      "id": "fx-45-remittance-048",
+      "sourceFile": "624444-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "b62c15e0320696358a94ce93326427290597d96d43695ad11360e976be06ca16",
+      "answer": "B",
+      "explanationSha256": "b19ddee6a20d4018d3a0b09fdaabfcc603df57109905e64b5331f30afef50623"
+    },
+    {
+      "id": "fx-45-remittance-049",
+      "sourceFile": "624444-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "b3ff3588bbbc9a7554dfecd53a22519fbafda10e2c9fd143fd1b154986ec3695",
+      "answer": "C",
+      "explanationSha256": "77217357c71f92655883599c660664a0f6130f195dce69e7836149e4d9b50c20"
+    },
+    {
+      "id": "fx-45-remittance-050",
+      "sourceFile": "624444-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "9fca144b0e547e294c267b5635927e6700be63d2037194992eb0b1ab583e05dc",
+      "answer": "D",
+      "explanationSha256": "ddfcbf309907212e75f1de969ef953a822674f6d199d743244e0002bc1999601"
+    },
+    {
+      "id": "fx-45-trade-001",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "e91ba741096e857bb8431410084dcd79dc50ab9c31e1af02cd82cf1fa68ef4b2",
+      "answer": "C",
+      "explanationSha256": "37f65ebc80fe8dc1b8fa6de53124446c746fbe1fa006e35161f1c66c02d5c5db"
+    },
+    {
+      "id": "fx-45-trade-002",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "083fe77045bb25ccee3a73ee9cf52cffa47425eb32887289d14bc2fc4659b9d1",
+      "answer": "A",
+      "explanationSha256": "18295a8f52aed58ae26e0e38e5701d4c4595d056746a9e060d47d1b865a9c282"
+    },
+    {
+      "id": "fx-45-trade-003",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "5b942fed5fb17b0b9aa87eef9bc7d6e8372eda695929b7606e0f16d4e2884839",
+      "answer": "D",
+      "explanationSha256": "b95eb47d854a52fb4bd3c0d0de441855fb499e35a8e4f8bf2c865f0715bec7ce"
+    },
+    {
+      "id": "fx-45-trade-004",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "1188611da4ce29a2afff2fea9427ee95b5f97e70a5646a5f1ab374f0defed9cf",
+      "answer": "A",
+      "explanationSha256": "167ca175ba191b12ac6d0cdb46773be627f60609ef98ff158805685e3c222b40"
+    },
+    {
+      "id": "fx-45-trade-005",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "e98e73af5ce9738304b815d124c79d8f285f16b459353d26daab1ddb428b80a4",
+      "answer": "C",
+      "explanationSha256": "9ce51bb9436a5bf93ac95a76d3f3f408bd48546f75717ca4aabdebfe25b54e95"
+    },
+    {
+      "id": "fx-45-trade-006",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "167375d4b7d31078b35f77959d7c996b180fa91c01f99969dc2d065e97e376cc",
+      "answer": "A",
+      "explanationSha256": "a94266fe1b91a49e09fc3ccf47c4b1a6f7d056532ec5be2a035e174a5d7eb1c9"
+    },
+    {
+      "id": "fx-45-trade-007",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "f7e692f4bff1da971705a7a6697cf30fa0a1be784b7864c5160bf6116a3ce5ac",
+      "answer": "C",
+      "explanationSha256": "c215d150263e64bd081e136327c33d175ae2524a0a546d57977eb9dddf461b9a"
+    },
+    {
+      "id": "fx-45-trade-008",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "ef96ea5d04797655ff8385f47095f7fb30229f98dc8ad5a31cbc7bb29b9699a1",
+      "answer": "A",
+      "explanationSha256": "6ae1c9215a3bccffe3d9e3167ec6d3c3f64373cdb77cbe19adce41beedc5d9bb"
+    },
+    {
+      "id": "fx-45-trade-009",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "d14f736c11d66cede7bfe79d5e22e100b960aa4f5bed277bdd353f5d6809c332",
+      "answer": "D",
+      "explanationSha256": "c24e34c83a1f2382eb1ccfa5fbb215e914fe34482f974dcdfee3a0732cb2a26f"
+    },
+    {
+      "id": "fx-45-trade-010",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "7e7f05c2345a8675acce493b9fda08bd2d495ca1d5fd460231009162fe8f7b57",
+      "answer": "B",
+      "explanationSha256": "96e3c195331eaf0c54e10bc48e771332346a386fb12b93f65d0d503a65d06a7b"
+    },
+    {
+      "id": "fx-45-trade-011",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "f438558994bfcd2d8105a2c3c6a13d9b8a55136b1c61324439a2008080418f5a",
+      "answer": "A",
+      "explanationSha256": "fdce9170dc050054efe541c505d1a1fe243535eb7113eba12d7cb97790acdd45"
+    },
+    {
+      "id": "fx-45-trade-012",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "c6231d80c58b3e546e06336215231563339523a30396775051690742a81271c5",
+      "answer": "A",
+      "explanationSha256": "a6fd6d71a9987335dfe1ea3898f5bc542397bc4994de4a2ad8e2915cf1c03a6c"
+    },
+    {
+      "id": "fx-45-trade-013",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "836b4e997d538e28f550d24545f336c7d484718549de87f9f34c83d294dc445c",
+      "answer": "C",
+      "explanationSha256": "a68fea501a29a27355174bc80e285f22f9335446e88aeba599ac5e277ffb0c45"
+    },
+    {
+      "id": "fx-45-trade-014",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "64f9bb80ab9139ff7b3ad093c41949948cda05930adf015513879bf1c22cb7de",
+      "answer": "A",
+      "explanationSha256": "06baef926ec0fdd46c2e7ec62e0fcc95c4e4e78cdeddc6fc90b7c4c6ade5d713"
+    },
+    {
+      "id": "fx-45-trade-015",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "7e3de75ab54791e1642d61dac68db984ef03093f8a6ff979a430526f743b23e3",
+      "answer": "A",
+      "explanationSha256": "2f5adf55d11f7aadc0d56949c0ce767f3287390fd03b2e0c7d67f757ec373bdd"
+    },
+    {
+      "id": "fx-45-trade-016",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "f86eef355e14214f2c83c9c6d616c882026d223583dbb2477fe7c65c957ea5ff",
+      "answer": "B",
+      "explanationSha256": "6d9f3a5d77a9b8599cba2b72f76c60c1efe68b7ac14f0117f27f26543ffb09a3"
+    },
+    {
+      "id": "fx-45-trade-017",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "cd740b13d04afb192c5cb0773113a0a36f1b55c5caf53e6b6771e6054f95f545",
+      "answer": "B",
+      "explanationSha256": "e75dfb57e5d9a52773780bba1b7ef45f73327705cc67f9622105208fe864e756"
+    },
+    {
+      "id": "fx-45-trade-018",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "c45273fe80e5f9ebc7d3b2eb68df9814ee08ae214878bd0bbabd4206b00910ed",
+      "answer": "C",
+      "explanationSha256": "b7339e61c538c74196390fce9d80b3d85d3d8daf7dcbe4f9b59c0b649d633342"
+    },
+    {
+      "id": "fx-45-trade-019",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "140fd25e38d5f56e6166579e97b88d4898a2c23b9353d4c7357daa30d9f87069",
+      "answer": "B",
+      "explanationSha256": "36f34fe6daf0365a06569f87d43380c8f69ac9dd7eb8d556ca00261eb1a7a3f8"
+    },
+    {
+      "id": "fx-45-trade-020",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "951ea7c54c4f1032e32751df6d255c0867a5bbf3500430c5216ceb5ed17e995c",
+      "answer": "A",
+      "explanationSha256": "883d4c5c6517469f0d17decebe19e7825ce88cf6d13e40c9f564f3b8fe40d3ec"
+    },
+    {
+      "id": "fx-45-trade-021",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "2f07ecdcfb103177ec141658130e98dc7528a742bc0d0a3dd1cedea438e35e64",
+      "answer": "A",
+      "explanationSha256": "44500b03fb6730d6799dfe38a3f76956e8eb4e551fdfc0fed9e7e7f67c692c1c"
+    },
+    {
+      "id": "fx-45-trade-022",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "3513a83d2a7af493815d7da7e22d211d50d7a5c8b119449f64d1b26348c179b8",
+      "answer": "C",
+      "explanationSha256": "f5d5fe9cb0252018d63d41fe714f6a0e85adf6d59a5a8dd3aa253effc8839538"
+    },
+    {
+      "id": "fx-45-trade-023",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "176c4b019dd35165f9c38f07076809a11c9b7fad0a28abf0dc6e7c1b5ca65d68",
+      "answer": "C",
+      "explanationSha256": "2978e73d7f9cdb314d546c34b1afc3a3cbeec2269a2dcf6e76bf2c159f5a5bb9"
+    },
+    {
+      "id": "fx-45-trade-024",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "3610e1c95b864ac9d8f94736a5e2f7eba4c4b8c05745abee0dd4f555f8867dc0",
+      "answer": "D",
+      "explanationSha256": "9c7637d7682556ee79a54092d02003b032c2e66abffc314ca6f3996e8704960c"
+    },
+    {
+      "id": "fx-45-trade-025",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "fe3c3b1aa45216a03ad33a86d7c321fac6e3e919d98441fa0c397862c73f7cba",
+      "answer": "B",
+      "explanationSha256": "4f31caae5c6e5ad85fe42f646e4456ef2857441ff9123df87c72bc9787e80a2d"
+    },
+    {
+      "id": "fx-45-trade-026",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "7ecc4f76bd92ff6c8735cba85b9f7aad6ac0e3dc8a9172f09d9721afd8a3bebe",
+      "answer": "A",
+      "explanationSha256": "84ac4917691fe2248187e1216c75dbd93dcf55c427be5898a6d81fab22b45ddb"
+    },
+    {
+      "id": "fx-45-trade-027",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "a1eda547d3bfac315f122d25cd44c9f4a2dddf42cfc75e01c9602ac8aec5d78f",
+      "answer": "D",
+      "explanationSha256": "f4872093cab15480494ef5847fb24026045b3189e1eba159b0eddd2eb260c039"
+    },
+    {
+      "id": "fx-45-trade-028",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "3e3ea61f0bc946168784e2ab46849b28b37edd0ba45969780ffc1a709d1d7131",
+      "answer": "A",
+      "explanationSha256": "80f6e15d331650032a9c4802d0349a19c96cb7c82080d6550b6e72841a7d07f5"
+    },
+    {
+      "id": "fx-45-trade-029",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "7418485c9c26ede7b6d4627404ec325070eb0ae9d90c8adb01382c5165062983",
+      "answer": "C",
+      "explanationSha256": "c87ab985ec131d8d295d7485b4cb8073792fc488107979bd369a326172e31a87"
+    },
+    {
+      "id": "fx-45-trade-030",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "addd9c3c4ec83dd2fcb7b51c40951e3fd4d5e164c40f1d39c96e998fabf0adbc",
+      "answer": "A",
+      "explanationSha256": "340fd213d44c9193aa3cf5358877717992aa20db52b2c146aaadbb21f972641e"
+    },
+    {
+      "id": "fx-45-trade-031",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "3c102f2b3f2d4b14ee6365a69e3426f1fe0619990b008d89239064cb8d112be9",
+      "answer": "A",
+      "explanationSha256": "e5fa7feefae3d4baec37a5a4d4a26150ee2200c588a043f93f5aff47e6cd6e9a"
+    },
+    {
+      "id": "fx-45-trade-032",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "51d8c43ff6a4004692d7a84aef7814dcbb0d0d810e35ec0728b1e7d3d40c2510",
+      "answer": "D",
+      "explanationSha256": "b4f93c9b5043b825f60a78edc739c5b161158bb33b135f1b7b4b188f502afceb"
+    },
+    {
+      "id": "fx-45-trade-033",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "878ade2c42227e117ac0a5cde307ba552ae04c436c0c1b697a7d2c427938795b",
+      "answer": "B",
+      "explanationSha256": "5dfa457679c6df6e230e19b9d4d118b2ac40fe1b87371e1f5600ca1280078ee5"
+    },
+    {
+      "id": "fx-45-trade-034",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "3a9e63ec7b57f411fef02e219255188602df32601f0794495582c5991b61f29f",
+      "answer": "B",
+      "explanationSha256": "27213ed4d657bb82a042dbe8bbb530d4bfc029290b39e502e5cef67928ac4c60"
+    },
+    {
+      "id": "fx-45-trade-035",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "510c223e66f429e6aac04cfc1d3e4a6a485a39d3bfc79757f60d547d9339c166",
+      "answer": "C",
+      "explanationSha256": "e5a078f2ca7b7d0baadd4c8597605f6d4aadb36c89bf471ff914700996f1b9eb"
+    },
+    {
+      "id": "fx-45-trade-036",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "4da3d1951df2fc7f4cb9cb5ce7655fd2abb480a604edc45cf79eef9986aa7d4b",
+      "answer": "A",
+      "explanationSha256": "cad72139141ce8ee9749dbd6cd730397e46f029e4d12964492b95c0865df500c"
+    },
+    {
+      "id": "fx-45-trade-037",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "9f100b35ce5c04668698970a3ce82dcaba43d646cc7a767a749ce68dd6c0cb6e",
+      "answer": "B",
+      "explanationSha256": "1a534594ab595fbff350edcccbc24380afebec0f389a5166994904d350c49e04"
+    },
+    {
+      "id": "fx-45-trade-038",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "4e824c6e5c82b99c076397169d681f6f25163d91fbdffe0a9ed9ea0918137348",
+      "answer": "B",
+      "explanationSha256": "5c2c6af3c7267bcd7893a44314b5b32950015bf23d8772e74d1b6e59807713d9"
+    },
+    {
+      "id": "fx-45-trade-039",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "66bac08863762b571f9e8b407fa62983d1664cb726b85e2b0154f76f6bb8fb6c",
+      "answer": "A",
+      "explanationSha256": "386edc7a91a25db036d8b61d92252603ce47b0e06ad941d23096c4068b96135a"
+    },
+    {
+      "id": "fx-45-trade-040",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "4c6c54e25c133a0b7f058676faef68e41a1a30b4b84e288c97886588c053bdf1",
+      "answer": "D",
+      "explanationSha256": "fd00444197d84bbb015cd0529ccbbecab6b3390e7d9944f77114bd27d52bc323"
+    },
+    {
+      "id": "fx-45-trade-041",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "527b7eaeff52b6e2b9fd32e7ab4bc7463161f12832572a107c4c3cd5da65a019",
+      "answer": "C",
+      "explanationSha256": "4ee4ce8268a4f9b1388f0a401280492079a0c6e2b946b7560ad2eb355078eb43"
+    },
+    {
+      "id": "fx-45-trade-042",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "af8a10cbe2c8b3678e6af2e8251001a89918d3bfa0a175c5340f13af3e20a187",
+      "answer": "D",
+      "explanationSha256": "53796032e15016a6ce598452a3dd9cc8e41f9b268216ed64f6f358810ec17adb"
+    },
+    {
+      "id": "fx-45-trade-043",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "d40f8b1595dfae8a2e67168951bff5baa4ef089e82144edf34edba8d6494091e",
+      "answer": "A",
+      "explanationSha256": "d147f1284c5a6a2a4c0d42b57b32895291e4bc5b39bd8b0abd9f80700f899914"
+    },
+    {
+      "id": "fx-45-trade-044",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "f6c4c5a3875e6d437a2212aeabaf72f1c3fdbd36b7f5f606a2c654e5ac3f9144",
+      "answer": "D",
+      "explanationSha256": "23b39425590f186bc81079402d0a75f95fbf2e5fb16bfd6ba2db93d299609f51"
+    },
+    {
+      "id": "fx-45-trade-045",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "159d4d86d5e069e95b13616cb7dfcc7582dcdb2506f87814905fddfc96ac6b3b",
+      "answer": "C",
+      "explanationSha256": "4a6e8267d8fe72b09f83b5a7bf99832501429dbe9b532b8197582addfbcfe849"
+    },
+    {
+      "id": "fx-45-trade-046",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "f59e6b44d635ccaec609c801c105da8e751d9fd9ff39803e73f5a773a3e66aac",
+      "answer": "B",
+      "explanationSha256": "a8d87f11a2d5e303fddd237ba4c00260c1e5ea9926c7ba6985c4872f2a20f9af"
+    },
+    {
+      "id": "fx-45-trade-047",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "d94b9357a589720641b4817cc5fa15e731f36ad5e12e448d024709901fa424b7",
+      "answer": "D",
+      "explanationSha256": "9354b20910bbb2981a0280b615dfa3749891db4915de84cd6b208d4bd7fa11a1"
+    },
+    {
+      "id": "fx-45-trade-048",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "f2b140de711c20bc3e77588b576c7f66fc4d41d9e9ac57d20f77950cf2167f26",
+      "answer": "B",
+      "explanationSha256": "8dff0737fae722936ad6931e1b167fdefe09c0d1256c5772a7011307f926bb7e"
+    },
+    {
+      "id": "fx-45-trade-049",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "97c8f9b19717ce2e848f457f2273c58060a4140edeff34bbf24c23a9d32f1a54",
+      "answer": "C",
+      "explanationSha256": "1a18cbacf806bcb27f8536fb6da5fe5abb795406191500de399f70a911e86c50"
+    },
+    {
+      "id": "fx-45-trade-050",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "0e168923114c9291ab7dbcc27045e04dcd6152a7ad9f22bdd890a19941fd1310",
+      "answer": "C",
+      "explanationSha256": "c382ffbce16220dd1882a66142c5c7fa8ff98e37d861409073e0f4c897431ef8"
+    },
+    {
+      "id": "fx-45-trade-051",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "8d6a791fee402f6cbda8c3dda97ff7cffce2e522fbc04689ffe27f2d1905abdb",
+      "answer": "C",
+      "explanationSha256": "9fb9dba5c56440a5ea0d9e4f0cc7084924e7633868cb7a1501539cd646748447"
+    },
+    {
+      "id": "fx-45-trade-052",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "381d82f0c37b5c37bf61c9e98dad3599b6f93c029ccf46e49970182e43827637",
+      "answer": "C",
+      "explanationSha256": "a9471d7f06791c9dfabc8df4a148e5dc8ecd9325bbb3aad78ba6bb7c3c7bef1d"
+    },
+    {
+      "id": "fx-45-trade-053",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "784bd463a6da5556c7cab23bffdeffb4d14c792539949374100f0cd9730fe78e",
+      "answer": "B",
+      "explanationSha256": "1171796b9c5073f768e893fe8063fb068a756327e9095518e38c547b6b308fa9"
+    },
+    {
+      "id": "fx-45-trade-054",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "47c920e797d6bf3e60eb1bb49335371fab22f5c8a027c2ffac9a39e6a88f026c",
+      "answer": "B",
+      "explanationSha256": "d4d9ed33466ffcf0848a98f48b8177737577f81accbf9f91c7c9849ba7f5d8a3"
+    },
+    {
+      "id": "fx-45-trade-055",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "34f189d9f25c4ab8491715257d10f419f40546c9569d80ee5f08e28c1b2eb0ad",
+      "answer": "C",
+      "explanationSha256": "3ecabae3df11fd4d7bfb39fa160668ba4e5ab6c3ee7e07b892887932b79e47bb"
+    },
+    {
+      "id": "fx-45-trade-056",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "cf73885871b86491697932c3e7957e20fb23f4c70287ac0e7b70721a55930fba",
+      "answer": "B",
+      "explanationSha256": "91399e25dbc7015fa154dd5d3e6f6c512ae8b794bc4c74c0affbff53a21d177e"
+    },
+    {
+      "id": "fx-45-trade-057",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "b026877429722d67a0036cf3bb4156e933fc82d6fac1de0b6ab7e432df025b54",
+      "answer": "D",
+      "explanationSha256": "d2d14a420d56b815a3da855e9997f8a57dab12c0e2373cb04d1ee9f49a89d8a4"
+    },
+    {
+      "id": "fx-45-trade-058",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "5d7479fe7168d7ecd4cffcf9c8cf046f581efd9a862b3b36d76eea9a78adecd8",
+      "answer": "B",
+      "explanationSha256": "e56a5fc80bf3685d1b2fd3e538051b42b678b5806439c09fea858ff35408236c"
+    },
+    {
+      "id": "fx-45-trade-059",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "b0cb882cd5a79d3a50a05113fbaa557808790322735d27f958f0e6efdee4f4f4",
+      "answer": "D",
+      "explanationSha256": "91360cd8e95b2a204ccd3066bd7d8271d100dd93a19de585ffab2684d19cf316"
+    },
+    {
+      "id": "fx-45-trade-060",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "e92769337b77589aaf06f81bc8649a827a650c975ff81756906530cf010f8b82",
+      "answer": "C",
+      "explanationSha256": "8264b6b623e43aefbb3f4711c458015b8c19a876827339deeee7c16f0d9ec8a0"
+    },
+    {
+      "id": "fx-45-trade-061",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "2c592e0db145254ef59f465ac04a0bf99059489375ead6582d956d2dc4343a41",
+      "answer": "D",
+      "explanationSha256": "64e2905dd1270e284124e2389a4e46e7319d79d253d5649ecaa0d1d1f7f3b32d"
+    },
+    {
+      "id": "fx-45-trade-062",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "d9dd89fa7b0098a78a89ac48e43b2b781607a65678783f817058c21ef93db373",
+      "answer": "A",
+      "explanationSha256": "50a0c656865eed0f0b115e7d4225e19f3990bdb2d60ec874cdc9308bf5777c1e"
+    },
+    {
+      "id": "fx-45-trade-063",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "28a8597069f3cba026707f3bf0144658a9a5c011a91bdca8d250457e96e48d68",
+      "answer": "C",
+      "explanationSha256": "2f32f1ddb06f7c38bbad815b350fd40eccd7af4bf17866551c36b03d211287d1"
+    },
+    {
+      "id": "fx-45-trade-064",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "e16b66541541c7f21478823453f207a5d77b637fefd1acc6b137b5edf2f7cf33",
+      "answer": "A",
+      "explanationSha256": "a02152c3bfdd28b975b714f56305f20e7771670fd75ec2d354f96e401f431657"
+    },
+    {
+      "id": "fx-45-trade-065",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "c826ebca35d33073d49381d40aee296c7f9d3f15588af141209b86b6b930eb81",
+      "answer": "B",
+      "explanationSha256": "09d73043b66f9e797f2d941a5a9093e6249c5a9d40dccfef50a4425780203f18"
+    },
+    {
+      "id": "fx-45-trade-066",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "203882487386d2c2e22e62bfd923f1cab5d421489c5ae48a212ec9d1209c1f1c",
+      "answer": "C",
+      "explanationSha256": "3a7db43fe100662890e19ff424a703ba61bd77f69dfee95c70a17a0643a8d528"
+    },
+    {
+      "id": "fx-45-trade-067",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "b14405d88136191e4e7e1b82e42a0ecc44fb4bb2cbfdea731e41b2543598d301",
+      "answer": "D",
+      "explanationSha256": "3c6f571920f34462fd6c33e02e2bd5ba1b9ae83f6b9709f9819d0b0865ac4e36"
+    },
+    {
+      "id": "fx-45-trade-068",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "3dc3cb633272c36e932df2253072e9524c3d8778511f84015b86ae0defad8ebe",
+      "answer": "D",
+      "explanationSha256": "afdf6a019e919416dd78bc10be14a968c8aa19fe4589956692c567c1f40fbad4"
+    },
+    {
+      "id": "fx-45-trade-069",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "3840314408cc465b4148db9578bbd1fe1832b5b287aede420c879fb40ecfd3b1",
+      "answer": "D",
+      "explanationSha256": "fb1c5821a562a5e6f4add1d9466daf8b7a18623cedb749b75819a9631b96b5d6"
+    },
+    {
+      "id": "fx-45-trade-070",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "75557ca6d8b873fc2ae45450804a874034a6558dca4ccac5c8a74c81f6cd2ed7",
+      "answer": "B",
+      "explanationSha256": "887d604835feff88511cf0be198994bd6280edc0db317b37e51c9a49609bf18d"
+    },
+    {
+      "id": "fx-45-trade-071",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "a6166920c9e09cdc2e420cf8e83b22efd0104fc2d7117d5d102abcbc19a92949",
+      "answer": "A",
+      "explanationSha256": "705ec53161a0a54944d128ffe894b80f969bf00a58235f9d0bc56d791afe4ce0"
+    },
+    {
+      "id": "fx-45-trade-072",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "f774979bb61164d38a2159b98553bb8f88566f8fa5d4bacdfac51f45f711ed4b",
+      "answer": "B",
+      "explanationSha256": "8fcda0920b6196df9b569a9e0e15bf9fbbb33087c152dbc8e68995f469c3ca46"
+    },
+    {
+      "id": "fx-45-trade-073",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "43685eeb3e91f53de3c973cd71e72d74334115c541a9efeb6c5f35c3fdb4cf04",
+      "answer": "B",
+      "explanationSha256": "24b8080efc4bf1d7ab792ac7b0595fc77ba393610a67de995b8dc99e73d9c257"
+    },
+    {
+      "id": "fx-45-trade-074",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "ac4da027cdd4fe0cfce42dab2075a3a482b4241c9bcf690de9ceebe045e80ef0",
+      "answer": "B",
+      "explanationSha256": "92e054a09fecae3f9e070565b926972bd36cb36fae368e744ed600774a5f9fca"
+    },
+    {
+      "id": "fx-45-trade-075",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "76245f263a6dea60b2a612a85b8d4cfad758cc9a55de6950d1368e9edfe5a605",
+      "answer": "A",
+      "explanationSha256": "46e12af99f6d9a67a7227862da3e7081f46de6e1ce59c1aab2a8e559b2476b7f"
+    },
+    {
+      "id": "fx-45-trade-076",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "1c8de0d2787880abcbfb5e997647e9ae9b32d88b0a4b065ea72d65e49b557ec4",
+      "answer": "A",
+      "explanationSha256": "cdfd368d5509cc782dc8ce5f50cf2d41682975a04ea14dbedafce949fbb116b4"
+    },
+    {
+      "id": "fx-45-trade-077",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "0b453fb47ae3cc7103e9145f9e3c2042d07558ae8f35b354e0ee30c27a41beaa",
+      "answer": "B",
+      "explanationSha256": "6454c505106d31b61e0666feba08bda3b469a2eed621484f6a9c9bf5885bdc32"
+    },
+    {
+      "id": "fx-45-trade-078",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "47bb6fd7b67b37c5c84e5a4c8666ef97955eefa5766456889275c236a644bb9c",
+      "answer": "A",
+      "explanationSha256": "f15f31cf42c0a691fca0b9343369706d82a50858395bb1a6b263f6d55369b606"
+    },
+    {
+      "id": "fx-45-trade-079",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "acd173d30e231e83b7fd43ff4c8f0371bb50fb02d5281da1fd58476c83894785",
+      "answer": "B",
+      "explanationSha256": "285fe38259b69aa954d9c890f768e863963118295b43b60a159bc794bd380242"
+    },
+    {
+      "id": "fx-45-trade-080",
+      "sourceFile": "624444-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "04b52c3b8029845f796a699dd0306b15a1e7b6e38771ef0a40676bcc85b85641",
+      "answer": "C",
+      "explanationSha256": "cab741c4c3311ff7ccb382ba46a32cbc050877a7548e5a115bec36560f309a2a"
+    },
+    {
+      "id": "fx-46-remittance-001",
+      "sourceFile": "644261-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "ba57d283fedb37ac7d5fb670a00644229e6419244a130efae12c5defcfee470f",
+      "answer": "B",
+      "explanationSha256": "9e5a142bb8f7dbdebc73ed0f8729483646731c6d1fbe1c59f8475142176cc1a7"
+    },
+    {
+      "id": "fx-46-remittance-002",
+      "sourceFile": "644261-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "f8912e7014a4163d55e4cd237adfa2299dac7cb208709da170a9470c413a38f2",
+      "answer": "B",
+      "explanationSha256": "54bbbb1270150757bc51d0dd38bab38388cc74f959d89326cc729ea8c0c60648"
+    },
+    {
+      "id": "fx-46-remittance-003",
+      "sourceFile": "644261-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "56059354421043775d8a59734192a282603004416eaa4077326ea2f973d3a665",
+      "answer": "C",
+      "explanationSha256": "87666f646f4d06fca1729b76abdbb65aec7304bf0d08be13715fe3476cf1991f"
+    },
+    {
+      "id": "fx-46-remittance-004",
+      "sourceFile": "644261-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "dde5a708097dde1b347a2855cbd3b4c43993cc4230f4a553e9456237b0564df2",
+      "answer": "D",
+      "explanationSha256": "80f4e6ef73e721d689976a7ceb4246bd25f58253bab2cff457f47862c95473ad"
+    },
+    {
+      "id": "fx-46-remittance-005",
+      "sourceFile": "644261-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "bcd699bdfd8637383c914f3cd22333661d22fe293162d795f3c91b0a30a19223",
+      "answer": "C",
+      "explanationSha256": "36d7f99d79f0e08353ebcf690b35fb94b906319726ac620ac639ec275a475a65"
+    },
+    {
+      "id": "fx-46-remittance-006",
+      "sourceFile": "644261-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "e7df479887528d087726f5e6aa4bd83412f75173bdbab5f72c43de09e19e75b9",
+      "answer": "D",
+      "explanationSha256": "e5d272fc636b8a746236781663ec158cea5c37d6fe913eebce4295487e8edf3a"
+    },
+    {
+      "id": "fx-46-remittance-007",
+      "sourceFile": "644261-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "2e8eb294132030c4d4e6c9c430c05bcbde8beaab1d49402a4c095f2a3e740f6e",
+      "answer": "D",
+      "explanationSha256": "5622918ba466f1d4594cb7ba33d391480b0d04cb375669aff06cba35ffce6e7c"
+    },
+    {
+      "id": "fx-46-remittance-008",
+      "sourceFile": "644261-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "0858ab2074b00e047cacd512a107ebe18b45cd38371d383796edc54a03ed623a",
+      "answer": "A",
+      "explanationSha256": "e583af28db33a508330d8906d7f46610a4bc7db500b02859c31b2a82709ae2a1"
+    },
+    {
+      "id": "fx-46-remittance-009",
+      "sourceFile": "644261-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "4a6cd042b5b9aa69452e9b341bd354bd7f6e0e5a3fead6a638f63e5cf6d724e7",
+      "answer": "B",
+      "explanationSha256": "d21158687f54210ae335025f4b8063050e1731bd8cf6762719910c2064b1d8a0"
+    },
+    {
+      "id": "fx-46-remittance-010",
+      "sourceFile": "644261-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "b8870133581dce74a76b4a2351b1f58d252a6baf3972650dd8f9429e7425d937",
+      "answer": "A",
+      "explanationSha256": "378fa6d044d732240504587bddec7c76b8c89fe4492cf8de702a8dd85d002157"
+    },
+    {
+      "id": "fx-46-remittance-011",
+      "sourceFile": "644261-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "7ad15b6644b522b2d4d072050cf2cf2bbd5fbd1da747a8de40f45933de1f92a7",
+      "answer": "B",
+      "explanationSha256": "69a4dbe07a43156f28317ac06d5b0a57d936236fd2dfaff9f128d040bfc96cca"
+    },
+    {
+      "id": "fx-46-remittance-012",
+      "sourceFile": "644261-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "b7e9c2377a1ffe397a8072831803879711b2ad027ac5a9d59bbac99a4458b27f",
+      "answer": "D",
+      "explanationSha256": "676daf909d744b8c90e3784ff78bea826f60740575bd13ce4af310b61e4502e7"
+    },
+    {
+      "id": "fx-46-remittance-013",
+      "sourceFile": "644261-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "889d1832a2ea0d228271916e76140d76c04a5705141270cba917490b794e481b",
+      "answer": "B",
+      "explanationSha256": "073db8da42031a7a30a8393f620488b537d1948de92c5860032b5ece345a7c99"
+    },
+    {
+      "id": "fx-46-remittance-014",
+      "sourceFile": "644261-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "f3f7321de2bb8b85b02cad18a026d870ad03e43e53e851a8e057fc14b01af7ae",
+      "answer": "B",
+      "explanationSha256": "b5bf5f62ccf08db7d267e13cdd03b4838d3646dda1c210dd68a237b01ee868f3"
+    },
+    {
+      "id": "fx-46-remittance-015",
+      "sourceFile": "644261-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "73b4ad3264e11dff757e14eddfccb0554dcd424b2fec9fa26c9a13e86c11654c",
+      "answer": "C",
+      "explanationSha256": "f7097d2ef41a9b43a10946500cd73811136d353fb543f0e354936b30ec7bc4e7"
+    },
+    {
+      "id": "fx-46-remittance-016",
+      "sourceFile": "644261-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "194756eaf3fa8f6f823a744de1ffca2539ac0ac5cf4fe98cba1db3bdff5e7669",
+      "answer": "A",
+      "explanationSha256": "1e2406c2dc5d4720190090b9157aebd4aaa9a045f97ee28fd16342d5f71a1b2a"
+    },
+    {
+      "id": "fx-46-remittance-017",
+      "sourceFile": "644261-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "201422e47306ae965efb6ea9ddbaac9542bb9df6d8b71bc5675919f05fd2b30f",
+      "answer": "B",
+      "explanationSha256": "5a2b0ab9caf86a986a66ff60113adb2079eb185bfe59ba581130b8764603d84f"
+    },
+    {
+      "id": "fx-46-remittance-018",
+      "sourceFile": "644261-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "19746e16953f267b59ecacbf5f8e9faf4688ef2239e2f7d8a46bf46e8cbdeb40",
+      "answer": "C",
+      "explanationSha256": "6f417bce844709b9dffae0fa4c068c04dcd472ef0139b4077615075c7a9af7f0"
+    },
+    {
+      "id": "fx-46-remittance-019",
+      "sourceFile": "644261-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "5ffb8858ac9c00199d95d35305339d71bb63a12e6c91152c8d8c90f55b689a29",
+      "answer": "A",
+      "explanationSha256": "225e614f8767f2cc88627702f53c909efaea385ff0170fbf3e4f5baaca2f4ab9"
+    },
+    {
+      "id": "fx-46-remittance-020",
+      "sourceFile": "644261-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "f8d940708620f0a1fd714e597fce7a69169ecc34a04214d8c68572bcaca14bae",
+      "answer": "D",
+      "explanationSha256": "82e2d9815b205246715285c064dc84eb2062b0a773123fc63613c39a26c171df"
+    },
+    {
+      "id": "fx-46-remittance-021",
+      "sourceFile": "644261-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "5e524dd98289961d15ba794af4975c7f1fa8ff98896594e86a4f09067b1bf397",
+      "answer": "C",
+      "explanationSha256": "6961be9eda15c56cc106b45ef08c5af8f1f9e69f746d236b9a69500c04fc8fcb"
+    },
+    {
+      "id": "fx-46-remittance-022",
+      "sourceFile": "644261-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "f4005032c96c56c56ae97c7ac8bcccb8ba9ebc3016ce5592fe798dc1fb593bcc",
+      "answer": "C",
+      "explanationSha256": "772fe3678f1e9c8235f21dff86b595e9598e996cd0d79f2385afffec1757a65e"
+    },
+    {
+      "id": "fx-46-remittance-023",
+      "sourceFile": "644261-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "9dadb537c3be88e468ae080a3734c99ada1ba355e998f2392c839b93eb1371e2",
+      "answer": "C",
+      "explanationSha256": "b41afb558c3eb0a20eda7d5aba5943063acc6b1ba3a43872d8bba070068c0f34"
+    },
+    {
+      "id": "fx-46-remittance-024",
+      "sourceFile": "644261-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "a59e3b69e846d90007b5de3a939c4990c3d2a6f88264c56cbb0d99d5673ac8dd",
+      "answer": "C",
+      "explanationSha256": "b8fb7656d2c3df6f81a5527be3ed42ad73bf6ba9bd1b3116568d6ccc50ef8b70"
+    },
+    {
+      "id": "fx-46-remittance-025",
+      "sourceFile": "644261-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "1b35ae84cbd2d7afbfb3533828566a5fa66d4030c595f568355e3be564c547b2",
+      "answer": "C",
+      "explanationSha256": "224a7756dca0bfd8241d906782270d26d2ea9d2e78ef0759825a6554c693f0b6"
+    },
+    {
+      "id": "fx-46-remittance-026",
+      "sourceFile": "644261-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "f4c06bbd0e0673922183243b6475206a494e421d9fe92b3a6c20899519f7e71b",
+      "answer": "B",
+      "explanationSha256": "ed03ad4d64178218a243a73c0b48477f5c4ba654edac856fac93935917ce3dfc"
+    },
+    {
+      "id": "fx-46-remittance-027",
+      "sourceFile": "644261-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "3f93abd0fb0ed8862721a65667491f050afb0ae496871a0677ccba3638ede144",
+      "answer": "D",
+      "explanationSha256": "c65cc2dd6f333ddf0d00823fbf5fe02c3993a29ae705c9f01ea4ce44e2d921a9"
+    },
+    {
+      "id": "fx-46-remittance-028",
+      "sourceFile": "644261-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "b1f6c4bd95271e867c32d5ba17e466da2a85314cbf7ad0615294db8265b9cdd7",
+      "answer": "D",
+      "explanationSha256": "44458e65c6eab75848925933452e6e69dae753475aee7bc95fc5e2c0bf46c281"
+    },
+    {
+      "id": "fx-46-remittance-029",
+      "sourceFile": "644261-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "c7ad70a86959910bb6178b3e2f4f409fe5f13a457c49a766b5f4c832bf828d1a",
+      "answer": "A",
+      "explanationSha256": "18e434c3d93afd12b46aa1ec6bfd66671c95b3f2aaa6513cdb4ea2517e66c701"
+    },
+    {
+      "id": "fx-46-remittance-030",
+      "sourceFile": "644261-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "aad0dacbcc1e8851e1cef323b4dfc0a28ed028ec54a491f7095b044f10ae0be0",
+      "answer": "C",
+      "explanationSha256": "059bc948a856bdea23708a69e84729fd8cd781d66cd630b45dd829066bc52e1d"
+    },
+    {
+      "id": "fx-46-remittance-031",
+      "sourceFile": "644261-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "f8c158f72ed64951c0cdbaab98271f2db62c545eee0a64f63cbf23ade077afe5",
+      "answer": "A",
+      "explanationSha256": "bf90b22d02c5cd31a005b14e82610a40370cc3983c1646ee942c3cda1eda6f21"
+    },
+    {
+      "id": "fx-46-remittance-032",
+      "sourceFile": "644261-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "acd666a40442083ed72e669a9cbdaa5786861e5e17878e6c6e9a849308c74b73",
+      "answer": "C",
+      "explanationSha256": "5f4a296cfc64b409c468acaadeb87923a378f4c35e761e3f48a75ab98c4f83a8"
+    },
+    {
+      "id": "fx-46-remittance-033",
+      "sourceFile": "644261-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "eccab621974bde98a3b686d5e39f28484f433f8b6a78d52ff680d451da1182cc",
+      "answer": "C",
+      "explanationSha256": "8b7c010ed87608e436f2fa5a4a2d51372e0e3a06d0c6560826387c588efc60b5"
+    },
+    {
+      "id": "fx-46-remittance-034",
+      "sourceFile": "644261-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "97f4cd248f9fd5aceb2df91ec40c151f3c23c360d2dad007b23e8e4414135bfe",
+      "answer": "C",
+      "explanationSha256": "52cb29a24debfc81fc839eeaeb532402bbdac14fc2560719566ea703cfc33835"
+    },
+    {
+      "id": "fx-46-remittance-035",
+      "sourceFile": "644261-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "961e8c03fbcf520d746cf2fceca782acee1f11a7745ccb07797cbd397db2febe",
+      "answer": "D",
+      "explanationSha256": "430f2a555cfc20a8167cb432dd46a06fc8a1ab57ee35ace9b9e3caf947b08f74"
+    },
+    {
+      "id": "fx-46-remittance-036",
+      "sourceFile": "644261-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "22dbb4298d68f291152af0775b594b220dc127aa81f22c4f375a67c60178b890",
+      "answer": "C",
+      "explanationSha256": "c25c77a4b987380e453f12353a992c6458cd6dcf0796ccbbb3f96bea9077d326"
+    },
+    {
+      "id": "fx-46-remittance-037",
+      "sourceFile": "644261-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "3408a5513b2a713f9e443eb99d5a44aed3cad02d1e72b591f4a8f2cf5bac4035",
+      "answer": "C",
+      "explanationSha256": "9ea19a7d382e1d77bee3827c552ca725ee9851edfba62e27d05292d0d124ce0b"
+    },
+    {
+      "id": "fx-46-remittance-038",
+      "sourceFile": "644261-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "09ab248e404cad14754c2fd12939c7d3f7e2592fcdd16282b51a4b8b7c85fc69",
+      "answer": "C",
+      "explanationSha256": "c5737b5f65ab35c61ecebad38db9d597bda1db49f8bfa85518eb18844af58024"
+    },
+    {
+      "id": "fx-46-remittance-039",
+      "sourceFile": "644261-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "aff0942a950f0be93a1271a79bdd3d30c56659e09e0e736b64ca3f79a57a450f",
+      "answer": "C",
+      "explanationSha256": "bb632cf803c717f0158c33b87c8a56e93b74c9d185c1ce52fe6d7a68e1eb461f"
+    },
+    {
+      "id": "fx-46-remittance-040",
+      "sourceFile": "644261-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "9ecb8d0903263ea48a52c8d53c37878c5d468c525a592cd6499fc33bc78b6aa5",
+      "answer": "A",
+      "explanationSha256": "38ca92f8ed4947cae15a87b2cabd60d451218eabf80681ede3b134536234f7c9"
+    },
+    {
+      "id": "fx-46-remittance-041",
+      "sourceFile": "644261-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "7e8d05b4aeb668f09f256b14d55868ce45f18cd3e5b5d3c30de50d21e1de4800",
+      "answer": "D",
+      "explanationSha256": "73826c68d7162cc11fead1d2b66cfbe0cb9ef9d72a1abbe97a8d3da56294a355"
+    },
+    {
+      "id": "fx-46-remittance-042",
+      "sourceFile": "644261-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "7ea51d613665bb18d57ed81e75ac7c5fe5ca149f25800e386c66ffed9f1cde38",
+      "answer": "C",
+      "explanationSha256": "f43040756c90e0b03cf2cbb131f9f93ebd8117dad80551ec9712e2adddda1693"
+    },
+    {
+      "id": "fx-46-remittance-043",
+      "sourceFile": "644261-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "e2c8c57e6dc8615e7a25b2ec963b9a1c0a9414037c7306a9335a223ec890c609",
+      "answer": "C",
+      "explanationSha256": "9495068f6e8f5ccc1688a1906d3aed29141970099aee28d31e8f37b743fd1c59"
+    },
+    {
+      "id": "fx-46-remittance-044",
+      "sourceFile": "644261-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "6c1562f48350d87deff411af918a8caccd8c90a88bb64165998e25690e0c3c1e",
+      "answer": "C",
+      "explanationSha256": "762d0310533718c389bda3ede8d51af9e288dcd6b82364d5afd0e98c61f5cce3"
+    },
+    {
+      "id": "fx-46-remittance-045",
+      "sourceFile": "644261-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "837d54f1552a673e7277802313912beb126ac361b4b84321685732337befe053",
+      "answer": "D",
+      "explanationSha256": "598f3aa5db52aec76a6939e1913d450dde587e24ae4c95d4c8a19291b94ae2e8"
+    },
+    {
+      "id": "fx-46-remittance-046",
+      "sourceFile": "644261-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "96c7a8452bb05443881267584450b0362fdc86c2baa3af631fc634e1599f4297",
+      "answer": "D",
+      "explanationSha256": "73e7fb00f6dc343520369d1a20ab3c4c0526d4597fedd7e6b70f5f45720463ce"
+    },
+    {
+      "id": "fx-46-remittance-047",
+      "sourceFile": "644261-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "75df1a1db1fd1c0b14cf6f5e81f0f65b329efb98804c13b0101bd93b8824c2b6",
+      "answer": "D",
+      "explanationSha256": "47887dccdba21218da8f9b34c91c6dc71276e283a72af6cc7d2d8189714f21f1"
+    },
+    {
+      "id": "fx-46-remittance-048",
+      "sourceFile": "644261-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "2096edea519bc544291655e1da8da885c58ace70232a096e6afda7d41d25e501",
+      "answer": "B",
+      "explanationSha256": "6135313a5359efb1977860097defb5370713894fec70b686491ff520186a1f85"
+    },
+    {
+      "id": "fx-46-remittance-049",
+      "sourceFile": "644261-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "cd4337c862b861bf6082d31c0bcd03414e30931e7afc3f7f1f81ede7dbae4a1a",
+      "answer": "D",
+      "explanationSha256": "01514cb5d9402327e40fcf4d056618696b430f6fd6030ae9ccf5e90aed082a08"
+    },
+    {
+      "id": "fx-46-remittance-050",
+      "sourceFile": "644261-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "37359652be2c5ccfe45286c50f3fd491ef1e0796f12cd4de71bc6c7cc21c8c0e",
+      "answer": "D",
+      "explanationSha256": "920fc95fe3acf74725f81d7b73df9b0d45bd790e4bda02c30962ba9d8cc7dda6"
+    },
+    {
+      "id": "fx-46-trade-001",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "f7584e716a5bf0c10fbc9cde5f61a6b3b23ed77fce7db7193a2d0f220f1e83af",
+      "answer": "B",
+      "explanationSha256": "ebd0e7470216f1572e1f884471be39ab49dbf2824c388330d15691d18545a496"
+    },
+    {
+      "id": "fx-46-trade-002",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "65d2b5217544b8253fda630cadfa5029f7f1aafa2a65546fc855934081b07f85",
+      "answer": "A",
+      "explanationSha256": "101f3bd909f0125f94f0007208a3a73011053fae9b79ac4bd23ff0820efcf941"
+    },
+    {
+      "id": "fx-46-trade-003",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "f36d3677f34c26b13633ae8d297a9fc1d6eb16993f0c29c36a19739062dafd48",
+      "answer": "A",
+      "explanationSha256": "ff195b31ee3d42e2dfad68316a7efdb9c53b4281ca48080c003a0bb99a4633e0"
+    },
+    {
+      "id": "fx-46-trade-004",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "d091ad87691ac627fe280857ad6f1561316561adb19f0c9f2520580065200e6b",
+      "answer": "A",
+      "explanationSha256": "ca336c89c91972e4d53debf038caee152a538975920fe84c98e6694969b6c05c"
+    },
+    {
+      "id": "fx-46-trade-005",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "7c720a2482a148fe18d8f008c271fbb6df620036fdb4bbee81f189a4e4e870fe",
+      "answer": "A",
+      "explanationSha256": "e70cdf0a95020037e5bec08365a428922c83c318d5799d00199b1f557e3650d1"
+    },
+    {
+      "id": "fx-46-trade-006",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "8bb1e1d43d770697a1d2d3d64180b6ed1a705e7b9a4c13a1269dafb41233dade",
+      "answer": "B",
+      "explanationSha256": "696c4baf24ee6441b4419113936f4666fbd2037746d8524edd5ee9387f746f4f"
+    },
+    {
+      "id": "fx-46-trade-007",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "0180829c5be660f0244e1169dfc929a945e1c100afe4b8fdd8a772f0b6f50eab",
+      "answer": "C",
+      "explanationSha256": "0937576cb1ebfc186adafb9c988da5d83d2714da5960dd92252877cc5ab13d3d"
+    },
+    {
+      "id": "fx-46-trade-008",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "aa9492c0ac4aea658c999295137f6492495ccac047269192ad59f99edd0f7081",
+      "answer": "C",
+      "explanationSha256": "6bb23dd0f5d8afced9a842dfbcbdceb24b27db22fa1f312685ac74d006b3c632"
+    },
+    {
+      "id": "fx-46-trade-009",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "412911106135fa9b2ac8041bbfe9dfcb7b713860a3eecd54e566e77c46627e3a",
+      "answer": "B",
+      "explanationSha256": "f510e5edb51be315640a378ded0b796734caffc5c0c42b012cda35b3275753f1"
+    },
+    {
+      "id": "fx-46-trade-010",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "6ecc1aca2a794279313fa02d0667f4dd3212d5e3409f3b69465020a59147e2e5",
+      "answer": "C",
+      "explanationSha256": "2975458cbf43b977b1c4689152c59d1f96acb91c4d3a581fc5472dafcbf0737c"
+    },
+    {
+      "id": "fx-46-trade-011",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "49a433bff3e492c113ba1785fb081b6b59c120ee26111ed25ca1ca0d8b46d05f",
+      "answer": "C",
+      "explanationSha256": "82592040b5c99eb3a5d57a255f4857232fc54ca5c6920b479ee92111d1703b62"
+    },
+    {
+      "id": "fx-46-trade-012",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "1b7c3488e7adef3e29a1b3e7fcc848c43878f73cdf6c1de3e428106680145556",
+      "answer": "B",
+      "explanationSha256": "f765de451f5f1c15e3e0bcbfaf6a539cb7669e663abd2cdf6772f6ac2882b399"
+    },
+    {
+      "id": "fx-46-trade-013",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "b58ace032b63f27043790a3566baa19c5bd9fd662149fb98417d460c282ad868",
+      "answer": "D",
+      "explanationSha256": "8a23bd598e74f3190df761b5fe223166368e95c808b2f997df764580c0473ac9"
+    },
+    {
+      "id": "fx-46-trade-014",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "188e079897b444b8e12699d01fecb85e5857d47743bade2e1d3f605a7ac10d3f",
+      "answer": "D",
+      "explanationSha256": "8b9f7ec2cd035e87328bd8eca8a0e039137b0b39826fa27ee91258640a3eeaf3"
+    },
+    {
+      "id": "fx-46-trade-015",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "9307d738c6c73129568f77f38044cbad4e81bafa0671eacd65a516c14367a58d",
+      "answer": "C",
+      "explanationSha256": "d04daeac8b4f625e96617de65763dc34166ddec5c27fffb0fd1f5ab35622beb7"
+    },
+    {
+      "id": "fx-46-trade-016",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "ec2c69bdd84f63b1c5680f32821ca0173ee38c6204e84929f6de6708477dca69",
+      "answer": "A",
+      "explanationSha256": "5703d604741e89b7b6877cfc170dc67f3d739cb8ecccf9ff20798cf77365be1a"
+    },
+    {
+      "id": "fx-46-trade-017",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "7b0ba8922c4110a38c84893c22ff4ac5b95c23e710927f0ad985bf1f49fcf1bb",
+      "answer": "B",
+      "explanationSha256": "a6095a12b366c4a3368ae21048b2cff4bf66c16ddb2a3b26a1333d0c79be2b14"
+    },
+    {
+      "id": "fx-46-trade-018",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "8104b80ce91f09040c126bebcced50e9de0baa258d8bc67e68cf5db909d52fbb",
+      "answer": "C",
+      "explanationSha256": "9d64a71927ef699d3c59f60ad67a508397f7acb4ee1e975cf89aedea9c33a48e"
+    },
+    {
+      "id": "fx-46-trade-019",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "0398754d55878fe3fad03857b548864d56d56b90a057b3580a361ab820fa6879",
+      "answer": "B",
+      "explanationSha256": "bad6b56cfb63f32f2d3a6dd086a76cc2730e86c4196c96bb25b9b4be8aa78a8a"
+    },
+    {
+      "id": "fx-46-trade-020",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "d5ac9919bf0edbbc725cf4f24f498181765525df17b1c0374d97ecf73cb25f8c",
+      "answer": "A",
+      "explanationSha256": "f960b3c1abf0abf72cb2ab4ce89feb88afe54bd5d0ba4695394f34df49a73aed"
+    },
+    {
+      "id": "fx-46-trade-021",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "5bd6eb3f4f668e35e82e6aa79e7d5eb8ac20ad6406841cd29b2d72cc259c5a32",
+      "answer": "D",
+      "explanationSha256": "fcac82b76828dfe4b9bbbd7ff9aa53a04c75f0e794911576675fd2213ca1a983"
+    },
+    {
+      "id": "fx-46-trade-022",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "79b2f148737b29a54b74911ca0770dba0d9905eec31f641b084755900b6f7cfa",
+      "answer": "D",
+      "explanationSha256": "5481cbc69f26d1c702d2ed80d2684f6b908b37523c7e684f7f634596e49d73f1"
+    },
+    {
+      "id": "fx-46-trade-023",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "62b6b1e4ab2bf9ed2168746f8a7eec054e968d029ab273b305fbd07d3731af77",
+      "answer": "C",
+      "explanationSha256": "ee7ea23e7416a96a0d0e827204764cc9df1541a41a053c0989e6526927082aeb"
+    },
+    {
+      "id": "fx-46-trade-024",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "863dfa15e6cde3bf38ad5efd8e7ff8fc7fedddb278fe336718062e46d7a17d6c",
+      "answer": "D",
+      "explanationSha256": "2bfb0e4e39c5607e1242de6d197f0955f5138ac93d3e58a7b1872adcd8605cfb"
+    },
+    {
+      "id": "fx-46-trade-025",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "402090d89fc66416c7abed674b5fd19b191e695ea8ac73a9ed27c65538b5e2b3",
+      "answer": "A",
+      "explanationSha256": "3da2d851fce6506cb8b2ab35e99e643e55b4c71dc8cc6cbc6124d230350ef560"
+    },
+    {
+      "id": "fx-46-trade-026",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "76680bab1bc77b604fcaa6d1d1dff7858d1257027788337cd2a5dc20ccd46c9f",
+      "answer": "C",
+      "explanationSha256": "3a88760b50fe9cc001df60494b1f71929c5966a703d03e34fc1938144e412de9"
+    },
+    {
+      "id": "fx-46-trade-027",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "64b185643ab49e6c849f7098f5b2397f3ba416a274f0997563f431a3105127c0",
+      "answer": "A",
+      "explanationSha256": "20678f5e54b975ea9aec07b0e9bf5a3f0ce6fafcd070fc109b419e2e5aff9d3e"
+    },
+    {
+      "id": "fx-46-trade-028",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "1a64e6d2eb345d1243a034216b1daf93824788461648d7977007140da274f5a4",
+      "answer": "B",
+      "explanationSha256": "5cf2a7e20a5b310449498be58f4f7487355187ba83c75c9a7d418299be21a3c1"
+    },
+    {
+      "id": "fx-46-trade-029",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "7141abad77a20aacd87401db1af5cc0b3dcfbda9b568388fc22fe9dcc2a93540",
+      "answer": "A",
+      "explanationSha256": "14eb553015d44d2ac5fa9050c3ac7c6231c91084fdf8cb72123581e6803b79cf"
+    },
+    {
+      "id": "fx-46-trade-030",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "ed2616369ebbfe9dbc9f7355c188ce5989663d6d8c179fae433c0bfc89dcc35d",
+      "answer": "C",
+      "explanationSha256": "0320bc36fbc6ebae59a13056d7f810ca494bc3712e3ede6925de06780d463d29"
+    },
+    {
+      "id": "fx-46-trade-031",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "64fb04756e5088de8ccc70a808dab3234200310031d74586918e9b8b4106c3eb",
+      "answer": "B",
+      "explanationSha256": "f45e8f6c2b5b528944ba961789ebcce7a1cfcc6a61b9e0e8bddaee5f4dc3e14a"
+    },
+    {
+      "id": "fx-46-trade-032",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "c9a20e5ea73254b52b8d061c6a5856faec751c88cd28c44e85200102825831f0",
+      "answer": "B",
+      "explanationSha256": "d5149a2dbfe6cf2fe4db13ee82cb0903aa4f1d3b3671470813743f7ddc83a251"
+    },
+    {
+      "id": "fx-46-trade-033",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "ef28f98be1f5f72ce1c79e05c1a264e0ed5421b9b2b14d4a6b54aa04e997d2c2",
+      "answer": "B",
+      "explanationSha256": "fba6b72788d987a2de2b2f10fe84a5a25c72bbe7ad80e359a639d4d0953a5e3f"
+    },
+    {
+      "id": "fx-46-trade-034",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "7f0e1c76893d8794ec89a676053b1c877038ee638d58ceab14db6318a4f7f6d3",
+      "answer": "C",
+      "explanationSha256": "a2934d3449e67f6ee173efe399bd99139146888719ac014b11c43843b5c1265e"
+    },
+    {
+      "id": "fx-46-trade-035",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "82903755004e3354a900f2abdd43b14f0f2aaddf94dcfeb2f33184085dce4db3",
+      "answer": "D",
+      "explanationSha256": "3cc3943a5ee180cd3ce43780984ebb095d675ce79017509585efdb8a85fe2ede"
+    },
+    {
+      "id": "fx-46-trade-036",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "594c39f7f3524a0b86b81c53156959e09c8794abc93c1bb2b4a732394577e202",
+      "answer": "C",
+      "explanationSha256": "6d70f9f93a804b4375679c2a1e88700c49eb7de7d07a5d969d4a2a0593c8dca2"
+    },
+    {
+      "id": "fx-46-trade-037",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "49b9b2f853ecae4ff1c894b9c546dacb3c544d640dde9dba97ef89a89b79fc4a",
+      "answer": "B",
+      "explanationSha256": "80a93b4aa99f14b88e74489dd42a8052118235f7ded632c294265b8c38267ef3"
+    },
+    {
+      "id": "fx-46-trade-038",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "54cbb2624f3e6d737813b9d31fddb8b484ee99ada2992a74d521b21af31c53d9",
+      "answer": "C",
+      "explanationSha256": "539b6b5dfdda83bffb6edfcc200e45a0ea63bdae3879c7d35d61bc4abdb28c82"
+    },
+    {
+      "id": "fx-46-trade-039",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "3fa55c1fd5267b7e80eab55436edfbb2b98e1e8e2666e9062967e52bcd937f32",
+      "answer": "D",
+      "explanationSha256": "ba154e3835942cd02adb0a8c84b4d1d08c144b4d442c882e45c78f613ee853d0"
+    },
+    {
+      "id": "fx-46-trade-040",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "ffa16f80b810ebdc1b4be245c50fd1741590670eb5be08747429f1a7542bf6f2",
+      "answer": "B",
+      "explanationSha256": "2dbe267844cd60ce4ae9e1f4d96cfed2b90ca5b305c07b478bbb3d45edc79a5d"
+    },
+    {
+      "id": "fx-46-trade-041",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "4da7c5ab417b8bfffed62e4d45acc371c86a3ff38754b7ea5bde91bc045e793d",
+      "answer": "A",
+      "explanationSha256": "654105b8f87f82aa2057ba7bbe73ac7211d2d0c4f6b3afa07ea96767c7dd10a8"
+    },
+    {
+      "id": "fx-46-trade-042",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "860bad2902dead91bc727f577e8acd5e5dd6be066eb5e5c74cf101292cd7fb1b",
+      "answer": "A",
+      "explanationSha256": "5a8758726e022f038f54d81f6ddff0d91629269e151dcda8dcc7108d32ed4257"
+    },
+    {
+      "id": "fx-46-trade-043",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "fde60d44e2ea7128ee7792021cac69a8dc51316cb56ed8f49fdc3b8563b86d93",
+      "answer": "B",
+      "explanationSha256": "86a7526a8dbe43aebca3dface9f4e69121c07d4a91283584d5408d3c7e310fb7"
+    },
+    {
+      "id": "fx-46-trade-044",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "19d1d7a37cc2fd5e25e1353c614dba08737a2940e089aeb27ba9ba89ae21db8a",
+      "answer": "A",
+      "explanationSha256": "eac73e5b4e34b3e01b2de13b16caa9384286688f0abb65d257894690c7bb67cc"
+    },
+    {
+      "id": "fx-46-trade-045",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "64b888d11038cb93d47b87d288f07155d4adf9950de289bc7987082ddc68efbd",
+      "answer": "D",
+      "explanationSha256": "b4534809e36dc3ff55f2d7475f1deb1f900b4eea1dfbf1d5ab4f69318d858a3c"
+    },
+    {
+      "id": "fx-46-trade-046",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "b2784588bc035ba77300f7e121950afe619dd5d4f5975560617740aeb72d43a3",
+      "answer": "D",
+      "explanationSha256": "0fb0c659ce492f9478ae66283fc8500c8589cc0b8a06bd99a6db8f8b0e7e0fed"
+    },
+    {
+      "id": "fx-46-trade-047",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "2b7eb8beca9a300ccb3a43a4cd77accb62b088a925395c61e6e0e923d9d1bd11",
+      "answer": "C",
+      "explanationSha256": "42137365085dc100c9425f98474883fc90b7910c89110cd58c097e69c6fb4523"
+    },
+    {
+      "id": "fx-46-trade-048",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "e8db129c78302292beba4242c09ba3b0fbee9b9878cec077f509b7d1c77763d2",
+      "answer": "D",
+      "explanationSha256": "efc99225a4d23d1a5d7d5c6c45439f703372eb2614fe39077e5e217b1d844fdf"
+    },
+    {
+      "id": "fx-46-trade-049",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "9ee2262c048061c3934c00d2e26206f7b385fdfa1ed1690c13dac4437e33af5c",
+      "answer": "C",
+      "explanationSha256": "5770b293233b8720d681a569204f592c64117311e50522ce37a092f5d3626415"
+    },
+    {
+      "id": "fx-46-trade-050",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "2b71794b5e530339e856893d4b1d3fde6753fd84731c0f984aad81c4dc772eff",
+      "answer": "D",
+      "explanationSha256": "cc1077a101e6d1ada814da07bbee849e9c2e49c93af0c5addb0f118ba7195e49"
+    },
+    {
+      "id": "fx-46-trade-051",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "ed9b1b34f9a879609e8723a46cba8578c3beb0ceab437605fdca1e135b0a7911",
+      "answer": "C",
+      "explanationSha256": "4cd2e1b9d345282ff8d926b62f965a2879c4bde6b98671caef0620827e97d929"
+    },
+    {
+      "id": "fx-46-trade-052",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "cc45372db5bf0a5a94b04382d1801cc30f02f08c88990d44041eee23623e9ec2",
+      "answer": "B",
+      "explanationSha256": "2af6f537a5f2519a60e92a59ca760b3853bf889a9e8d9d620e76adc3a5cc10b5"
+    },
+    {
+      "id": "fx-46-trade-053",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "c1248a50590ade6a5b79ec87f4857b372d49fcbf42c61174f989719c6d8d5a7a",
+      "answer": "A",
+      "explanationSha256": "0f896088dd86f60291f00469173d16acb45db27c093c4b4df1c5b54100a7c31e"
+    },
+    {
+      "id": "fx-46-trade-054",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "598c9544d35871814a3fa64eb25c9910743e9aef2476889ae5d087a7d0c63da1",
+      "answer": "A",
+      "explanationSha256": "0b7c87dfa95b31e3ba459fe7c352064999ab774c4101cbc923e31ff8b134cafd"
+    },
+    {
+      "id": "fx-46-trade-055",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "26987b941c7a8a8e49b643c50ee663b44a5fe6a9c4ab679d92e5190c7e4f4add",
+      "answer": "A",
+      "explanationSha256": "dfcadfd8dd7f115c104f2d5020d606ec67050ceef8e88d9f4785f5fa65a9b05f"
+    },
+    {
+      "id": "fx-46-trade-056",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "a06a6636970db076f0ac6ee90071251d5b202b257bff38f43a65ebb5ec905b1e",
+      "answer": "C",
+      "explanationSha256": "46ddbd7d20527b898f36e41ed866756a7713904fc172ec7504ce7a513aa209da"
+    },
+    {
+      "id": "fx-46-trade-057",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "db4a8759f6f2e966c67cbe369f054e2d0db6ddbe3723b9c83153318f356b6994",
+      "answer": "D",
+      "explanationSha256": "86cf344b09bb79bcd9b6bdcb98dcca10ddd668fd2bf43b9704d538918d763d44"
+    },
+    {
+      "id": "fx-46-trade-058",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "4ec847a7ce833390aa2b45e3ae699d59b56b2ce41ce5b387b775f6dfa3d53cd0",
+      "answer": "B",
+      "explanationSha256": "02c24db50cf8225d8b3a34c5d0aab536581f98130225e3e9427c33e91c4cd98d"
+    },
+    {
+      "id": "fx-46-trade-059",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "6e891e1910b79ee3ac8d0c9522ee07af58acfb602415d589207089f972813543",
+      "answer": "B",
+      "explanationSha256": "5ab52a538fbd158d32af3a1276517ea023695821cc63f899c2a672f987fab7a6"
+    },
+    {
+      "id": "fx-46-trade-060",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "38a5817d6dc7516ffa7cf16888296f2b5ccfbe04b2ac1e1b2a7418f39823c6e1",
+      "answer": "B",
+      "explanationSha256": "e2b84415eae2de5de77633a4d08da37893fcbfc5153793657e5b5738f493137f"
+    },
+    {
+      "id": "fx-46-trade-061",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "aa519b1ba1df779a47758742b526a4eb76dbe991dab40fd6c952a36d6cafb0c0",
+      "answer": "C",
+      "explanationSha256": "fea0f34f849d56386514bf2bfd79315fba5fafcb511e43e39c45dcedc37b7d1d"
+    },
+    {
+      "id": "fx-46-trade-062",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "3c3b7328fbc9f9ecc2dae726ab3e72d90ec69109c21c3c60daee75ef8fb9ab5a",
+      "answer": "C",
+      "explanationSha256": "ec529752e7e477052fda8bf27aa80563a0a71d90a57775ff9c1ed28740adcdd7"
+    },
+    {
+      "id": "fx-46-trade-063",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "3689fdcc4056eb3d850fe10c879079c95661d6fc45b2ea6f08f9b5cfd19ec9f6",
+      "answer": "A",
+      "explanationSha256": "f4ae7dbc9028e2ed7216410402fc262f1eafa2ed306814f9313c5c137278fad3"
+    },
+    {
+      "id": "fx-46-trade-064",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "931e79d1d77b4b2fffa9794082116cd345e34f45a349e9ba0ba17b786e90ce55",
+      "answer": "C",
+      "explanationSha256": "651bf06c0cdb8afe3bbc71cb3a2fb5fa12f20f245e7879af672596ac4e3c3390"
+    },
+    {
+      "id": "fx-46-trade-065",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "3cc40413b214b9ee56e858321d7cf81588175f1f512791dbe3ea3325d09cc85a",
+      "answer": "C",
+      "explanationSha256": "f53239edc2bac9666a07148bcac036d7ee3466c40c2c02b07b58148b04c2ad74"
+    },
+    {
+      "id": "fx-46-trade-066",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "c744198f54330ee42eae9f2936fc15dab2e5ecd71fad5012ee0ff4dd80595147",
+      "answer": "D",
+      "explanationSha256": "4af24936b6c384ea45546e54e311cfe8b5a006b804467f724185dc67fd39eb29"
+    },
+    {
+      "id": "fx-46-trade-067",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "667c980372409c732d2f47af9e49dbea6aa25311b5fbd10fc5348d17d2143d74",
+      "answer": "A",
+      "explanationSha256": "47b890a866d7747ba33352e9b48463a4928ce16c12f2ae6d3adda02b952f6615"
+    },
+    {
+      "id": "fx-46-trade-068",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "bd75a944b66f85f3feb0c4cd0e9a8f4fcb1ce686fd7f3d44c6c38845e8bc7b1c",
+      "answer": "D",
+      "explanationSha256": "726e1050d87c6db40b319bc1a80de57cbd695199dd3fa39da7979ce33db107ce"
+    },
+    {
+      "id": "fx-46-trade-069",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "131d36f67592f89db2bd5962c8803f7a23d19b77170a4de9cc9e179df214edc4",
+      "answer": "B",
+      "explanationSha256": "17644a848914abf1895ec2354a16de9c6a3ae60f0536e7323411fac07879d769"
+    },
+    {
+      "id": "fx-46-trade-070",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "83ebbf2865ed5b56c24a49fd004e1222478ed063d612dace4327852710444cb8",
+      "answer": "B",
+      "explanationSha256": "c2f916deeb84f27e0a15d2624ea35fa070bb298a6ff05e8963d48c7cab2cba9b"
+    },
+    {
+      "id": "fx-46-trade-071",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "fd61a2b8bc3e1bf3e0c7801da52a50550a7d0e0c3949c7cb2024daf31f9ad4c4",
+      "answer": "D",
+      "explanationSha256": "f5a99875b74a41c5cb4e831e48c51e8df6d57d59e2d22cfe0242edb400b0ecbd"
+    },
+    {
+      "id": "fx-46-trade-072",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "461ecdc0d3dee1956674025bad120be378cc611067245773cd5d9d9289948dca",
+      "answer": "A",
+      "explanationSha256": "85cb6007caed6a2686d7ad29926d7034358510eefb2922144372a94153940a44"
+    },
+    {
+      "id": "fx-46-trade-073",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "a2192de0ba4a7d0d18b09b66c89e130c1c137378ba7062431b0fd3f34a1853bb",
+      "answer": "B",
+      "explanationSha256": "de913424d18bdc23cb66c7f0dfc1c67f964eb2929943b6fb524420330a597c2f"
+    },
+    {
+      "id": "fx-46-trade-074",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "7153f10a9a4ae66b75502970114e61d5b59e7b4e6c1c1f86899608b23e8be657",
+      "answer": "D",
+      "explanationSha256": "147d3fcd1b7e4e963b597336b9f89b69fd760582cd0466ce88b96d0099d109e0"
+    },
+    {
+      "id": "fx-46-trade-075",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "c6df13961741375be393e37fca115b68142522004c2b4a08fbf6f03519eafdd7",
+      "answer": "D",
+      "explanationSha256": "60d007955dc578ac88976327aecd2f5e42c626545f74901f9cac2a86a52ee971"
+    },
+    {
+      "id": "fx-46-trade-076",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "a1f303804a46f084c81e7967dd39b0ebc77a0ebe73979de71ecf77760ced2bfd",
+      "answer": "B",
+      "explanationSha256": "779af62d128b0ffbc417cc1cc73381d6efb102b11e747167f0e593b33433ea9b"
+    },
+    {
+      "id": "fx-46-trade-077",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "336c209e6ab7e66604c4d17b264ef0787aebcd35f75caa233aeacec4eaa0f0f6",
+      "answer": "B",
+      "explanationSha256": "0c444fd1afafacc4b1652c4f6ce45e22d88cbe6c973b49f53af70648a4b30295"
+    },
+    {
+      "id": "fx-46-trade-078",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "1faba54f5222995483d916bad95c6b0c801cccebfb1bd7d9ab32ad995a2c31e3",
+      "answer": "A",
+      "explanationSha256": "487e00a7fcbb8c96ad62571b55a40d1a26ae058fc2863201e1468ce1228d97f9"
+    },
+    {
+      "id": "fx-46-trade-079",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "11232546d5bf6845ca224e89820896a744a9eaffcad5a2f27d68c4228fcc3b61",
+      "answer": "D",
+      "explanationSha256": "7578cf45106fb1e39f2d9eb5d3632bce6b68cf1922800fa6e78fdf077f732a92"
+    },
+    {
+      "id": "fx-46-trade-080",
+      "sourceFile": "644261-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "c00c922463a8c82dfec1498b684fd098a4c64413542b6c1d76c7fc69edc90d0f",
+      "answer": "A",
+      "explanationSha256": "97bf4089aef5dd4ab4c13a713d3509e60a1d933063d0b77efc4560b9594f709e"
+    },
+    {
+      "id": "fx-47-remittance-001",
+      "sourceFile": "666077-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "18d41666d11c6207ae7fff085f7570d9902414b79a6e6c0d5a49db95d71d6ead",
+      "answer": "C",
+      "explanationSha256": "d9979ed56ef35c12ce5270c955444c6f42dfd1c8f65214722b0ddc00faf3457d"
+    },
+    {
+      "id": "fx-47-remittance-002",
+      "sourceFile": "666077-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "8577c49cf8a4df0533a2c259c9f450b674cba83c8ee654003bcf2cf85386fbe2",
+      "answer": "C",
+      "explanationSha256": "1badacfbcd41f6ac655a7fb7e46f18370cdb17d179686efe0e25f289df1ee9b1"
+    },
+    {
+      "id": "fx-47-remittance-003",
+      "sourceFile": "666077-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "63049be94a0e540441576cfca24b3bb743dcc616f43f0385d684df2766dcfb4c",
+      "answer": "A",
+      "explanationSha256": "e606456906019bfa472b497ec76f3260b1256728eff57237b6922ae20aa60c72"
+    },
+    {
+      "id": "fx-47-remittance-004",
+      "sourceFile": "666077-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "ae58ca0889bd6ea9ff82df80f1d9a9f8699ed20ebe67dd837b899e730c7545b6",
+      "answer": "B",
+      "explanationSha256": "78a48b2ec00f3cd03e18eea5e88dca04aab5398b17ebfdea134d235053858cde"
+    },
+    {
+      "id": "fx-47-remittance-005",
+      "sourceFile": "666077-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "a69ed92fb30033e6c6eb59a6de435d7d9a84a8d67ac611f7025fb8a2901cf9c0",
+      "answer": "D",
+      "explanationSha256": "f9d1473718f66bf6270fce815e4ced73f35bba231bdd8af894a5d4d1eb6540b8"
+    },
+    {
+      "id": "fx-47-remittance-006",
+      "sourceFile": "666077-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "1063b6889ef60de8af4c08ba76e10908a1f23675b2a3f390d3b420e77e4f1164",
+      "answer": "A",
+      "explanationSha256": "8c09928ff651741c0993ee568282e594f8dc51f2cdd9b46db53232c19584739d"
+    },
+    {
+      "id": "fx-47-remittance-007",
+      "sourceFile": "666077-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "52f7342417d2b5ed078fb4effce6afde3a62e8d9caaab0569733606cd6167282",
+      "answer": "A",
+      "explanationSha256": "18017b67b230d50bb91ab940e82e3bba3ed0ec3e0690e9c0b913be889c1ec2e3"
+    },
+    {
+      "id": "fx-47-remittance-008",
+      "sourceFile": "666077-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "4000b60997088f70987074a44f2cbf3f43c652ff94097cf2d47e917526f295be",
+      "answer": "B",
+      "explanationSha256": "ff41bdf16c88c243d94e9561c67a02caf819653fff2df9aaa60a4ff732c52604"
+    },
+    {
+      "id": "fx-47-remittance-009",
+      "sourceFile": "666077-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "e4364e83c3ec3404f7206a94fbf369deb0ba27f9ed2c2561d0e590eeb6b3e926",
+      "answer": "B",
+      "explanationSha256": "0698d9a4e44701b944f222737e08cf1aefd4d71efad38d69c0012a3c6315a754"
+    },
+    {
+      "id": "fx-47-remittance-010",
+      "sourceFile": "666077-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "976f59cc90d8ff13c9e960bfb56c1da807583ef6bc04af1d8e78eea6379a1c53",
+      "answer": "A",
+      "explanationSha256": "7bd80206f1b11e4186c9664da5d849b0f07ac03b6f4122df23e4b51cfe4fac2a"
+    },
+    {
+      "id": "fx-47-remittance-011",
+      "sourceFile": "666077-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "fd40ccc24851c1171c6f22f134b6983c66a18fcc981b6b171f7dc06889ee7e3b",
+      "answer": "C",
+      "explanationSha256": "ed0f4aeebb3b29f20a7f5d5ccd7291a0f62d9ebad27b14699dee1b97a30c3b62"
+    },
+    {
+      "id": "fx-47-remittance-012",
+      "sourceFile": "666077-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "31170d835d40272f1528ecaaa3805bdb76dd8f90b8c2ffefcf458f12a727b70a",
+      "answer": "C",
+      "explanationSha256": "060debb144e7a53917bcd487546d6163bd785b3fb7b88dc6875b661a3aeca62e"
+    },
+    {
+      "id": "fx-47-remittance-013",
+      "sourceFile": "666077-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "ddfeac4dad738875a86529b2799d921f24b1da08c36b5ac3a9cd27ecdda598a2",
+      "answer": "B",
+      "explanationSha256": "ef752cfc680f6983a3f97f7000ec1f0cd71590b158bb4a36150ee7a7bccf8006"
+    },
+    {
+      "id": "fx-47-remittance-014",
+      "sourceFile": "666077-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "92a03260016a92313614b8b1207186ee36ba56b7fa5da439973d892bb1142ff0",
+      "answer": "B",
+      "explanationSha256": "e293cb64fdd41eb4a525aa5f5a3afd41b035768d53b9b6cb96ab8775bce29674"
+    },
+    {
+      "id": "fx-47-remittance-015",
+      "sourceFile": "666077-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "9bead48c50e6a64bf1c013a00fc4626e0fc2ec9102ead3f776136854a4fa125a",
+      "answer": "C",
+      "explanationSha256": "4c4d81463e1ddb2f7e3c1374d1ee961b8b6e1fb1d723e292c7eb56768934f0ed"
+    },
+    {
+      "id": "fx-47-remittance-016",
+      "sourceFile": "666077-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "c3db0a348ea8d8e167dbac8ee26c181a4420eaff4a58421a50377da51ebc5a5c",
+      "answer": "B",
+      "explanationSha256": "6ff09968e4c8ed43600316a66ca5674635ca743b871623753c47f7a99dc083a5"
+    },
+    {
+      "id": "fx-47-remittance-017",
+      "sourceFile": "666077-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "1d912f276fbb9ffffef6fceabf2643b6bc1a3d4970be86ad672ac8759ac7cc0b",
+      "answer": "D",
+      "explanationSha256": "4ce60ca357ac97596e4196af58d5fab84929fe71938b11f7d62ff261f6fae09d"
+    },
+    {
+      "id": "fx-47-remittance-018",
+      "sourceFile": "666077-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "5b51a8fc476726e82f9de9216d1bd702ceb42d1ea8b9df8058425be728e973a0",
+      "answer": "A",
+      "explanationSha256": "27809dce06603f75298b31f91314bbdfab08cf7493fa6871be279a77ef80c176"
+    },
+    {
+      "id": "fx-47-remittance-019",
+      "sourceFile": "666077-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "1ce2e3499d3cbfb2c7502e4b836db52477a9ff06deaa397787c6dc97c5887119",
+      "answer": "B",
+      "explanationSha256": "5723f39bb9b4f0d0732cbda056260ec2b4e11ee33eafe4ea5b19b40a9ff17af4"
+    },
+    {
+      "id": "fx-47-remittance-020",
+      "sourceFile": "666077-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "5d34f019385250f15677c985b39a0035ef334962ad4ffe85145d3cb64b9e1979",
+      "answer": "D",
+      "explanationSha256": "d7f9850782f1902c6aa5d7d32798564fe62f6b252ddfc94296281cb16780fe34"
+    },
+    {
+      "id": "fx-47-remittance-021",
+      "sourceFile": "666077-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "f2c10e6bb87c69419b3d4afb95fe273af5ce20013e7d5dcc1cc301d64b901a7f",
+      "answer": "C",
+      "explanationSha256": "ff5df54a1d46bd460f8ac68da06b80f520334529f4c3bb547e854c6416fea927"
+    },
+    {
+      "id": "fx-47-remittance-022",
+      "sourceFile": "666077-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "fb2e2691b7e7f426878a30ea2adcc256e6abb7467cdb0abf10898b4a1279953b",
+      "answer": "C",
+      "explanationSha256": "0550aa6fb8307c4d6282c61a7e3b877057a854df4de4d22e5aa82c287005a540"
+    },
+    {
+      "id": "fx-47-remittance-023",
+      "sourceFile": "666077-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "85ae86a75512a904216542a150a726b19f820c6b663913b75719b7bdce7fbcb4",
+      "answer": "C",
+      "explanationSha256": "efb647303b66b9ac272117f6bc6c1ed113ee539ba81d57772c78545715d4f0da"
+    },
+    {
+      "id": "fx-47-remittance-024",
+      "sourceFile": "666077-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "64ca98c51cb6a6668fcac314331f9937fbd71bafcaeb34e922d9dff7352649f8",
+      "answer": "A",
+      "explanationSha256": "6e4fe9457108d4b1cc06ce46a3fa0966806d41e83ceb08e5e8faf6630f7de381"
+    },
+    {
+      "id": "fx-47-remittance-025",
+      "sourceFile": "666077-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "85db15618bed87325e710be87b1209929f1248dbb630358bcd0fd0ec34be625d",
+      "answer": "C",
+      "explanationSha256": "f911c3de211bd2a08414f94d0761fa050d4e082955483cca13dad71c6b8b069b"
+    },
+    {
+      "id": "fx-47-remittance-026",
+      "sourceFile": "666077-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "4c0d4c0ebc76fc160cfe5955b2f50bb919c926860b3e9faaa27a4dac28d3fd09",
+      "answer": "D",
+      "explanationSha256": "49ac6f680988d7176f3f414dff38b5cb74fa4cdb9d8fc3b7b84460d028946328"
+    },
+    {
+      "id": "fx-47-remittance-027",
+      "sourceFile": "666077-3.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "8f461094b5c1ab36b9febbf209b726574c953075d56eba346ccd5cdba7aa7a0c",
+      "answer": "D",
+      "explanationSha256": "e6d146cadd6af410641303425832465950d5011b5e1325313e02894945632347"
+    },
+    {
+      "id": "fx-47-remittance-028",
+      "sourceFile": "666077-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "a314ee274b6ac5f4643ac805d71ed87cde8d14fea091c19967d0e702f99ad83c",
+      "answer": "A",
+      "explanationSha256": "1e1ca7f88c76729df7b80a125e1aa06e5a0892a69eb9c68c891c9eb206743184"
+    },
+    {
+      "id": "fx-47-remittance-029",
+      "sourceFile": "666077-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "e35abcd9686cf7edd8b8869565cafe721b3af8d89e934bd69b432c206ff6be92",
+      "answer": "B",
+      "explanationSha256": "8239d1489b5c3b1c16fdf8413ba191bf269d9a7b550c46eddccbf6314f07fd34"
+    },
+    {
+      "id": "fx-47-remittance-030",
+      "sourceFile": "666077-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "2c2b950964a856ac771fb4bbe2cf94f078bab6ea56ed1a40657d2160ea250a63",
+      "answer": "B",
+      "explanationSha256": "1fdf796d94ceb1118038fa44389c27b1d83f4fef8df1d6028d4209a2ec6581ea"
+    },
+    {
+      "id": "fx-47-remittance-031",
+      "sourceFile": "666077-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "d848e36a9a011bd7e1a068ca84ba03badc5ae5c3cc774684e623b740cbc378ed",
+      "answer": "D",
+      "explanationSha256": "9896deef4fb3e8569b80af3f8dc52f6a920a4e186db69388b41f9eb9b9356eb7"
+    },
+    {
+      "id": "fx-47-remittance-032",
+      "sourceFile": "666077-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "6ca58fd1e0bfd9370bab5098578d7b6552ec017c310299444863e37b5dbd05eb",
+      "answer": "A",
+      "explanationSha256": "a4afa0ce31dbd97db11e2f8acb7f8171776db8cb999fcc02acd8770e5a209c08"
+    },
+    {
+      "id": "fx-47-remittance-033",
+      "sourceFile": "666077-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "42bf768e08b17c3c60d163f956c40a11606a6d1dab33cfd20a066a551d6c0356",
+      "answer": "B",
+      "explanationSha256": "b3896841bee6699ecf325bc4d4e638354e83cf2240389605ccc8ea8db3dd3a07"
+    },
+    {
+      "id": "fx-47-remittance-034",
+      "sourceFile": "666077-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "d4ec96d2e26cd3eeec4dd1ace6ec7140b4f201c53f5e456983ba8f40909cf3a4",
+      "answer": "D",
+      "explanationSha256": "ff22b98b6a3e39cfee1b475f3859de8edfca1ab59660e8a0602698b23ea93342"
+    },
+    {
+      "id": "fx-47-remittance-035",
+      "sourceFile": "666077-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "650a0537e55946579a1b74de699667b7987e89132c403bd0f7d2544ae4384fa4",
+      "answer": "B",
+      "explanationSha256": "78da8f94a3d2081fd8132a97c24c9c1b795b38138841b8bcfc2a2030fc7dedd3"
+    },
+    {
+      "id": "fx-47-remittance-036",
+      "sourceFile": "666077-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "ae424253ee807730901dccf77ef021f3585b42c8118a0ac95645bdf841750cf1",
+      "answer": "C",
+      "explanationSha256": "4ef8df1c961d4d3020e5243f4edd961df358b44172cd18ea5d3501bddb6225f3"
+    },
+    {
+      "id": "fx-47-remittance-037",
+      "sourceFile": "666077-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "51eede54100ca08f8df4dac7ea9c2cd10a668ed8c9e2868f8f7b7c1e242f14a8",
+      "answer": "A",
+      "explanationSha256": "54f573d49f5a76d5bdf532fe3697c20de346a964ed40e4f5f345b7fdcfe131fb"
+    },
+    {
+      "id": "fx-47-remittance-038",
+      "sourceFile": "666077-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "ed68ffe478f60ee6436380907c07c78ab499dea9b653ba2fafa05f550d30f2d4",
+      "answer": "A",
+      "explanationSha256": "3cf4ff6b622e0f15d7da489cab065c576097f7f01672580c28b56a8c70f47409"
+    },
+    {
+      "id": "fx-47-remittance-039",
+      "sourceFile": "666077-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "d7ddab9e7766e563f40649a195b5f3f5a890b21c97cdca7e7a40ea9dc6c042a1",
+      "answer": "B",
+      "explanationSha256": "a49021d6c594ed03257e16a004bee82a9e8865ac16a9d8820fbd48a7cbe2558a"
+    },
+    {
+      "id": "fx-47-remittance-040",
+      "sourceFile": "666077-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "eb29ede58797083dce3fa25467d655229c96fbed783feae444af7089c5f36f27",
+      "answer": "C",
+      "explanationSha256": "0eece5568811309b535c4037d085b022ba8190fd7b69baf8c75ee4c3ff9b21ed"
+    },
+    {
+      "id": "fx-47-remittance-041",
+      "sourceFile": "666077-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "037b323c30ca3eab29059247044a9fa0b710e44510e16422bf8c850454ebba72",
+      "answer": "C",
+      "explanationSha256": "68171dc61df1c0f1376997dc06de87a9156bcb28f63ce4b435297fe2a6a81b7c"
+    },
+    {
+      "id": "fx-47-remittance-042",
+      "sourceFile": "666077-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "a151c276c82b14f6e1c72ed58985a487ec83e9b0accf0c58a64c5801d4606a80",
+      "answer": "A",
+      "explanationSha256": "d70d0cc487c6e395c4b32cd5ab30fe031fe78b65da816523336a778c09be3169"
+    },
+    {
+      "id": "fx-47-remittance-043",
+      "sourceFile": "666077-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "72d7f46c854fd78947a5e5ac6b6cc8accdab26bfe55c757c4d0578045c403c18",
+      "answer": "B",
+      "explanationSha256": "8fcfbf4f812248a63f6fa49af067dc32ce64ae00dd04b2a95354630a674a5e8a"
+    },
+    {
+      "id": "fx-47-remittance-044",
+      "sourceFile": "666077-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "6c745ab81b84f77e2b79b85c63a9048ae53682055b8e22a31b6a48363e17d0c0",
+      "answer": "A",
+      "explanationSha256": "aecb1bd849bdfcf24dd3a85df6fe17d3e0d529eab6bcf2a150fde04d97d7234e"
+    },
+    {
+      "id": "fx-47-remittance-045",
+      "sourceFile": "666077-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "ed5bb44d4a956312297d6b8cb1ee26c089824443de59d56f2ca0e062d42341dc",
+      "answer": "B",
+      "explanationSha256": "5544e6a0e66d84960f0c9f8ec7a98748676a2edc0ec1ff3ed76977c27c4458f9"
+    },
+    {
+      "id": "fx-47-remittance-046",
+      "sourceFile": "666077-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "cd664534ad28a4e6b40f84c4aa70db6eb10e2ec9e62f8159007ddd7679e523d3",
+      "answer": "D",
+      "explanationSha256": "7f108a9edd7b2a553d5f01d58e14afd88d6ef34b0761a1b664c2b60dde3927b9"
+    },
+    {
+      "id": "fx-47-remittance-047",
+      "sourceFile": "666077-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "3501d99b3a74853f6e74e1a069802cb71e079023ee41f43ebca5e75e2e37cb26",
+      "answer": "A",
+      "explanationSha256": "d60e1b32840d151a64be67a21b60bbc9b61416cd52aad4f61e124cae7ea4d3bd"
+    },
+    {
+      "id": "fx-47-remittance-048",
+      "sourceFile": "666077-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "2581f6e738003d16d69276b32498c1168cc24743d3e0d502d5c6084746ef9e97",
+      "answer": "C",
+      "explanationSha256": "abee416cf45e6dc9d63996441d1db8f578faa23cfcd0439c1e71f3109c24cd60"
+    },
+    {
+      "id": "fx-47-remittance-049",
+      "sourceFile": "666077-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "8ce9d1bdc81cb4e321233f640855915f0c5b5a0845247c15f06a250cea5dac57",
+      "answer": "A",
+      "explanationSha256": "047c968c1468617fe0363050471cd5277e3cb153efafa6626d8f102e88f55d12"
+    },
+    {
+      "id": "fx-47-remittance-050",
+      "sourceFile": "666077-3.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "fcabceee52625221ab756f8ed8fa13f4261d22c0ce35c2ce58a57b3e15a4aeb1",
+      "answer": "A",
+      "explanationSha256": "6fcda180fbed7cdca73585828646f1824abd8533257efa5a1814a51ce1397e6d"
+    },
+    {
+      "id": "fx-47-trade-001",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "f1e0229e180399846fcbb188688d2ae1226573b6b8a084e2b568b052ccca2d34",
+      "answer": "A",
+      "explanationSha256": "ed9a8253eaf275fc6b42fb3fd2c452cd2d133df4b60b69cea6cf026b4040d089"
+    },
+    {
+      "id": "fx-47-trade-002",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "3ae83918d4547d4e0ce82e4006a86644871b8b54827906ea4f81ade14ad1f1ff",
+      "answer": "C",
+      "explanationSha256": "7ec7c189361f28bf5ee682b4ef510bf38b576a996d2065d86c5ae7269831a8fb"
+    },
+    {
+      "id": "fx-47-trade-003",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "73e616d184582bf408bc0a3b002e6e6931565669067b741252901ec1453bee3d",
+      "answer": "C",
+      "explanationSha256": "c9830fe5b9247ab5a1fbba3308ae2ac8b9263b0dd048d4c156c19f1c25fccc4e"
+    },
+    {
+      "id": "fx-47-trade-004",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "f78f5de59dc3d4aac2bb97e0d006dc46552618ec71737b56475e2dabf041266f",
+      "answer": "D",
+      "explanationSha256": "526d219430d69e597f61d2acbce7b489bd737a44eaaf741af7ddb6646ac5e6ce"
+    },
+    {
+      "id": "fx-47-trade-005",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "741c705e94df904fb322ca9135a846b3b9a23904a9e295ec2a8145f4d371a55e",
+      "answer": "A",
+      "explanationSha256": "bdb83ac231a49e3c568b392c10472c4e6909a4423f4f3a0623c931728fdd50a1"
+    },
+    {
+      "id": "fx-47-trade-006",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "a2a27eee070423759e608bbfb53c43a444daeb7fa1b7bb85c201fa809b37c94d",
+      "answer": "A",
+      "explanationSha256": "0242fa43c863258d54c0a1128ba98d49dea3fd6b675a590fa97ef21cd62f3c9f"
+    },
+    {
+      "id": "fx-47-trade-007",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "789c9d54e05d3ef2fa97440afafb5ccd77fe888a0aa281957303fe61e074d2a2",
+      "answer": "D",
+      "explanationSha256": "fabc92b31f1c827225dc57d4fee0bf4e236dca6be35e2be6f2e989de2e198aeb"
+    },
+    {
+      "id": "fx-47-trade-008",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "cb91ba48d85cae827e362f137c85b125dcb56c334809349c0ab6820c5ebebb6e",
+      "answer": "D",
+      "explanationSha256": "ceb378973acec249c09520cd42934a21ac95577fff8cc0a4a2fff6ebc3458037"
+    },
+    {
+      "id": "fx-47-trade-009",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "8dfa338a1360b25679beed3e3cc3fce1f8411c2a5c9f15099b74a5dbc44d1176",
+      "answer": "A",
+      "explanationSha256": "b97f12e4af064a5d0507bc84c6e9350f757f1573dc238ebf5eb5192da2e75e5e"
+    },
+    {
+      "id": "fx-47-trade-010",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "24dc6c6b39668f2e20d29c5a6e4619a2362fc8f1ba67e275439d430f7b271fc5",
+      "answer": "C",
+      "explanationSha256": "fe1fc100c9062068b64a4f3671069aae3e489ec5e06a6ec65e5d60e6425f9048"
+    },
+    {
+      "id": "fx-47-trade-011",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "b9b5157590e8a27fda5941af325144abb30f6d9ba40544fa70bf34739c873290",
+      "answer": "A",
+      "explanationSha256": "f9a18b2d970cea30de6b188d1a837bc2fdcd289ccbdd6d88be91c626dd2d48aa"
+    },
+    {
+      "id": "fx-47-trade-012",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "18aa5beafd054d2b02af4b1cb0a3c283e59617b7f6392e494802e459d4e83e07",
+      "answer": "D",
+      "explanationSha256": "6c3115cfdf394dbafd5dbb152508810918292a586a71a3a5cd5a5f0b945e76d2"
+    },
+    {
+      "id": "fx-47-trade-013",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "18c098a02566fed71e16769b73d64d97db126f599e17d5a982543abd90e3a249",
+      "answer": "D",
+      "explanationSha256": "48186eb1fc74f92f17cd2481b8dd80d7f02d8ac11aa5c85f1438257d4f72a4a6"
+    },
+    {
+      "id": "fx-47-trade-014",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "19b91e6a1ea96e662f7b03fbde32dcfa4bddb2a3dd64f48f7219e3b95e6aab13",
+      "answer": "D",
+      "explanationSha256": "0941a4cbe502448757157fb84a20e4bb89d060bbb6983ed84d774554dc27ee40"
+    },
+    {
+      "id": "fx-47-trade-015",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "ae2bc0305322b6b48f49f6d1783e8f6d194252884945cb6cf5ea454d860d4e5a",
+      "answer": "A",
+      "explanationSha256": "3eea55816fc52e17d054606a44815c6127aa01864f1d357e14645ddacdc17aa3"
+    },
+    {
+      "id": "fx-47-trade-016",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "b06c37a8507177f480341f4d2ae926e776ca5d168a74d26b5ca0905364de71ee",
+      "answer": "B",
+      "explanationSha256": "d31a2d38fd64e996a980a6d4752589e3ca9cf78a57a41bad22e9aca7839fd992"
+    },
+    {
+      "id": "fx-47-trade-017",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "641e006f933dd6ee8ee7c1d402ae39ebd3c04216fb94a94764d16207fbbaf5e3",
+      "answer": "B",
+      "explanationSha256": "a2a758c9258c2cc6844289f0e1f789e5928c1e371a0828c4dedc684b9ce875a8"
+    },
+    {
+      "id": "fx-47-trade-018",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "a197c56639c7956daacb0d8d5a532474ebe326fce7d9ba9a26cd7e19f60a2a5e",
+      "answer": "B",
+      "explanationSha256": "bca16f862370ea5dc7197204f1b22ac2163e4060b7870d2799f1d26a98b87cf8"
+    },
+    {
+      "id": "fx-47-trade-019",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "df9d9e76e0194d4517e6a2937bc2af973b55a584b54a25237809d3d4f780f14f",
+      "answer": "D",
+      "explanationSha256": "c25fe3247ce92a2c217d0a3e999cee3966d9997aaf73a5bafa81c7d51ae6b2c8"
+    },
+    {
+      "id": "fx-47-trade-020",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "26a264411d4b73d53d16b01cec3314e2fc4148bd697271505b525632a9bfe133",
+      "answer": "D",
+      "explanationSha256": "60180a17743cae874eed72854e4d7c56b96f6611570009d8a7a22e3c3925a48c"
+    },
+    {
+      "id": "fx-47-trade-021",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "47767c7c5419817274493acd45b5762daa6a2cf2537cb6319ac218195effcd43",
+      "answer": "D",
+      "explanationSha256": "74e400b1a17781df739629fadc56d7e713b847f45c107a94951b7a896ccbe8a0"
+    },
+    {
+      "id": "fx-47-trade-022",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "0552d1386310a58c600cb67e66921524535e6e1e59b55cedab1b52c83b14483c",
+      "answer": "C",
+      "explanationSha256": "719e2b3e4e501da9a80d82aeb4d6264628e988cce24517a7ee5937ac09c49aff"
+    },
+    {
+      "id": "fx-47-trade-023",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "2968ea1247b3588a28a60dfea52c33d51056a8fed0bfabfbc1b5a328af6956a7",
+      "answer": "A",
+      "explanationSha256": "9ad5b6b4fd58d0ef0904be8be3ce3a9f74ee3fd569abdd00d4f3673806efcc37"
+    },
+    {
+      "id": "fx-47-trade-024",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "e3c3f6692891d510ffeb8af519f9e4829cadf5fe0bbf973b6734f2fda4b9c7fb",
+      "answer": "D",
+      "explanationSha256": "ecea531da5a8110e5870ac463961a407cc2255dd475ace760ea176be012dba0d"
+    },
+    {
+      "id": "fx-47-trade-025",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "a8f22d3700fe8205f9ef4ce70d248a1654681c6c79341ac9f289a514845fb575",
+      "answer": "A",
+      "explanationSha256": "1055420fdd78f19a4f3bebab9394147ec0c15e9ead6f724be11019d3f84192fa"
+    },
+    {
+      "id": "fx-47-trade-026",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "5a314d149f3e72e59aff18787d6599c6c0b71f3fad4c4146152a388b11a0ae95",
+      "answer": "D",
+      "explanationSha256": "92db88f39465d19a547a942e31c93eb69a8bc46bff7f5f4096265e54bf9c8625"
+    },
+    {
+      "id": "fx-47-trade-027",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "1002609f2a273c763d6c0915bb97498ce2fe07b8eedcc9940a2b5172cbbe0a37",
+      "answer": "C",
+      "explanationSha256": "af75b41b2508b6acecc9cd1cb76e53f38aef62515481f74412dee7a404fd1142"
+    },
+    {
+      "id": "fx-47-trade-028",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "72fc32728ca1306a3765706d68778d04dc1c9192599669152c502d6d5dfb2bfc",
+      "answer": "B",
+      "explanationSha256": "0d43fe7e4b93ac1ff1e478f27c5796f363b3d0e5d4ef1c44e9e9f8b61ad7f943"
+    },
+    {
+      "id": "fx-47-trade-029",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "cf22e67f234bdbc6b319d818c41f01c9d484d2c3cea74366ae7e88e20dafc9fe",
+      "answer": "A",
+      "explanationSha256": "104328e511339b56749d4882906505c2085375dedf4f69978752e2d0a5a2cf48"
+    },
+    {
+      "id": "fx-47-trade-030",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "25318cad24b9b5dfbcd6e1a0027c74d3c5bd6f5e138e1efd3992c23fb73971e1",
+      "answer": "B",
+      "explanationSha256": "4faa923c3596525221c52c43567264b23e8422693b5aa9709581516fd48f2970"
+    },
+    {
+      "id": "fx-47-trade-031",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "b0f2fa0665f5ebde2ed1fd91257e316284b5fdd6e6d0b0de4d8b641df468b5bc",
+      "answer": "B",
+      "explanationSha256": "3a9328d1ff671806977507e576a9fa13fd84bea95bb60f9e5f94db1a84cf801d"
+    },
+    {
+      "id": "fx-47-trade-032",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "da95bf7de31cf83d689694fc369758d767a911f4c1bb9296969a0eeaa1d4155b",
+      "answer": "C",
+      "explanationSha256": "23159eff23d4f330ddd7694a46524d45465afb06082e574538495f28d32b596c"
+    },
+    {
+      "id": "fx-47-trade-033",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "4eb1b99d299cb608ea4486d92eaa29f05aa692de0d72a55872e331eb153c4659",
+      "answer": "A",
+      "explanationSha256": "5f423836dabb887cffb6b48193ab55d0fb23e101430009734ff0e320d5ee9fa8"
+    },
+    {
+      "id": "fx-47-trade-034",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "4b3da294db28f13842b5a396c417068f7c8697ef171647887086fa05477a46a4",
+      "answer": "C",
+      "explanationSha256": "362d17747dffb832a2d6ced9f8fbf28eeccb1067eabd7bcfa5ff651e95c6584c"
+    },
+    {
+      "id": "fx-47-trade-035",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "50e05a0e3759c2f178fd5e6c3242a9f6ce25b8b6b2360d827142ab6fd4b7cd4e",
+      "answer": "C",
+      "explanationSha256": "5425d7963e5d32a6207c0a342badb88b9bd6903ee18ba03ad28901250aafd2d5"
+    },
+    {
+      "id": "fx-47-trade-036",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "b120fd9cad8ff506b7a4a23f5272ac92a8bf56f3eda83ae184d318a2712e3674",
+      "answer": "B",
+      "explanationSha256": "ac6726c471ca0b308ce93836d9da49a70e8a935186c4dc87754d531c2fa71139"
+    },
+    {
+      "id": "fx-47-trade-037",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "9675507458f6a39a63448e1dee130a741b8dde014a5d2f0fa29dd7933e88522f",
+      "answer": "B",
+      "explanationSha256": "db9b946b77ef9d3e0700ae334539cfbb62cd2ce38183199cf53aa9e06240ec5a"
+    },
+    {
+      "id": "fx-47-trade-038",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "347eecf3fa7378955a3b7533a573c47ad8323c2c9f39b7a5a7b198a99cd43b4c",
+      "answer": "C",
+      "explanationSha256": "bacadf0643aea7a0d10f2e0d3d6aa2fd144ddaf602bf6bdc7a95b97551f50fea"
+    },
+    {
+      "id": "fx-47-trade-039",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "24bd08ada34ac173f6e01f8f2a3e3a8b1af1a28c6885d8a3801458ef05d67f1c",
+      "answer": "B",
+      "explanationSha256": "a43bf132fb57915627a79025c36b85427bf86d0392fd58737ce1f3bd156155b8"
+    },
+    {
+      "id": "fx-47-trade-040",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "b3d20248361f4398120cdefa631c0ad563db033d8e81bd5e06f4496e9c21e314",
+      "answer": "C",
+      "explanationSha256": "b82a09f48404acd3cbfd54be0850ffd213a0b4f0b8a48eec5716d945d9037a7a"
+    },
+    {
+      "id": "fx-47-trade-041",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "1a4756b847917e88cc27ecd0b0d55f85e45a546f7017fb72940841a7c7974b3f",
+      "answer": "A",
+      "explanationSha256": "5c454471d6a3dd595dec1abb22588c278b78c1f972aa3faf830ceb35f7bf45c0"
+    },
+    {
+      "id": "fx-47-trade-042",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "4ad25038e1f514f2620000cd56347fb69e7f8b9dcd033369501726a143f740af",
+      "answer": "D",
+      "explanationSha256": "c0a56b4c737ed99646e601759756542062a9c2f1d5f74266c25424a81c120270"
+    },
+    {
+      "id": "fx-47-trade-043",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 1,
+      "sourceTextSha256": "d181843600b7a29a6df79d4ad36aa7dc58c5c2429023e890827dac2cc2996aa4",
+      "answer": "D",
+      "explanationSha256": "97d83ea5d56dc1b2180bfc2a007bc107dabef546bdf93d052c5307a40f007558"
+    },
+    {
+      "id": "fx-47-trade-044",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "536b2cf06f3751cf65ba2e0f0b375589485d1735ca787fb43b42bb27ede6d014",
+      "answer": "B",
+      "explanationSha256": "a1279f21bf71dc68a22f88e10fa154b6e3e4b02af7575f60e19febbb8f2dfaef"
+    },
+    {
+      "id": "fx-47-trade-045",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "58c41ca2a483279b31f118755c878d7a841f3fa7c0ee529b19ff5af8bd633ddc",
+      "answer": "A",
+      "explanationSha256": "d3c15a97146839dd0f22c26559a550edf7da214241af7e11120f832e3ef01c09"
+    },
+    {
+      "id": "fx-47-trade-046",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "e1b7f77c2f5fcfce5edbf8d742253c6b1f9f934004497a9af4d33b769d9b2868",
+      "answer": "C",
+      "explanationSha256": "270817853c7aa6d60d3b5ebc095c946f053d9a908b8bab783ae2ea67a53bbc65"
+    },
+    {
+      "id": "fx-47-trade-047",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "c614eb46ad3a03429678245e96ff8982cfb08c17a88b54854eefb82d0f6a9b86",
+      "answer": "B",
+      "explanationSha256": "dd08d2a223e94bf527a8e3063714f56394d6f93bca43c63638d778011ac93b3b"
+    },
+    {
+      "id": "fx-47-trade-048",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "f7b18892d3ebe038aeb48c714e439e55446fb09194b99f4a36bc1371f3c48772",
+      "answer": "B",
+      "explanationSha256": "df63e05f6217bbbb8473f6afcdf1c2359cacf5b749d6f200309dc3b627c89eaa"
+    },
+    {
+      "id": "fx-47-trade-049",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "cfe1a7a5db6dcde9459ed93e43ad65ca775b04db29bd266f7efac2454c9f9853",
+      "answer": "B",
+      "explanationSha256": "af2d58543133e12939c9d45ca46e85f362264aa32b1ee77cf2260bf3a8a06aa8"
+    },
+    {
+      "id": "fx-47-trade-050",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "61c8a30b6b7cc15d1e19990e29e9c37677e1366556bc3fe32ed9a605d03be2b7",
+      "answer": "D",
+      "explanationSha256": "7e35741da34e096d0258a5bd5a1943de1abc4395c386fb50cfba99a1aaf24a07"
+    },
+    {
+      "id": "fx-47-trade-051",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "be02ee2979616d7dd33e6a727de1ccff268db7ca10c169eec9004fcd2b15c18a",
+      "answer": "B",
+      "explanationSha256": "fb4e0aa10290bd3a5de1562627c49c5b75887a4fece30246f4cde281944cb812"
+    },
+    {
+      "id": "fx-47-trade-052",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "6efa4098faf2e091a1938348ce7b9f850cfbbfc7fa4253f44aedbe55c4f25d4d",
+      "answer": "C",
+      "explanationSha256": "57af025c8819ecd75f8f030bcc055e7b0020e1e0ca05c5d434a7283b4f973004"
+    },
+    {
+      "id": "fx-47-trade-053",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "7949e6d1a50d90c905a5ae625697e69e4c9aa6566a73ca5bc735dbadfaaaff82",
+      "answer": "B",
+      "explanationSha256": "ec8d2e088952f8ff1c3986edbf7f735f1abdc290aaff15d11f5fd00320106a1e"
+    },
+    {
+      "id": "fx-47-trade-054",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "cd5a670a4c625a3d468ec4bec818cfabcda202fb759aff676561f8488c37b016",
+      "answer": "C",
+      "explanationSha256": "dc008cf7ce90f804183e25ef84464dc5fd08f1468374c8fe184613bc28c4b461"
+    },
+    {
+      "id": "fx-47-trade-055",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "d974dbc2007d55edca3e39770dce5d3058d0f97e27177774a86285bb92f7240c",
+      "answer": "D",
+      "explanationSha256": "531025145d2ad4bb8c2e869bb5ac5717b3c08bcc6df8db529135472798942d83"
+    },
+    {
+      "id": "fx-47-trade-056",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "76499122241fa527adca74d13be0b0e459406faa585b44727a58c8b72f822c90",
+      "answer": "C",
+      "explanationSha256": "ae0d56b7841eed9ed0f6f7a6555fcc975ae32c94b1e3cce55b8224a5d3b12195"
+    },
+    {
+      "id": "fx-47-trade-057",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "2ebe7280b2970be556cf2ca1912786d742162290a9c3acdd75db6e99b0be6283",
+      "answer": "D",
+      "explanationSha256": "9e1861019cf6187d69f33d4ea1e9b91edf69a109aa73e118dab7c6eb9d23da43"
+    },
+    {
+      "id": "fx-47-trade-058",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "538d8c39e899d62ac5103c0a52f46526daf9c13f9f90d68beca60cc1254c8378",
+      "answer": "D",
+      "explanationSha256": "a672e3b5b4a5f8caef2a0ae3f91a49df0d3f881c1d83bc1d3bbb651e4ac399d5"
+    },
+    {
+      "id": "fx-47-trade-059",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "b2e2844d9e4ff4cdf2973fa49f5818fc1a4d6877effaac4d293e4f4db312ced2",
+      "answer": "C",
+      "explanationSha256": "ee327f2efd9661306fc0f8952df005236ceef1c4aa06945d45688e4e9d48e5ba"
+    },
+    {
+      "id": "fx-47-trade-060",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "aeb8381cb7e631050fd96bda12a6c92abcd9c18534746eee8bd8a503d6327807",
+      "answer": "A",
+      "explanationSha256": "d8d63358a6875ce34f7345810eeb7d93822a5da552c690b0a505ee168f67a6b4"
+    },
+    {
+      "id": "fx-47-trade-061",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "c9e52381f7b0958a46b31fb2d4da34a0a28c276c52644f63937da30bd9a11647",
+      "answer": "A",
+      "explanationSha256": "0bca2aebb25158b88265d9c0680eb5b31e2c4b72f788f648e3ab23f353473755"
+    },
+    {
+      "id": "fx-47-trade-062",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "0d00f47d7766aaf76f2f9f86f28eb4e77f66a2b238357c8bc58df931c9503677",
+      "answer": "B",
+      "explanationSha256": "1c67570f455b6a3d5e8ee8a2d67ded226663c942065ec3b4374e5fc8032a3346"
+    },
+    {
+      "id": "fx-47-trade-063",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "0bd5a5e797432ae4b56a985814e8d235ccf42e833660643fda7724664de04d9f",
+      "answer": "A",
+      "explanationSha256": "c03c523ff7e0b5115f485769697d487814ab62ed9293a2383793a83659740d79"
+    },
+    {
+      "id": "fx-47-trade-064",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "d901ca4d9e6dede0eca9685402e8ff6509d800a92303bc4d9d3def05946762ef",
+      "answer": "A",
+      "explanationSha256": "4c9882e7b86ae13669c80e86302b81b670afaa35dc588c15e8202c64bf576bef"
+    },
+    {
+      "id": "fx-47-trade-065",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "7c9bac839dd97574f175c8db295e2769a2163b3b382417fb0b0684c6a9cd0c26",
+      "answer": "B",
+      "explanationSha256": "ced570a44d7c103050b51f9abbbb1b92cec915a4bc1f32cbd2575a7fe45f74e4"
+    },
+    {
+      "id": "fx-47-trade-066",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "4161d38609207c7f99aa083a4e07b83007b1c605bff0e6fb0a4b697894a138ac",
+      "answer": "D",
+      "explanationSha256": "a9d889da44db5f3f3fcd60010066876d89031178ee2a8ecf0d3df00e4e365075"
+    },
+    {
+      "id": "fx-47-trade-067",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "8f912b68a34c8bed8449133e5dba5dac5346d4a14bfc43c31aadbee7a694bef9",
+      "answer": "B",
+      "explanationSha256": "2620468a5dbf3f66324ad59533d16667359491fcd63b729ae56ffaac9cb88c6c"
+    },
+    {
+      "id": "fx-47-trade-068",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "9db100e6a2bf8c6776150dc62965db8ba4a9bfc90a88b9fafe806e1b224c7340",
+      "answer": "B",
+      "explanationSha256": "3f32e33b2a27874ccdbf47d7945738d83243fd0866ff5524826af89f13bcaad0"
+    },
+    {
+      "id": "fx-47-trade-069",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "ace5b0ed31c462f7198a956c70625acff26c5b54ff47285bd39a2051ab107bb4",
+      "answer": "C",
+      "explanationSha256": "3227829d8f342246bc9c80e5b7094093c9efe1450722825d35abed6cfbf816f9"
+    },
+    {
+      "id": "fx-47-trade-070",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "cf4c58ec92220187d59025a8e92237a7d15e4fa1fc3d34b98213db1288e0d752",
+      "answer": "A",
+      "explanationSha256": "604c0f42cbe259bc0d4e083224a5a1acb6561d046a1b497b2dab98b800528b25"
+    },
+    {
+      "id": "fx-47-trade-071",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "611146f3e8b042d523bae6604f1ca19cffceeee5b7da5caf025f7e9786eee9cb",
+      "answer": "D",
+      "explanationSha256": "10819067ad41e0ec00aece7bde1e22633291f29e4c4d31061bd4dbe9346bd014"
+    },
+    {
+      "id": "fx-47-trade-072",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "c47afae910cb093665f6a3e7e8c9775803c7bf872491e83204e39964a6d65ec7",
+      "answer": "A",
+      "explanationSha256": "c8f8a813c2838aac3421ffe83303d67bf09bbd17266793a0d2e886b68f3a29b4"
+    },
+    {
+      "id": "fx-47-trade-073",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "b6aa9aa4e93170dc748e67df16a6880245ec21ed2f9578f20caed5415583146e",
+      "answer": "A",
+      "explanationSha256": "baff6677e93a3a6380545d5847e4eaca863b341a3a8b9510078372af6529aab4"
+    },
+    {
+      "id": "fx-47-trade-074",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "ba5b3c29b49df1141c7a91c7e7cf8aa4a4b1be8b739bd4f4d90b988af888a98c",
+      "answer": "A",
+      "explanationSha256": "0ea0a5401f42bcc6c9232077875b83f1fc99c14b78b569e29554a3948a8d714e"
+    },
+    {
+      "id": "fx-47-trade-075",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "98425277ad8618858c66db49d242417e219840d8a3c5013a92b8d45e39b4d725",
+      "answer": "B",
+      "explanationSha256": "ae90e8f05768e072757b2b4c7bc44c15fb8eb25882355d42cb2b2d4dc48d423b"
+    },
+    {
+      "id": "fx-47-trade-076",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "79cdd8d69760600edf17e7493f2e6b566dcb2a461b12e23cf2280fdfc8940d1d",
+      "answer": "B",
+      "explanationSha256": "375118fd25eed295b091e350e803a98bac8e80ad40d0d4068b776209a9db7db3"
+    },
+    {
+      "id": "fx-47-trade-077",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "a455a7ca278cd1cdc2f64a40d06298beea2928d2966a737e8059f3559530e60d",
+      "answer": "D",
+      "explanationSha256": "abb9ec98a7b19cf7e9e382f65fd14311a98e3cf31c0b01ac7d4e66e85ad5df69"
+    },
+    {
+      "id": "fx-47-trade-078",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "a22300add54db20a59c41dd8ae3c48ab551f07b9d381e9f009c8b20d78a0e641",
+      "answer": "C",
+      "explanationSha256": "385b465a4e1271245a2c0c69fd0a9b103409e6433bdc66a9a1d8e276c6100d56"
+    },
+    {
+      "id": "fx-47-trade-079",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "7c91b54cfc9f85d381857b780845ab1a219933812071db5318a38ae027e6dc28",
+      "answer": "D",
+      "explanationSha256": "abb2275e5ef00f5aa9bb36448b54314e7494660f25ce39058fceaa0b4f3eb5ed"
+    },
+    {
+      "id": "fx-47-trade-080",
+      "sourceFile": "666077-4.pdf",
+      "sourcePage": 2,
+      "sourceTextSha256": "6a9be20ac681b051a277c77955db94799bf59573ed38b28ff11c9c741db16121",
+      "answer": "A",
+      "explanationSha256": "b90aee9398d17bd1c3e0806046e9b9e65a9c14cf2b3a15dd7f012c47688f93a0"
+    }
+  ]
+}

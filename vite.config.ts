@@ -1,11 +1,69 @@
-import { rm } from "node:fs/promises";
+import { readFile, rm } from "node:fs/promises";
 import { relative, resolve } from "node:path";
 import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 
 const base = process.env.VITE_BASE_PATH ?? "/";
-const appName = "\u8b49\u5238\u9ad8\u696d";
+const appName = "金融證照題庫";
+
+
+function localForeignExchangePreviewApi(): Plugin {
+  return {
+    name: "local-foreign-exchange-preview-api",
+    apply: "serve",
+    configureServer(server) {
+      if (process.env.VITE_LOCAL_PREVIEW_ACCESS !== "1") return;
+      server.middlewares.use("/api/foreign-exchange/questions", async (request, response) => {
+        try {
+          const requestUrl = new URL(request.url || "", "http://local.preview");
+          const session = requestUrl.searchParams.get("session");
+          const subject = requestUrl.searchParams.get("subject");
+          const ids = new Set((requestUrl.searchParams.get("ids") || "").split(",").filter(Boolean));
+          const allQuestions: Array<Record<string, unknown>> = [];
+          for (const currentSession of [45, 46, 47]) {
+            for (const currentSubject of ["remittance", "trade"]) {
+              if (session && String(currentSession) !== session) continue;
+              if (subject && currentSubject !== subject) continue;
+              const path = resolve(
+                process.cwd(),
+                "api",
+                "_data",
+                "foreign-exchange",
+                `${currentSession}-${currentSubject}.json`,
+              );
+              const shard = JSON.parse(await readFile(path, "utf8")) as Array<Record<string, unknown>>;
+              allQuestions.push(...shard);
+            }
+          }
+          const questions = allQuestions
+            .filter((question) => !ids.size || ids.has(String(question.id || "")))
+            .map((question) => ({
+              id: question.id,
+              bankTitle: question.bankTitle,
+              chapter: question.chapter,
+              question: question.question,
+              options: question.options,
+              answer: question.answer,
+              explanation: question.explanation,
+              session: question.session,
+              subjectId: question.subjectId,
+              questionNumber: question.questionNumber,
+              standardVersion: question.standardVersion,
+            }));
+          response.statusCode = 200;
+          response.setHeader("Content-Type", "application/json; charset=utf-8");
+          response.setHeader("Cache-Control", "no-store");
+          response.end(JSON.stringify({ examId: "junior-foreign-exchange", questionCount: questions.length, questions }));
+        } catch (error) {
+          response.statusCode = 500;
+          response.setHeader("Content-Type", "application/json; charset=utf-8");
+          response.end(JSON.stringify({ error: error instanceof Error ? error.message : "Preview API failed." }));
+        }
+      });
+    },
+  };
+}
 
 function excludeEditorSourcesFromBuild(): Plugin {
   let outputDirectory = "";
@@ -93,6 +151,7 @@ export default defineConfig({
     },
   },
   plugins: [
+    localForeignExchangePreviewApi(),
     react(),
     excludeEditorSourcesFromBuild(),
     VitePWA({
@@ -106,7 +165,7 @@ export default defineConfig({
       manifest: {
         name: appName,
         short_name: appName,
-        description: "Offline iPad quiz app for securities exam question banks.",
+        description: "金融證照題庫練習 App。",
         theme_color: "#ffffff",
         background_color: "#ffffff",
         display: "standalone",

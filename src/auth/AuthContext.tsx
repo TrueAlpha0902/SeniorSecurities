@@ -6,6 +6,9 @@ import { flushPracticeSecondsToCloud } from "../lib/practiceTime";
 import { setActiveUserStorageScope } from "../lib/userScopedStorage";
 import { initializeLearningStore } from "../lib/learningStateStore";
 
+export const EXAM_IDS = ["senior-securities", "junior-foreign-exchange"] as const;
+export type ExamId = typeof EXAM_IDS[number];
+
 export type AccessStatus = {
   hasEntitlement: boolean;
   plan: string | null;
@@ -13,13 +16,18 @@ export type AccessStatus = {
   error: string | null;
 };
 
+export type ExamAccessMap = Record<ExamId, AccessStatus>;
+
 type AuthContextValue = {
   isConfigured: boolean;
   loading: boolean;
   session: Session | null;
   user: AuthUser | null;
+  examAccess: ExamAccessMap;
   access: AccessStatus;
   isActivated: boolean;
+  hasExamAccess: (examId: ExamId) => boolean;
+  getExamAccess: (examId: ExamId) => AccessStatus;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<string | null>;
   signOut: () => Promise<void>;
@@ -36,11 +44,28 @@ const defaultAccess: AccessStatus = {
   error: null,
 };
 
+function emptyExamAccess(): ExamAccessMap {
+  return {
+    "senior-securities": { ...defaultAccess },
+    "junior-foreign-exchange": { ...defaultAccess },
+  };
+}
+
+const localPreviewEnabled = import.meta.env.DEV && import.meta.env.VITE_LOCAL_PREVIEW_ACCESS === "1";
+const localPreviewUser = {
+  id: "local-preview-user",
+  email: "preview@example.com",
+  aud: "authenticated",
+  role: "authenticated",
+  created_at: new Date(0).toISOString(),
+  app_metadata: {},
+  user_metadata: {},
+} as AuthUser;
+
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 async function sendAuthAudit(session: Session | null, eventType: "sign_in" | "sign_up" | "session_seen" | "sign_out"): Promise<void> {
   if (!session?.access_token) return;
-
   try {
     await fetch("/api/auth/log-login", {
       method: "POST",
@@ -51,11 +76,9 @@ async function sendAuthAudit(session: Session | null, eventType: "sign_in" | "si
       body: JSON.stringify({ event_type: eventType }),
     });
   } catch {
-    // Local Vite dev server does not serve Vercel /api functions. Ignore logging failures.
+    // Audit delivery is best-effort and must not block authentication.
   }
 }
-
-
 
 let activeCloudSync: { userId: string; promise: Promise<void> } | null = null;
 
@@ -68,10 +91,7 @@ async function triggerCloudRecordSync(userId: string): Promise<void> {
       flushPracticeSecondsToCloud(true),
     ]);
     for (const result of results) {
-      if (result.status === "rejected") {
-        // Sync should never block login. The account page will show actionable errors if SQL is missing.
-        console.warn("Cloud learning-record sync failed", result.reason);
-      }
+      if (result.status === "rejected") console.warn("Cloud learning-record sync failed", result.reason);
     }
   })().finally(() => {
     if (activeCloudSync?.userId === userId) activeCloudSync = null;
@@ -81,59 +101,105 @@ async function triggerCloudRecordSync(userId: string): Promise<void> {
 }
 
 async function sendPresenceHeartbeat(userId: string): Promise<void> {
-  if (!supabase || !userId) return;
-
+  if (!supabase || !userId || localPreviewEnabled) return;
   try {
     const { error } = await supabase.rpc("touch_user_presence");
     if (!error) return;
-
-    // Fallback for projects that have not applied v46 SQL yet.
     const fallback = await supabase.from("user_presence").upsert({
       user_id: userId,
       last_seen_at: new Date().toISOString(),
     }, { onConflict: "user_id" });
     if (fallback.error) throw fallback.error;
   } catch (error) {
-    // Presence is best-effort. It should not block the app if SQL has not been applied yet.
     console.warn("Presence heartbeat failed", error);
   }
+}
+
+function activeStatus(row: {
+  plan?: string | null;
+  status?: string | null;
+  granted_at?: string | null;
+  expires_at?: string | null;
+} | null | undefined): AccessStatus {
+  const expiresAt = row?.expires_at ? new Date(row.expires_at).getTime() : null;
+  const hasEntitlement = Boolean(row && row.status === "active" && (expiresAt === null || expiresAt > Date.now()));
+  return {
+    hasEntitlement,
+    plan: row?.plan ?? null,
+    redeemedAt: row?.granted_at ?? null,
+    error: null,
+  };
+}
+
+function isMissingExamEntitlementTable(message: string): boolean {
+  return message.includes("user_exam_entitlements") || message.includes("Could not find the table") || message.includes("relation") && message.includes("does not exist");
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [access, setAccess] = useState<AccessStatus>(defaultAccess);
+  const [examAccess, setExamAccess] = useState<ExamAccessMap>(emptyExamAccess);
   const hasLoggedSessionSeen = useRef(false);
   const verifiedAccessUserId = useRef<string | null>(null);
 
   const refreshAccessForUser = useCallback(async (currentUser: AuthUser | null) => {
+    if (localPreviewEnabled) {
+      verifiedAccessUserId.current = localPreviewUser.id;
+      setExamAccess({
+        "senior-securities": { hasEntitlement: true, plan: "preview", redeemedAt: null, error: null },
+        "junior-foreign-exchange": { hasEntitlement: true, plan: "preview", redeemedAt: null, error: null },
+      });
+      return;
+    }
+
     if (!supabase || !currentUser) {
       verifiedAccessUserId.current = null;
-      setAccess(defaultAccess);
+      setExamAccess(emptyExamAccess());
       return;
     }
 
     const { data, error } = await supabase
-      .from("user_entitlements")
-      .select("plan, status, granted_at, expires_at")
-      .eq("user_id", currentUser.id)
-      .maybeSingle();
+      .from("user_exam_entitlements")
+      .select("exam_id, plan, status, granted_at, expires_at")
+      .eq("user_id", currentUser.id);
 
     if (error) {
-      setAccess((previous) => verifiedAccessUserId.current === currentUser.id
-        ? { ...previous, error: error.message }
-        : { ...defaultAccess, error: error.message });
+      const message = String(error.message || "");
+      if (isMissingExamEntitlementTable(message)) {
+        const legacy = await supabase
+          .from("user_entitlements")
+          .select("plan, status, granted_at, expires_at")
+          .eq("user_id", currentUser.id)
+          .maybeSingle();
+        if (legacy.error) {
+          const next = emptyExamAccess();
+          next["senior-securities"].error = legacy.error.message;
+          next["junior-foreign-exchange"].error = "初階外匯權限資料尚未部署。";
+          setExamAccess(next);
+          return;
+        }
+        verifiedAccessUserId.current = currentUser.id;
+        setExamAccess({
+          "senior-securities": activeStatus(legacy.data),
+          "junior-foreign-exchange": { ...defaultAccess, error: "初階外匯權限資料尚未部署。" },
+        });
+        return;
+      }
+
+      setExamAccess((previous) => {
+        const next = verifiedAccessUserId.current === currentUser.id ? { ...previous } : emptyExamAccess();
+        for (const examId of EXAM_IDS) next[examId] = { ...next[examId], error: message };
+        return next;
+      });
       return;
     }
 
-    const isActive = Boolean(data && data.status === "active" && (!data.expires_at || new Date(data.expires_at).getTime() > Date.now()));
+    const rows = new Map((data || []).map((row) => [String(row.exam_id), row]));
     verifiedAccessUserId.current = currentUser.id;
-    setAccess({
-      hasEntitlement: isActive,
-      plan: data?.plan ?? null,
-      redeemedAt: data?.granted_at ?? null,
-      error: null,
+    setExamAccess({
+      "senior-securities": activeStatus(rows.get("senior-securities")),
+      "junior-foreign-exchange": activeStatus(rows.get("junior-foreign-exchange")),
     });
   }, []);
 
@@ -145,6 +211,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let mounted = true;
 
     async function initializeAuth() {
+      if (localPreviewEnabled) {
+        setActiveUserStorageScope(localPreviewUser.id);
+        setUser(localPreviewUser);
+        await refreshAccessForUser(localPreviewUser);
+        if (mounted) setLoading(false);
+        return;
+      }
+
       if (!supabase) {
         setActiveUserStorageScope(null);
         if (mounted) setLoading(false);
@@ -153,9 +227,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const { data, error } = await supabase.auth.getSession();
       if (!mounted) return;
-
       if (error) {
-        setAccess({ ...defaultAccess, error: error.message });
+        const next = emptyExamAccess();
+        for (const examId of EXAM_IDS) next[examId].error = error.message;
+        setExamAccess(next);
       }
 
       const nextSession = data.session ?? null;
@@ -164,9 +239,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(nextSession?.user ?? null);
       if (nextSession?.user) await initializeLearningStore(nextSession.user.id);
       await refreshAccessForUser(nextSession?.user ?? null);
-      if (nextSession?.user) {
-        void triggerCloudRecordSync(nextSession.user.id);
-      }
+      if (nextSession?.user) void triggerCloudRecordSync(nextSession.user.id);
       if (nextSession && !hasLoggedSessionSeen.current) {
         hasLoggedSessionSeen.current = true;
         void sendAuthAudit(nextSession, "session_seen");
@@ -176,22 +249,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     void initializeAuth();
 
-    if (!supabase) {
-      return () => {
-        mounted = false;
-      };
+    if (!supabase || localPreviewEnabled) {
+      return () => { mounted = false; };
     }
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       setActiveUserStorageScope(nextSession?.user.id ?? null);
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
       void refreshAccessForUser(nextSession?.user ?? null);
-      if (nextSession?.user) {
-        void initializeLearningStore(nextSession.user.id).then(() => triggerCloudRecordSync(nextSession.user.id));
-      }
+      if (nextSession?.user) void initializeLearningStore(nextSession.user.id).then(() => triggerCloudRecordSync(nextSession.user.id));
     });
 
     return () => {
@@ -201,7 +268,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [refreshAccessForUser]);
 
   const signIn = useCallback(async (email: string, password: string) => {
-    if (!supabase) throw new Error("尚未設定 Supabase。請先建立 .env.local。 ");
+    if (!supabase) throw new Error("尚未設定 Supabase。請先建立 .env.local。");
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
     setActiveUserStorageScope(data.user?.id ?? null);
@@ -209,14 +276,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(data.user ?? null);
     if (data.user) await initializeLearningStore(data.user.id);
     await refreshAccessForUser(data.user ?? null);
-    if (data.user) {
-      void triggerCloudRecordSync(data.user.id);
-    }
+    if (data.user) void triggerCloudRecordSync(data.user.id);
     void sendAuthAudit(data.session ?? null, "sign_in");
   }, [refreshAccessForUser]);
 
   const signUp = useCallback(async (email: string, password: string) => {
-    if (!supabase) throw new Error("尚未設定 Supabase。請先建立 .env.local。 ");
+    if (!supabase) throw new Error("尚未設定 Supabase。請先建立 .env.local。");
     const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) throw error;
     setActiveUserStorageScope(data.user?.id ?? null);
@@ -224,14 +289,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(data.user ?? null);
     if (data.user) await initializeLearningStore(data.user.id);
     await refreshAccessForUser(data.user ?? null);
-    if (data.user) {
-      void triggerCloudRecordSync(data.user.id);
-    }
+    if (data.user) void triggerCloudRecordSync(data.user.id);
     void sendAuthAudit(data.session ?? null, "sign_up");
     return data.session ? null : "註冊成功。請先到信箱完成驗證，再回來登入。";
   }, [refreshAccessForUser]);
 
   const signOut = useCallback(async () => {
+    if (localPreviewEnabled) return;
     if (!supabase) return;
     void sendAuthAudit(session, "sign_out");
     const { error } = await supabase.auth.signOut();
@@ -239,11 +303,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setActiveUserStorageScope(null);
     setSession(null);
     setUser(null);
-    setAccess(defaultAccess);
+    setExamAccess(emptyExamAccess());
   }, [session]);
 
   const redeemActivationCode = useCallback(async (code: string) => {
-    if (!supabase) throw new Error("尚未設定 Supabase。請先建立 .env.local。 ");
+    if (localPreviewEnabled) return;
+    if (!supabase) throw new Error("尚未設定 Supabase。請先建立 .env.local。");
     const normalizedCode = code.trim();
     if (!normalizedCode) throw new Error("請輸入啟用碼。");
     const { error } = await supabase.rpc("redeem_activation_code", { p_code: normalizedCode });
@@ -253,7 +318,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [refreshAccessForUser]);
 
   const requestPasswordReset = useCallback(async (email: string, redirectTo?: string) => {
-    if (!supabase) throw new Error("尚未設定 Supabase。請先建立 .env.local。 ");
+    if (!supabase) throw new Error("尚未設定 Supabase。請先建立 .env.local。");
     const normalizedEmail = email.trim();
     if (!normalizedEmail) throw new Error("請輸入 Email。");
     const options = redirectTo ? { redirectTo } : undefined;
@@ -262,15 +327,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updatePassword = useCallback(async (password: string) => {
-    if (!supabase) throw new Error("尚未設定 Supabase。請先建立 .env.local。 ");
+    if (!supabase) throw new Error("尚未設定 Supabase。請先建立 .env.local。");
     if (password.trim().length < 6) throw new Error("新密碼至少需要 6 個字元。");
     const { error } = await supabase.auth.updateUser({ password });
     if (error) throw error;
   }, []);
 
   useEffect(() => {
-    if (!user?.id) return;
-
+    if (!user?.id || localPreviewEnabled) return;
     let heartbeatInFlight = false;
     let lastHeartbeatAt = 0;
     const heartbeat = (force = false) => {
@@ -279,29 +343,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (heartbeatInFlight || (!force && now - lastHeartbeatAt < 30_000)) return;
       heartbeatInFlight = true;
       lastHeartbeatAt = now;
-      void sendPresenceHeartbeat(user.id).finally(() => {
-        heartbeatInFlight = false;
-      });
+      void sendPresenceHeartbeat(user.id).finally(() => { heartbeatInFlight = false; });
     };
-
     heartbeat(true);
     const heartbeatTimer = window.setInterval(() => {
-      if (document.visibilityState === "visible") {
-        heartbeat();
-      }
+      if (document.visibilityState === "visible") heartbeat();
     }, 60_000);
-
     const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        heartbeat();
-      }
+      if (document.visibilityState === "visible") heartbeat();
     };
-
     document.addEventListener("visibilitychange", handleVisibilityChange);
     window.addEventListener("focus", handleVisibilityChange);
     window.addEventListener("online", handleVisibilityChange);
     window.addEventListener("pageshow", handleVisibilityChange);
-
     return () => {
       window.clearInterval(heartbeatTimer);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
@@ -312,34 +366,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user?.id]);
 
   useEffect(() => {
-    if (!user) return;
-
+    if (!user || localPreviewEnabled) return;
     let refreshInFlight = false;
     const revalidateAccess = () => {
       if (refreshInFlight || document.visibilityState !== "visible") return;
       refreshInFlight = true;
-      void refreshAccessForUser(user).finally(() => {
-        refreshInFlight = false;
-      });
+      void refreshAccessForUser(user).finally(() => { refreshInFlight = false; });
     };
-
-    const revalidationTimer = window.setInterval(revalidateAccess, 5 * 60_000);
+    const timer = window.setInterval(revalidateAccess, 5 * 60_000);
     document.addEventListener("visibilitychange", revalidateAccess);
     window.addEventListener("focus", revalidateAccess);
     return () => {
-      window.clearInterval(revalidationTimer);
+      window.clearInterval(timer);
       document.removeEventListener("visibilitychange", revalidateAccess);
       window.removeEventListener("focus", revalidateAccess);
     };
   }, [refreshAccessForUser, user]);
 
+  const hasExamAccess = useCallback((examId: ExamId) => examAccess[examId].hasEntitlement, [examAccess]);
+  const getExamAccess = useCallback((examId: ExamId) => examAccess[examId], [examAccess]);
+  const access = examAccess["senior-securities"];
+
   const value = useMemo<AuthContextValue>(() => ({
-    isConfigured: isSupabaseConfigured,
+    isConfigured: isSupabaseConfigured || localPreviewEnabled,
     loading,
     session,
     user,
+    examAccess,
     access,
     isActivated: access.hasEntitlement,
+    hasExamAccess,
+    getExamAccess,
     signIn,
     signUp,
     signOut,
@@ -347,15 +404,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     requestPasswordReset,
     updatePassword,
     refreshAccess,
-  }), [access, loading, refreshAccess, redeemActivationCode, requestPasswordReset, session, signIn, signOut, signUp, updatePassword, user]);
+  }), [access, examAccess, getExamAccess, hasExamAccess, loading, refreshAccess, redeemActivationCode, requestPasswordReset, session, signIn, signOut, signUp, updatePassword, user]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth(): AuthContextValue {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used inside AuthProvider");
-  }
+  if (!context) throw new Error("useAuth must be used inside AuthProvider");
   return context;
 }

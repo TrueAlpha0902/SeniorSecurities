@@ -1,3 +1,33 @@
+# SeniorSecurities Current State
+
+更新日期：2026-07-19
+目前版本：**v80 — 多證照分權、初階外匯390題文字題庫與逐題解析**
+
+## v80 初階外匯整合
+
+- App 已由單一證券高業題庫擴充為「證券高業」與「初階外匯」兩套題庫入口。
+- `user_exam_entitlements` 以 `(user_id, exam_id)` 為複合主鍵；兩套題庫可各自開通、撤銷及設定到期日。
+- 初階外匯收錄第45、46、47屆，共390題：國外匯兌業務150題、進出口外匯業務240題。
+- 題目不是 OCR 產物；以官方 PDF 內嵌 Unicode 文字層為準，使用 `pdftotext -raw` 擷取，再由 PyMuPDF 與 pypdf 逐欄比對。390題的題幹與四個選項共1,950個文字欄位全部通過一致性檢查。顯示時只正規化PDF欄寬造成的換行與假空白，不改寫題目字元、標點、數字或英文字母。
+- 390個答案均由官方答案表解析，並由三套 PDF 引擎交叉核對。
+- 每題皆有一則獨立解析；390則內容已逐題對照題幹、選項與官方答案檢視，並通過非空、唯一性、占位文字及內部說明洩漏檢查。解析為本專案依官方答案編寫，不宣稱是金融研訓院官方解析。
+- 學員介面只保留題目、選項、答案、解析、屆次、科目、作答及計時資訊；來源檔名、PDF頁碼、SHA-256、OCR／AI處理說明及內部審核欄位均不對學員顯示。
+- 模擬測驗在交卷前不顯示答案、解析、答對數或答錯數，只顯示已作答與未作答。
+- 初階外匯題庫存放於 server-only data，透過需登入且需具初階外匯 entitlement 的 API 傳送；前端 projection 不包含來源頁碼、雜湊與審核欄位。
+- 新增 migration `supabase/migrations/20260719120000_exam_scoped_entitlements_v80.sql`；尚未套用到正式 Supabase，也尚未部署至 Vercel。
+- 修正原專案三個以 Big5 位元組命名的章節 JSON，改為正常 UTF-8 檔名，避免 Vite production build 在 Linux 失敗。
+- 自動檢查可以證明 App 文字與官方 PDF 的文字層一致；尚未完成兩位人工逐字雙重輸入校對，因此不得表述為「絕對零誤差的人工作業證明」。
+
+## v80 驗證基準
+
+- `npm run audit:fx-source`：390題、1,950個文字欄位、390則解析通過。
+- `npm run validate:fx`：題數、官方答案、個別解析、來源雜湊與資料 schema 通過。
+- `npm run test:fx-contracts`：分題庫權限、受保護 API、學員介面精簡、解析顯示及模擬測驗防洩漏通過。
+- TypeScript、API TypeScript、ESLint、CSS budget、管理後台契約、完整性契約、production build 及 bundle budget均分別通過。
+- 本工作容器的 Chromium 受系統 `URLBlocklist` 政策限制，無法以一般 HTTP 導覽執行 Playwright；預覽截圖改以實際 React 元件、正式 CSS、正式390題資料及離線 API stub 渲染，並未另畫靜態設計稿。
+
+---
+
 ## v79.22 模擬考舊 Session 延後批改保護
 
 - 「交卷後統一批改」勾選狀態現在會覆蓋尚未交卷的舊 `immediate` session，避免續答時立即洩漏正解。
@@ -169,10 +199,7 @@
 - 管理後台檢視可在 AAL1 使用；刪除啟用碼與管理員異動仍要求 AAL2。
 - 恢復啟用碼、管理員、題庫編輯、排行榜、稽核與系統狀態等後台功能。
 
-# SeniorSecurities Current State
-
-更新日期：2026-07-12  
-目前版本：**Complete Optimization v79 — Server Cursor、Transactional Outbox、Image Session Sync、題庫完整驗證與部署硬化**
+## v79 歷史基準
 
 ## v79 已完成的核心優化
 

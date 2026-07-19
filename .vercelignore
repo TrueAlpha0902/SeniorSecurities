@@ -1,3 +1,6 @@
+.git
+.vercel
+.env*
 node_modules
 .netlify
 netlify
@@ -7,9 +10,14 @@ tmp
 _zip-output
 _cleanup-backup
 source-docx
+source-materials
 public/data/backups
 desktop
 docs
+supabase
+update-backups
+dist
+.github
 README-v*.txt
 *.bak
 *.exe
@@ -19,3 +27,4 @@ README-v*.txt
 playwright-report
 test-results
 tests
+scripts/__pycache__

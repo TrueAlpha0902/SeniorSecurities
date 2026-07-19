@@ -26,6 +26,12 @@ import { PdfSegmentStack } from "./PdfSegmentStack";
 import "../styles/admin-tools.css";
 
 type ToolId = "activation" | "admins" | "questions" | "health";
+type ExamId = "senior-securities" | "junior-foreign-exchange";
+
+const EXAM_LABELS: Record<ExamId, string> = {
+  "senior-securities": "證券高業",
+  "junior-foreign-exchange": "初階外匯",
+};
 
 type AdminAccountRow = {
   id: string;
@@ -40,6 +46,7 @@ type AdminAccountRow = {
 
 type ActivationCodeRow = {
   id: string;
+  exam_id: ExamId;
   code_preview: string;
   max_uses: number;
   use_count: number;
@@ -64,6 +71,7 @@ type ApiPayload = {
   message?: string;
   error?: string;
   code?: string;
+  examId?: ExamId;
   admins?: AdminAccountRow[];
   primaryEmails?: string[];
   activationCodes?: ActivationCodeRow[];
@@ -217,6 +225,7 @@ function SystemHealthTool({ accessToken }: { accessToken: string }) {
 }
 
 function ActivationCodeTool({ accessToken }: { accessToken: string }) {
+  const [examId, setExamId] = useState<ExamId>("senior-securities");
   const [customCode, setCustomCode] = useState("");
   const [note, setNote] = useState("");
   const [maxUses, setMaxUses] = useState(1);
@@ -247,7 +256,7 @@ function ActivationCodeTool({ accessToken }: { accessToken: string }) {
     try {
       const payload = await adminRequest(accessToken, "/api/admin/tools", {
         method: "POST",
-        body: JSON.stringify({ action: "create-activation-code", code: customCode, note, maxUses }),
+        body: JSON.stringify({ action: "create-activation-code", examId, code: customCode, note, maxUses }),
       });
       setCreatedCode(payload.code || "");
       setMessage(payload.message || "啟用碼已建立。 ");
@@ -293,8 +302,14 @@ function ActivationCodeTool({ accessToken }: { accessToken: string }) {
   return (
     <div className="admin-tool-pane" role="tabpanel">
       <div className="admin-tool-form-grid">
-        <label>自訂啟用碼（可留空）<input value={customCode} onChange={(event) => setCustomCode(event.target.value)} placeholder="至少 10 個英數字" /></label>
+        <label>題庫
+          <select value={examId} onChange={(event) => setExamId(event.target.value as ExamId)}>
+            <option value="senior-securities">證券高業</option>
+            <option value="junior-foreign-exchange">初階外匯</option>
+          </select>
+        </label>
         <label>可使用次數<input type="number" min={1} max={999} value={maxUses} onChange={(event) => setMaxUses(Number(event.target.value))} /></label>
+        <label className="admin-tool-wide">自訂啟用碼（可留空）<input value={customCode} onChange={(event) => setCustomCode(event.target.value)} placeholder={examId === "junior-foreign-exchange" ? "FOREX-XXXX-XXXX" : "SENIOR-XXXX-XXXX"} /></label>
         <label className="admin-tool-wide">備註<input value={note} onChange={(event) => setNote(event.target.value)} placeholder="例如：2026 夏季班" /></label>
       </div>
       <div className="admin-tool-actions">
@@ -310,7 +325,7 @@ function ActivationCodeTool({ accessToken }: { accessToken: string }) {
           const visibleCode = row.code_preview;
           return (
             <article key={row.id}>
-              <div><strong>{visibleCode}</strong><span>{row.note || "無備註"}</span></div>
+              <div><strong>{visibleCode}</strong><span>{EXAM_LABELS[row.exam_id] || "題庫"} · {row.note || "無備註"}</span></div>
               <div><span>{row.use_count} / {row.max_uses} 次</span><span>{row.is_active ? "啟用" : "停用"}</span></div>
               <div className="admin-inline-actions">
                 {isPrimaryAdmin ? (
