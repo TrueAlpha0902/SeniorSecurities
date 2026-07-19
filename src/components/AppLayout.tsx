@@ -107,7 +107,7 @@ export function AppLayout({ children }: AppLayoutProps) {
           className="brand-link"
           onClick={() => navigateWithQuizGuard(() => navigate("/"))}
         >
-          證券高業
+          金融證照題庫
         </button>
       </header>
       <main className={`glass-shell ${isImageQuiz ? "image-shell" : ""}`}>

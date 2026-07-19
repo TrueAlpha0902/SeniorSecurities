@@ -1,3 +1,84 @@
+# SeniorSecurities Current State
+
+更新日期：2026-07-19
+目前版本：**v80 — 多證照分權、初階外匯390題文字題庫與逐題解析**
+
+## v80 初階外匯整合
+
+- App 已由單一證券高業題庫擴充為「證券高業」與「初階外匯」兩套題庫入口。
+- `user_exam_entitlements` 以 `(user_id, exam_id)` 為複合主鍵；兩套題庫可各自開通、撤銷及設定到期日。
+- 初階外匯收錄第45、46、47屆，共390題：國外匯兌業務150題、進出口外匯業務240題。
+- 題目不是 OCR 產物；以官方 PDF 內嵌 Unicode 文字層為準，使用 `pdftotext -raw` 擷取，再由 PyMuPDF 與 pypdf 逐欄比對。390題的題幹與四個選項共1,950個文字欄位全部通過一致性檢查。顯示時只正規化PDF欄寬造成的換行與假空白，不改寫題目字元、標點、數字或英文字母。
+- 390個答案均由官方答案表解析，並由三套 PDF 引擎交叉核對。
+- 每題皆有一則獨立解析；390則內容已逐題對照題幹、選項與官方答案檢視，並通過非空、唯一性、占位文字及內部說明洩漏檢查。解析為本專案依官方答案編寫，不宣稱是金融研訓院官方解析。
+- 學員介面只保留題目、選項、答案、解析、屆次、科目、作答及計時資訊；來源檔名、PDF頁碼、SHA-256、OCR／AI處理說明及內部審核欄位均不對學員顯示。
+- 模擬測驗在交卷前不顯示答案、解析、答對數或答錯數，只顯示已作答與未作答。
+- 初階外匯題庫存放於 server-only data，透過需登入且需具初階外匯 entitlement 的 API 傳送；前端 projection 不包含來源頁碼、雜湊與審核欄位。
+- 新增 migration `supabase/migrations/20260719120000_exam_scoped_entitlements_v80.sql`；尚未套用到正式 Supabase，也尚未部署至 Vercel。
+- 修正原專案三個以 Big5 位元組命名的章節 JSON，改為正常 UTF-8 檔名，避免 Vite production build 在 Linux 失敗。
+- 自動檢查可以證明 App 文字與官方 PDF 的文字層一致；尚未完成兩位人工逐字雙重輸入校對，因此不得表述為「絕對零誤差的人工作業證明」。
+
+## v80 驗證基準
+
+- `npm run audit:fx-source`：390題、1,950個文字欄位、390則解析通過。
+- `npm run validate:fx`：題數、官方答案、個別解析、來源雜湊與資料 schema 通過。
+- `npm run test:fx-contracts`：分題庫權限、受保護 API、學員介面精簡、解析顯示及模擬測驗防洩漏通過。
+- TypeScript、API TypeScript、ESLint、CSS budget、管理後台契約、完整性契約、production build 及 bundle budget均分別通過。
+- 本工作容器的 Chromium 受系統 `URLBlocklist` 政策限制，無法以一般 HTTP 導覽執行 Playwright；預覽截圖改以實際 React 元件、正式 CSS、正式390題資料及離線 API stub 渲染，並未另畫靜態設計稿。
+
+---
+
+## v79.22 模擬考舊 Session 延後批改保護
+
+- 「交卷後統一批改」勾選狀態現在會覆蓋尚未交卷的舊 `immediate` session，避免續答時立即洩漏正解。
+- 未交卷測驗頁以「目前偏好為 deferred 或 session 已是 deferred」作為 fail-closed 條件；點選答案只保留已選擇狀態。
+- 勾選延後批改時會自動關閉正解模式，並把所有未完成舊 session 升級為 `deferred`。
+- 新增舊 immediate session + 已勾選延後批改的回歸測試。
+
+## v79.21 模擬考發佈驗證修正
+- 模擬考 E2E 不再使用 `setChecked()` 操作刻意隱藏的原生 checkbox，而是點擊畫面上可見的 switch。
+- v79.20 功能修正不變：勾選交卷後統一批改會自動關閉正解模式；交卷前不顯示正解、正誤樣式與解析。
+- Windows 發佈測試以單一 Playwright worker 執行。
+
+## v79.20 模擬考延後批改與正解模式互斥修正
+
+- 勾選「交卷後統一批改」會立即關閉全域正解模式，並以 `deferred` 建立新模擬考；不再因正解模式殘留而改回即時顯示。
+- 正解模式與延後批改在持久設定層互斥，跨分頁、登入 scope 與設定事件皆讀取一致的最終值。
+- deferred session 進入測驗後會再次 fail closed：任何舊設定、跨分頁變更或競態都不能在交卷前顯示正解、正誤樣式或解析。
+- 設定介面會同步反映自動關閉狀態；模擬考開關保持可操作並說明互斥行為。
+- 無 Supabase migration、無新增 npm 套件。
+
+## v79.19 模擬考統一批改模式鎖定修正
+
+- 建立模擬考時不再只依賴可能過期的 React state；按下開始後會重新讀取目前帳號的持久設定，將 `immediate`／`deferred` 寫入 session，並在進入測驗前回讀驗證。
+- 模擬考頁以 session 的批改模式為唯一權威，首屏可用 navigation state 補接；缺值、非法值或舊版 session 一律 fail closed，交卷前不揭露正解與解析。
+- 使用者儲存 scope 切換時會同步刷新模擬考開關，避免登入／切換帳號後沿用 guest 或前一帳號狀態。
+- 新增批改模式持久化、fallback、fail-closed 與 UI data contract 測試；Playwright 流程加強驗證 deferred 模式沒有答案面板、沒有正解／答錯樣式，只有「已選擇」。
+- 無 Supabase migration、無新增 npm 套件。
+
+## v79.18 模擬考續考、改選與交卷一致性
+
+- 模擬考只以 `finishedAt` 判定已交卷；即使所有題目都已選完，只要尚未明確交卷，紀錄仍顯示「未完成」與「繼續測驗」，並保留題號、答案及待檢標記。
+- 未勾選「交卷後統一批改」時，選答後立即顯示正解與解析；勾選時則到交卷前都隱藏正解、解析與紀錄卡成績。兩種模式在交卷前都可改選，交卷後才鎖定。
+- 模擬考 provisional answers 不再提前寫入 FSRS、錯題與排行榜；明確交卷後才以最後答案一次寫入。舊版未完成 session 改選時只 reconcile 最後的 user answer／錯題，不重複新增 learning 或 leaderboard attempt。
+- `imageQuizSessions` 的答案、標記、暫存、交卷與刪除改為 per-session serialization，並在 `imageQuizSessions + syncIntents` 單一 IndexedDB transaction 原子合併；快速切題、交卷或刪除不再互相覆蓋。
+- learning event 使用持久化 RFC 4122 UUID；提交期間鎖定切題與離開，已提交但尚待整理的紀錄會在模擬考首頁自動補寫，完成前也不能被刪除。
+- 題庫共 3,526 題；已人工覆核手機分段 9 題，尚餘 3,517 題（若以題目／解析欄位計為 7,037 欄）待彙整／逐欄覆核。OCR 仍只作候選分析，沒有直接取代正式截圖。
+- `npm run verify` 與完整 `npm run test:e2e` 通過；E2E 為 19 passed、9 device-conditional skipped，並包含真實 route 的 immediate／deferred、改選、離開續考與交卷重載流程。
+- 無 Supabase migration、無新增 npm 套件。
+
+## v79.17 手機圖片題閱讀與裁切完整性
+
+- 圖片測驗在 `600px` 以下採手機專用排版：題目以人工視覺覆核的橫列分段等寬呈現、答案改為 2 × 2、操作列固定於底部；`601px` 以上的平板與桌面維持原排版。
+- 首批已覆核 9 題、15 個題目／解析欄位，共 64 個 mobile segments；表格、公式或無安全切點的內容不會自動套用，保留原圖並支援觸控、鍵盤水平瀏覽。
+- mobile segments 只能來自 bundled release，並以來源圖片、分段座標、候選報告與 reviewer approval 的 SHA-256 證據鏈驗證；遠端 override 與管理端 payload 不得自行標記為已覆核。
+- 修正 6 個高信心既有裁切問題：移除頁碼／空白尾端／空白接縫，並補回遺漏的三角形圖示；手機與平板讀取相同修正版來源裁切。
+- OCR 初評確認簡單表格的數字與儲存格關係可重建，但繁體字形與公式仍會誤辨；因此 OCR 文字只供候選分析，沒有取代正式題庫原圖或保存為已校對內容。
+- 全題庫 dry-run：7,052 個題目／解析欄位中 4,794 個可形成候選、2,258 個因表格／公式／覆蓋不足等原因維持原圖；未執行未覆核的大量套用。
+- 修正設定視窗在題庫清單非同步載入時將離線內容子頁重設回首頁的競態。
+- release id 為 `a13fcc5826142433`；`npm run verify` 與完整 `npm run test:e2e`（18 passed、6 device-conditional skipped）通過。
+- 無 Supabase migration、無新增 npm 套件。
+
 ## v79.16 模擬考批改設定與正解模式一致化
 
 - 「交卷後統一批改」改為使用者分帳號持久設定，離開模擬考頁再返回不會自行恢復開啟。
@@ -118,10 +199,7 @@
 - 管理後台檢視可在 AAL1 使用；刪除啟用碼與管理員異動仍要求 AAL2。
 - 恢復啟用碼、管理員、題庫編輯、排行榜、稽核與系統狀態等後台功能。
 
-# SeniorSecurities Current State
-
-更新日期：2026-07-12  
-目前版本：**Complete Optimization v79 — Server Cursor、Transactional Outbox、Image Session Sync、題庫完整驗證與部署硬化**
+## v79 歷史基準
 
 ## v79 已完成的核心優化
 

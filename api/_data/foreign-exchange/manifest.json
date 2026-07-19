@@ -1,0 +1,119 @@
+{
+  "schemaVersion": 1,
+  "examId": "junior-foreign-exchange",
+  "title": "初階外匯",
+  "questionCount": 390,
+  "contentSignature": "5b7f897a0ec1b5d64063dd7f9dc1d19d369dc2878e5a222a6e92e7047e9ba093",
+  "sessions": [
+    {
+      "session": 45,
+      "standardVersion": "SWIFT MT",
+      "subjects": [
+        {
+          "id": "remittance",
+          "title": "國外匯兌業務",
+          "questionCount": 50,
+          "durationMinutes": 60,
+          "file": "45-remittance.json"
+        },
+        {
+          "id": "trade",
+          "title": "進出口外匯業務",
+          "questionCount": 80,
+          "durationMinutes": 90,
+          "file": "45-trade.json"
+        }
+      ]
+    },
+    {
+      "session": 46,
+      "standardVersion": "SWIFT MT",
+      "subjects": [
+        {
+          "id": "remittance",
+          "title": "國外匯兌業務",
+          "questionCount": 50,
+          "durationMinutes": 60,
+          "file": "46-remittance.json"
+        },
+        {
+          "id": "trade",
+          "title": "進出口外匯業務",
+          "questionCount": 80,
+          "durationMinutes": 90,
+          "file": "46-trade.json"
+        }
+      ]
+    },
+    {
+      "session": 47,
+      "standardVersion": "ISO 20022",
+      "subjects": [
+        {
+          "id": "remittance",
+          "title": "國外匯兌業務",
+          "questionCount": 50,
+          "durationMinutes": 60,
+          "file": "47-remittance.json"
+        },
+        {
+          "id": "trade",
+          "title": "進出口外匯業務",
+          "questionCount": 80,
+          "durationMinutes": 90,
+          "file": "47-trade.json"
+        }
+      ]
+    }
+  ],
+  "files": [
+    {
+      "session": 45,
+      "subjectId": "remittance",
+      "path": "api/_data/foreign-exchange/45-remittance.json",
+      "questionCount": 50,
+      "sha256": "559d1db23c00d35e201c8ac936b5736c47c0f0c088a46ab27a238f2f39ec5f8c"
+    },
+    {
+      "session": 45,
+      "subjectId": "trade",
+      "path": "api/_data/foreign-exchange/45-trade.json",
+      "questionCount": 80,
+      "sha256": "09dc7f5d5844c99366dcb3aeaf60931b16360f81e2175ede6fb616a63f373454"
+    },
+    {
+      "session": 46,
+      "subjectId": "remittance",
+      "path": "api/_data/foreign-exchange/46-remittance.json",
+      "questionCount": 50,
+      "sha256": "4792db71111a11f0c9f034872ad2add030ead40ea93972e5ce1342665dc57e16"
+    },
+    {
+      "session": 46,
+      "subjectId": "trade",
+      "path": "api/_data/foreign-exchange/46-trade.json",
+      "questionCount": 80,
+      "sha256": "eb25cd25621f96b06e983e64521db69584effd6300966f07988ff0c6de696d32"
+    },
+    {
+      "session": 47,
+      "subjectId": "remittance",
+      "path": "api/_data/foreign-exchange/47-remittance.json",
+      "questionCount": 50,
+      "sha256": "59d64cbc28e621be159bb18bb02b88990c2889259140ac94910cfe9d3b30679e"
+    },
+    {
+      "session": 47,
+      "subjectId": "trade",
+      "path": "api/_data/foreign-exchange/47-trade.json",
+      "questionCount": 80,
+      "sha256": "867df4c7cfb7cc381515f0c3f4e31e7a349ea3a5420bb3c3d766f8bd3f8ed457"
+    }
+  ],
+  "quality": {
+    "ocrUsed": false,
+    "questionAnswerTextSource": "official embedded PDF text layer",
+    "verifiedTextFields": 1950,
+    "answerCrossCheck": "three extraction paths matched"
+  }
+}

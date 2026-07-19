@@ -30,7 +30,23 @@ export function getAnswerModeEnabled(): boolean {
 export function setAnswerModeEnabled(enabled: boolean): void {
   if (typeof window === "undefined") return;
   ensureSettingsDefaultsInitialized();
+
+  // These modes are intentionally mutually exclusive. Answer mode reveals the
+  // correct answer immediately, while deferred mock-exam grading must keep it
+  // hidden until submission. Persist both values before dispatching events so
+  // listeners never observe a transient state where both are enabled.
+  if (enabled) {
+    writeScopedStorageItem(MOCK_EXAM_DEFERRED_FEEDBACK_KEY, "false");
+  }
   writeScopedStorageItem(ANSWER_MODE_ENABLED_KEY, enabled ? "true" : "false");
+  if (enabled) {
+    window.dispatchEvent(
+      new CustomEvent<{ enabled: boolean }>(
+        MOCK_EXAM_FEEDBACK_SETTING_CHANGED,
+        { detail: { enabled: false } },
+      ),
+    );
+  }
   window.dispatchEvent(new CustomEvent<{ enabled: boolean }>(ANSWER_MODE_SETTING_CHANGED, { detail: { enabled } }));
 }
 
@@ -54,7 +70,22 @@ export function getMockExamDeferredFeedbackEnabled(): boolean {
 
 export function setMockExamDeferredFeedbackEnabled(enabled: boolean): void {
   if (typeof window === "undefined") return;
+
+  // Enabling deferred grading must turn off answer mode first. This is the
+  // fail-closed direction: a mock exam may lose immediate feedback, but it must
+  // never leak the correct answer before submission.
+  if (enabled) {
+    ensureSettingsDefaultsInitialized();
+    writeScopedStorageItem(ANSWER_MODE_ENABLED_KEY, "false");
+  }
   writeScopedStorageItem(MOCK_EXAM_DEFERRED_FEEDBACK_KEY, enabled ? "true" : "false");
+  if (enabled) {
+    window.dispatchEvent(
+      new CustomEvent<{ enabled: boolean }>(ANSWER_MODE_SETTING_CHANGED, {
+        detail: { enabled: false },
+      }),
+    );
+  }
   window.dispatchEvent(
     new CustomEvent<{ enabled: boolean }>(MOCK_EXAM_FEEDBACK_SETTING_CHANGED, {
       detail: { enabled },

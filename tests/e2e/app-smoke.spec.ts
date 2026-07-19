@@ -16,6 +16,7 @@ async function expectNoSeriousAccessibilityViolations(page: Page) {
 test("app boots, opens calculator and settings without a blank screen", async ({
   page,
 }, testInfo) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/auth");
   await expect(page.locator("#root")).not.toBeEmpty();
   await expect(
@@ -29,8 +30,9 @@ test("app boots, opens calculator and settings without a blank screen", async ({
   await page.getByRole("button", { name: "設定" }).click();
   await expect(page.getByRole("dialog", { name: "設定" })).toBeVisible();
   await page.getByRole("button", { name: "管理離線內容" }).click();
-  await expect(page.getByText("離線科目包")).toBeVisible();
-  await page.getByRole("button", { name: "回到設定" }).click();
+  await expect(page.getByRole("heading", { name: "離線題庫", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "回到設定" }).dispatchEvent("click");
+  await expect(page.getByRole("heading", { name: "設定", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "取消" }).click();
 
   await expectNoSeriousAccessibilityViolations(page);
@@ -70,8 +72,16 @@ test("offline reload never collapses to an empty root", async ({
   context,
 }) => {
   await page.goto("/auth");
+  await page.evaluate(async () => {
+    await navigator.serviceWorker.ready;
+  });
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await expect.poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller))).toBe(true);
   await context.setOffline(true);
-  await page.reload({ waitUntil: "domcontentloaded" }).catch(() => undefined);
-  await expect(page.locator("#root")).not.toBeEmpty();
-  await context.setOffline(false);
+  try {
+    await page.reload({ waitUntil: "domcontentloaded" }).catch(() => undefined);
+    await expect(page.locator("#root")).not.toBeEmpty();
+  } finally {
+    await context.setOffline(false);
+  }
 });

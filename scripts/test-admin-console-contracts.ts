@@ -104,6 +104,9 @@ assertIncludes(professionalMigration, "question_release.publish_direct", "Direct
 assertIncludes(restoreMigration, "public.admin_users", "Restoration migration must use the existing administrator registry.");
 assertIncludes(restoreMigration, "primary_admin", "Restoration migration must bootstrap the primary administrator role.");
 assertIncludes(questionEditorApi, "listQuestionOverrides", "The editor must load private current changes, not only the public release.");
+assertIncludes(questionEditorApi, "numericValues.some((entry) => !Number.isFinite(entry))", "Crop APIs must reject non-finite coordinates before persistence.");
+assertIncludes(questionEditorApi, "手機重排只能由可稽核的離線覆核流程建立", "Admin payloads must not mint mobile review evidence.");
+assertNotIncludes(adminPanel, "mobileQuestionSegments: editable.mobileQuestionSegments", "The crop editor must not submit client-mintable mobile evidence.");
 assertIncludes(adminPanel, "loadImageQuizEditorCatalog", "The editor must load a lightweight catalog.");
 
 assertIncludes(questionEditorApi, 'mode === "index"', "The editor must load a lightweight draft index before downloading draft payloads.");

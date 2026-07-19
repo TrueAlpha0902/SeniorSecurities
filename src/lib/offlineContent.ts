@@ -205,6 +205,12 @@ export async function downloadOfflineBank(
           ...question.explanationSegments.map((segment) =>
             versionedUrl(segment.src, manifest.releaseId),
           ),
+          ...(question.mobileQuestionSegments || []).map((segment) =>
+            versionedUrl(segment.src, manifest.releaseId),
+          ),
+          ...(question.mobileExplanationSegments || []).map((segment) =>
+            versionedUrl(segment.src, manifest.releaseId),
+          ),
         ]),
       ),
     ),

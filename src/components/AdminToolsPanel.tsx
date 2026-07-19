@@ -26,6 +26,12 @@ import { PdfSegmentStack } from "./PdfSegmentStack";
 import "../styles/admin-tools.css";
 
 type ToolId = "activation" | "admins" | "questions" | "health";
+type ExamId = "senior-securities" | "junior-foreign-exchange";
+
+const EXAM_LABELS: Record<ExamId, string> = {
+  "senior-securities": "證券高業",
+  "junior-foreign-exchange": "初階外匯",
+};
 
 type AdminAccountRow = {
   id: string;
@@ -40,6 +46,7 @@ type AdminAccountRow = {
 
 type ActivationCodeRow = {
   id: string;
+  exam_id: ExamId;
   code_preview: string;
   max_uses: number;
   use_count: number;
@@ -64,6 +71,7 @@ type ApiPayload = {
   message?: string;
   error?: string;
   code?: string;
+  examId?: ExamId;
   admins?: AdminAccountRow[];
   primaryEmails?: string[];
   activationCodes?: ActivationCodeRow[];
@@ -217,6 +225,7 @@ function SystemHealthTool({ accessToken }: { accessToken: string }) {
 }
 
 function ActivationCodeTool({ accessToken }: { accessToken: string }) {
+  const [examId, setExamId] = useState<ExamId>("senior-securities");
   const [customCode, setCustomCode] = useState("");
   const [note, setNote] = useState("");
   const [maxUses, setMaxUses] = useState(1);
@@ -247,7 +256,7 @@ function ActivationCodeTool({ accessToken }: { accessToken: string }) {
     try {
       const payload = await adminRequest(accessToken, "/api/admin/tools", {
         method: "POST",
-        body: JSON.stringify({ action: "create-activation-code", code: customCode, note, maxUses }),
+        body: JSON.stringify({ action: "create-activation-code", examId, code: customCode, note, maxUses }),
       });
       setCreatedCode(payload.code || "");
       setMessage(payload.message || "啟用碼已建立。 ");
@@ -293,8 +302,14 @@ function ActivationCodeTool({ accessToken }: { accessToken: string }) {
   return (
     <div className="admin-tool-pane" role="tabpanel">
       <div className="admin-tool-form-grid">
-        <label>自訂啟用碼（可留空）<input value={customCode} onChange={(event) => setCustomCode(event.target.value)} placeholder="至少 10 個英數字" /></label>
+        <label>題庫
+          <select value={examId} onChange={(event) => setExamId(event.target.value as ExamId)}>
+            <option value="senior-securities">證券高業</option>
+            <option value="junior-foreign-exchange">初階外匯</option>
+          </select>
+        </label>
         <label>可使用次數<input type="number" min={1} max={999} value={maxUses} onChange={(event) => setMaxUses(Number(event.target.value))} /></label>
+        <label className="admin-tool-wide">自訂啟用碼（可留空）<input value={customCode} onChange={(event) => setCustomCode(event.target.value)} placeholder={examId === "junior-foreign-exchange" ? "FOREX-XXXX-XXXX" : "SENIOR-XXXX-XXXX"} /></label>
         <label className="admin-tool-wide">備註<input value={note} onChange={(event) => setNote(event.target.value)} placeholder="例如：2026 夏季班" /></label>
       </div>
       <div className="admin-tool-actions">
@@ -310,7 +325,7 @@ function ActivationCodeTool({ accessToken }: { accessToken: string }) {
           const visibleCode = row.code_preview;
           return (
             <article key={row.id}>
-              <div><strong>{visibleCode}</strong><span>{row.note || "無備註"}</span></div>
+              <div><strong>{visibleCode}</strong><span>{EXAM_LABELS[row.exam_id] || "題庫"} · {row.note || "無備註"}</span></div>
               <div><span>{row.use_count} / {row.max_uses} 次</span><span>{row.is_active ? "啟用" : "停用"}</span></div>
               <div className="admin-inline-actions">
                 {isPrimaryAdmin ? (
@@ -502,6 +517,10 @@ function QuestionEditorTool({ accessToken, isPrimaryAdmin }: { accessToken: stri
               answer: draft.answer,
               questionSegments: draft.questionSegments.map((segment) => ({ ...segment })),
               explanationSegments: draft.explanationSegments.map((segment) => ({ ...segment })),
+              mobileQuestionSegments: undefined,
+              mobileExplanationSegments: undefined,
+              mobileQuestionSegmentsVerification: undefined,
+              mobileExplanationSegmentsVerification: undefined,
             } : sourceQuestion;
           }),
         };
@@ -532,11 +551,16 @@ function QuestionEditorTool({ accessToken, isPrimaryAdmin }: { accessToken: stri
   }, [mode]);
 
   const segmentKey = mode === "question" ? "questionSegments" : "explanationSegments";
+  const mobileSegmentKey = mode === "question" ? "mobileQuestionSegments" : "mobileExplanationSegments";
+  const mobileVerificationKey = mode === "question" ? "mobileQuestionSegmentsVerification" : "mobileExplanationSegmentsVerification";
   const segments = editable?.[segmentKey] || [];
   const segment = segments[segmentIndex];
   const originalSignature = useMemo(() => question ? questionEditSignature(question) : "", [question]);
   const editableSignature = useMemo(() => editable ? questionEditSignature(editable) : "", [editable]);
   const hasUnsavedChanges = Boolean(editable && question && editableSignature !== originalSignature);
+  const mobileSegmentsInvalidated = Boolean(
+    question?.[mobileSegmentKey]?.length && !editable?.[mobileSegmentKey]?.length,
+  );
   const deferredEditable = useDeferredValue(editable);
   const [previewReady, setPreviewReady] = useState(false);
 
@@ -556,7 +580,7 @@ function QuestionEditorTool({ accessToken, isPrimaryAdmin }: { accessToken: stri
       const next = [...current[segmentKey]];
       if (!next[segmentIndex]) return current;
       next[segmentIndex] = normalizePdfCropSegment({ ...next[segmentIndex], ...patch });
-      return { ...current, [segmentKey]: next };
+      return { ...current, [segmentKey]: next, [mobileSegmentKey]: undefined, [mobileVerificationKey]: undefined };
     });
   }
 
@@ -568,7 +592,12 @@ function QuestionEditorTool({ accessToken, isPrimaryAdmin }: { accessToken: stri
     const before = cloneQuestion(editable);
     const nextSegments = transform(editable[segmentKey].slice(), segmentIndex);
     setCropUndoStack((current) => [...current.slice(-29), before]);
-    setEditable({ ...editable, [segmentKey]: nextSegments });
+    setEditable({
+      ...editable,
+      [segmentKey]: nextSegments,
+      [mobileSegmentKey]: undefined,
+      [mobileVerificationKey]: undefined,
+    });
     setCropMessage(successMessage);
   }
 
@@ -664,7 +693,7 @@ function QuestionEditorTool({ accessToken, isPrimaryAdmin }: { accessToken: stri
       };
       const next = [...current[segmentKey], nextSegment];
       setSegmentIndex(next.length - 1);
-      return { ...current, [segmentKey]: next };
+      return { ...current, [segmentKey]: next, [mobileSegmentKey]: undefined, [mobileVerificationKey]: undefined };
     });
   }
 
@@ -673,7 +702,7 @@ function QuestionEditorTool({ accessToken, isPrimaryAdmin }: { accessToken: stri
       if (!current) return current;
       const next = current[segmentKey].filter((_, index) => index !== segmentIndex);
       setSegmentIndex(Math.max(0, Math.min(segmentIndex, next.length - 1)));
-      return { ...current, [segmentKey]: next };
+      return { ...current, [segmentKey]: next, [mobileSegmentKey]: undefined, [mobileVerificationKey]: undefined };
     });
   }
 
@@ -866,6 +895,7 @@ function QuestionEditorTool({ accessToken, isPrimaryAdmin }: { accessToken: stri
                   {segmentIndex > 0 ? (
                     <section className="focus-control-section is-seam-primary"><div className="focus-control-heading"><strong>跨頁接縫</strong><span>前段底部＋本段頂部</span></div><button type="button" className="focus-wide-action" disabled={cropBusy} onClick={() => applyCropAction((items, activeIndex) => { const next = [...items]; const previousItem = next[activeIndex - 1]; const currentItem = next[activeIndex]; if (!previousItem || !currentItem) return next; const [previousSegment, currentSegment] = compressPdfCropSeam(previousItem, currentItem, cropStep); next[activeIndex - 1] = previousSegment; next[activeIndex] = currentSegment; return next; }, `前段底部與本段頂部各裁除 ${cropStep}px。`)}>接縫兩側各裁 {cropStep}</button><button type="button" className="focus-wide-action is-primary" disabled={cropBusy} onClick={() => void autoCompressPreviousSeam()}>{cropBusy ? "分析中…" : "自動貼合前段接縫"}</button></section>
                   ) : <p className="focus-seam-hint">切換到段落 2 後即可使用跨頁接縫工具。</p>}
+                  {mobileSegmentsInvalidated ? <p className="segment-crop-message" role="alert">原手機分段已因這次裁切變更而停用；儲存後手機會先改用可左右滑動的原圖，重新產生並複查後才恢復直向分段。</p> : null}
                   {cropMessage ? <p className="segment-crop-message" role="status">{cropMessage}</p> : null}
                   <details className="question-editor-advanced"><summary>進階設定</summary><div className="question-editor-advanced-body"><div className="segment-toolbar segment-management-toolbar"><strong>段落管理</strong><div><button type="button" onClick={addSegment}>新增／複製</button><button type="button" className="is-danger" disabled={!segment} onClick={removeSegment}>移除</button></div></div><SegmentFields segment={segment} onChange={updateSegment} /><section className="segment-control-group"><strong>左右與寬度微調</strong><div className="segment-nudges"><button type="button" onClick={() => updateActiveSegment((current) => movePdfCropSegment(current, -cropStep, 0))}>左移 {cropStep}</button><button type="button" onClick={() => updateActiveSegment((current) => movePdfCropSegment(current, cropStep, 0))}>右移 {cropStep}</button><button type="button" onClick={() => updateActiveSegment((current) => trimPdfCropEdge(current, "left", cropStep))}>裁左 {cropStep}</button><button type="button" onClick={() => updateActiveSegment((current) => trimPdfCropEdge(current, "right", cropStep))}>裁右 {cropStep}</button><button type="button" onClick={() => updateActiveSegment((current) => resizePdfCropSegment(current, -cropStep, 0))}>減寬 {cropStep}</button><button type="button" onClick={() => updateActiveSegment((current) => resizePdfCropSegment(current, cropStep, 0))}>加寬 {cropStep}</button></div></section><div className="question-editor-advanced-actions">{overrideIds.has(editable.id) ? <GlassButton variant="danger" disabled={busy} onClick={() => void revertOverride()}><Trash2 size={17} />移除未發布修改</GlassButton> : null}<GlassButton variant="secondary" disabled={busy || loading || chapterLoading} onClick={() => setChapterReloadKey((value) => value + 1)}><RefreshCcw size={17} />重新載入章節</GlassButton></div></div></details>
                 </>
@@ -1021,6 +1051,10 @@ function questionEditSignature(question: ImageQuizQuestion): string {
     answer: question.answer,
     questionSegments: question.questionSegments,
     explanationSegments: question.explanationSegments,
+    mobileQuestionSegments: question.mobileQuestionSegments,
+    mobileExplanationSegments: question.mobileExplanationSegments,
+    mobileQuestionSegmentsVerification: question.mobileQuestionSegmentsVerification,
+    mobileExplanationSegmentsVerification: question.mobileExplanationSegmentsVerification,
   });
 }
 
@@ -1029,7 +1063,10 @@ function cloneQuestion(question: ImageQuizQuestion): ImageQuizQuestion {
     ...question,
     questionSegments: question.questionSegments.map((segment) => ({ ...segment })),
     explanationSegments: question.explanationSegments.map((segment) => ({ ...segment })),
+    mobileQuestionSegments: question.mobileQuestionSegments?.map((segment) => ({ ...segment })),
+    mobileExplanationSegments: question.mobileExplanationSegments?.map((segment) => ({ ...segment })),
+    mobileQuestionSegmentsVerification: question.mobileQuestionSegmentsVerification,
+    mobileExplanationSegmentsVerification: question.mobileExplanationSegmentsVerification,
     answerMask: question.answerMask ? { ...question.answerMask } : null,
   };
 }
-

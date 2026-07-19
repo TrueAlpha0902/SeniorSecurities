@@ -6,6 +6,7 @@ import {
   type Card,
   type Grade,
 } from "ts-fsrs";
+import { createUuid } from "./uuid";
 import { supabase } from "./supabase";
 import type { ReliabilityQueueEntry } from "./reliabilityStore";
 import {
@@ -132,10 +133,7 @@ export function scheduleLearningAttempt(
 }
 
 export function createAttemptId(): string {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return crypto.randomUUID();
-  }
-  return `attempt-${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
+  return createUuid();
 }
 
 export async function recordLocalLearningAttempt<TPayload = unknown>(

@@ -37,11 +37,15 @@ function normalizeAnswer(value: unknown): "1" | "2" | "3" | "4" {
   return answer;
 }
 
-function normalizeSegments(value: unknown): QuestionOverrideSegment[] {
-  if (!Array.isArray(value) || value.length > 12) throw new HttpError("每種截圖最多 12 個段落。", 400);
+function normalizeSegments(value: unknown, maxSegments = 12): QuestionOverrideSegment[] {
+  if (!Array.isArray(value) || value.length > maxSegments) throw new HttpError(`每種截圖最多 ${maxSegments} 個段落。`, 400);
   return value.map((item, index) => {
     if (typeof item !== "object" || item === null) throw new HttpError(`第 ${index + 1} 個段落格式不正確。`, 400);
     const row = item as Record<string, unknown>;
+    const numericValues = [row.page, row.x, row.y, row.width, row.height, row.pageWidth, row.pageHeight].map(Number);
+    if (numericValues.some((entry) => !Number.isFinite(entry))) {
+      throw new HttpError(`第 ${index + 1} 個段落包含無效數值。`, 400);
+    }
     const segment: QuestionOverrideSegment = {
       page: Math.trunc(Number(row.page)),
       src: String(row.src || "").trim(),
@@ -114,14 +118,25 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     }
 
     const questionNumber = Math.trunc(Number(body.questionNumber));
+    const mobileReviewKeys = [
+      "mobileQuestionSegments",
+      "mobileExplanationSegments",
+      "mobileQuestionSegmentsVerification",
+      "mobileExplanationSegmentsVerification",
+    ];
+    if (mobileReviewKeys.some((key) => Object.prototype.hasOwnProperty.call(body, key))) {
+      throw new HttpError("手機重排只能由可稽核的離線覆核流程建立；管理員裁切修改會自動改用原圖。", 400);
+    }
+    const questionSegments = normalizeSegments(body.questionSegments);
+    const explanationSegments = normalizeSegments(body.explanationSegments);
     const override = {
       questionId,
       bankTitle: optionalLabel(body.bankTitle, 120),
       chapterTitle: optionalLabel(body.chapterTitle, 160),
       questionNumber: Number.isFinite(questionNumber) && questionNumber > 0 ? questionNumber : undefined,
       answer: normalizeAnswer(body.answer),
-      questionSegments: normalizeSegments(body.questionSegments),
-      explanationSegments: normalizeSegments(body.explanationSegments),
+      questionSegments,
+      explanationSegments,
       updatedAt: new Date().toISOString(),
       updatedBy: user.email?.toLowerCase() || user.id,
     };
@@ -136,6 +151,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
         answer: override.answer,
         questionSegments: override.questionSegments.length,
         explanationSegments: override.explanationSegments.length,
+        mobileReflow: "invalidated-on-crop-change",
       },
     });
     sendJson(res, 200, { ok: true, override, message: "題目修改已儲存，確認本次修改清單後即可由主要管理員發布。" });

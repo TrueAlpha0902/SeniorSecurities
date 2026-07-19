@@ -1,4 +1,4 @@
-import { Cloud, Clock, KeyRound, LogOut, Shield, ShieldCheck } from "lucide-react";
+import { BadgeDollarSign, BookOpenCheck, Cloud, Clock, LogOut, Shield } from "lucide-react";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { ProtectedRoute } from "../auth/ProtectedRoute";
@@ -37,7 +37,9 @@ export function AccountPage() {
 
 function AccountContent() {
   const navigate = useNavigate();
-  const { access, loading, session, signOut, user } = useAuth();
+  const { examAccess, loading, session, signOut, user } = useAuth();
+  const securitiesAccess = examAccess["senior-securities"];
+  const foreignExchangeAccess = examAccess["junior-foreign-exchange"];
   const configuredClientAdminEmails = new Set(
     (import.meta.env.VITE_ADMIN_EMAILS ?? "").split(",")
       .map((email) => email.trim().toLowerCase())
@@ -129,24 +131,24 @@ function AccountContent() {
   return (
     <div className="page-stack account-page">
       <GlassCard className="auth-card account-card-polished">
-        <p className="eyebrow">My Account</p>
         <h1>我的帳號</h1>
         <p>{user?.email}</p>
 
         <div className="account-status-grid">
           <StatusItem
-            icon={<ShieldCheck aria-hidden="true" size={24} />}
-            label="完整題庫"
-            value={access.hasEntitlement ? "已開通 / 永久" : "尚未開通"}
+            icon={<BadgeDollarSign aria-hidden="true" size={24} />}
+            label="證券高業"
+            value={securitiesAccess.hasEntitlement ? "已開通" : "尚未開通"}
           />
           <StatusItem
-            icon={<KeyRound aria-hidden="true" size={24} />}
-            label="方案"
-            value={access.plan ?? "未開通"}
+            icon={<BookOpenCheck aria-hidden="true" size={24} />}
+            label="初階外匯"
+            value={foreignExchangeAccess.hasEntitlement ? "已開通" : "尚未開通"}
           />
         </div>
 
-        {access.error ? <p className="form-error">{access.error}</p> : null}
+        {securitiesAccess.error ? <p className="form-error">{securitiesAccess.error}</p> : null}
+        {foreignExchangeAccess.error ? <p className="form-error">{foreignExchangeAccess.error}</p> : null}
         {error ? <p className="form-error">{error}</p> : null}
         {syncMessage ? <p className="form-success">{syncMessage}</p> : null}
 
@@ -154,7 +156,6 @@ function AccountContent() {
         <section className="account-device-section account-sync-compact" aria-labelledby="account-sync-title">
           <div className="account-section-header">
             <div>
-              <p className="eyebrow">Cloud Sync</p>
               <h2 id="account-sync-title">學習紀錄同步</h2>
             </div>
             <GlassButton variant="secondary" disabled={syncBusy} onClick={() => void handleSyncRecords()}>
@@ -176,7 +177,12 @@ function AccountContent() {
               <span>{adminAccessState === "checking" ? "檢查管理權限…" : "管理後台"}</span>
             </GlassLinkButton>
           ) : null}
-          {!access.hasEntitlement ? <GlassLinkButton to="/activate" variant="primary">輸入啟用碼</GlassLinkButton> : null}
+          {!securitiesAccess.hasEntitlement ? (
+            <GlassLinkButton to="/activate?exam=senior-securities" variant="primary">啟用證券高業</GlassLinkButton>
+          ) : null}
+          {!foreignExchangeAccess.hasEntitlement ? (
+            <GlassLinkButton to="/activate?exam=junior-foreign-exchange" variant="primary">啟用初階外匯</GlassLinkButton>
+          ) : null}
           <GlassButton variant="danger" disabled={busy} onClick={() => void handleSignOut()}>
             <LogOut aria-hidden="true" size={18} />
             <span>登出</span>

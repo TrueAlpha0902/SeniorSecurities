@@ -7,11 +7,31 @@ type PdfSegmentStackProps = {
   segments: PdfCropSegment[];
   priority?: "high" | "auto" | "low";
   activeIndex?: number;
+  fitToWidth?: boolean;
+  horizontalScrollHint?: boolean;
 };
 
-export const PdfSegmentStack = memo(function PdfSegmentStack({ label, segments, priority = "auto", activeIndex }: PdfSegmentStackProps) {
+type PdfCropViewportStyle = CSSProperties & {
+  "--pdf-mobile-crop-width": string;
+};
+
+const MOBILE_CROP_MAX_HEIGHT_PX = 44;
+
+export const PdfSegmentStack = memo(function PdfSegmentStack({
+  label,
+  segments,
+  priority = "auto",
+  activeIndex,
+  fitToWidth = false,
+  horizontalScrollHint = false,
+}: PdfSegmentStackProps) {
   return (
-    <div className="pdf-segment-stack" aria-label={label}>
+    <div
+      className={`pdf-segment-stack${fitToWidth ? " is-fit-to-width" : ""}`}
+      role="figure"
+      aria-label={`${label}${horizontalScrollHint ? "，可左右滑動查看完整內容" : ""}`}
+      tabIndex={horizontalScrollHint ? 0 : undefined}
+    >
       {segments.map((segment, index) => (
         <PdfCrop
           key={`${segment.src}-${segment.page}-${index}`}
@@ -45,6 +65,12 @@ const PdfCrop = memo(function PdfCrop({
     left: `${(-segment.x / segment.width) * 100}%`,
     top: `${(-segment.y / segment.height) * 100}%`,
   };
+  const viewportStyle: PdfCropViewportStyle = {
+    aspectRatio: `${segment.width} / ${segment.height}`,
+    "--pdf-mobile-crop-width": `${Math.round(
+      (segment.width / segment.height) * MOBILE_CROP_MAX_HEIGHT_PX,
+    )}px`,
+  };
 
   useEffect(() => {
     setRetryToken(0);
@@ -55,7 +81,7 @@ const PdfCrop = memo(function PdfCrop({
     <div
       className={`pdf-crop-viewport${isActive ? " is-admin-active-segment" : ""}`}
       data-segment-number={isActive ? segmentNumber : undefined}
-      style={{ aspectRatio: `${segment.width} / ${segment.height}` }}
+      style={viewportStyle}
     >
       <img
         key={`${segment.src}:${retryToken}`}
@@ -74,7 +100,7 @@ const PdfCrop = memo(function PdfCrop({
           setFailed(true);
         }}
       />
-      {failed ? <div className="pdf-crop-fallback">題目圖片載入中斷，請重新整理或重新部署新版。</div> : null}
+      {failed ? <div className="pdf-crop-fallback" role="status">題目圖片載入中斷，請重新整理或重新部署新版。</div> : null}
     </div>
   );
 });

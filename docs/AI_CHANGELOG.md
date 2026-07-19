@@ -1,3 +1,70 @@
+# AI Change Log
+
+## 2026-07-19 — v80 初階外匯文字題庫、逐題解析與分題庫權限
+
+- 新增第45至47屆初階外匯390題，拆分國外匯兌業務與進出口外匯業務。
+- 題幹與選項直接取自官方 PDF 內嵌文字層；1,950個文字欄位由 pdftotext、PyMuPDF、pypdf 交叉核對，沒有使用 OCR 或語言模型補字。
+- 390個官方答案完成三引擎核對；390題各自加入一則專案編寫解析，並逐題檢視題幹、選項、正解與解析的對應關係。
+- 移除學員介面的PDF頁碼、來源檔、雜湊、OCR／AI及內部審核說明，只保留題目、選項、作答狀態、正確答案與解析等學習所需資訊。
+- 修正初階外匯模擬測驗：交卷前不顯示答案、解析、答對數或答錯數。
+- 新增 `user_exam_entitlements` 與 exam-scoped activation code migration；證券高業、初階外匯可獨立開通、撤銷與到期。
+- 初階外匯資料改由受保護 API 提供，學員 payload 排除來源及稽核欄位。
+- 修正三個 Big5 檔名為 UTF-8，恢復 Linux production build。
+- 尚未部署正式 Supabase migration或Vercel版本。
+
+## 2026-07-14 — v79.22 模擬考舊 Session 延後批改保護
+
+- 「交卷後統一批改」勾選狀態現在會覆蓋尚未交卷的舊 `immediate` session，避免續答時立即洩漏正解。
+- 未交卷測驗頁以「目前偏好為 deferred 或 session 已是 deferred」作為 fail-closed 條件；點選答案只保留已選擇狀態。
+- 勾選延後批改時會自動關閉正解模式，並把所有未完成舊 session 升級為 `deferred`。
+- 新增舊 immediate session + 已勾選延後批改的回歸測試。
+
+## 2026-07-14 — v79.21 模擬考發佈驗證修正
+- 修正 Playwright 模擬考 E2E：自訂開關的原生 checkbox 為透明且禁止 pointer events，測試改為點擊使用者實際操作的可見 switch。
+- 保留 v79.20 的正解模式／交卷後統一批改互斥邏輯與交卷前答案隱藏保護。
+- 發佈流程維持單一 worker，避免 Windows 平行 worker 結束逾時。
+
+## 2026-07-14 — v79.20 模擬考延後批改與正解模式互斥修正
+
+- 「交卷後統一批改」不再因正解模式已開啟而失效；勾選時會先持久化關閉正解模式，再建立 `deferred` session。
+- 正解模式與模擬考延後批改改為設定層互斥：開啟其中一項會關閉另一項，且事件監聽只會看到已完成的最終狀態。
+- 模擬考開始前會修復舊版同時為 true 的衝突設定；進入既有 deferred session 時也會再次強制關閉正解模式並恢復延後批改偏好。
+- 模擬考設定開關不再因正解模式而 disabled，並明確顯示「勾選會自動關閉正解模式」。
+- 新增 user-scoped setting exclusivity 測試，以及 Playwright「先開正解模式、再勾統一批改」流程。
+- 無 migration、無新增 npm 套件。
+
+## 2026-07-14 — v79.19 模擬考統一批改模式鎖定修正
+
+- 模擬考開始時重新讀取當前帳號的「交卷後統一批改」設定，避免 React state、登入 scope 或快速切換造成建立錯誤模式的 session。
+- session 建立後立即回讀確認 `feedbackMode`；若未正確保存就阻止進入測驗，避免畫面顯示 deferred、實際卻採 immediate。
+- 測驗頁將 persisted session mode 設為唯一權威；navigation state 只作首次載入 fallback，缺值／非法值預設 deferred，交卷前不顯示正解與解析。
+- 模擬考設定監聽 user storage scope 變更；新增 mode normalize／fallback／persistence 與更嚴格的 Playwright deferred-feedback assertions。
+- 無 migration、無新增 npm 套件。
+
+## 2026-07-13 — v79.18 模擬考續考、改選與交卷一致性
+
+- 修正以「已選答案數等於總題數」誤判交卷、導致完整作答後離開看不到「繼續測驗」的問題；現在只認 `finishedAt`，且離開文案明確表示儲存進度。
+- Immediate feedback 在選答後立即顯示正解與解析；deferred feedback 在交卷前隱藏正解、解析及紀錄卡成績。兩者都可在交卷前反覆改選，交卷後 UI 與 DB 同時拒絕修改。
+- 將 mock provisional answer 與正式 learning attempt 分離：先原子完成本機交卷，再依最後答案寫入 user answer、wrong record、FSRS 與 leaderboard；重試使用答案內持久化 UUID 去重。
+- 新增 per-session mutation chain 與 IndexedDB atomic updater，修正快速答兩題、答案與標記、答案與交卷互相覆蓋的競態；交卷期間鎖定切題／跳題／答題卡／離開，自動取消過期的 auto-next timer。
+- completed session 若仍有 pending learning records，會在結果頁或模擬考首頁自動恢復；刪除會等待 active commit，且不允許刪除尚未完成本機 learning commit 的已交卷紀錄。
+- 舊版 `learningRecorded` 缺欄位的未完成 session 在改選後會 reconcile 最終 user answer／錯題，但保留原 learning／leaderboard attempt，避免重複計分。
+- 新增 mock exam UUID、提交 gate、改選、legacy reconcile、answer／mark／finish／delete concurrency tests，以及有假 Supabase 已開通 session 的 focused Playwright route flow。
+- 題庫 3,526 題中尚有 3,517 題未完成手機分段人工覆核；若按題目＋解析兩欄計，尚有 7,037 欄。OCR 文字未寫回正式題庫。
+- 完整 `npm run verify` 與 `npm run test:e2e` 通過；E2E 為 19 passed、9 device-conditional skipped。無 migration、無新增 npm 套件。
+
+## 2026-07-13 — v79.17 手機圖片題閱讀、覆核裁切與 OCR 初評
+
+- 圖片測驗新增精確的 `max-width: 600px` 手機排版；題目、選項與固定操作列針對窄螢幕重排，iPad 與桌面仍使用既有題圖比例與頁面佈局。
+- `PdfSegmentStack` 新增等寬橫列與安全 fallback；首批 9 題的 15 個欄位經接觸表視覺覆核後啟用 64 個分段，公式被切開的 `investment-ch01-pdf-0006` 解析明確拒絕套用。
+- 新增 mobile segment 候選產生器、版本鎖定的 OCR 依賴、候選／approval 證據檔、資料驗證及 integrity tests；OCR 只使用 layout boxes，不寫回未校對文字。
+- 強化 runtime 與 API 護欄：分段必須有限值、包含於來源裁切、依序排列且通過 tracked SHA-256 approval chain；client／remote override 無法鑄造 reviewed 狀態。
+- 修正投資學 ch01 q4、ch04 q2、財務分析 ch08 q47，以及法規 ch02 q97／q125、ch04 q125 共 6 個高信心裁切瑕疵，並重新產生 release manifest、索引與 shards。
+- 全題庫只執行 dry-run，不大量套用：4,794／7,052 欄位可產生候選；其餘表格、公式、頁尾、覆蓋不足或無安全空白切點者保留原圖。
+- OCR 實測可正確保留簡單表格的數字與欄列配對，但繁體字、特殊字形與公式尚不足以直接成為正式題庫文字，故仍要求逐欄人工校對。
+- 修正 `SettingsPanel` 初始化 effect 被非同步題庫衍生資料重觸發，導致離線內容子頁偶發跳回設定首頁的競態；E2E 恢復以一般點擊驗證往返。
+- 完整 `npm run verify` 與 `npm run test:e2e` 通過；E2E 為 18 passed、6 device-conditional skipped。無 migration、無新增 npm 套件。
+
 ## 2026-07-12 — v79.16 模擬考批改設定與正解模式一致化
 
 - 修正「交卷後統一批改」只存在 React component state，頁面重新進入後固定回到開啟的問題。

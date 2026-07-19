@@ -81,6 +81,10 @@
   ],
   "rewrites": [
     {
+      "source": "/api/auth/log-login",
+      "destination": "/api/client-error?event=login-audit"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

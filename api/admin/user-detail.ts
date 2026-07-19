@@ -1,9 +1,11 @@
 import { HttpError, type ApiRequest, type ApiResponse, requireAdminUser, sendError, sendJson } from "../_adminClient.js";
 
 type DataRow = Record<string, unknown>;
+type ExamId = "senior-securities" | "junior-foreign-exchange";
 
 const ONLINE_WINDOW_SECONDS = 90;
 const RECENT_ACTIVITY_LIMIT = 16;
+const EXAM_IDS: readonly ExamId[] = ["senior-securities", "junior-foreign-exchange"];
 
 function queryValue(value: string | string[] | undefined): string {
   return Array.isArray(value) ? String(value[0] || "") : String(value || "");
@@ -37,6 +39,10 @@ function maskFingerprint(value: unknown): string | null {
   return `${fingerprint.slice(0, 8)}…${fingerprint.slice(-4)}`;
 }
 
+function examIdOf(value: unknown): ExamId | null {
+  return value === "senior-securities" || value === "junior-foreign-exchange" ? value : null;
+}
+
 async function optionalRows<T>(promise: PromiseLike<{ data: T | null; error: unknown }>, fallback: T): Promise<T> {
   const { data, error } = await promise;
   if (error) {
@@ -47,6 +53,21 @@ async function optionalRows<T>(promise: PromiseLike<{ data: T | null; error: unk
     return fallback;
   }
   return data ?? fallback;
+}
+
+function mergeEntitlements(examRows: DataRow[], legacyRow: DataRow | null): DataRow[] {
+  const byExam = new Map<ExamId, DataRow>();
+  for (const row of examRows) {
+    const examId = examIdOf(row.exam_id);
+    if (examId) byExam.set(examId, row);
+  }
+  if (!byExam.has("senior-securities") && legacyRow) {
+    byExam.set("senior-securities", { ...legacyRow, exam_id: "senior-securities" });
+  }
+  return EXAM_IDS.flatMap((examId) => {
+    const row = byExam.get(examId);
+    return row ? [row] : [];
+  });
 }
 
 export default async function handler(req: ApiRequest, res: ApiResponse) {
@@ -64,7 +85,14 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     const { data: authData, error: authError } = await supabase.auth.admin.getUserById(userId);
     if (authError || !authData.user) throw new HttpError("找不到這個使用者。", 404);
 
-    const [entitlement, presence, leaderboard, loginEvents, devices, answers, sessions, wrongCountResult, favoriteCountResult] = await Promise.all([
+    const [examEntitlements, legacyEntitlement, presence, leaderboard, loginEvents, devices, answers, sessions, wrongCountResult, favoriteCountResult] = await Promise.all([
+      optionalRows(
+        supabase
+          .from("user_exam_entitlements")
+          .select("user_id, exam_id, plan, status, source_code_hash, granted_at, expires_at")
+          .eq("user_id", userId),
+        [],
+      ),
       optionalRows(
         supabase
           .from("user_entitlements")
@@ -125,24 +153,48 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       supabase.from("user_favorite_records").select("question_id", { count: "exact", head: true }).eq("user_id", userId),
     ]);
 
-    const entitlementRow = entitlement as DataRow | null;
+    const entitlementRows = mergeEntitlements(
+      (examEntitlements || []) as DataRow[],
+      legacyEntitlement as DataRow | null,
+    );
     const presenceRow = presence as DataRow | null;
     const leaderboardRow = leaderboard as DataRow | null;
     const loginRows = (loginEvents || []) as DataRow[];
     const deviceRows = (devices || []) as DataRow[];
     const answerRows = (answers || []) as DataRow[];
     const sessionRows = (sessions || []) as DataRow[];
-    const sourceCodeHash = String(entitlementRow?.source_code_hash || "");
-    const activationCode = sourceCodeHash
-      ? await optionalRows(
+
+    const sourceCodeHashes = Array.from(new Set(
+      entitlementRows.map((row) => String(row.source_code_hash || "")).filter(Boolean),
+    ));
+    const activationCodeByHash = new Map<string, DataRow>();
+    if (sourceCodeHashes.length) {
+      const activationRows = await optionalRows(
         supabase
           .from("activation_codes")
-          .select("code_preview, max_uses, use_count, is_active, note, created_at, redeemed_at")
-          .eq("code_hash", sourceCodeHash)
-          .maybeSingle(),
-        null,
-      )
-      : null;
+          .select("code_hash, exam_id, code_preview, max_uses, use_count, is_active, note, created_at, redeemed_at")
+          .in("code_hash", sourceCodeHashes),
+        [],
+      );
+      for (const row of activationRows as DataRow[]) {
+        activationCodeByHash.set(String(row.code_hash || ""), row);
+      }
+    }
+
+    const normalizedEntitlements = entitlementRows.flatMap((row) => {
+      const examId = examIdOf(row.exam_id);
+      if (!examId) return [];
+      const sourceCodeHash = String(row.source_code_hash || "");
+      return [{
+        examId,
+        plan: row.plan || null,
+        status: row.status || "none",
+        grantedAt: isoDate(row.granted_at),
+        expiresAt: isoDate(row.expires_at),
+        activationCode: sourceCodeHash ? activationCodeByHash.get(sourceCodeHash) || null : null,
+      }];
+    });
+    const securitiesEntitlement = normalizedEntitlements.find((row) => row.examId === "senior-securities") || null;
 
     const lastSeenAt = isoDate(presenceRow?.last_seen_at);
     const latestLogin = loginRows[0];
@@ -171,13 +223,8 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
         lastActivityAt,
         isOnline: isOnline(lastSeenAt),
       },
-      entitlement: entitlementRow ? {
-        plan: entitlementRow.plan || null,
-        status: entitlementRow.status || "none",
-        grantedAt: isoDate(entitlementRow.granted_at),
-        expiresAt: isoDate(entitlementRow.expires_at),
-        activationCode: activationCode || null,
-      } : null,
+      entitlements: normalizedEntitlements,
+      entitlement: securitiesEntitlement,
       learning: {
         totalAnswered,
         totalCorrect,

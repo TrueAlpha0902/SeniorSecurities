@@ -98,10 +98,21 @@ async function getDatabaseAdminAccess(userId: string, email: string): Promise<Da
   return { role: normalizeAdminRole(data.role) };
 }
 
-function extractBearerToken(req: ApiRequest): string | null {
+export function extractBearerToken(req: ApiRequest): string | null {
   const header = String(req.headers?.authorization || req.headers?.Authorization || "");
   const match = header.match(/^Bearer\s+(.+)$/i);
   return match?.[1] ?? null;
+}
+
+export async function requireAuthenticatedUser(req: ApiRequest) {
+  const token = extractBearerToken(req);
+  if (!token) throw new HttpError("尚未登入，或登入狀態已過期。", 401);
+
+  const supabase = getAdminClient();
+  const { data, error } = await supabase.auth.getUser(token);
+  if (error || !data.user) throw new HttpError("無法驗證目前登入帳號。", 401);
+
+  return { supabase, user: data.user, token };
 }
 
 export async function requireAdminUser(
