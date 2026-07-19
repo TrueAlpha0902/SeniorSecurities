@@ -97,11 +97,44 @@ async function setDeferredFeedback(page: Page, enabled: boolean) {
     .locator(".mock-setting-card-v797")
     .filter({ hasText: "交卷後統一批改" });
   const checkbox = feedbackCard.locator('input[type="checkbox"]');
-  await expect(checkbox).toBeVisible();
+  const switchControl = feedbackCard.locator(".random-switch");
+
+  await expect(feedbackCard).toBeVisible();
+  await expect(checkbox).toBeEnabled();
+  await expect(switchControl).toBeVisible();
+
   if ((await checkbox.isChecked()) !== enabled) {
-    await checkbox.setChecked(enabled, { force: true });
+    // The native checkbox is intentionally transparent and has pointer-events
+    // disabled. Click the visible switch inside its label, matching the real
+    // user interaction instead of asking Playwright to click the hidden input.
+    await switchControl.click();
   }
   await expect(checkbox).toBeChecked({ checked: enabled });
+}
+
+async function setAnswerMode(page: Page, enabled: boolean) {
+  await page.getByRole("button", { name: "設定" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  const checkbox = dialog.getByRole("checkbox", { name: "正解模式" });
+  await expect(checkbox).toBeVisible();
+  if ((await checkbox.isChecked()) !== enabled) {
+    await checkbox.setChecked(enabled);
+  }
+  await expect(checkbox).toBeChecked({ checked: enabled });
+  await dialog.getByRole("button", { name: "取消" }).click();
+  await expect(dialog).toBeHidden();
+}
+
+async function expectAnswerMode(page: Page, enabled: boolean) {
+  await page.getByRole("button", { name: "設定" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole("checkbox", { name: "正解模式" })).toBeChecked({
+    checked: enabled,
+  });
+  await dialog.getByRole("button", { name: "取消" }).click();
+  await expect(dialog).toBeHidden();
 }
 
 async function startOneQuestionExam(page: Page) {
@@ -137,8 +170,15 @@ test("mock exam resumes, permits revisions, and honors both feedback modes", asy
     timeout: 20_000,
   });
 
+  await setAnswerMode(page, true);
+  await setDeferredFeedback(page, true);
+  await expectAnswerMode(page, false);
   await setDeferredFeedback(page, false);
   await startOneQuestionExam(page);
+  await expect(page.locator(".image-quiz-page")).toHaveAttribute(
+    "data-mock-exam-feedback-mode",
+    "immediate",
+  );
   const immediateOptions = page.locator(".glass-answer-button");
   await immediateOptions.nth(0).click();
   await expect(page.locator(".image-answer-panel")).toBeVisible();
@@ -147,13 +187,29 @@ test("mock exam resumes, permits revisions, and honors both feedback modes", asy
   await expect(immediateOptions.nth(1)).toHaveAttribute("aria-pressed", "true");
 
   await saveAndLeaveExam(page);
+  await setDeferredFeedback(page, true);
   const immediateContinue = page.getByRole("link", { name: "繼續測驗" });
   await expect(immediateContinue).toBeVisible();
   await immediateContinue.click();
+  await expect(page.locator(".image-quiz-page")).toHaveAttribute(
+    "data-mock-exam-feedback-mode",
+    "immediate",
+  );
+  await expect(page.locator(".deferred-exam-notice")).toContainText(
+    "交卷前可隨時修改答案，不顯示正解與解析",
+  );
+  await expect(page.locator(".image-answer-panel")).toHaveCount(0);
+  await expect(page.locator(".glass-answer-correct, .glass-answer-wrong")).toHaveCount(0);
   await expect(page.locator(".glass-answer-button").nth(1)).toHaveAttribute(
     "aria-pressed",
     "true",
   );
+  await page.locator(".glass-answer-button").nth(2).click();
+  await expect(page.locator(".glass-answer-button").nth(2)).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(page.locator(".image-answer-panel")).toHaveCount(0);
   await page
     .locator(".image-quiz-controls")
     .getByRole("button", { name: "完成" })
@@ -162,11 +218,24 @@ test("mock exam resumes, permits revisions, and honors both feedback modes", asy
 
   await page.getByRole("button", { name: /重新練習/ }).click();
   await expect(page).toHaveURL(/\/random$/);
+  await setAnswerMode(page, true);
   await setDeferredFeedback(page, true);
+  await expectAnswerMode(page, false);
   await startOneQuestionExam(page);
+  await expect(page.locator(".image-quiz-page")).toHaveAttribute(
+    "data-mock-exam-feedback-mode",
+    "deferred",
+  );
+  await expect(page.locator(".deferred-exam-notice")).toContainText(
+    "交卷前可隨時修改答案，不顯示正解與解析",
+  );
   const deferredOptions = page.locator(".glass-answer-button");
   await deferredOptions.nth(0).click();
   await expect(page.locator(".image-answer-panel")).toHaveCount(0);
+  await expect(
+    page.locator(".glass-answer-correct, .glass-answer-wrong"),
+  ).toHaveCount(0);
+  await expect(deferredOptions.nth(0)).toContainText("已選擇");
   await expect(deferredOptions.nth(1)).toBeEnabled();
   await deferredOptions.nth(1).click();
   await expect(deferredOptions.nth(1)).toHaveAttribute("aria-pressed", "true");

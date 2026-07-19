@@ -21,10 +21,14 @@ import {
   getMockExamAnswerCardStatus,
   isMockExamLearningRecorded,
   isMockExamSessionSubmitted,
+  normalizeMockExamFeedbackMode,
   resolveMockExamFeedbackMode,
+  resolveMockExamSessionFeedbackMode,
   shouldDeferMockExamFeedback,
+  shouldEnforceDeferredMockExamFeedback,
   shouldHidePendingMockExamResults,
   shouldPromptMockExamExit,
+  shouldRevealMockExamFeedback,
 } from "../src/lib/mockExam";
 import { createUuid, isUuid } from "../src/lib/uuid";
 
@@ -35,6 +39,28 @@ assert.equal(
   "deferred",
   "The explicit deferred-grading switch must win over stale answer-mode state.",
 );
+
+assert.equal(normalizeMockExamFeedbackMode("deferred"), "deferred");
+assert.equal(normalizeMockExamFeedbackMode("immediate"), "immediate");
+assert.equal(normalizeMockExamFeedbackMode("wrong-value"), undefined);
+assert.equal(
+  resolveMockExamSessionFeedbackMode("deferred", "immediate"),
+  "deferred",
+  "The persisted session mode must override navigation state.",
+);
+assert.equal(
+  resolveMockExamSessionFeedbackMode(undefined, "immediate"),
+  "immediate",
+  "Navigation state may bridge the first load while persistence settles.",
+);
+assert.equal(
+  resolveMockExamSessionFeedbackMode(undefined, undefined),
+  "deferred",
+  "Unknown or legacy sessions must fail closed.",
+);
+assert.equal(shouldRevealMockExamFeedback("deferred", false), false);
+assert.equal(shouldRevealMockExamFeedback("deferred", true), true);
+assert.equal(shouldRevealMockExamFeedback("immediate", false), true);
 
 assert.equal(
   isMockExamSessionSubmitted({ answeredCount: 80, totalQuestions: 80 }),
@@ -208,6 +234,11 @@ await saveImageQuizSessionAnswer(
 const initialImmediateSession = await getImageQuizSession(
   "mock-immediate-session",
 );
+assert.equal(
+  initialImmediateSession?.feedbackMode,
+  "immediate",
+  "Immediate grading mode must survive session persistence.",
+);
 const immediateEventId =
   initialImmediateSession?.answers[immediateQuestion.id]?.learningEventId;
 assert.equal(isUuid(immediateEventId), true, "A mock answer must persist a UUID.");
@@ -334,6 +365,14 @@ assert.equal(
 const deferredQuestion = makeQuestion("mock-deferred-q1", "2");
 await createImageQuizSession(
   makeSession("mock-deferred-session", [deferredQuestion.id], "deferred"),
+);
+const persistedDeferredSession = await getImageQuizSession(
+  "mock-deferred-session",
+);
+assert.equal(
+  persistedDeferredSession?.feedbackMode,
+  "deferred",
+  "Deferred grading mode must survive session persistence.",
 );
 await saveImageQuizSessionAnswer(
   "mock-deferred-session",
@@ -600,6 +639,28 @@ assert.equal(
   ).length,
   1,
   "Legacy reconciliation must not duplicate learning or leaderboard attempts.",
+);
+
+
+assert.equal(
+  shouldEnforceDeferredMockExamFeedback("immediate", true, false),
+  true,
+  "A checked deferred-feedback preference must upgrade a legacy immediate pending session",
+);
+assert.equal(
+  shouldEnforceDeferredMockExamFeedback("deferred", false, false),
+  true,
+  "An existing deferred pending session must remain deferred even if the global preference later changes",
+);
+assert.equal(
+  shouldEnforceDeferredMockExamFeedback("immediate", false, false),
+  false,
+  "A new immediate session may reveal per-question feedback when deferred grading is off",
+);
+assert.equal(
+  shouldEnforceDeferredMockExamFeedback("deferred", true, true),
+  false,
+  "Submitted sessions must reveal review feedback",
 );
 
 console.log(

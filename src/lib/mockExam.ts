@@ -21,11 +21,37 @@ type MockExamExitState = {
   answeredCount: number;
 };
 
+export function normalizeMockExamFeedbackMode(
+  value: unknown,
+): MockExamFeedbackMode | undefined {
+  return value === "immediate" || value === "deferred" ? value : undefined;
+}
+
 export function resolveMockExamFeedbackMode(
   _answerModeEnabled: boolean,
   deferredFeedbackEnabled: boolean,
 ): MockExamFeedbackMode {
   return deferredFeedbackEnabled ? "deferred" : "immediate";
+}
+
+export function resolveMockExamSessionFeedbackMode(
+  persistedMode: unknown,
+  navigationMode?: unknown,
+): MockExamFeedbackMode {
+  // The session record is authoritative. Navigation state is only a first-load
+  // fallback, and unknown/legacy values fail closed to deferred grading.
+  return (
+    normalizeMockExamFeedbackMode(persistedMode) ??
+    normalizeMockExamFeedbackMode(navigationMode) ??
+    "deferred"
+  );
+}
+
+export function shouldRevealMockExamFeedback(
+  feedbackMode: MockExamFeedbackMode | undefined,
+  isSubmitted: boolean,
+): boolean {
+  return isSubmitted || feedbackMode === "immediate";
 }
 
 export function isMockExamSessionSubmitted(
@@ -41,7 +67,22 @@ export function shouldDeferMockExamFeedback(
 ): boolean {
   // Fail closed: legacy or partially synchronized sessions without a mode must
   // not reveal answers before an explicit submission.
-  return !isSubmitted && feedbackMode !== "immediate";
+  return !shouldRevealMockExamFeedback(feedbackMode, isSubmitted);
+}
+
+export function shouldEnforceDeferredMockExamFeedback(
+  feedbackMode: MockExamFeedbackMode | undefined,
+  deferredFeedbackEnabled: boolean,
+  isSubmitted: boolean,
+): boolean {
+  if (isSubmitted) return false;
+
+  // The visible deferred-grading preference upgrades legacy pending sessions.
+  // Otherwise preserve a session that was already created as deferred.
+  return (
+    deferredFeedbackEnabled ||
+    shouldDeferMockExamFeedback(feedbackMode, false, false)
+  );
 }
 
 export function canChooseImageQuizAnswer({
@@ -58,7 +99,7 @@ export function shouldHidePendingMockExamResults(
   feedbackMode: MockExamFeedbackMode | undefined,
   isSubmitted: boolean,
 ): boolean {
-  return !isSubmitted && feedbackMode !== "immediate";
+  return !shouldRevealMockExamFeedback(feedbackMode, isSubmitted);
 }
 
 export function getMockExamAnswerCardStatus(

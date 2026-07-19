@@ -1,5 +1,11 @@
 import assert from "node:assert/strict";
 import {
+  getAnswerModeEnabled,
+  getMockExamDeferredFeedbackEnabled,
+  setAnswerModeEnabled,
+  setMockExamDeferredFeedbackEnabled,
+} from "../src/lib/appSettings";
+import {
   clearScopedStorageByPrefix,
   readScopedStorageItem,
   removeScopedStorageItem,
@@ -81,4 +87,34 @@ assert.equal(legacyStorage.getItem("quizpwa:total-practice-seconds"), null);
 setActiveUserStorageScope("different-user");
 assert.equal(readScopedStorageItem("quizpwa:total-practice-seconds"), null);
 
-console.log("User-scoped storage isolation and legacy migration tests passed.");
+const settingsStorage = new MemoryStorage();
+installWindow(settingsStorage);
+setActiveUserStorageScope("settings-user");
+
+setAnswerModeEnabled(true);
+assert.equal(getAnswerModeEnabled(), true);
+assert.equal(
+  getMockExamDeferredFeedbackEnabled(),
+  false,
+  "Enabling answer mode must disable deferred mock-exam grading.",
+);
+
+setMockExamDeferredFeedbackEnabled(true);
+assert.equal(
+  getAnswerModeEnabled(),
+  false,
+  "Enabling deferred mock-exam grading must disable answer mode.",
+);
+assert.equal(getMockExamDeferredFeedbackEnabled(), true);
+
+setAnswerModeEnabled(true);
+assert.equal(getAnswerModeEnabled(), true);
+assert.equal(
+  getMockExamDeferredFeedbackEnabled(),
+  false,
+  "The two answer-reveal modes must remain mutually exclusive.",
+);
+
+console.log(
+  "User-scoped storage isolation, migration, and answer-mode exclusivity tests passed.",
+);

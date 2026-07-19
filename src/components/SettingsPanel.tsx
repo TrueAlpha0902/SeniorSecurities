@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useAsync } from "../hooks/useAsync";
 import { clearSelectedUserRecords, type ClearRecordPart } from "../lib/db";
 import {
+  ANSWER_MODE_SETTING_CHANGED,
   getAnswerModeEnabled,
   getAutoNextCorrectEnabled,
   setAnswerModeEnabled,
@@ -31,8 +32,8 @@ const T = {
   offlineContent: "離線題庫",
   offlineContentDescription: "按科目下載題目資料與 PDF 圖片，沒有網路時仍可練習。",
   correctAnswerMode: "正解模式",
-  correctAnswerModeDescription: "開啟後，所有測驗都會直接顯示正解與解析。",
-  answerModeOn: "已開啟正解模式",
+  correctAnswerModeDescription: "開啟後，練習會直接顯示正解與解析；啟用模擬考的交卷後統一批改時會自動關閉。",
+  answerModeOn: "已開啟正解模式，模擬考統一批改已關閉",
   answerModeOff: "已關閉正解模式",
   autoNextCorrect: "答對自動下一題",
   autoNextCorrectDescription: "開啟後，答對會自動進入下一題；答錯時仍停留在原題，讓你自行訂正。",
@@ -142,6 +143,19 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
     setSelectedParts(new Set());
     setSelectedChapterKeys(new Set());
     setSelectedGlobalScopeIds(new Set());
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const refreshAnswerMode = () => {
+      setAnswerModeEnabledState(getAnswerModeEnabled());
+    };
+    window.addEventListener(ANSWER_MODE_SETTING_CHANGED, refreshAnswerMode);
+    window.addEventListener("storage", refreshAnswerMode);
+    return () => {
+      window.removeEventListener(ANSWER_MODE_SETTING_CHANGED, refreshAnswerMode);
+      window.removeEventListener("storage", refreshAnswerMode);
+    };
   }, [open]);
 
   if (!open) {

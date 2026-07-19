@@ -34,6 +34,7 @@ import {
   listWrongQuestions,
   recordImageUserAnswer,
   saveImageQuizSessionAnswer,
+  saveImageQuizSessionFeedbackMode,
   saveImageQuizSessionMarks,
   saveQuizProgress,
   settleImageQuizSession,
@@ -62,8 +63,11 @@ import { buildOrReadDailyPlan } from "../lib/dailyPlanService";
 import {
   ANSWER_MODE_SETTING_CHANGED,
   AUTO_NEXT_CORRECT_SETTING_CHANGED,
+  MOCK_EXAM_FEEDBACK_SETTING_CHANGED,
   getAnswerModeEnabled,
   getAutoNextCorrectEnabled,
+  getMockExamDeferredFeedbackEnabled,
+  setMockExamDeferredFeedbackEnabled,
 } from "../lib/appSettings";
 import { type AnswerConfidence } from "../lib/learningEngine";
 import {
@@ -71,7 +75,8 @@ import {
   getMockExamAnswerCardStatus,
   isMockExamLearningRecorded,
   isMockExamSessionSubmitted,
-  shouldDeferMockExamFeedback,
+  resolveMockExamSessionFeedbackMode,
+  shouldEnforceDeferredMockExamFeedback,
   shouldPromptMockExamExit,
 } from "../lib/mockExam";
 import type { UserAnswer } from "../types";
@@ -212,6 +217,10 @@ type ImageQuizMode =
   | "daily"
   | "trial";
 
+type ImageQuizLocationState = {
+  mockExamFeedbackMode?: unknown;
+};
+
 type ImageQuizData = {
   title: string;
   subtitle: string;
@@ -234,6 +243,8 @@ export function ImageQuizPage() {
   const { bankId = "", chapterId = "", sessionId = "" } = useParams();
   const location = useLocation();
   const phoneSegmentLayout = usePhoneSegmentLayout();
+  const navigationFeedbackMode = (location.state as ImageQuizLocationState | null)
+    ?.mockExamFeedbackMode;
   const mode: ImageQuizMode = location.pathname.includes("/trial")
     ? "trial"
     : location.pathname.includes("/session-wrong")
@@ -483,6 +494,10 @@ export function ImageQuizPage() {
   const isSubmittedMockExam =
     mode === "random" &&
     isMockExamSessionSubmitted({ finishedAt: data?.session?.finishedAt });
+  const mockExamFeedbackMode = resolveMockExamSessionFeedbackMode(
+    data?.session?.feedbackMode,
+    navigationFeedbackMode,
+  );
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, AnswerRecord>>({});
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
@@ -492,8 +507,11 @@ export function ImageQuizPage() {
   const [timerPaused, setTimerPaused] = useState(false);
   const [jumpInput, setJumpInput] = useState("");
   const [jumpError, setJumpError] = useState("");
-  const [answerModeEnabled, setAnswerModeEnabled] = useState(() =>
+  const [answerModeEnabled, setAnswerModeEnabledState] = useState(() =>
     getAnswerModeEnabled(),
+  );
+  const [deferredFeedbackEnabled, setDeferredFeedbackEnabledState] = useState(
+    () => getMockExamDeferredFeedbackEnabled(),
   );
   const [confidenceByQuestion] = useState<Record<string, AnswerConfidence>>({});
   const [retryQueue, setRetryQueue] = useState<string[]>([]);
@@ -549,14 +567,18 @@ export function ImageQuizPage() {
 
   useEffect(() => {
     function refreshAnswerModeSetting(): void {
-      setAnswerModeEnabled(getAnswerModeEnabled());
+      setAnswerModeEnabledState(getAnswerModeEnabled());
     }
     function refreshAutoNextCorrectSetting(): void {
       setAutoNextCorrectEnabled(getAutoNextCorrectEnabled());
     }
+    function refreshDeferredFeedbackSetting(): void {
+      setDeferredFeedbackEnabledState(getMockExamDeferredFeedbackEnabled());
+    }
     function refreshAllSettings(): void {
       refreshAnswerModeSetting();
       refreshAutoNextCorrectSetting();
+      refreshDeferredFeedbackSetting();
     }
     window.addEventListener(
       ANSWER_MODE_SETTING_CHANGED,
@@ -565,6 +587,10 @@ export function ImageQuizPage() {
     window.addEventListener(
       AUTO_NEXT_CORRECT_SETTING_CHANGED,
       refreshAutoNextCorrectSetting,
+    );
+    window.addEventListener(
+      MOCK_EXAM_FEEDBACK_SETTING_CHANGED,
+      refreshDeferredFeedbackSetting,
     );
     window.addEventListener("storage", refreshAllSettings);
     return () => {
@@ -576,9 +602,48 @@ export function ImageQuizPage() {
         AUTO_NEXT_CORRECT_SETTING_CHANGED,
         refreshAutoNextCorrectSetting,
       );
+      window.removeEventListener(
+        MOCK_EXAM_FEEDBACK_SETTING_CHANGED,
+        refreshDeferredFeedbackSetting,
+      );
       window.removeEventListener("storage", refreshAllSettings);
     };
   }, []);
+
+  useEffect(() => {
+    if (mode !== "random" || isSubmittedMockExam || finished) return;
+
+    const mustDefer =
+      deferredFeedbackEnabled || mockExamFeedbackMode === "deferred";
+    if (!mustDefer) return;
+
+    // The visible deferred-grading switch is a hard privacy boundary for every
+    // pending exam, including legacy sessions created in immediate mode.
+    if (getAnswerModeEnabled()) {
+      setMockExamDeferredFeedbackEnabled(true);
+    }
+    setAnswerModeEnabledState(false);
+    setDeferredFeedbackEnabledState(true);
+
+    if (
+      data?.session &&
+      data.session.feedbackMode !== "deferred"
+    ) {
+      void saveImageQuizSessionFeedbackMode(
+        data.session.sessionId,
+        "deferred",
+      ).catch((reason) => {
+        console.warn("Unable to upgrade pending mock exam to deferred grading", reason);
+      });
+    }
+  }, [
+    data?.session,
+    deferredFeedbackEnabled,
+    finished,
+    isSubmittedMockExam,
+    mockExamFeedbackMode,
+    mode,
+  ]);
 
   useEffect(() => {
     if (!progressRestored || finished || timerPaused) {
@@ -857,12 +922,13 @@ export function ImageQuizPage() {
   );
 
   const savedAnswer = answers[currentQuestion.id];
+  const mockExamIsSubmitted = isSubmittedMockExam || finished;
   const isDeferredExam =
     mode === "random" &&
-    shouldDeferMockExamFeedback(
-      data?.session?.feedbackMode,
-      answerModeEnabled,
-      isSubmittedMockExam || finished,
+    shouldEnforceDeferredMockExamFeedback(
+      mockExamFeedbackMode,
+      deferredFeedbackEnabled,
+      mockExamIsSubmitted,
     );
   const examAnsweredCount = Object.keys(answers).length;
   const examUnansweredCount = unansweredCount;
@@ -1304,7 +1370,15 @@ export function ImageQuizPage() {
   }
 
   return (
-    <div className="image-quiz-page">
+    <div
+      className="image-quiz-page"
+      data-mock-exam-feedback-mode={
+        mode === "random" ? mockExamFeedbackMode : undefined
+      }
+      data-mock-exam-submitted={
+        mode === "random" ? String(isSubmittedMockExam || finished) : undefined
+      }
+    >
       <GlassCard className="image-quiz-card">
         <div className="image-quiz-header">
           <div className="quiz-title-block">

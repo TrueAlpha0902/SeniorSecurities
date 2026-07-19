@@ -240,13 +240,18 @@ async function main(): Promise<void> {
   assert(
     randomPractice.includes("getMockExamDeferredFeedbackEnabled") &&
       randomPractice.includes("setMockExamDeferredFeedbackEnabled") &&
+      randomPractice.includes("getImageQuizSession(sessionId)") &&
+      randomPractice.includes("persistedSession.feedbackMode !== feedbackMode") &&
       randomPractice.includes("resolveMockExamFeedbackMode("),
-    "Mock-exam grading mode must persist and be stored on each session.",
+    "Mock-exam grading mode must be read at start time, persisted, and verified before navigation.",
   );
   assert(
-    mockExam.includes('feedbackMode !== "immediate"') &&
+    mockExam.includes("resolveMockExamSessionFeedbackMode") &&
+      mockExam.includes("shouldRevealMockExamFeedback") &&
       mockExam.includes("getMockExamAnswerCardStatus") &&
-      imageQuizPage.includes("shouldDeferMockExamFeedback(") &&
+      imageQuizPage.includes("shouldEnforceDeferredMockExamFeedback(") &&
+      imageQuizPage.includes("saveImageQuizSessionFeedbackMode(") &&
+      imageQuizPage.includes("data-mock-exam-feedback-mode") &&
       imageQuizPage.includes("canChooseImageQuizAnswer({") &&
       imageQuizPage.includes("submitted-exam-answer-card") &&
       imageQuizPage.includes("reviewingSubmittedExam"),

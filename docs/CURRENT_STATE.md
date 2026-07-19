@@ -1,3 +1,31 @@
+## v79.22 模擬考舊 Session 延後批改保護
+
+- 「交卷後統一批改」勾選狀態現在會覆蓋尚未交卷的舊 `immediate` session，避免續答時立即洩漏正解。
+- 未交卷測驗頁以「目前偏好為 deferred 或 session 已是 deferred」作為 fail-closed 條件；點選答案只保留已選擇狀態。
+- 勾選延後批改時會自動關閉正解模式，並把所有未完成舊 session 升級為 `deferred`。
+- 新增舊 immediate session + 已勾選延後批改的回歸測試。
+
+## v79.21 模擬考發佈驗證修正
+- 模擬考 E2E 不再使用 `setChecked()` 操作刻意隱藏的原生 checkbox，而是點擊畫面上可見的 switch。
+- v79.20 功能修正不變：勾選交卷後統一批改會自動關閉正解模式；交卷前不顯示正解、正誤樣式與解析。
+- Windows 發佈測試以單一 Playwright worker 執行。
+
+## v79.20 模擬考延後批改與正解模式互斥修正
+
+- 勾選「交卷後統一批改」會立即關閉全域正解模式，並以 `deferred` 建立新模擬考；不再因正解模式殘留而改回即時顯示。
+- 正解模式與延後批改在持久設定層互斥，跨分頁、登入 scope 與設定事件皆讀取一致的最終值。
+- deferred session 進入測驗後會再次 fail closed：任何舊設定、跨分頁變更或競態都不能在交卷前顯示正解、正誤樣式或解析。
+- 設定介面會同步反映自動關閉狀態；模擬考開關保持可操作並說明互斥行為。
+- 無 Supabase migration、無新增 npm 套件。
+
+## v79.19 模擬考統一批改模式鎖定修正
+
+- 建立模擬考時不再只依賴可能過期的 React state；按下開始後會重新讀取目前帳號的持久設定，將 `immediate`／`deferred` 寫入 session，並在進入測驗前回讀驗證。
+- 模擬考頁以 session 的批改模式為唯一權威，首屏可用 navigation state 補接；缺值、非法值或舊版 session 一律 fail closed，交卷前不揭露正解與解析。
+- 使用者儲存 scope 切換時會同步刷新模擬考開關，避免登入／切換帳號後沿用 guest 或前一帳號狀態。
+- 新增批改模式持久化、fallback、fail-closed 與 UI data contract 測試；Playwright 流程加強驗證 deferred 模式沒有答案面板、沒有正解／答錯樣式，只有「已選擇」。
+- 無 Supabase migration、無新增 npm 套件。
+
 ## v79.18 模擬考續考、改選與交卷一致性
 
 - 模擬考只以 `finishedAt` 判定已交卷；即使所有題目都已選完，只要尚未明確交卷，紀錄仍顯示「未完成」與「繼續測驗」，並保留題號、答案及待檢標記。

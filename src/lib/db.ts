@@ -2774,6 +2774,23 @@ function summarizeImageAnswers(
   };
 }
 
+export async function saveImageQuizSessionFeedbackMode(
+  sessionId: string,
+  feedbackMode: NonNullable<ImageQuizSessionRecord["feedbackMode"]>,
+): Promise<ImageQuizSessionRecord | undefined> {
+  return queueImageQuizSessionMutation(sessionId, () =>
+    updateImageQuizSession(sessionId, (session) =>
+      session.finishedAt
+        ? undefined
+        : {
+            ...session,
+            feedbackMode,
+            lastSettledAt: new Date().toISOString(),
+          },
+    ),
+  );
+}
+
 export async function saveImageQuizSessionMarks(
   sessionId: string,
   markedQuestionIds: string[],
