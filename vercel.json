@@ -81,6 +81,14 @@
   ],
   "rewrites": [
     {
+      "source": "/api/client-error",
+      "destination": "/api/telemetry?event=client-error"
+    },
+    {
+      "source": "/api/auth/log-login",
+      "destination": "/api/telemetry?event=login-audit"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
