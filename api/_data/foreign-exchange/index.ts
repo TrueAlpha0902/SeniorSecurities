@@ -1,10 +1,10 @@
-import remittance45 from "./45-remittance.json";
-import trade45 from "./45-trade.json";
-import remittance46 from "./46-remittance.json";
-import trade46 from "./46-trade.json";
-import remittance47 from "./47-remittance.json";
-import trade47 from "./47-trade.json";
-import manifest from "./manifest.json";
+import remittance45 from "./45-remittance.json" with { type: "json" };
+import trade45 from "./45-trade.json" with { type: "json" };
+import remittance46 from "./46-remittance.json" with { type: "json" };
+import trade46 from "./46-trade.json" with { type: "json" };
+import remittance47 from "./47-remittance.json" with { type: "json" };
+import trade47 from "./47-trade.json" with { type: "json" };
+import manifest from "./manifest.json" with { type: "json" };
 
 export type ForeignExchangeAnswerKey = "A" | "B" | "C" | "D";
 export type ForeignExchangeSubjectId = "remittance" | "trade";
