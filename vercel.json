@@ -1,4 +1,5 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
   "headers": [
     {
       "source": "/(.*)",
@@ -70,6 +71,51 @@
       ]
     },
     {
+      "source": "/data/question-release-manifest.json",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/data/pdf-image-quiz-summary.json",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/data/pdf-image-quiz-plan-index.json",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/data/pdf-image-quiz-trial.json",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/data/similar-question-groups.json",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
+    },
+    {
       "source": "/assets/(.*)",
       "headers": [
         {
@@ -81,8 +127,33 @@
   ],
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/api/auth/log-login",
+      "destination": "/api/client-error?event=login-audit"
+    },
+    {
+      "source": "/api/admin/ping",
+      "destination": "/api/admin/action?operation=health"
+    },
+    {
+      "source": "/api/foreign-exchange/questions",
+      "destination": "/api/questions?resource=foreign-exchange"
+    },
+    {
+      "source": "/api/question-overrides",
+      "destination": "/api/questions?resource=overrides"
+    },
+    {
+      "source": "/api/admin/audit-events",
+      "destination": "/api/admin/action?operation=audit-events"
+    },
+    {
+      "source": "/((?!api(?:/|$)|.*\\.[A-Za-z0-9]{1,12}$).*)",
       "destination": "/index.html"
     }
-  ]
+  ],
+  "functions": {
+    "api/questions.ts": {
+      "includeFiles": "public/data/{question-release-manifest.json,question-shards/**}"
+    }
+  }
 }

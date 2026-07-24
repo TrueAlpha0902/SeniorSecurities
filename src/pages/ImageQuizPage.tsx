@@ -1,30 +1,36 @@
 import {
   ArrowLeft,
   ArrowRight,
-  Clock3,
+  ChevronUp,
   Flag,
-  Heart,
+  Grid2X2,
+  Star,
   Home,
   ListChecks,
-  Pause,
-  Play,
   RotateCcw,
 } from "lucide-react";
-import { type FormEvent, useEffect, useMemo, useState } from "react";
-import { useLocation, useParams } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
-import { EncouragementNote } from "../components/EncouragementNote";
 import { GlassButton, GlassLinkButton } from "../components/GlassButton";
 import { GlassCard } from "../components/GlassCard";
 import { LoadingState } from "../components/LoadingState";
-import { PdfSegmentStack } from "../components/PdfSegmentStack";
-import { pdfImageUrl } from "../lib/pdfAssets";
+import { HandwrittenAsset, HandwrittenLabel } from "../components/HandwrittenAsset";
+import {
+  ScanExplanationContent,
+  ScanOptionText,
+  ScanQuestionContent,
+} from "../components/ScanDerivedQuestionContent";
 import { ProgressBar } from "../components/ProgressBar";
+import { QuestionExplanationSurface } from "../components/QuestionExplanationSurface";
+import { QuizTimer } from "../components/QuizTimer";
 import { useAsync } from "../hooks/useAsync";
 import {
+  applyImageQuizMockGrading,
   clearQuizProgress,
+  commitImageQuizSessionLearningAnswers,
   finishImageQuizSession,
   getImageQuizSession,
   getQuizProgress,
@@ -33,6 +39,7 @@ import {
   listWrongQuestions,
   recordImageUserAnswer,
   saveImageQuizSessionAnswer,
+  saveImageQuizSessionFeedbackMode,
   saveImageQuizSessionMarks,
   saveQuizProgress,
   settleImageQuizSession,
@@ -41,6 +48,7 @@ import {
 } from "../lib/db";
 import {
   formatImageQuizQuestionSource,
+  isSecuritiesQuestionId,
   loadAllImageQuestions,
   loadImageQuestionsByIds,
   loadImageQuizPlanningIndex,
@@ -49,20 +57,46 @@ import {
   loadImageQuizBank,
   loadImageQuizChapter,
   loadTrialImageQuestions,
+  resetImageQuizCaches,
+  resumeSecuritiesMock,
+  submitSecuritiesMock,
   type ImageQuizQuestion,
   type NumericAnswer,
 } from "../lib/imageQuiz";
 import { calculateAccuracy } from "../lib/quiz";
+import { focusQuestionAtTop, vibrateForAnswer } from "../lib/quizViewport";
 import { addPracticeSeconds } from "../lib/practiceTime";
-import { localTodayKey, type DailyPlanCategory } from "../lib/studyPlan";
+import {
+  getStudyPlanConfig,
+  getStudyPlanScope,
+  isSecuritiesStudyPlanScopeId,
+  isStudyPlanScopeId,
+  localTodayKey,
+  studyPlanScopeMatchesBankId,
+  type DailyPlanCategory,
+  type StudyPlanScopeId,
+} from "../lib/studyPlan";
 import { buildOrReadDailyPlan } from "../lib/dailyPlanService";
 import {
   ANSWER_MODE_SETTING_CHANGED,
   AUTO_NEXT_CORRECT_SETTING_CHANGED,
+  MOCK_EXAM_FEEDBACK_SETTING_CHANGED,
   getAnswerModeEnabled,
   getAutoNextCorrectEnabled,
+  getMockExamDeferredFeedbackEnabled,
 } from "../lib/appSettings";
 import { type AnswerConfidence } from "../lib/learningEngine";
+import { formatAnswerKey } from "../lib/learnerText";
+import { readSecuritiesMockToken } from "../lib/securitiesMockTokenStore";
+import {
+  canChooseImageQuizAnswer,
+  getMockExamAnswerCardStatus,
+  isMockExamLearningRecorded,
+  isMockExamSessionSubmitted,
+  resolveMockExamSessionFeedbackMode,
+  shouldEnforceDeferredMockExamFeedback,
+  shouldPromptMockExamExit,
+} from "../lib/mockExam";
 import type { UserAnswer } from "../types";
 
 const ANSWERS: NumericAnswer[] = ["1", "2", "3", "4"];
@@ -72,7 +106,6 @@ const answerKeyToNumeric = {
   C: "3",
   D: "4",
 } as const;
-
 const T = {
   wrongTitle: "\u5f31\u9ede\u7df4\u7fd2",
   wrongSubtitle:
@@ -83,33 +116,37 @@ const T = {
     "\u7df4\u7fd2\u4f60\u52a0\u5165\u6536\u85cf\u7684\u984c\u76ee",
   favoriteEmpty: "\u76ee\u524d\u6c92\u6709\u6536\u85cf\u984c\u76ee",
   chapterTitle: "\u7ae0\u7bc0\u7df4\u7fd2",
-  chapterSubtitle: "\u4f9d\u539f PDF \u984c\u865f\u9806\u5e8f\u7df4\u7fd2",
+  chapterSubtitle: "依題號順序練習",
   chapterEmpty: "\u9019\u500b\u7ae0\u7bc0\u76ee\u524d\u6c92\u6709\u984c\u76ee",
   bankTitle: "\u79d1\u76ee\u7df4\u7fd2",
   bankSubtitle:
-    "\u4f9d\u7ae0\u7bc0\u8207\u539f PDF \u984c\u865f\u9806\u5e8f\u7df4\u7fd2",
+    "依章節與題號順序練習",
   bankEmpty: "\u9019\u500b\u79d1\u76ee\u76ee\u524d\u6c92\u6709\u984c\u76ee",
   allTitle: "\u5168\u90e8\u984c\u76ee\u6df7\u5408\u7df4\u7fd2",
   allSubtitle:
-    "\u6240\u6709 PDF \u984c\u5eab\u4f9d\u8cc7\u6599\u9806\u5e8f\u7df4\u7fd2",
+    "所有題目依題庫順序練習",
   allEmpty: "\u76ee\u524d\u6c92\u6709\u984c\u76ee",
   dailyTitle: "每日練習",
   dailyEmpty: "今天的智能練習已完成",
   todayWrongTitle: "今日錯題複習",
   todayWrongSubtitle: "只複習今天答錯且尚未訂正成功的題目",
   todayWrongEmpty: "今天目前沒有待複習的錯題",
-  timer: "計時",
-  pauseTimer: "暫停",
-  resumeTimer: "繼續",
-  loading: "\u8f09\u5165 PDF \u984c\u5eab",
+  loading: "載入文字題庫",
   loadError: "\u7121\u6cd5\u8f09\u5165\u984c\u5eab",
   emptyMessage:
-    "\u8acb\u5148\u56de\u9996\u9801\u9078\u64c7\u5176\u4ed6\u984c\u5eab\uff0c\u6216\u91cd\u65b0\u532f\u5165 PDF \u984c\u5eab\u3002",
+    "目前沒有可練習的題目，請回首頁選擇其他題庫。",
   home: "\u56de\u9996\u9801",
   questionError: "\u7121\u6cd5\u8f09\u5165\u984c\u76ee",
   questionErrorMessage:
     "\u76ee\u524d\u984c\u865f\u8d85\u51fa\u984c\u5eab\u7bc4\u570d\uff0c\u8acb\u56de\u9996\u9801\u91cd\u65b0\u9078\u64c7\u984c\u5eab\u3002",
   finished: "\u7df4\u7fd2\u5b8c\u6210",
+  resultAnswerCard: "\u4ea4\u5377\u7b54\u6848\u5361",
+  resultAnswerCardHint:
+    "\u7d05\u8272\u662f\u7b54\u932f\u984c\uff0c\u9ede\u64ca\u984c\u865f\u53ef\u56de\u5230\u984c\u76ee\u67e5\u770b\u4f5c\u7b54\u3001\u6b63\u89e3\u8207\u89e3\u6790\u3002",
+  submittedReviewNotice:
+    "\u4ea4\u5377\u5f8c\u8907\u67e5\uff1a\u7b54\u6848\u5df2\u9396\u5b9a\uff0c\u76ee\u524d\u53ea\u986f\u793a\u4f60\u7684\u4f5c\u7b54\u3001\u6b63\u89e3\u8207\u89e3\u6790\u3002",
+  backToResultCard: "\u8fd4\u56de\u4ea4\u5377\u7b54\u6848\u5361",
+  unanswered: "\u672a\u4f5c\u7b54",
   total: "\u7e3d\u984c\u6578",
   correctCount: "\u672c\u6b21\u7b54\u5c0d",
   wrongCount: "\u672c\u6b21\u7b54\u932f",
@@ -121,10 +158,6 @@ const T = {
   answerOptions: "\u7b54\u6848\u9078\u9805",
   choose: "\u9078\u64c7",
   correct: "\u6b63\u89e3",
-  selected: "\u4f60\u7684\u7b54\u6848",
-  selectedCorrect: "\u4f60\u7684\u7b54\u6848 / \u6b63\u89e3",
-  yourAnswer: "\u4f60\u7684\u7b54\u6848",
-  correctAnswer: "\u6b63\u89e3",
   explanation: "\u89e3\u6790",
   navigation: "\u984c\u76ee\u5c0e\u89bd",
   jumpLabel: "跳到題號",
@@ -135,10 +168,11 @@ const T = {
   next: "\u4e0b\u4e00\u984c",
   finish: "\u5b8c\u6210",
   settleConfirm:
-    "\u8981\u5148\u7d50\u7b97\u9019\u6b21\u6a21\u64ec\u8003\u518d\u96e2\u958b\u55ce\uff1f\u78ba\u5b9a\u5f8c\u6703\u4fdd\u7559\u76ee\u524d\u7b54\u5c0d\u7387\uff0c\u4e4b\u5f8c\u4ecd\u53ef\u7e7c\u7e8c\u672a\u4f5c\u7b54\u984c\u76ee\u3002",
-  settleSummaryTitle: "\u6a21\u64ec\u8003\u7d50\u7b97",
-  answerRate: "\u7b54\u5c0d\u7387",
-  answered: "\u5df2\u4f5c\u7b54",
+    "要儲存目前進度並離開模擬考嗎？之後可從測驗紀錄點選「繼續測驗」。",
+  settleSummaryTitle: "模擬考進度已儲存，之後可繼續作答。",
+  submitSaveError: "交卷資料尚未完整儲存，請稍後再試。",
+  answerSaveError: "答案尚未儲存成功，請再選一次。",
+  answerSaving: "答案正在儲存，請稍候再切換頁面。",
   randomTitle: "模擬考測驗",
   randomSubtitle:
     "\u5f9e\u672c\u79d1\u6240\u6709\u7ae0\u7bc0\u96a8\u6a5f\u62bd\u984c",
@@ -157,6 +191,7 @@ type AnswerRecord = {
   selected: NumericAnswer;
   correct: NumericAnswer;
   isCorrect: boolean;
+  learningRecorded?: boolean;
 };
 
 type ImageQuizMode =
@@ -170,6 +205,10 @@ type ImageQuizMode =
   | "sessionWrong"
   | "daily"
   | "trial";
+
+type ImageQuizLocationState = {
+  mockExamFeedbackMode?: unknown;
+};
 
 type ImageQuizData = {
   title: string;
@@ -189,8 +228,11 @@ type ImageQuizData = {
 
 export function ImageQuizPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { bankId = "", chapterId = "", sessionId = "" } = useParams();
   const location = useLocation();
+  const navigationFeedbackMode = (location.state as ImageQuizLocationState | null)
+    ?.mockExamFeedbackMode;
   const mode: ImageQuizMode = location.pathname.includes("/trial")
     ? "trial"
     : location.pathname.includes("/session-wrong")
@@ -210,16 +252,17 @@ export function ImageQuizPage() {
                   : chapterId
                     ? "chapter"
                     : "bank";
+  const dailyScopeId = resolveSecuritiesDailyScope(location.search);
   const progressKey =
     mode === "daily"
-      ? `image:daily:${localTodayKey()}:all`
+      ? `image:daily:${localTodayKey()}:${dailyScopeId}`
       : mode === "todayWrong"
         ? `image:today-wrong:${localTodayKey()}:all`
         : mode === "trial"
           ? "image:trial:free"
           : `image:${mode}:${bankId || "all"}:${chapterId || sessionId || "all"}`;
 
-  const { data, error, loading } = useAsync<ImageQuizData>(async () => {
+  const { data, error, loading, retry } = useAsync<ImageQuizData>(async () => {
     if (mode === "trial") {
       const questions = await loadTrialImageQuestions();
       return {
@@ -237,23 +280,42 @@ export function ImageQuizPage() {
           listUserAnswers(),
           listWrongQuestions(),
         ]);
+      const subjectQuestions = dailyScopeId === "all"
+        ? planningQuestions
+        : planningQuestions.filter((question) =>
+            studyPlanScopeMatchesBankId(dailyScopeId, question.bankId),
+          );
+      const subjectQuestionIds = new Set(
+        subjectQuestions.map((question) => question.id),
+      );
+      const subjectAnswers = storedAnswers.filter((answer) =>
+        subjectQuestionIds.has(answer.questionId),
+      );
+      const subjectWrongRecords = wrongRecords.filter((record) =>
+        subjectQuestionIds.has(record.questionId),
+      );
       const dailyTraining = buildOrReadDailyPlan({
-        allQuestions: planningQuestions,
-        storedAnswers,
-        wrongRecords,
+        allQuestions: subjectQuestions,
+        storedAnswers: subjectAnswers,
+        wrongRecords: subjectWrongRecords,
         userId: user?.id ?? null,
+        config: getStudyPlanConfig(dailyScopeId === "all" ? "investment" : dailyScopeId),
+        planScopeId: dailyScopeId === "all" ? "senior-securities" : dailyScopeId,
       });
       const questions = await loadImageQuestionsByIds(
         dailyTraining.questions.map((question) => question.id),
       );
       const today = localTodayKey();
-      const todayAnswers = storedAnswers.filter(
+      const todayAnswers = subjectAnswers.filter(
         (answer) => localTodayKey(new Date(answer.answeredAt)) === today,
       );
+      const subjectTitle = dailyScopeId === "all"
+        ? "證券高業"
+        : getStudyPlanScope(dailyScopeId).title;
       return {
-        title: T.dailyTitle,
+        title: `${subjectTitle}每日練習`,
         subtitle: dailyTraining.summary,
-        emptyTitle: T.dailyEmpty,
+        emptyTitle: `${subjectTitle}今日練習已完成`,
         questions,
         answerRecords: storedAnswersToRecords(todayAnswers, questions),
         dailyPlannedCount: dailyTraining.plannedCount,
@@ -270,7 +332,8 @@ export function ImageQuizPage() {
       const wrongRecords = await listWrongQuestions();
       const today = localTodayKey();
       const todayWrongRecords = wrongRecords.filter(
-        (record) => localTodayKey(new Date(record.lastWrongAt)) === today,
+        (record) => isSecuritiesQuestionId(record.questionId)
+          && localTodayKey(new Date(record.lastWrongAt)) === today,
       );
       const questions = await loadImageQuestionsByIds(
         todayWrongRecords.map((record) => record.questionId),
@@ -298,7 +361,8 @@ export function ImageQuizPage() {
     }
 
     if (mode === "wrong") {
-      const wrongRecords = await listWrongQuestions();
+      const wrongRecords = (await listWrongQuestions())
+        .filter((record) => isSecuritiesQuestionId(record.questionId));
       const questions = await loadImageQuestionsByIds(
         wrongRecords.map((record) => record.questionId),
       );
@@ -322,7 +386,8 @@ export function ImageQuizPage() {
     }
 
     if (mode === "favorites") {
-      const favoriteRecords = await listFavoriteQuestions();
+      const favoriteRecords = (await listFavoriteQuestions())
+        .filter((record) => isSecuritiesQuestionId(record.questionId));
       const questions = await loadImageQuestionsByIds(
         favoriteRecords.map((record) => record.questionId),
       );
@@ -351,19 +416,20 @@ export function ImageQuizPage() {
           questions: [],
         };
       }
-      const bankQuestions = await loadImageQuestionsByIds(session.questionIds);
-      const byId = new Map(
-        bankQuestions.map((question) => [question.id, question]),
-      );
+      const protectedToken = !session.finishedAt && session.feedbackMode === "deferred"
+        ? readSecuritiesMockToken(session.sessionId)
+        : null;
+      const bankQuestions = protectedToken
+        ? (await resumeSecuritiesMock(protectedToken)).questions
+        : await loadImageQuestionsByIds(session.questionIds);
+      const byId = new Map(bankQuestions.map((question) => [question.id, question]));
       return {
         title: `${session.bankTitle} / ${T.randomTitle}`,
         subtitle: T.randomSubtitle,
         emptyTitle: T.randomEmpty,
         questions: session.questionIds
           .map((questionId) => byId.get(questionId))
-          .filter((question): question is ImageQuizQuestion =>
-            Boolean(question),
-          ),
+          .filter((question): question is ImageQuizQuestion => Boolean(question)),
         answerRecords: sessionAnswersToRecords(session),
         session,
       };
@@ -434,51 +500,97 @@ export function ImageQuizPage() {
       emptyTitle: T.allEmpty,
       questions,
     };
-  }, [bankId, chapterId, mode, sessionId, user?.id]);
+  }, [bankId, chapterId, dailyScopeId, mode, sessionId, user?.id]);
 
-  const questions = useMemo(() => data?.questions ?? [], [data]);
+  const [gradedMockQuestions, setGradedMockQuestions] = useState<ImageQuizQuestion[] | null>(null);
+  const questions = useMemo(
+    () => gradedMockQuestions ?? data?.questions ?? [],
+    [data, gradedMockQuestions],
+  );
+  const isSubmittedMockExam =
+    mode === "random" &&
+    isMockExamSessionSubmitted({ finishedAt: data?.session?.finishedAt });
+  const mockExamFeedbackMode = resolveMockExamSessionFeedbackMode(
+    data?.session?.feedbackMode,
+    navigationFeedbackMode,
+  );
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, AnswerRecord>>({});
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
   const [progressRestored, setProgressRestored] = useState(false);
   const [finished, setFinished] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
-  const [timerPaused, setTimerPaused] = useState(false);
-  const [jumpInput, setJumpInput] = useState("");
-  const [jumpError, setJumpError] = useState("");
-  const [answerModeEnabled, setAnswerModeEnabled] = useState(() =>
-    getAnswerModeEnabled(),
+  const [answerModeRevision, setAnswerModeRevision] = useState(0);
+  const [deferredFeedbackEnabled, setDeferredFeedbackEnabledState] = useState(
+    () => getMockExamDeferredFeedbackEnabled(),
   );
   const [confidenceByQuestion] = useState<Record<string, AnswerConfidence>>({});
-  const [retryQueue, setRetryQueue] = useState<string[]>([]);
   const [markedQuestionIds, setMarkedQuestionIds] = useState<Set<string>>(
     new Set(),
   );
   const [answerCardOpen, setAnswerCardOpen] = useState(false);
+  const [questionListOpen, setQuestionListOpen] = useState(false);
+  const [reviewingSubmittedExam, setReviewingSubmittedExam] = useState(false);
   const [autoNextCorrectEnabled, setAutoNextCorrectEnabled] = useState(() =>
     getAutoNextCorrectEnabled(),
   );
+  const answerWritePendingRef = useRef<string | null>(null);
+  const [answerWritePendingQuestionId, setAnswerWritePendingQuestionId] =
+    useState<string | null>(null);
+  const submissionPendingRef = useRef(false);
+  const [submissionPending, setSubmissionPending] = useState(false);
+  const autoNextTimerRef = useRef<number | null>(null);
+  const questionFocusRef = useRef<HTMLDivElement>(null);
+  const shouldFocusQuestionRef = useRef(false);
+  const navigationScrollYRef = useRef<number | null>(null);
 
   useEffect(() => {
     setElapsedSeconds(0);
-    setTimerPaused(false);
-    setJumpInput("");
-    setJumpError("");
-    setRetryQueue([]);
     setMarkedQuestionIds(new Set());
     setAnswerCardOpen(false);
+    setQuestionListOpen(false);
+    setReviewingSubmittedExam(false);
+    setGradedMockQuestions(null);
+    answerWritePendingRef.current = null;
+    setAnswerWritePendingQuestionId(null);
+    submissionPendingRef.current = false;
+    setSubmissionPending(false);
+    if (autoNextTimerRef.current !== null) {
+      window.clearTimeout(autoNextTimerRef.current);
+      autoNextTimerRef.current = null;
+    }
   }, [progressKey]);
+
+  useEffect(
+    () => () => {
+      if (autoNextTimerRef.current !== null) {
+        window.clearTimeout(autoNextTimerRef.current);
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (autoNextTimerRef.current !== null) {
+      window.clearTimeout(autoNextTimerRef.current);
+      autoNextTimerRef.current = null;
+    }
+  }, [currentIndex]);
 
   useEffect(() => {
     function refreshAnswerModeSetting(): void {
-      setAnswerModeEnabled(getAnswerModeEnabled());
+      setAnswerModeRevision((value) => value + 1);
     }
     function refreshAutoNextCorrectSetting(): void {
       setAutoNextCorrectEnabled(getAutoNextCorrectEnabled());
     }
+    function refreshDeferredFeedbackSetting(): void {
+      setDeferredFeedbackEnabledState(getMockExamDeferredFeedbackEnabled());
+    }
     function refreshAllSettings(): void {
       refreshAnswerModeSetting();
       refreshAutoNextCorrectSetting();
+      refreshDeferredFeedbackSetting();
     }
     window.addEventListener(
       ANSWER_MODE_SETTING_CHANGED,
@@ -487,6 +599,10 @@ export function ImageQuizPage() {
     window.addEventListener(
       AUTO_NEXT_CORRECT_SETTING_CHANGED,
       refreshAutoNextCorrectSetting,
+    );
+    window.addEventListener(
+      MOCK_EXAM_FEEDBACK_SETTING_CHANGED,
+      refreshDeferredFeedbackSetting,
     );
     window.addEventListener("storage", refreshAllSettings);
     return () => {
@@ -498,20 +614,58 @@ export function ImageQuizPage() {
         AUTO_NEXT_CORRECT_SETTING_CHANGED,
         refreshAutoNextCorrectSetting,
       );
+      window.removeEventListener(
+        MOCK_EXAM_FEEDBACK_SETTING_CHANGED,
+        refreshDeferredFeedbackSetting,
+      );
       window.removeEventListener("storage", refreshAllSettings);
     };
   }, []);
 
   useEffect(() => {
-    if (!progressRestored || finished || timerPaused) {
-      return;
+    if (mode !== "random" || isSubmittedMockExam || finished) return;
+
+    const mustDefer =
+      deferredFeedbackEnabled || mockExamFeedbackMode === "deferred";
+    if (!mustDefer) return;
+
+    // Mock exams remain independent from practice answer mode. Deferred
+    // grading is enforced by the session and server-side grading contract.
+    setDeferredFeedbackEnabledState(true);
+
+    if (
+      data?.session &&
+      data.session.feedbackMode !== "deferred"
+    ) {
+      void saveImageQuizSessionFeedbackMode(
+        data.session.sessionId,
+        "deferred",
+      ).catch((reason) => {
+        console.warn("Unable to upgrade pending mock exam to deferred grading", reason);
+      });
     }
+  }, [
+    data?.session,
+    deferredFeedbackEnabled,
+    finished,
+    isSubmittedMockExam,
+    mockExamFeedbackMode,
+    mode,
+  ]);
+
+  useEffect(() => {
+    if (!progressRestored || finished) return;
     const timer = window.setInterval(() => {
-      setElapsedSeconds((seconds) => seconds + 1);
+      // General practice still contributes to cumulative study time, but it
+      // does not maintain a visible per-question clock. Only mock exams need
+      // the elapsed timer state.
+      if (mode === "random") {
+        setElapsedSeconds((seconds) => seconds + 1);
+      }
       addPracticeSeconds(1);
     }, 1000);
     return () => window.clearInterval(timer);
-  }, [finished, progressKey, progressRestored, timerPaused]);
+  }, [finished, mode, progressKey, progressRestored]);
 
   useEffect(() => {
     let cancelled = false;
@@ -520,6 +674,7 @@ export function ImageQuizPage() {
       setProgressRestored(false);
       setAnswers({});
       setFinished(false);
+      setReviewingSubmittedExam(false);
 
       if (!questions.length) {
         setCurrentIndex(0);
@@ -556,6 +711,7 @@ export function ImageQuizPage() {
         new Set(favoriteRecords.map((record) => record.questionId)),
       );
       setMarkedQuestionIds(new Set(data?.session?.markedQuestionIds ?? []));
+      setFinished(isSubmittedMockExam);
       setProgressRestored(true);
     }
 
@@ -567,6 +723,7 @@ export function ImageQuizPage() {
   }, [
     data?.answerRecords,
     data?.session?.markedQuestionIds,
+    isSubmittedMockExam,
     mode,
     progressKey,
     questions,
@@ -580,21 +737,51 @@ export function ImageQuizPage() {
     void saveQuizProgress(progressKey, currentIndex, questions.length);
   }, [currentIndex, finished, progressKey, progressRestored, questions.length]);
 
+  useEffect(() => {
+    const session = data?.session;
+    if (
+      !progressRestored ||
+      mode !== "random" ||
+      !isSubmittedMockExam ||
+      !session
+    ) {
+      return;
+    }
+    const pendingQuestions = questions.filter(
+      (question) => session.answers[question.id]?.learningRecorded === false,
+    );
+    if (!pendingQuestions.length) return;
+
+    void commitImageQuizSessionLearningAnswers(
+      session.sessionId,
+      pendingQuestions,
+    ).catch((reason) => {
+      console.warn("Submitted mock-exam learning records will retry", reason);
+    });
+  }, [
+    data?.session,
+    isSubmittedMockExam,
+    mode,
+    progressRestored,
+    questions,
+  ]);
+
   const answeredRecords = Object.values(answers);
   const correctCount = answeredRecords.filter(
     (record) => record.isCorrect,
   ).length;
   const resultTotal = answeredRecords.length;
   const wrongCount = resultTotal - correctCount;
+  const unansweredCount = Math.max(0, questions.length - resultTotal);
   const accuracy = resultTotal
     ? calculateAccuracy(correctCount, resultTotal)
     : 0;
-  const shouldPromptRandomExit =
-    mode === "random" &&
-    !finished &&
-    resultTotal > 0 &&
-    resultTotal < questions.length &&
-    Boolean(data?.session);
+  const shouldPromptRandomExit = shouldPromptMockExamExit({
+    hasSession: mode === "random" && Boolean(data?.session),
+    isFinishedView: finished,
+    isSubmitted: isSubmittedMockExam,
+    answeredCount: resultTotal,
+  });
   const dailyAnsweredIds = useMemo(
     () => new Set(Object.keys(answers)),
     [answers],
@@ -632,7 +819,7 @@ export function ImageQuizPage() {
       : currentIndex + 1;
 
   useEffect(() => {
-    if (!shouldPromptRandomExit) {
+    if (!shouldPromptRandomExit && !submissionPending) {
       return;
     }
 
@@ -643,10 +830,15 @@ export function ImageQuizPage() {
 
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [shouldPromptRandomExit]);
+  }, [shouldPromptRandomExit, submissionPending]);
 
   useEffect(() => {
     function handleNavigationAttempt(event: Event): void {
+      if (submissionPendingRef.current) {
+        event.preventDefault();
+        window.alert(T.answerSaving);
+        return;
+      }
       if (!shouldPromptRandomExit) {
         return;
       }
@@ -655,6 +847,10 @@ export function ImageQuizPage() {
         continueNavigation?: () => void;
       }>;
       event.preventDefault();
+      if (answerWritePendingRef.current !== null) {
+        window.alert(T.answerSaving);
+        return;
+      }
 
       async function confirmSettlement(): Promise<void> {
         const confirmed = window.confirm(T.settleConfirm);
@@ -665,9 +861,7 @@ export function ImageQuizPage() {
         if (data?.session) {
           await settleImageQuizSession(data.session.sessionId);
         }
-        window.alert(
-          `${T.settleSummaryTitle}\n${T.answered} ${resultTotal} / ${questions.length} ${T.total}\n${T.correctCount} ${correctCount}\n${T.wrongCount} ${wrongCount}\n${T.answerRate} ${accuracy}%`,
-        );
+        window.alert(T.settleSummaryTitle);
         navigationEvent.detail?.continueNavigation?.();
       }
 
@@ -681,25 +875,39 @@ export function ImageQuizPage() {
         handleNavigationAttempt,
       );
   }, [
-    accuracy,
-    correctCount,
     data?.session,
-    questions.length,
-    resultTotal,
     shouldPromptRandomExit,
-    wrongCount,
   ]);
 
   useEffect(() => {
-    return preloadNeighborQuestionAssets(questions, currentIndex);
-  }, [currentIndex, questions]);
+    if (!progressRestored || !shouldFocusQuestionRef.current) return;
+    shouldFocusQuestionRef.current = false;
+    const previousScrollY = navigationScrollYRef.current;
+    navigationScrollYRef.current = null;
+    const frame = window.requestAnimationFrame(() => {
+      focusQuestionAtTop(questionFocusRef.current, {
+        previousScrollY,
+        neverScrollDown: true,
+      });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [currentIndex, progressRestored]);
 
   if (loading || (questions.length > 0 && !progressRestored)) {
     return <LoadingState label={T.loading} />;
   }
 
   if (error) {
-    return <ErrorState title={T.loadError} message={error} />;
+    return (
+      <ErrorState
+        title={T.loadError}
+        message={error}
+        onRetry={() => {
+          resetImageQuizCaches();
+          retry();
+        }}
+      />
+    );
   }
 
   if (!questions.length) {
@@ -720,20 +928,33 @@ export function ImageQuizPage() {
     );
   }
 
+  const isSubmittedReview =
+    mode === "random" && finished && reviewingSubmittedExam;
+
+  const interactionPending =
+    answerWritePendingQuestionId !== null || submissionPending;
+
   const savedAnswer = answers[currentQuestion.id];
+  const mockExamIsSubmitted = isSubmittedMockExam || finished;
   const isDeferredExam =
     mode === "random" &&
-    data?.session?.feedbackMode === "deferred" &&
-    !answerModeEnabled;
+    shouldEnforceDeferredMockExamFeedback(
+      mockExamFeedbackMode,
+      deferredFeedbackEnabled,
+      mockExamIsSubmitted,
+    );
   const examAnsweredCount = Object.keys(answers).length;
-  const examUnansweredCount = Math.max(0, questions.length - examAnsweredCount);
+  const examUnansweredCount = unansweredCount;
   const currentIsMarked = markedQuestionIds.has(currentQuestion.id);
+  void answerModeRevision;
+  const answerModeEnabled = getAnswerModeEnabled();
   const answerModeAllowed =
+    !currentQuestion.answerRedacted &&
     answerModeEnabled &&
     !isDeferredExam &&
-    mode !== "wrong" &&
-    mode !== "todayWrong" &&
-    mode !== "sessionWrong";
+    !isSubmittedMockExam &&
+    !finished &&
+    mode !== "random";
   const answerModeRecord: AnswerRecord | undefined = answerModeAllowed
     ? {
         selected: currentQuestion.answer,
@@ -742,37 +963,19 @@ export function ImageQuizPage() {
       }
     : undefined;
   const currentAnswer = savedAnswer ?? answerModeRecord;
+  const canChooseCurrentAnswer = canChooseImageQuizAnswer({
+    isMockExam: mode === "random",
+    isSubmitted: isSubmittedMockExam || finished,
+    hasSavedAnswer: Boolean(savedAnswer),
+    answerModeAllowed,
+  });
   const currentConfidence = confidenceByQuestion[currentQuestion.id] ?? "sure";
   const revealCurrentAnswer = !isDeferredExam;
   const isFavorite = favoriteIds.has(currentQuestion.id);
-  const displayedQuestionNumber =
-    mode === "random" || mode === "sessionWrong"
-      ? currentIndex + 1
-      : currentQuestion.number;
   const currentWrongCount =
     mode === "wrong" || mode === "todayWrong"
       ? data?.wrongCounts?.[currentQuestion.id]
       : undefined;
-  const currentCorrectStreak = calculateConsecutiveCorrectStreak(
-    questions,
-    answers,
-    currentIndex,
-  );
-  const activeCorrectStreak = calculateActiveCorrectStreak(
-    questions,
-    answers,
-    currentIndex,
-  );
-  const encouragementCorrectStreak = currentAnswer?.isCorrect
-    ? Math.max(currentCorrectStreak, activeCorrectStreak, 1)
-    : activeCorrectStreak;
-  const encouragementIsCorrect = isDeferredExam
-    ? undefined
-    : currentAnswer?.isCorrect === false
-      ? false
-      : encouragementCorrectStreak > 0
-        ? true
-        : undefined;
   const questionSourceLabel = formatImageQuizQuestionSource(currentQuestion);
   const contextLabel =
     mode === "daily"
@@ -786,42 +989,78 @@ export function ImageQuizPage() {
             : questionSourceLabel;
 
   async function handleAnswer(selected: NumericAnswer): Promise<void> {
-    if (!currentQuestion || answers[currentQuestion.id] || answerModeAllowed) {
+    if (
+      !currentQuestion ||
+      !canChooseCurrentAnswer ||
+      answerWritePendingRef.current !== null ||
+      submissionPendingRef.current
+    ) {
       return;
     }
 
+    if (autoNextTimerRef.current !== null) {
+      window.clearTimeout(autoNextTimerRef.current);
+      autoNextTimerRef.current = null;
+    }
+
+    const previousAnswer = answers[currentQuestion.id];
+    if (previousAnswer?.selected === selected) return;
+
+    const answerIsRedacted = mode === "random" && Boolean(currentQuestion.answerRedacted);
     const record: AnswerRecord = {
       selected,
-      correct: currentQuestion.answer,
-      isCorrect: selected === currentQuestion.answer,
+      correct: answerIsRedacted ? selected : currentQuestion.answer,
+      isCorrect: answerIsRedacted ? false : selected === currentQuestion.answer,
+      learningRecorded:
+        mode === "random"
+          ? (previousAnswer?.learningRecorded ?? false)
+          : undefined,
     };
 
     setAnswers((previous) => ({
       ...previous,
       [currentQuestion.id]: record,
     }));
-    await recordImageUserAnswer(currentQuestion, selected, {
-      confidence: currentConfidence,
-      sessionId: data?.session?.sessionId ?? null,
-      sessionMode: data?.session?.mode ?? mode,
-    });
-    if (mode === "random" && data?.session) {
-      await saveImageQuizSessionAnswer(
-        data.session.sessionId,
-        currentQuestion.id,
-        {
-          ...record,
-          answeredAt: new Date().toISOString(),
-        },
-      );
+    answerWritePendingRef.current = currentQuestion.id;
+    setAnswerWritePendingQuestionId(currentQuestion.id);
+    try {
+      if (mode === "random" && data?.session) {
+        const savedSession = await saveImageQuizSessionAnswer(
+          data.session.sessionId,
+          currentQuestion.id,
+          {
+            ...record,
+            answeredAt: new Date().toISOString(),
+          },
+        );
+        if (!savedSession) {
+          throw new Error("Mock-exam answer could not be saved");
+        }
+      } else {
+        await recordImageUserAnswer(currentQuestion, selected, {
+          confidence: currentConfidence,
+          sessionId: data?.session?.sessionId ?? null,
+          sessionMode: data?.session?.mode ?? mode,
+        });
+      }
+    } catch {
+      setAnswers((current) => {
+        if (current[currentQuestion.id]?.selected !== selected) return current;
+        const next = { ...current };
+        if (previousAnswer) next[currentQuestion.id] = previousAnswer;
+        else delete next[currentQuestion.id];
+        return next;
+      });
+      window.alert(T.answerSaveError);
+      return;
+    } finally {
+      if (answerWritePendingRef.current === currentQuestion.id) {
+        answerWritePendingRef.current = null;
+        setAnswerWritePendingQuestionId(null);
+      }
     }
-    if (!isDeferredExam && !record.isCorrect) {
-      setRetryQueue((current) =>
-        current.includes(currentQuestion.id)
-          ? current
-          : [...current, currentQuestion.id],
-      );
-    }
+
+    if (!isDeferredExam) vibrateForAnswer(record.isCorrect);
 
     if (
       !isDeferredExam &&
@@ -829,7 +1068,9 @@ export function ImageQuizPage() {
       record.isCorrect &&
       currentIndex < questions.length - 1
     ) {
-      window.setTimeout(() => {
+      autoNextTimerRef.current = window.setTimeout(() => {
+        autoNextTimerRef.current = null;
+        prepareQuestionNavigation();
         setCurrentIndex((index) =>
           index === currentIndex
             ? Math.min(index + 1, questions.length - 1)
@@ -839,39 +1080,29 @@ export function ImageQuizPage() {
     }
   }
 
+  function prepareQuestionNavigation(): void {
+    navigationScrollYRef.current = window.scrollY;
+    shouldFocusQuestionRef.current = true;
+  }
+
   function goPrevious(): void {
-    setJumpError("");
+    if (
+      answerWritePendingRef.current !== null ||
+      submissionPendingRef.current
+    ) {
+      return;
+    }
+    prepareQuestionNavigation();
     setCurrentIndex((index) => Math.max(0, index - 1));
   }
 
-  function openNextQueuedRetry(): boolean {
-    const retryQuestionId = retryQueue[0];
-    if (!retryQuestionId) return false;
-    const retryIndex = questions.findIndex(
-      (question) => question.id === retryQuestionId,
-    );
-    if (retryIndex < 0) {
-      setRetryQueue((current) => current.slice(1));
-      return false;
-    }
-    setAnswers((current) => {
-      const next = { ...current };
-      delete next[retryQuestionId];
-      return next;
-    });
-    setRetryQueue((current) => current.slice(1));
-    setCurrentIndex(retryIndex);
-    setJumpError("");
-    return true;
-  }
-
   async function goNext(): Promise<void> {
-    const shouldRetryNow =
-      !isDeferredExam &&
-      retryQueue.length > 0 &&
-      (currentIndex >= questions.length - 1 ||
-        Object.keys(answers).length % 4 === 0);
-    if (shouldRetryNow && openNextQueuedRetry()) return;
+    if (
+      answerWritePendingRef.current !== null ||
+      submissionPendingRef.current
+    ) {
+      return;
+    }
     if (currentIndex >= questions.length - 1) {
       if (isDeferredExam) {
         const unanswered = Math.max(
@@ -886,36 +1117,86 @@ export function ImageQuizPage() {
         if (!confirmed) return;
       }
       if (mode === "random" && data?.session) {
-        await saveRandomSessionResult(
-          data.session.sessionId,
-          questions,
-          answers,
-        );
+        submissionPendingRef.current = true;
+        setSubmissionPending(true);
+        let submittedQuestions = questions;
+        try {
+          const protectedToken = data.session.feedbackMode === "deferred"
+            ? readSecuritiesMockToken(data.session.sessionId)
+            : null;
+          if (protectedToken && questions.some((question) => question.answerRedacted)) {
+            const selectedAnswers = Object.fromEntries(
+              Object.entries(answers).map(([questionId, answer]) => [questionId, answer.selected]),
+            ) as Record<string, NumericAnswer>;
+            const submission = await submitSecuritiesMock(protectedToken, selectedAnswers);
+            submittedQuestions = submission.results;
+            const gradedAnswers = submission.results.flatMap((question) => {
+              const selected = selectedAnswers[question.id];
+              return selected ? [{
+                questionId: question.id,
+                selected,
+                correct: question.answer,
+                isCorrect: question.isCorrect,
+              }] : [];
+            });
+            await applyImageQuizMockGrading(data.session.sessionId, gradedAnswers);
+            setGradedMockQuestions(submittedQuestions);
+            setAnswers((current) => {
+              const next = { ...current };
+              for (const question of submission.results) {
+                const selected = selectedAnswers[question.id];
+                if (!selected) continue;
+                next[question.id] = {
+                  selected,
+                  correct: question.answer,
+                  isCorrect: question.isCorrect,
+                  learningRecorded: false,
+                };
+              }
+              return next;
+            });
+          }
+          await saveRandomSessionResult(data.session.sessionId);
+        } catch {
+          window.alert(T.submitSaveError);
+          submissionPendingRef.current = false;
+          setSubmissionPending(false);
+          return;
+        }
+        void clearQuizProgress(progressKey);
+        try {
+          await commitImageQuizSessionLearningAnswers(
+            data.session.sessionId,
+            submittedQuestions,
+          );
+        } catch (reason) {
+          console.warn("Submitted mock-exam learning records will retry", reason);
+        }
+        setFinished(true);
+        submissionPendingRef.current = false;
+        setSubmissionPending(false);
+      } else {
+        setFinished(true);
+        void clearQuizProgress(progressKey);
       }
-      setFinished(true);
-      void clearQuizProgress(progressKey);
       return;
     }
 
-    setJumpError("");
+    prepareQuestionNavigation();
     setCurrentIndex((index) => Math.min(questions.length - 1, index + 1));
-  }
-
-  function handleJump(event: FormEvent<HTMLFormElement>): void {
-    event.preventDefault();
-    const value = Number(jumpInput.trim());
-    if (!Number.isInteger(value) || value < 1 || value > questions.length) {
-      setJumpError(T.jumpError.replace("{total}", questions.length.toString()));
-      return;
-    }
-    setCurrentIndex(value - 1);
-    setJumpInput("");
-    setJumpError("");
   }
 
   async function toggleExamMark(): Promise<void> {
     const question = questions[currentIndex];
-    if (!isDeferredExam || !data?.session || !question) return;
+    if (
+      !isDeferredExam ||
+      !data?.session ||
+      !question ||
+      answerWritePendingRef.current !== null ||
+      submissionPendingRef.current
+    ) {
+      return;
+    }
     const next = new Set(markedQuestionIds);
     if (next.has(question.id)) next.delete(question.id);
     else next.add(question.id);
@@ -924,9 +1205,30 @@ export function ImageQuizPage() {
   }
 
   function jumpFromAnswerCard(index: number): void {
+    if (
+      answerWritePendingRef.current !== null ||
+      submissionPendingRef.current
+    ) {
+      return;
+    }
+    prepareQuestionNavigation();
     setCurrentIndex(index);
-    setJumpError("");
     if (window.innerWidth < 760) setAnswerCardOpen(false);
+  }
+
+  function openSubmittedReview(index: number): void {
+    prepareQuestionNavigation();
+    setCurrentIndex(index);
+    setReviewingSubmittedExam(true);
+  }
+
+  function returnToSubmittedResult(): void {
+    setReviewingSubmittedExam(false);
+  }
+
+  function goNextSubmittedReview(): void {
+    prepareQuestionNavigation();
+    setCurrentIndex((index) => Math.min(questions.length - 1, index + 1));
   }
 
   async function toggleFavorite(): Promise<void> {
@@ -953,13 +1255,18 @@ export function ImageQuizPage() {
   }
 
   async function restartQuiz(): Promise<void> {
+    if (mode === "random") {
+      navigate("/random");
+      return;
+    }
     setAnswers({});
     setCurrentIndex(0);
     setFinished(false);
+    setReviewingSubmittedExam(false);
     await clearQuizProgress(progressKey);
   }
 
-  if (finished) {
+  if (finished && !isSubmittedReview) {
     return (
       <GlassCard className="image-quiz-card">
         <div className="quiz-result-hero">
@@ -971,8 +1278,57 @@ export function ImageQuizPage() {
           <StatCard label={T.total} value={questions.length.toString()} />
           <StatCard label={T.correctCount} value={correctCount.toString()} />
           <StatCard label={T.wrongCount} value={wrongCount.toString()} />
+          {mode === "random" ? (
+            <StatCard label={T.unanswered} value={unansweredCount.toString()} />
+          ) : null}
           <StatCard label={T.accuracy} value={`${accuracy}%`} />
         </div>
+        {mode === "random" ? (
+          <section
+            className="exam-answer-card submitted-exam-answer-card"
+            aria-labelledby="submitted-exam-answer-card-title"
+          >
+            <div className="exam-answer-card-head">
+              <div>
+                <strong id="submitted-exam-answer-card-title">
+                  {T.resultAnswerCard}
+                </strong>
+                <span>{T.resultAnswerCardHint}</span>
+              </div>
+            </div>
+            <div className="exam-answer-card-legend submitted-exam-answer-card-legend">
+              <span className="is-correct">{T.correctCount}</span>
+              <span className="is-wrong">{T.wrongCount}</span>
+              <span className="is-unanswered">{T.unanswered}</span>
+            </div>
+            <div className="exam-answer-card-grid submitted-exam-answer-card-grid">
+              {questions.map((question, index) => {
+                const answer = answers[question.id];
+                const status = getMockExamAnswerCardStatus(answer);
+                const statusLabel =
+                  status === "correct"
+                    ? T.correctCount
+                    : status === "wrong"
+                      ? T.wrongCount
+                      : T.unanswered;
+                return (
+                  <button
+                    type="button"
+                    key={question.id}
+                    className={`is-${status}${markedQuestionIds.has(question.id) ? " is-marked" : ""}`}
+                    aria-label={`第 ${index + 1} 題，${statusLabel}，點擊複查`}
+                    onClick={() => openSubmittedReview(index)}
+                  >
+                    {index + 1}
+                    {markedQuestionIds.has(question.id) ? (
+                      <Flag size={10} fill="currentColor" aria-hidden="true" />
+                    ) : null}
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        ) : null}
         <div className="result-actions">
           <GlassButton variant="primary" onClick={() => void restartQuiz()}>
             <RotateCcw aria-hidden="true" size={18} />
@@ -991,61 +1347,48 @@ export function ImageQuizPage() {
   }
 
   return (
-    <div className="image-quiz-page">
+    <div
+      className="image-quiz-page"
+      data-mock-exam-feedback-mode={
+        mode === "random" ? mockExamFeedbackMode : undefined
+      }
+      data-mock-exam-submitted={
+        mode === "random" ? String(isSubmittedMockExam || finished) : undefined
+      }
+    >
       <GlassCard className="image-quiz-card">
-        <div className="image-quiz-header">
-          <div>
-            <p className="eyebrow">{contextLabel}</p>
-            <div className="quiz-title-line">
-              <h1>
-                {"\u7b2c "}
-                {displayedQuestionNumber}
-                {" \u984c"}
-              </h1>
-              <span
-                className="glass-badge quiz-timer-badge"
-                aria-label={`練習時間 ${formatElapsedTime(elapsedSeconds)}`}
-              >
-                <Clock3 aria-hidden="true" size={15} />
-                {formatElapsedTime(elapsedSeconds)}
-                {!isDeferredExam ? (
-                  <button
-                    type="button"
-                    className="timer-pause-button"
-                    aria-label={timerPaused ? T.resumeTimer : T.pauseTimer}
-                    title={timerPaused ? T.resumeTimer : T.pauseTimer}
-                    onClick={() => setTimerPaused((paused) => !paused)}
-                  >
-                    {timerPaused ? (
-                      <Play aria-hidden="true" size={13} />
-                    ) : (
-                      <Pause aria-hidden="true" size={13} />
-                    )}
-                    <span>{timerPaused ? T.resumeTimer : T.pauseTimer}</span>
-                  </button>
-                ) : null}
-              </span>
-              {mode === "daily" ? (
-                <span className="glass-badge daily-count-badge">
-                  今日剩餘 {dailyRemainingCount ?? 0} 題 / 答對 {correctCount}{" "}
-                  題 / 答錯 {wrongCount} 題
-                </span>
-              ) : null}
-              {currentWrongCount ? (
-                <span className="glass-badge weak-count-badge">
-                  {T.wrongTimes} {currentWrongCount}
-                </span>
-              ) : null}
+        <div className="image-quiz-header v90-quiz-header">
+          <div className="v90-quiz-topline">
+            <button type="button" className="v90-quiz-back" onClick={() => navigate(-1)} aria-label="返回上一頁">
+              <ArrowLeft aria-hidden="true" size={19} />
+            </button>
+            <div className="v90-quiz-position">
+              <strong>{currentIndex + 1} / {questions.length}</strong>
+              <small>{contextLabel}</small>
             </div>
           </div>
-          <div className="quiz-header-actions">
-            {isDeferredExam ? (
+          <div className="quiz-header-actions v90-quiz-actions">
+            {mode === "random" && !isSubmittedReview ? (
+              <QuizTimer seconds={elapsedSeconds} mode="elapsed" label="測驗時間" compact />
+            ) : null}
+            {isSubmittedReview ? (
+              <button
+                type="button"
+                className="quiz-exam-action is-active"
+                aria-label={T.backToResultCard}
+                onClick={returnToSubmittedResult}
+              >
+                <ListChecks aria-hidden="true" size={19} />
+                <span>{T.backToResultCard}</span>
+              </button>
+            ) : isDeferredExam ? (
               <>
                 <button
                   type="button"
                   className={`quiz-exam-action${answerCardOpen ? " is-active" : ""}`}
                   aria-label="開啟答題卡"
                   aria-expanded={answerCardOpen}
+                  disabled={interactionPending}
                   onClick={() => setAnswerCardOpen((open) => !open)}
                 >
                   <ListChecks aria-hidden="true" size={19} />
@@ -1056,13 +1399,10 @@ export function ImageQuizPage() {
                   className={`quiz-exam-action${currentIsMarked ? " is-marked" : ""}`}
                   aria-label={currentIsMarked ? "取消待檢標記" : "標記為待檢"}
                   aria-pressed={currentIsMarked}
+                  disabled={interactionPending}
                   onClick={() => void toggleExamMark()}
                 >
-                  <Flag
-                    aria-hidden="true"
-                    size={18}
-                    fill={currentIsMarked ? "currentColor" : "none"}
-                  />
+                  <Flag aria-hidden="true" size={18} fill={currentIsMarked ? "currentColor" : "none"} />
                   <span>{currentIsMarked ? "已標記" : "待檢"}</span>
                 </button>
               </>
@@ -1074,12 +1414,14 @@ export function ImageQuizPage() {
               title={isFavorite ? T.removeFavorite : T.addFavorite}
               onClick={() => void toggleFavorite()}
             >
-              <Heart
-                aria-hidden="true"
-                fill={isFavorite ? "currentColor" : "none"}
-              />
+              <Star aria-hidden="true" fill={isFavorite ? "currentColor" : "none"} />
             </button>
           </div>
+        </div>
+        <div className="v90-quiz-meta-row">
+          <span className="v90-question-type">單選題</span>
+          {mode === "daily" ? <span>今日剩餘 {dailyRemainingCount ?? 0} 題</span> : null}
+          {currentWrongCount ? <span>{T.wrongTimes} {currentWrongCount}</span> : null}
         </div>
         {mode === "daily" ? (
           <>
@@ -1097,18 +1439,15 @@ export function ImageQuizPage() {
           </div>
         ) : null}
 
-        {!isDeferredExam ? (
-          <EncouragementNote
-            isCorrect={encouragementIsCorrect}
-            seed={`${currentQuestion.id}:${encouragementCorrectStreak}:top`}
-            correctStreak={encouragementCorrectStreak}
-            compact
-          />
-        ) : (
-          <p className="deferred-exam-notice">
-            考試模式：作答後只鎖定選項，交卷前不顯示正解與解析。
+        {isSubmittedReview ? (
+          <p className="deferred-exam-notice submitted-exam-review-notice">
+            {T.submittedReviewNotice}
           </p>
-        )}
+        ) : isDeferredExam ? (
+          <p className="deferred-exam-notice">
+            考試模式：交卷前可隨時修改答案，不顯示正解與解析。
+          </p>
+        ) : null}
 
         <ProgressBar
           value={dailyProgressValue}
@@ -1157,6 +1496,7 @@ export function ImageQuizPage() {
                     key={question.id}
                     className={`${answered ? "is-answered" : ""}${marked ? " is-marked" : ""}${index === currentIndex ? " is-current" : ""}`}
                     aria-label={`第 ${index + 1} 題${answered ? "，已作答" : "，未作答"}${marked ? "，待檢" : ""}`}
+                    disabled={interactionPending}
                     onClick={() => jumpFromAnswerCard(index)}
                   >
                     {index + 1}
@@ -1168,11 +1508,17 @@ export function ImageQuizPage() {
           </section>
         ) : null}
 
-        <PdfSegmentStack
-          label={`${"\u7b2c"} ${currentQuestion.number} ${"\u984c\u984c\u76ee"}`}
-          segments={currentQuestion.questionSegments}
-          priority="high"
-        />
+        <div
+          ref={questionFocusRef}
+          className="active-question-panel"
+          tabIndex={-1}
+        >
+          <ScanQuestionContent
+            question={currentQuestion}
+            label={`${"\u7b2c"} ${currentQuestion.number} ${"\u984c\u984c\u76ee"}`}
+            prominent
+          />
+        </div>
 
         <div className="numeric-option-grid" aria-label={T.answerOptions}>
           {ANSWERS.map((answer) => (
@@ -1183,102 +1529,123 @@ export function ImageQuizPage() {
                 answer,
                 currentAnswer,
                 revealCurrentAnswer,
+                isSubmittedReview ? currentQuestion.answer : undefined,
               )}
-              disabled={Boolean(currentAnswer)}
+              disabled={
+                !canChooseCurrentAnswer ||
+                interactionPending
+              }
+              aria-busy={
+                answerWritePendingQuestionId === currentQuestion.id
+                  ? "true"
+                  : undefined
+              }
               aria-pressed={currentAnswer?.selected === answer}
-              aria-label={`${T.choose} (${answer})`}
+              aria-label={`${T.choose} ${formatAnswerKey(answer)}${currentQuestion.optionTexts?.[answer] ? ` ${currentQuestion.optionTexts[answer]}` : ""}`}
               onClick={() => void handleAnswer(answer)}
             >
-              <span className="answer-key">({answer})</span>
-              {currentAnswer ? (
-                <span className="answer-status-label">
-                  {answerStatusLabel(
-                    answer,
-                    currentAnswer,
-                    revealCurrentAnswer,
-                  )}
-                </span>
-              ) : null}
+              <span className="answer-key">{formatAnswerKey(answer)}</span>
+              <ScanOptionText question={currentQuestion} answer={answer} />
+              <AnswerResultMark
+                status={answerVisualStatus(
+                  answer,
+                  currentAnswer,
+                  revealCurrentAnswer,
+                  isSubmittedReview ? currentQuestion.answer : undefined,
+                )}
+              />
             </button>
           ))}
         </div>
 
-        {currentAnswer && revealCurrentAnswer ? (
-          <div className="image-answer-panel">
-            <div className="result-line">
-              <span className="glass-badge">
-                {T.yourAnswer} ({currentAnswer.selected})
-              </span>
-              <span className="glass-badge">
-                {T.correctAnswer} ({currentAnswer.correct})
-              </span>
-              {!currentAnswer.isCorrect &&
-              retryQueue.includes(currentQuestion.id) ? (
-                <span className="glass-badge retry-queued-badge">
-                  已加入本次重試
-                </span>
-              ) : null}
+        {(currentAnswer || isSubmittedReview) && revealCurrentAnswer ? (
+          <details className="v90-explanation-disclosure" open>
+            <summary>
+              <HandwrittenLabel name="show-explanation" text="查看解析" className="v91-explanation-label" />
+              <ChevronUp aria-hidden="true" size={17} />
+            </summary>
+            <div className="image-answer-panel">
+              <QuestionExplanationSurface className="glass-explanation" title="解析">
+                <ScanExplanationContent
+                  question={currentQuestion}
+                  label={`${"\u7b2c"} ${currentQuestion.number} ${"\u984c\u89e3\u6790"}`}
+                />
+              </QuestionExplanationSurface>
             </div>
-            <div className="glass-explanation">
-              <h2>{T.explanation}</h2>
-              <PdfSegmentStack
-                label={`${"\u7b2c"} ${currentQuestion.number} ${"\u984c\u89e3\u6790"}`}
-                segments={currentQuestion.explanationSegments}
-                priority="auto"
-              />
-            </div>
-          </div>
+          </details>
         ) : null}
       </GlassCard>
 
-      {jumpError ? (
-        <p className="inline-error jump-error-fixed" role="alert">
-          {jumpError}
-        </p>
+      {questionListOpen ? (
+        <section className="v90-question-list-panel" aria-label="題目列表">
+          <div className="v90-question-list-head">
+            <strong>題目列表</strong>
+            <span>第 {currentIndex + 1}／{questions.length} 題</span>
+          </div>
+          <div className="v90-question-list-grid">
+            {questions.map((question, index) => (
+              <button
+                key={question.id}
+                type="button"
+                className={`${index === currentIndex ? "is-current" : ""}${answers[question.id] ? " is-answered" : ""}`}
+                onClick={() => {
+                  jumpFromAnswerCard(index);
+                  setQuestionListOpen(false);
+                }}
+              >
+                {index + 1}
+              </button>
+            ))}
+          </div>
+        </section>
       ) : null}
-      <div className="image-quiz-controls" aria-label={T.navigation}>
-        <GlassButton
-          variant="secondary"
-          onClick={goPrevious}
-          disabled={currentIndex === 0}
-        >
-          <ArrowLeft aria-hidden="true" size={18} />
-          <span>{T.previous}</span>
-        </GlassButton>
-        <form
-          className="question-jump-form inline-jump-form"
-          onSubmit={handleJump}
-        >
-          <label htmlFor="question-jump-input">{T.jumpLabel}</label>
-          <input
-            id="question-jump-input"
-            type="number"
-            inputMode="numeric"
-            min={1}
-            max={questions.length}
-            value={jumpInput}
-            placeholder={T.jumpPlaceholder}
-            onChange={(event) => setJumpInput(event.currentTarget.value)}
-          />
+      {isSubmittedReview ? (
+        <nav className="image-quiz-controls submitted-review-controls v90-bottom-controls" aria-label={T.navigation}>
+          <GlassButton variant="secondary" onClick={goPrevious} disabled={currentIndex === 0}>
+            <ArrowLeft aria-hidden="true" size={18} />
+            <HandwrittenLabel name="previous" text={T.previous} className="v91-control-label" />
+          </GlassButton>
+          <GlassButton variant="secondary" onClick={returnToSubmittedResult}>
+            <ListChecks aria-hidden="true" size={18} />
+            <span>{T.backToResultCard}</span>
+          </GlassButton>
+          <GlassButton variant="primary" onClick={goNextSubmittedReview} disabled={currentIndex >= questions.length - 1}>
+            <HandwrittenLabel name="next" text={T.next} className="v91-control-label" />
+            <ArrowRight aria-hidden="true" size={18} />
+          </GlassButton>
+        </nav>
+      ) : (
+        <nav className="image-quiz-controls v90-bottom-controls" aria-label={T.navigation}>
+          <GlassButton variant="secondary" onClick={goPrevious} disabled={currentIndex === 0 || interactionPending}>
+            <ArrowLeft aria-hidden="true" size={18} />
+            <HandwrittenLabel name="previous" text={T.previous} className="v91-control-label" />
+          </GlassButton>
           <GlassButton
             variant="secondary"
-            type="submit"
-            disabled={!jumpInput.trim()}
+            className="v90-question-list-trigger"
+            onClick={() => {
+              if (isDeferredExam) setAnswerCardOpen((open) => !open);
+              else setQuestionListOpen((open) => !open);
+            }}
           >
-            {T.jumpAction}
+            <Grid2X2 aria-hidden="true" size={17} />
+            <span>題目列表</span>
           </GlassButton>
-        </form>
-        <GlassButton variant="primary" onClick={() => void goNext()}>
-          <span>
-            {currentIndex >= questions.length - 1
-              ? isDeferredExam
-                ? "交卷"
-                : T.finish
-              : T.next}
-          </span>
-          <ArrowRight aria-hidden="true" size={18} />
-        </GlassButton>
-      </div>
+          <GlassButton
+            variant="primary"
+            disabled={interactionPending}
+            aria-busy={submissionPending ? "true" : undefined}
+            onClick={() => void goNext()}
+          >
+            <HandwrittenLabel
+              name={currentIndex >= questions.length - 1 ? "submit" : "next"}
+              text={currentIndex >= questions.length - 1 ? (isDeferredExam ? "交卷" : T.finish) : T.next}
+              className="v91-control-label"
+            />
+            <ArrowRight aria-hidden="true" size={18} />
+          </GlassButton>
+        </nav>
+      )}
     </div>
   );
 }
@@ -1312,45 +1679,18 @@ function calculateLiveDailyRemainingCount(
   return Math.min(Math.max(0, baseRemainingCount), calculatedRemaining);
 }
 
-function preloadNeighborQuestionAssets(
-  questions: readonly ImageQuizQuestion[],
-  currentIndex: number,
-): () => void {
-  if (typeof window === "undefined" || !questions.length) {
-    return () => undefined;
+type SecuritiesDailyScope = StudyPlanScopeId | "all";
+
+function resolveSecuritiesDailyScope(search: string): SecuritiesDailyScope {
+  const requested = new URLSearchParams(search).get("scope");
+  if (requested === "all" || requested === null) return "all";
+  if (
+    isStudyPlanScopeId(requested) &&
+    isSecuritiesStudyPlanScopeId(requested)
+  ) {
+    return requested;
   }
-
-  const nextQuestion = questions[currentIndex + 1];
-  if (!nextQuestion) return () => undefined;
-  const sources = new Set<string>();
-  nextQuestion.questionSegments.forEach((segment) => sources.add(segment.src));
-
-  const preload = () => {
-    sources.forEach((source) => {
-      const image = new Image();
-      image.decoding = "async";
-      image.fetchPriority = "low";
-      image.src = pdfImageUrl(source);
-    });
-  };
-
-  if (typeof window.requestIdleCallback === "function") {
-    const idleId = window.requestIdleCallback(preload, { timeout: 1_500 });
-    return () => window.cancelIdleCallback(idleId);
-  }
-
-  const timerId = window.setTimeout(preload, 250);
-  return () => window.clearTimeout(timerId);
-}
-
-function formatElapsedTime(totalSeconds: number): string {
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-  const two = (value: number) => value.toString().padStart(2, "0");
-  return hours > 0
-    ? `${hours}:${two(minutes)}:${two(seconds)}`
-    : `${minutes}:${two(seconds)}`;
+  return "all";
 }
 
 function emptyMessageForMode(mode: ImageQuizMode): string {
@@ -1395,6 +1735,7 @@ function sessionAnswersToRecords(
       selected: answer.selected,
       correct: answer.correct,
       isCorrect: answer.isCorrect,
+      learningRecorded: isMockExamLearningRecorded(answer.learningRecorded),
     };
   }
   return records;
@@ -1402,112 +1743,72 @@ function sessionAnswersToRecords(
 
 async function saveRandomSessionResult(
   sessionId: string,
-  questions: ImageQuizQuestion[],
-  answers: Record<string, AnswerRecord>,
 ): Promise<void> {
-  const answered = questions
-    .map((question) => ({ question, answer: answers[question.id] }))
-    .filter(
-      (item): item is { question: ImageQuizQuestion; answer: AnswerRecord } =>
-        Boolean(item.answer),
-    );
-  const correctCount = answered.filter((item) => item.answer.isCorrect).length;
-  const wrongQuestionIds = answered
-    .filter((item) => !item.answer.isCorrect)
-    .map((item) => item.question.id);
-  const answeredCount = answered.length;
-  const wrongCount = answeredCount - correctCount;
-  await finishImageQuizSession(sessionId, {
-    correctCount,
-    wrongCount,
-    accuracy: calculateAccuracy(correctCount, answeredCount),
-    wrongQuestionIds,
-  });
-}
-
-function calculateConsecutiveCorrectStreak(
-  questions: ImageQuizQuestion[],
-  answers: Record<string, AnswerRecord>,
-  currentIndex: number,
-): number {
-  return calculateCorrectStreakFromIndex(questions, answers, currentIndex);
-}
-
-function calculateActiveCorrectStreak(
-  questions: ImageQuizQuestion[],
-  answers: Record<string, AnswerRecord>,
-  currentIndex: number,
-): number {
-  const currentQuestion = questions[currentIndex];
-  const currentAnswer = currentQuestion
-    ? answers[currentQuestion.id]
-    : undefined;
-  const startIndex = currentAnswer ? currentIndex : currentIndex - 1;
-  return calculateCorrectStreakFromIndex(questions, answers, startIndex);
-}
-
-function calculateCorrectStreakFromIndex(
-  questions: ImageQuizQuestion[],
-  answers: Record<string, AnswerRecord>,
-  startIndex: number,
-): number {
-  let streak = 0;
-  for (let index = startIndex; index >= 0; index -= 1) {
-    const question = questions[index];
-    if (!question) {
-      break;
-    }
-    const answer = answers[question.id];
-    if (!answer?.isCorrect) {
-      break;
-    }
-    streak += 1;
+  const session = await finishImageQuizSession(sessionId);
+  if (!session) {
+    throw new Error("Mock-exam session could not be submitted");
   }
-  return streak;
 }
 
 function answerButtonClass(
   answer: NumericAnswer,
   record: AnswerRecord | undefined,
   revealAnswer = true,
+  revealedCorrectAnswer?: NumericAnswer,
 ): string {
   const classes = ["glass-answer-button"];
-  if (!record) {
+  const correctAnswer = record?.correct ?? revealedCorrectAnswer;
+  if (!record && !correctAnswer) {
     return classes.join(" ");
   }
 
-  if (answer === record.selected) {
+  if (record && answer === record.selected) {
     classes.push("glass-answer-selected");
   }
-  if (revealAnswer && answer === record.correct) {
+  if (revealAnswer && answer === correctAnswer) {
     classes.push("glass-answer-correct");
   }
-  if (revealAnswer && answer === record.selected && !record.isCorrect) {
+  if (
+    revealAnswer &&
+    record &&
+    answer === record.selected &&
+    !record.isCorrect
+  ) {
     classes.push("glass-answer-wrong");
   }
-  if (!revealAnswer && answer === record.selected) {
+  if (!revealAnswer && record && answer === record.selected) {
     classes.push("glass-answer-deferred");
   }
 
   return classes.join(" ");
 }
 
-function answerStatusLabel(
+type AnswerVisualStatus = "correct" | "wrong" | "selected" | null;
+
+function answerVisualStatus(
   answer: NumericAnswer,
-  record: AnswerRecord,
+  record: AnswerRecord | undefined,
   revealAnswer = true,
-): string {
-  if (!revealAnswer) return answer === record.selected ? "已選擇" : "";
-  if (answer === record.selected && answer === record.correct) {
-    return T.selectedCorrect;
-  }
-  if (answer === record.correct) {
-    return T.correct;
-  }
-  if (answer === record.selected) {
-    return T.selected;
-  }
-  return "";
+  revealedCorrectAnswer?: NumericAnswer,
+): AnswerVisualStatus {
+  const correctAnswer = record?.correct ?? revealedCorrectAnswer;
+  if (!revealAnswer) return answer === record?.selected ? "selected" : null;
+  if (answer === correctAnswer) return "correct";
+  if (record && answer === record.selected && !record.isCorrect) return "wrong";
+  return null;
+}
+
+function AnswerResultMark({ status }: { status: AnswerVisualStatus }) {
+  if (!status || status === "selected") return null;
+  const correct = status === "correct";
+  return (
+    <HandwrittenAsset
+      category="states"
+      name={correct ? "correct-chip" : "wrong-chip"}
+      text={correct ? "正解" : "錯誤"}
+      className={`answer-result-label is-${status} v91-answer-state-image`}
+    />
+  );
 }
 
 function StatCard({ label, value }: { label: string; value: string }) {
