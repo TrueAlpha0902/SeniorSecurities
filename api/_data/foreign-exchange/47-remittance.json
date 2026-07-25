@@ -13,19 +13,10 @@
       "D": "每日應編製外匯交易日報於次營業日報送央行外匯局"
     },
     "answer": "C",
-    "acceptedAnswers": [
-      "C"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "匯入款結售為新臺幣時，銀行是買入客戶外匯，應掣發買匯水單；賣匯水單用於客戶結購外匯。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-remittance.pdf",
-    "sourcePath": "47/47-remittance.pdf",
-    "sourcePdfSha256": "71207a7e4643e6d26e676b8de342167f4700330ce4bb62fb22c042e786043c95",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-3.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -54,19 +45,10 @@
       "D": "國外匯兌以國外同業間通匯合約為依據"
     },
     "answer": "C",
-    "acceptedAnswers": [
-      "C"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "國外匯兌會透過通匯帳戶形成銀行間清算與借貸關係，因此『不涉及清算借貸』與其性質不符。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-remittance.pdf",
-    "sourcePath": "47/47-remittance.pdf",
-    "sourcePdfSha256": "71207a7e4643e6d26e676b8de342167f4700330ce4bb62fb22c042e786043c95",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-3.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -95,19 +77,10 @@
       "D": "pacs.009，pacs.009(cov)"
     },
     "answer": "A",
-    "acceptedAnswers": [
-      "A"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "ISO 20022 cover payment 以 pacs.008 傳送客戶付款資訊，另以 pacs.009(cov)在銀行間清算覆蓋款。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-remittance.pdf",
-    "sourcePath": "47/47-remittance.pdf",
-    "sourcePdfSha256": "71207a7e4643e6d26e676b8de342167f4700330ce4bb62fb22c042e786043c95",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-3.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -136,19 +109,10 @@
       "D": "結匯證實書"
     },
     "answer": "B",
-    "acceptedAnswers": [
-      "B"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "客戶以新臺幣向銀行買外匯匯出，銀行辦理賣匯，所以開立賣匯水單。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-remittance.pdf",
-    "sourcePath": "47/47-remittance.pdf",
-    "sourcePdfSha256": "71207a7e4643e6d26e676b8de342167f4700330ce4bb62fb22c042e786043c95",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-3.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -177,19 +141,10 @@
       "D": "九碼"
     },
     "answer": "D",
-    "acceptedAnswers": [
-      "D"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "SWIFT 的加拿大 CC routing code 為九碼：前導 0、三碼金融機構代號及五碼分行 transit number。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-remittance.pdf",
-    "sourcePath": "47/47-remittance.pdf",
-    "sourcePdfSha256": "71207a7e4643e6d26e676b8de342167f4700330ce4bb62fb22c042e786043c95",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-3.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -218,19 +173,10 @@
       "D": "camt.108"
     },
     "answer": "A",
-    "acceptedAnswers": [
-      "A"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "非銀行客戶的單筆信用移轉使用 pacs.008；pacs.009 是金融機構信用移轉，camt 類則是現金管理訊息。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-remittance.pdf",
-    "sourcePath": "47/47-remittance.pdf",
-    "sourcePdfSha256": "71207a7e4643e6d26e676b8de342167f4700330ce4bb62fb22c042e786043c95",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-3.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -259,19 +205,10 @@
       "D": "pacs.008 之收電行"
     },
     "answer": "A",
-    "acceptedAnswers": [
-      "A"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "本題選項（2）、（3）、（4）都指向受益人端的設帳或代理銀行；選項（1）是匯款申請人端的 Debtor Agent，因此錯誤。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-remittance.pdf",
-    "sourcePath": "47/47-remittance.pdf",
-    "sourcePdfSha256": "71207a7e4643e6d26e676b8de342167f4700330ce4bb62fb22c042e786043c95",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-3.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -300,19 +237,10 @@
       "D": "MT740"
     },
     "answer": "B",
-    "acceptedAnswers": [
-      "B"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "開狀行付押匯行、代收行付託收行，都是金融機構間資金移轉，使用 pacs.009。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-remittance.pdf",
-    "sourcePath": "47/47-remittance.pdf",
-    "sourcePdfSha256": "71207a7e4643e6d26e676b8de342167f4700330ce4bb62fb22c042e786043c95",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-3.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -341,19 +269,10 @@
       "D": "匯票及匯票委託書"
     },
     "answer": "B",
-    "acceptedAnswers": [
-      "B"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "SWIFT 電文透過網路認證與訊息驗證碼核驗，實務稱核驗密押，不是核對紙本簽樣。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-remittance.pdf",
-    "sourcePath": "47/47-remittance.pdf",
-    "sourcePdfSha256": "71207a7e4643e6d26e676b8de342167f4700330ce4bb62fb22c042e786043c95",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-3.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -382,19 +301,10 @@
       "D": "通匯行"
     },
     "answer": "A",
-    "acceptedAnswers": [
-      "A"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "票匯的匯票由匯款行交給匯款人，再由匯款人寄交或交付受款人提示付款。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-remittance.pdf",
-    "sourcePath": "47/47-remittance.pdf",
-    "sourcePdfSha256": "71207a7e4643e6d26e676b8de342167f4700330ce4bb62fb22c042e786043c95",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-3.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -423,19 +333,10 @@
       "D": "2 月 1 日"
     },
     "answer": "C",
-    "acceptedAnswers": [
-      "C"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "IntrBkSttlmDt 是銀行間清算日；即使電文較早收到，也應待 1 月 31 日資金可用後才解付。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-remittance.pdf",
-    "sourcePath": "47/47-remittance.pdf",
-    "sourcePdfSha256": "71207a7e4643e6d26e676b8de342167f4700330ce4bb62fb22c042e786043c95",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-3.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -464,19 +365,10 @@
       "D": "pacs.008"
     },
     "answer": "C",
-    "acceptedAnswers": [
-      "C"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "camt.106 是 Charges Payment Request，用於向對方銀行請收匯款相關費用。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-remittance.pdf",
-    "sourcePath": "47/47-remittance.pdf",
-    "sourcePdfSha256": "71207a7e4643e6d26e676b8de342167f4700330ce4bb62fb22c042e786043c95",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-3.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -505,19 +397,10 @@
       "D": "內容是否被塗改"
     },
     "answer": "B",
-    "acceptedAnswers": [
-      "B"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "票匯查核包括提示期限、背書、塗改及簽樣／付款通知；『押碼』不是匯票本身的查核項目。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-remittance.pdf",
-    "sourcePath": "47/47-remittance.pdf",
-    "sourcePdfSha256": "71207a7e4643e6d26e676b8de342167f4700330ce4bb62fb22c042e786043c95",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-3.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -546,19 +429,10 @@
       "D": "匯款行"
     },
     "answer": "B",
-    "acceptedAnswers": [
-      "B"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "匯入款結售時，取得新臺幣的人是受款人，因此由受款人擔任申報義務人。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-remittance.pdf",
-    "sourcePath": "47/47-remittance.pdf",
-    "sourcePdfSha256": "71207a7e4643e6d26e676b8de342167f4700330ce4bb62fb22c042e786043c95",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-3.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -587,19 +461,10 @@
       "D": "外匯收支或交易申報書"
     },
     "answer": "C",
-    "acceptedAnswers": [
-      "C"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "通知他行受款人時寄送匯入通知、跨行申請及必要申報書；買匯水單由實際辦理結售的設帳銀行開立。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-remittance.pdf",
-    "sourcePath": "47/47-remittance.pdf",
-    "sourcePdfSha256": "71207a7e4643e6d26e676b8de342167f4700330ce4bb62fb22c042e786043c95",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-3.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -628,19 +493,10 @@
       "D": "匯款行是否為存匯行"
     },
     "answer": "B",
-    "acceptedAnswers": [
-      "B"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "票匯解付須核對匯票內容與匯款行的 Drawing Advice 一致，以確認票號、金額及受款資料。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-remittance.pdf",
-    "sourcePath": "47/47-remittance.pdf",
-    "sourcePdfSha256": "71207a7e4643e6d26e676b8de342167f4700330ce4bb62fb22c042e786043c95",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-3.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -669,19 +525,10 @@
       "D": "匯入匯款"
     },
     "answer": "D",
-    "acceptedAnswers": [
-      "D"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "雖以匯票方式收款，交易本質是國外匯款匯入後由解款行通知受款人領款，故屬匯入匯款。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-remittance.pdf",
-    "sourcePath": "47/47-remittance.pdf",
-    "sourcePdfSha256": "71207a7e4643e6d26e676b8de342167f4700330ce4bb62fb22c042e786043c95",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-3.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -710,19 +557,10 @@
       "D": "係匯款行簽發以存匯銀行為付款行之匯票"
     },
     "answer": "A",
-    "acceptedAnswers": [
-      "A"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "票匯是匯款方式之一，不等同客戶把一般光票交銀行託收；因此『是一種光票託收』錯誤。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-remittance.pdf",
-    "sourcePath": "47/47-remittance.pdf",
-    "sourcePdfSha256": "71207a7e4643e6d26e676b8de342167f4700330ce4bb62fb22c042e786043c95",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-3.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -751,19 +589,10 @@
       "D": "退匯"
     },
     "answer": "B",
-    "acceptedAnswers": [
-      "B"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "書面 payment order 由匯款行郵寄解款行的方式就是信匯（M/T）。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-remittance.pdf",
-    "sourcePath": "47/47-remittance.pdf",
-    "sourcePdfSha256": "71207a7e4643e6d26e676b8de342167f4700330ce4bb62fb22c042e786043c95",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-3.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -792,19 +621,10 @@
       "D": "非我行付款之票據"
     },
     "answer": "D",
-    "acceptedAnswers": [
-      "D"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "Not drawn on this bank 表示該票據並非以該銀行為付款行，即非我行付款之票據。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-remittance.pdf",
-    "sourcePath": "47/47-remittance.pdf",
-    "sourcePdfSha256": "71207a7e4643e6d26e676b8de342167f4700330ce4bb62fb22c042e786043c95",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-3.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -833,19 +653,10 @@
       "D": "入帳速度較慢，平均為客戶送交後 25 天左右"
     },
     "answer": "C",
-    "acceptedAnswers": [
-      "C"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "Cash Letter 通常先予有條件入帳，日後仍可能退票追索，所以銀行承擔的風險較高。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-remittance.pdf",
-    "sourcePath": "47/47-remittance.pdf",
-    "sourcePdfSha256": "71207a7e4643e6d26e676b8de342167f4700330ce4bb62fb22c042e786043c95",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-3.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -874,19 +685,10 @@
       "D": "Customer Transfer"
     },
     "answer": "C",
-    "acceptedAnswers": [
-      "C"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "未附商業單據、以買入或託收處理的票據，國際匯兌實務統稱 Clean Bill（光票）。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-remittance.pdf",
-    "sourcePath": "47/47-remittance.pdf",
-    "sourcePdfSha256": "71207a7e4643e6d26e676b8de342167f4700330ce4bb62fb22c042e786043c95",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-3.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -915,19 +717,10 @@
       "D": "新臺幣"
     },
     "answer": "C",
-    "acceptedAnswers": [
-      "C"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "票面未標幣別時通常依付款地貨幣解釋；付款地為新加坡，故以新加坡幣入帳。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-remittance.pdf",
-    "sourcePath": "47/47-remittance.pdf",
-    "sourcePdfSha256": "71207a7e4643e6d26e676b8de342167f4700330ce4bb62fb22c042e786043c95",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-3.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -956,19 +749,10 @@
       "D": "有條件的入帳"
     },
     "answer": "A",
-    "acceptedAnswers": [
-      "A"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "Collection Letter 採收妥後付款，代收行實際收款後才入帳，因此是 final payment。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-remittance.pdf",
-    "sourcePath": "47/47-remittance.pdf",
-    "sourcePdfSha256": "71207a7e4643e6d26e676b8de342167f4700330ce4bb62fb22c042e786043c95",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-3.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -997,19 +781,10 @@
       "D": "不得將票款轉讓給第三者"
     },
     "answer": "C",
-    "acceptedAnswers": [
-      "C"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "Non-convertible 限制票款轉換或匯出，表示不得兌換其他外幣或匯往國外。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-remittance.pdf",
-    "sourcePath": "47/47-remittance.pdf",
-    "sourcePdfSha256": "71207a7e4643e6d26e676b8de342167f4700330ce4bb62fb22c042e786043c95",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-3.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -1038,19 +813,10 @@
       "D": "未公告存款天期之利率得參酌相近天期之公告利率與客戶議定"
     },
     "answer": "D",
-    "acceptedAnswers": [
-      "D"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "未公告天期可參考相近天期牌告利率與客戶議定；外匯定存也可短於一個月並可採可轉讓定存單。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-remittance.pdf",
-    "sourcePath": "47/47-remittance.pdf",
-    "sourcePdfSha256": "71207a7e4643e6d26e676b8de342167f4700330ce4bb62fb22c042e786043c95",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-3.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -1079,19 +845,10 @@
       "D": "指定銀行實際繳存之外匯存款準備金不予計息"
     },
     "answer": "D",
-    "acceptedAnswers": [
-      "D"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "外匯存款準備金由中央銀行規範，可用指定幣別提存且可調度，但實際繳存部分不計息。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-remittance.pdf",
-    "sourcePath": "47/47-remittance.pdf",
-    "sourcePdfSha256": "71207a7e4643e6d26e676b8de342167f4700330ce4bb62fb22c042e786043c95",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-3.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -1120,19 +877,10 @@
       "D": "不可與客戶約定，辦理指定到期日外匯定期存款"
     },
     "answer": "A",
-    "acceptedAnswers": [
-      "A"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "外匯存款可以綜合存款方式辦理；其餘選項把可轉讓定存單、對帳單或指定到期日作了不必要限制。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-remittance.pdf",
-    "sourcePath": "47/47-remittance.pdf",
-    "sourcePdfSha256": "71207a7e4643e6d26e676b8de342167f4700330ce4bb62fb22c042e786043c95",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-3.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -1161,19 +909,10 @@
       "D": "預購遠期外匯"
     },
     "answer": "B",
-    "acceptedAnswers": [
-      "B"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "出口商未來收取外幣，應預售遠期外匯，先鎖定未來外幣換回新臺幣的價格。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-remittance.pdf",
-    "sourcePath": "47/47-remittance.pdf",
-    "sourcePdfSha256": "71207a7e4643e6d26e676b8de342167f4700330ce4bb62fb22c042e786043c95",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-3.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -1202,19 +941,10 @@
       "D": "換匯交易不可辦理，但遠期外匯交易可以辦理"
     },
     "answer": "B",
-    "acceptedAnswers": [
-      "B"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "核准投資台灣證券之外國專業投資機構可用換匯及遠期外匯管理匯率風險，因此兩者皆可辦理。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-remittance.pdf",
-    "sourcePath": "47/47-remittance.pdf",
-    "sourcePdfSha256": "71207a7e4643e6d26e676b8de342167f4700330ce4bb62fb22c042e786043c95",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-3.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -1243,19 +973,10 @@
       "D": "國內銀行對其國內客戶"
     },
     "answer": "D",
-    "acceptedAnswers": [
-      "D"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "NDF 是銀行同業或銀行與海外聯行間的差額結算工具，國內銀行不得對國內一般客戶承作。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-remittance.pdf",
-    "sourcePath": "47/47-remittance.pdf",
-    "sourcePdfSha256": "71207a7e4643e6d26e676b8de342167f4700330ce4bb62fb22c042e786043c95",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-3.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -1284,19 +1005,10 @@
       "D": "中央銀行"
     },
     "answer": "A",
-    "acceptedAnswers": [
-      "A"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "受託人只是代理辦理，申報的權利義務仍歸委託人，所以應以委託人名義申報。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-remittance.pdf",
-    "sourcePath": "47/47-remittance.pdf",
-    "sourcePdfSha256": "71207a7e4643e6d26e676b8de342167f4700330ce4bb62fb22c042e786043c95",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-3.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -1325,19 +1037,10 @@
       "D": "外匯存款結售或結購外匯存入外匯存款達五十萬美元"
     },
     "answer": "B",
-    "acceptedAnswers": [
-      "B"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "每筆未達新臺幣五十萬元屬免申報門檻；其他選項金額或交易性質仍須申報或依核准文件辦理。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-remittance.pdf",
-    "sourcePath": "47/47-remittance.pdf",
-    "sourcePdfSha256": "71207a7e4643e6d26e676b8de342167f4700330ce4bb62fb22c042e786043c95",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-3.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -1366,19 +1069,10 @@
       "D": "民營事業逕自向國外引進中長期資金，並持有中央銀行核章之「民營事業中長期外債申報表」者，其還本付息累積結購金額超過每年一億美元之匯款"
     },
     "answer": "D",
-    "acceptedAnswers": [
-      "D"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "持有已核章中長期外債申報表者，其還本付息可依已登記外債辦理，不屬超額後必須再逐筆申請核准的情形。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-remittance.pdf",
-    "sourcePath": "47/47-remittance.pdf",
-    "sourcePdfSha256": "71207a7e4643e6d26e676b8de342167f4700330ce4bb62fb22c042e786043c95",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-3.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -1407,19 +1101,10 @@
       "D": "50%"
     },
     "answer": "B",
-    "acceptedAnswers": [
-      "B"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "依該屆兩岸金融辦法，第三地區銀行的陸資持股超過30%即列為陸資銀行。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-remittance.pdf",
-    "sourcePath": "47/47-remittance.pdf",
-    "sourcePdfSha256": "71207a7e4643e6d26e676b8de342167f4700330ce4bb62fb22c042e786043c95",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-3.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -1448,19 +1133,10 @@
       "D": "交易日報"
     },
     "answer": "C",
-    "acceptedAnswers": [
-      "C"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "出口押匯所得原幣直接存入外匯存款，沒有新臺幣結售，故掣發其他交易憑證。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-remittance.pdf",
-    "sourcePath": "47/47-remittance.pdf",
-    "sourcePdfSha256": "71207a7e4643e6d26e676b8de342167f4700330ce4bb62fb22c042e786043c95",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-3.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -1489,19 +1165,10 @@
       "D": "不需填申報書，但需列計當年累積結匯金額"
     },
     "answer": "A",
-    "acceptedAnswers": [
-      "A"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "依該屆門檻，未達新臺幣五十萬元免填申報書，也不列入年度累積結匯額度。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-remittance.pdf",
-    "sourcePath": "47/47-remittance.pdf",
-    "sourcePdfSha256": "71207a7e4643e6d26e676b8de342167f4700330ce4bb62fb22c042e786043c95",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-3.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -1530,19 +1197,10 @@
       "D": "10 萬美元"
     },
     "answer": "A",
-    "acceptedAnswers": [
-      "A"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "指定銀行外幣提款機每帳戶每日累積提領上限為等值一萬美元。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-remittance.pdf",
-    "sourcePath": "47/47-remittance.pdf",
-    "sourcePdfSha256": "71207a7e4643e6d26e676b8de342167f4700330ce4bb62fb22c042e786043c95",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-3.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -1571,19 +1229,10 @@
       "D": "國內指定銀行間及其與國外銀行間辦理未涉及新臺幣匯率之外匯衍生性商品"
     },
     "answer": "B",
-    "acceptedAnswers": [
-      "B"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "涉及新臺幣匯率的衍生性商品仍受專案規範，不能僅憑一般外匯衍生性商品許可逕行承作。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-remittance.pdf",
-    "sourcePath": "47/47-remittance.pdf",
-    "sourcePdfSha256": "71207a7e4643e6d26e676b8de342167f4700330ce4bb62fb22c042e786043c95",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-3.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -1612,19 +1261,10 @@
       "D": "無金額限制"
     },
     "answer": "C",
-    "acceptedAnswers": [
-      "C"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "個人進口貨品結匯達等值五十萬美元以上須核對文件；未附文件表示金額必低於五十萬美元。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-remittance.pdf",
-    "sourcePath": "47/47-remittance.pdf",
-    "sourcePdfSha256": "71207a7e4643e6d26e676b8de342167f4700330ce4bb62fb22c042e786043c95",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-3.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -1653,19 +1293,10 @@
       "D": "解款行逕行辦理並計入其當年累積結匯金額"
     },
     "answer": "C",
-    "acceptedAnswers": [
-      "C"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "境外外國金融機構匯入款不得結售為新臺幣，故不能因金額或代理申報而辦理。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-remittance.pdf",
-    "sourcePath": "47/47-remittance.pdf",
-    "sourcePdfSha256": "71207a7e4643e6d26e676b8de342167f4700330ce4bb62fb22c042e786043c95",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-3.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -1694,19 +1325,10 @@
       "D": "申報人更正後由受理銀行證明即可"
     },
     "answer": "A",
-    "acceptedAnswers": [
-      "A"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "申報書金額是核心欄位，不得塗改；填錯應重新填寫一份完整申報書。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-remittance.pdf",
-    "sourcePath": "47/47-remittance.pdf",
-    "sourcePdfSha256": "71207a7e4643e6d26e676b8de342167f4700330ce4bb62fb22c042e786043c95",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-3.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -1735,19 +1357,10 @@
       "D": "包括外幣存款，但不包括外幣放款"
     },
     "answer": "B",
-    "acceptedAnswers": [
-      "B"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "銀行法第72條所稱中期放款與定期存款的限額計算不含外幣放款及外幣存款。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-remittance.pdf",
-    "sourcePath": "47/47-remittance.pdf",
-    "sourcePdfSha256": "71207a7e4643e6d26e676b8de342167f4700330ce4bb62fb22c042e786043c95",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-3.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -1776,19 +1389,10 @@
       "D": "陸資銀行"
     },
     "answer": "A",
-    "acceptedAnswers": [
-      "A"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "被其他金融機構直接或間接持有超過50%表決權或資本的銀行，定義為子銀行。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-remittance.pdf",
-    "sourcePath": "47/47-remittance.pdf",
-    "sourcePdfSha256": "71207a7e4643e6d26e676b8de342167f4700330ce4bb62fb22c042e786043c95",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-3.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -1817,19 +1421,10 @@
       "D": "交割當日"
     },
     "answer": "B",
-    "acceptedAnswers": [
-      "B"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "等值一百萬美元以上遠期交易須於訂約日次營業日中午十二時前連線報送中央銀行。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-remittance.pdf",
-    "sourcePath": "47/47-remittance.pdf",
-    "sourcePdfSha256": "71207a7e4643e6d26e676b8de342167f4700330ce4bb62fb22c042e786043c95",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-3.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -1858,19 +1453,10 @@
       "D": "同一銀行兌購外匯存入外匯存款"
     },
     "answer": "D",
-    "acceptedAnswers": [
-      "D"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "同一銀行外幣活存、定存間轉換或續存沒有資金實際流出，列 695；新臺幣兌購外匯則有結購資金流動，不能列 695。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-remittance.pdf",
-    "sourcePath": "47/47-remittance.pdf",
-    "sourcePdfSha256": "71207a7e4643e6d26e676b8de342167f4700330ce4bb62fb22c042e786043c95",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-3.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -1899,19 +1485,10 @@
       "D": "20 個營業日"
     },
     "answer": "A",
-    "acceptedAnswers": [
-      "A"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "僅辦外幣現鈔與旅行支票的人員，依該屆規定至少須有五個營業日相關外匯業務經歷。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-remittance.pdf",
-    "sourcePath": "47/47-remittance.pdf",
-    "sourcePdfSha256": "71207a7e4643e6d26e676b8de342167f4700330ce4bb62fb22c042e786043c95",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-3.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -1940,19 +1517,10 @@
       "D": "旅行剩餘退匯"
     },
     "answer": "C",
-    "acceptedAnswers": [
-      "C"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "外匯存款提出結售是國內帳戶既有外匯轉換新臺幣，匯款地國別填本國。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-remittance.pdf",
-    "sourcePath": "47/47-remittance.pdf",
-    "sourcePdfSha256": "71207a7e4643e6d26e676b8de342167f4700330ce4bb62fb22c042e786043c95",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-3.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -1981,19 +1549,10 @@
       "D": "連鎖便利商店或藥妝店若具有收兌外幣需要，並有適當之安全控管機制者，得申請設置外幣收兌處"
     },
     "answer": "A",
-    "acceptedAnswers": [
-      "A"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "外幣收兌處證照由臺灣銀行核發與管理，不是中央銀行直接發給，因此選項（1）錯誤。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-remittance.pdf",
-    "sourcePath": "47/47-remittance.pdf",
-    "sourcePdfSha256": "71207a7e4643e6d26e676b8de342167f4700330ce4bb62fb22c042e786043c95",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-3.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -2022,19 +1581,10 @@
       "D": "六個月"
     },
     "answer": "A",
-    "acceptedAnswers": [
-      "A"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "銀行裁撤或終止外匯業務後，應在一週內繳回、換發指定證書或函報備查。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-remittance.pdf",
-    "sourcePath": "47/47-remittance.pdf",
-    "sourcePdfSha256": "71207a7e4643e6d26e676b8de342167f4700330ce4bb62fb22c042e786043c95",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-3.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",

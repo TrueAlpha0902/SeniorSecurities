@@ -4,8 +4,6 @@ import { AppErrorBoundary } from "./components/AppErrorBoundary";
 import { AppLayout } from "./components/AppLayout";
 import { AppUpdateNotice } from "./components/AppUpdateNotice";
 import { DeferredAnalytics } from "./components/DeferredAnalytics";
-import { HashScrollManager } from "./components/HashScrollManager";
-import { InteractionFeedbackHost } from "./components/InteractionFeedbackHost";
 import { LoadingState } from "./components/LoadingState";
 import { AuthProvider, type ExamId, useAuth } from "./auth/AuthContext";
 import { ProtectedRoute } from "./auth/ProtectedRoute";
@@ -24,10 +22,13 @@ const ForgotPasswordPage = lazyWithRetry(() => import("./pages/ForgotPasswordPag
 const HomePage = lazyWithRetry(() => import("./pages/HomePage").then((module) => ({ default: module.HomePage })));
 const ImageQuizPage = lazyWithRetry(() => import("./pages/ImageQuizPage").then((module) => ({ default: module.ImageQuizPage })));
 const LeaderboardPage = lazyWithRetry(() => import("./pages/LeaderboardPage").then((module) => ({ default: module.LeaderboardPage })));
+const QuestionsPage = lazyWithRetry(() => import("./pages/QuestionsPage").then((module) => ({ default: module.QuestionsPage })));
+const QuizPage = lazyWithRetry(() => import("./pages/QuizPage").then((module) => ({ default: module.QuizPage })));
 const RandomPracticePage = lazyWithRetry(() => import("./pages/RandomPracticePage").then((module) => ({ default: module.RandomPracticePage })));
 const ResetPasswordPage = lazyWithRetry(() => import("./pages/ResetPasswordPage").then((module) => ({ default: module.ResetPasswordPage })));
+const ResultPage = lazyWithRetry(() => import("./pages/ResultPage").then((module) => ({ default: module.ResultPage })));
+const ReviewPage = lazyWithRetry(() => import("./pages/ReviewPage").then((module) => ({ default: module.ReviewPage })));
 const SimilarQuestionsPage = lazyWithRetry(() => import("./pages/SimilarQuestionsPage").then((module) => ({ default: module.SimilarQuestionsPage })));
-const SearchPage = lazyWithRetry(() => import("./pages/SearchPage").then((module) => ({ default: module.SearchPage })));
 
 function RequireExam({ children, examId }: { children: ReactNode; examId: ExamId }) {
   return <ProtectedRoute examId={examId}>{children}</ProtectedRoute>;
@@ -47,7 +48,6 @@ export function App() {
   return (
     <AppErrorBoundary>
       <AuthProvider>
-        <HashScrollManager />
         <AppLayout>
           <Suspense fallback={<LoadingState label="載入頁面" />}>
             <Routes>
@@ -58,12 +58,14 @@ export function App() {
               <Route path="/activate" element={<ActivatePage />} />
               <Route path="/account" element={<AccountPage />} />
               <Route path="/admin" element={<AdminPage />} />
-              <Route path="/search" element={<ProtectedRoute requireActivation={false}><SearchPage /></ProtectedRoute>} />
               <Route path="/trial" element={<ImageQuizPage />} />
 
               <Route path="/securities" element={securities(<HomePage />)} />
               <Route path="/leaderboard" element={securities(<LeaderboardPage />)} />
               <Route path="/banks/:bankId" element={securities(<BankPage />)} />
+              <Route path="/questions/all" element={securities(<QuestionsPage />)} />
+              <Route path="/questions/bank/:bankId" element={securities(<QuestionsPage />)} />
+              <Route path="/questions/bank/:bankId/chapter/:chapterId" element={securities(<QuestionsPage />)} />
               <Route path="/answer-drill" element={securities(<AnswerDrillPage />)} />
               <Route path="/similar" element={securities(<SimilarQuestionsPage />)} />
               <Route path="/random" element={securities(<RandomPracticePage />)} />
@@ -76,10 +78,13 @@ export function App() {
               <Route path="/image-quiz/session-wrong/:sessionId" element={securities(<ImageQuizPage />)} />
               <Route path="/image-quiz/bank/:bankId" element={securities(<ImageQuizPage />)} />
               <Route path="/image-quiz/bank/:bankId/chapter/:chapterId" element={securities(<ImageQuizPage />)} />
-              <Route path="/questions/*" element={<Navigate to="/search" replace />} />
-              <Route path="/quiz/*" element={<Navigate to="/securities" replace />} />
-              <Route path="/result" element={<Navigate to="/securities" replace />} />
-              <Route path="/review" element={<Navigate to="/securities" replace />} />
+              <Route path="/quiz/bank/:bankId" element={securities(<QuizPage />)} />
+              <Route path="/quiz/bank/:bankId/chapter/:chapterId" element={securities(<QuizPage />)} />
+              <Route path="/quiz/all" element={securities(<QuizPage />)} />
+              <Route path="/quiz/wrong" element={securities(<QuizPage />)} />
+              <Route path="/quiz/favorites" element={securities(<QuizPage />)} />
+              <Route path="/result" element={securities(<ResultPage />)} />
+              <Route path="/review" element={securities(<ReviewPage />)} />
 
               <Route path="/foreign-exchange" element={foreignExchange(<ForeignExchangeHomePage />)} />
               <Route path="/foreign-exchange/practice" element={foreignExchange(<ForeignExchangePracticePage />)} />
@@ -90,7 +95,6 @@ export function App() {
         </AppLayout>
         <AppUpdateNotice />
         <DeferredAnalytics />
-        <InteractionFeedbackHost />
       </AuthProvider>
     </AppErrorBoundary>
   );

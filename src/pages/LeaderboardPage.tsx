@@ -11,10 +11,10 @@ import {
 } from "lucide-react";
 import { type ChangeEvent, type FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { AvatarCropDialog } from "../components/AvatarCropDialog";
+import { ErrorState } from "../components/ErrorState";
 import { GlassButton } from "../components/GlassButton";
 import { GlassCard } from "../components/GlassCard";
 import { LoadingState } from "../components/LoadingState";
-import { V93ConfirmDialog, V93InlineNotice } from "../components/V93InteractionPrimitives";
 import {
   getCurrentLeaderboardProfile,
   listLeaderboard,
@@ -26,7 +26,6 @@ import {
   type LeaderboardEntry,
 } from "../lib/leaderboard";
 import { formatTotalPracticeTime } from "../lib/practiceTime";
-import { announceInteractionFeedback } from "../lib/interactionFeedback";
 import "../styles/leaderboard-v66.css";
 
 type LeaderboardTab = "streak" | "time";
@@ -91,7 +90,6 @@ export function LeaderboardPage() {
   const [saving, setSaving] = useState(false);
   const [avatarBusy, setAvatarBusy] = useState(false);
   const [pendingAvatarFile, setPendingAvatarFile] = useState<File | null>(null);
-  const [removeAvatarConfirmationOpen, setRemoveAvatarConfirmationOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -100,22 +98,13 @@ export function LeaderboardPage() {
     if (initial) setLoading(true); else setRefreshing(true);
     setError(null);
     try {
-      const [profile, streak, time] = await Promise.all([
-        getCurrentLeaderboardProfile(),
-        listLeaderboard(100),
-        listPracticeTimeLeaderboard(100),
-      ]);
+      const [profile, streak, time] = await Promise.all([getCurrentLeaderboardProfile(), listLeaderboard(100), listPracticeTimeLeaderboard(100)]);
       setDisplayName(profile.displayName);
       setAvatarUrl(profile.avatarUrl);
       setStreakEntries(streak);
       setTimeEntries(time);
-      if (!initial) {
-        announceInteractionFeedback("排行榜已更新。", "success");
-      }
     } catch (caught) {
-      const nextError = caught instanceof Error ? caught.message : String(caught);
-      setError(nextError);
-      announceInteractionFeedback(nextError, "error", 4400);
+      setError(caught instanceof Error ? caught.message : String(caught));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -126,31 +115,14 @@ export function LeaderboardPage() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const normalizedName = displayName.trim();
-    if (normalizedName.length < 2) {
-      const nextError = "顯示名稱至少需要 2 個字元。";
-      setError(nextError);
-      announceInteractionFeedback(nextError, "warning", 3200);
-      return;
-    }
-
-    setSaving(true);
-    setError(null);
-    setMessage(null);
+    setSaving(true); setError(null); setMessage(null);
     try {
-      await updateLeaderboardDisplayName(normalizedName);
-      setDisplayName(normalizedName);
-      const nextMessage = "排行榜名稱已更新。";
-      setMessage(nextMessage);
-      announceInteractionFeedback(nextMessage, "success");
+      await updateLeaderboardDisplayName(displayName);
+      setMessage("排行榜名稱已更新。");
       await refresh();
     } catch (caught) {
-      const nextError = caught instanceof Error ? caught.message : String(caught);
-      setError(nextError);
-      announceInteractionFeedback(nextError, "error", 4400);
-    } finally {
-      setSaving(false);
-    }
+      setError(caught instanceof Error ? caught.message : String(caught));
+    } finally { setSaving(false); }
   }
 
   function handleAvatar(event: ChangeEvent<HTMLInputElement>) {
@@ -162,52 +134,33 @@ export function LeaderboardPage() {
       validateLeaderboardAvatarFile(file);
       setPendingAvatarFile(file);
     } catch (caught) {
-      const nextError = caught instanceof Error ? caught.message : String(caught);
-      setError(nextError);
-      announceInteractionFeedback(nextError, "error", 4200);
+      setError(caught instanceof Error ? caught.message : String(caught));
     }
   }
 
   async function handleAvatarCrop(blob: Blob): Promise<void> {
-    setAvatarBusy(true);
-    setError(null);
-    setMessage(null);
+    setAvatarBusy(true); setError(null); setMessage(null);
     try {
       await updateLeaderboardAvatar(blob);
       setPendingAvatarFile(null);
-      const nextMessage = "頭像已更新。";
-      setMessage(nextMessage);
-      announceInteractionFeedback(nextMessage, "success");
+      setMessage("頭像已更新。");
       await refresh();
     } catch (caught) {
-      const nextError = caught instanceof Error ? caught.message : String(caught);
-      setError(nextError);
-      announceInteractionFeedback(nextError, "error", 4400);
+      setError(caught instanceof Error ? caught.message : String(caught));
       throw caught;
-    } finally {
-      setAvatarBusy(false);
-    }
+    } finally { setAvatarBusy(false); }
   }
 
-  async function handleRemoveAvatar(): Promise<void> {
-    if (avatarBusy) return;
-    setAvatarBusy(true);
-    setError(null);
-    setMessage(null);
+  async function handleRemoveAvatar() {
+    if (!window.confirm("確定要移除排行榜頭像？")) return;
+    setAvatarBusy(true); setError(null); setMessage(null);
     try {
       await removeLeaderboardAvatar();
-      const nextMessage = "頭像已移除。";
-      setMessage(nextMessage);
-      setRemoveAvatarConfirmationOpen(false);
-      announceInteractionFeedback(nextMessage, "success");
+      setMessage("頭像已移除。");
       await refresh();
     } catch (caught) {
-      const nextError = caught instanceof Error ? caught.message : String(caught);
-      setError(nextError);
-      announceInteractionFeedback(nextError, "error", 4400);
-    } finally {
-      setAvatarBusy(false);
-    }
+      setError(caught instanceof Error ? caught.message : String(caught));
+    } finally { setAvatarBusy(false); }
   }
 
   const entries = activeTab === "streak" ? streakEntries : timeEntries;
@@ -228,39 +181,14 @@ export function LeaderboardPage() {
         </div>
         <div className="leaderboard-v66-actions">
           <div className="leaderboard-v66-tabs" role="tablist" aria-label="排行榜類型">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activeTab === "streak"}
-              className={activeTab === "streak" ? "is-active" : ""}
-              onClick={() => { setActiveTab("streak"); setPage(1); }}
-            >
-              <Flame aria-hidden="true" size={17} />連續答對
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activeTab === "time"}
-              className={activeTab === "time" ? "is-active" : ""}
-              onClick={() => { setActiveTab("time"); setPage(1); }}
-            >
-              <Clock3 aria-hidden="true" size={17} />練習時數
-            </button>
+            <button type="button" className={activeTab === "streak" ? "is-active" : ""} onClick={() => { setActiveTab("streak"); setPage(1); }}><Flame size={17} />連續答對</button>
+            <button type="button" className={activeTab === "time" ? "is-active" : ""} onClick={() => { setActiveTab("time"); setPage(1); }}><Clock3 size={17} />練習時數</button>
           </div>
-          <GlassButton
-            variant="secondary"
-            busy={refreshing}
-            disabled={refreshing}
-            onClick={() => void refresh()}
-          >
-            <RefreshCw aria-hidden="true" className={refreshing ? "is-spinning" : ""} size={18} />
-            {refreshing ? "更新中" : "更新排名"}
-          </GlassButton>
+          <GlassButton variant="secondary" disabled={refreshing} onClick={() => void refresh()}><RefreshCw className={refreshing ? "is-spinning" : ""} size={18} />{refreshing ? "更新中" : "更新排名"}</GlassButton>
         </div>
       </GlassCard>
 
-      {error ? <V93InlineNotice tone="error">{error}</V93InlineNotice> : null}
-      {message ? <V93InlineNotice tone="success">{message}</V93InlineNotice> : null}
+      {error ? <ErrorState message={error} /> : null}
 
       {podiumEntries.length ? (
         <GlassCard className={`leaderboard-v796-podium count-${podiumEntries.length}`} as="section">
@@ -298,35 +226,16 @@ export function LeaderboardPage() {
           </div>
           <div><p className="eyebrow">Public Profile</p><h2>我的排行榜資料</h2></div>
         </div>
-        <input
-          ref={fileInputRef}
-          className="leaderboard-avatar-input"
-          type="file"
-          accept="image/png,image/jpeg,image/webp"
-          disabled={avatarBusy}
-          aria-label="選擇排行榜頭像圖片"
-          onChange={(event) => void handleAvatar(event)}
-        />
-        <form aria-busy={saving || undefined} onSubmit={(event) => void handleSubmit(event)}>
-          <label>
-            <span>顯示名稱</span>
-            <input
-              value={displayName}
-              minLength={2}
-              maxLength={24}
-              required
-              disabled={saving}
-              aria-invalid={displayName.trim().length < 2 || undefined}
-              onChange={(event) => setDisplayName(event.currentTarget.value)}
-            />
-            <small>{displayName.length}/24</small>
-          </label>
+        <input ref={fileInputRef} className="leaderboard-avatar-input" type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => void handleAvatar(event)} />
+        <form onSubmit={(event) => void handleSubmit(event)}>
+          <label><span>顯示名稱</span><input value={displayName} minLength={2} maxLength={24} required onChange={(event) => setDisplayName(event.currentTarget.value)} /><small>{displayName.length}/24</small></label>
           <div className="leaderboard-profile-actions">
-            <GlassButton type="button" variant="secondary" busy={avatarBusy} disabled={avatarBusy} onClick={() => fileInputRef.current?.click()}><Camera aria-hidden="true" size={17} />{avatarBusy ? "處理中" : "更換頭像"}</GlassButton>
-            {avatarUrl ? <GlassButton type="button" variant="secondary" disabled={avatarBusy} onClick={() => setRemoveAvatarConfirmationOpen(true)}><Trash2 aria-hidden="true" size={17} />移除頭像</GlassButton> : null}
-            <GlassButton type="submit" variant="primary" busy={saving} disabled={saving || displayName.trim().length < 2}><Save aria-hidden="true" size={17} />{saving ? "儲存中" : "儲存資料"}</GlassButton>
+            <GlassButton type="button" variant="secondary" disabled={avatarBusy} onClick={() => fileInputRef.current?.click()}><Camera size={17} />{avatarBusy ? "處理中" : "更換頭像"}</GlassButton>
+            {avatarUrl ? <GlassButton type="button" variant="secondary" disabled={avatarBusy} onClick={() => void handleRemoveAvatar()}><Trash2 size={17} />移除頭像</GlassButton> : null}
+            <GlassButton type="submit" variant="primary" disabled={saving || displayName.trim().length < 2}><Save size={17} />{saving ? "儲存中" : "儲存資料"}</GlassButton>
           </div>
         </form>
+        {message ? <p className="form-success" role="status">{message}</p> : null}
       </GlassCard>
 
       {pendingAvatarFile ? (
@@ -352,38 +261,8 @@ export function LeaderboardPage() {
             </article>;
           })}
         </div>
-        {entries.length > PAGE_SIZE ? (
-          <nav className="leaderboard-v66-pagination" aria-label="排行榜分頁">
-            <button
-              type="button"
-              disabled={currentPage <= 1}
-              aria-label="上一頁排行榜"
-              onClick={() => setPage((value) => Math.max(1, value - 1))}
-            >
-              <ChevronLeft aria-hidden="true" size={17} />上一頁
-            </button>
-            <span role="status" aria-live="polite">{currentPage} / {pageCount}</span>
-            <button
-              type="button"
-              disabled={currentPage >= pageCount}
-              aria-label="下一頁排行榜"
-              onClick={() => setPage((value) => Math.min(pageCount, value + 1))}
-            >
-              下一頁<ChevronRight aria-hidden="true" size={17} />
-            </button>
-          </nav>
-        ) : null}
+        {entries.length > PAGE_SIZE ? <div className="leaderboard-v66-pagination"><button disabled={currentPage <= 1} onClick={() => setPage((value) => Math.max(1, value - 1))}><ChevronLeft size={17} />上一頁</button><span>{currentPage} / {pageCount}</span><button disabled={currentPage >= pageCount} onClick={() => setPage((value) => Math.min(pageCount, value + 1))}>下一頁<ChevronRight size={17} /></button></div> : null}
       </GlassCard>
-
-      <V93ConfirmDialog
-        open={removeAvatarConfirmationOpen}
-        title="移除排行榜頭像"
-        message="移除後將改回文字縮寫頭像。這不會影響排行榜成績。"
-        confirmLabel={avatarBusy ? "移除中" : "移除頭像"}
-        busy={avatarBusy}
-        onConfirm={() => void handleRemoveAvatar()}
-        onCancel={() => setRemoveAvatarConfirmationOpen(false)}
-      />
     </div>
   );
 }

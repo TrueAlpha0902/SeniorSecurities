@@ -2310,73 +2310,6 @@ export async function recordUserAnswer(
   return userAnswer;
 }
 
-export async function recordExternalUserAnswers(
-  records: readonly UserAnswer[],
-): Promise<void> {
-  if (!records.length) return;
-  const latestByQuestion = new Map<string, UserAnswer>();
-  for (const record of records) {
-    const existing = latestByQuestion.get(record.questionId);
-    if (!existing || existing.answeredAt <= record.answeredAt) {
-      latestByQuestion.set(record.questionId, record);
-    }
-  }
-
-  const { db, userId } = await getDbContext();
-  const tx = db.transaction(
-    ["userAnswers", "wrongQuestions", "syncIntents"],
-    "readwrite",
-  );
-  const answerStore = tx.objectStore("userAnswers");
-  const wrongStore = tx.objectStore("wrongQuestions");
-  const intentStore = tx.objectStore("syncIntents");
-
-  for (const record of latestByQuestion.values()) {
-    const existingAnswer = await answerStore.get(record.questionId);
-    if (existingAnswer && existingAnswer.answeredAt > record.answeredAt) continue;
-    await answerStore.put(record);
-
-    let wrongRecord: WrongQuestionRecord | null = null;
-    if (record.isCorrect) {
-      await wrongStore.delete(record.questionId);
-    } else {
-      const existingWrong = await wrongStore.get(record.questionId);
-      const isNewAttempt = !existingAnswer || existingAnswer.answeredAt !== record.answeredAt;
-      wrongRecord = {
-        questionId: record.questionId,
-        bankId: record.bankId,
-        chapter: record.chapter,
-        lastWrongAt: record.answeredAt,
-        wrongCount: Math.max(1, (existingWrong?.wrongCount ?? 0) + (isNewAttempt ? 1 : 0)),
-      };
-      await wrongStore.put(wrongRecord);
-    }
-
-    if (userId) {
-      await intentStore.put(createSyncIntentRecord(userId, {
-        kind: "upsert-answer",
-        record,
-      }));
-      await intentStore.put(createSyncIntentRecord(
-        userId,
-        wrongRecord
-          ? { kind: "upsert-wrong", record: wrongRecord }
-          : { kind: "delete-wrong", questionId: record.questionId },
-      ));
-    }
-  }
-
-  await tx.done;
-  if (userId) {
-    try {
-      await drainLocalSyncIntents(userId, db);
-    } catch (error) {
-      console.warn("External answer sync intents remain queued for retry", error);
-    }
-  }
-  notifyRecordChange();
-}
-
 export async function recordImageUserAnswer(
   question: ImageQuizQuestion,
   selectedAnswer: NumericAnswer,
@@ -2589,49 +2522,6 @@ export async function toggleFavoriteRef(ref: {
   await tx.done;
   if (userId) await drainLocalSyncIntents(userId, db);
   return nextValue;
-}
-
-export async function setFavoriteRef(
-  ref: { questionId: string; bankId: string; chapter: string },
-  favorite: boolean,
-): Promise<boolean> {
-  const { db, userId } = await getDbContext();
-  const tx = db.transaction(["favoriteQuestions", "syncIntents"], "readwrite");
-  const store = tx.objectStore("favoriteQuestions");
-  const existing = await store.get(ref.questionId);
-  if (favorite && !existing) {
-    const record: FavoriteQuestionRecord = {
-      questionId: ref.questionId,
-      bankId: ref.bankId,
-      chapter: ref.chapter,
-      createdAt: new Date().toISOString(),
-    };
-    await store.put(record);
-    if (userId) {
-      await tx.objectStore("syncIntents").put(createSyncIntentRecord(userId, {
-        kind: "upsert-favorite",
-        record,
-      }));
-    }
-  } else if (!favorite && existing) {
-    await store.delete(ref.questionId);
-    if (userId) {
-      await tx.objectStore("syncIntents").put(createSyncIntentRecord(userId, {
-        kind: "delete-favorite",
-        questionId: ref.questionId,
-      }));
-    }
-  }
-  await tx.done;
-  if (userId) {
-    try {
-      await drainLocalSyncIntents(userId, db);
-    } catch (error) {
-      console.warn("Favorite sync intent remains queued for retry", error);
-    }
-  }
-  notifyRecordChange();
-  return favorite;
 }
 
 export async function toggleFavoriteQuestion(
@@ -2898,39 +2788,6 @@ export async function saveImageQuizSessionFeedbackMode(
             lastSettledAt: new Date().toISOString(),
           },
     ),
-  );
-}
-
-export async function applyImageQuizMockGrading(
-  sessionId: string,
-  gradedAnswers: Array<{
-    questionId: string;
-    selected: NumericAnswer;
-    correct: NumericAnswer;
-    isCorrect: boolean;
-  }>,
-): Promise<ImageQuizSessionRecord | undefined> {
-  return queueImageQuizSessionMutation(sessionId, () =>
-    updateImageQuizSession(sessionId, (session) => {
-      if (session.finishedAt) return undefined;
-      const answers = { ...session.answers };
-      for (const graded of gradedAnswers) {
-        const existing = answers[graded.questionId];
-        if (!existing || existing.selected !== graded.selected) continue;
-        answers[graded.questionId] = {
-          ...existing,
-          correct: graded.correct,
-          isCorrect: graded.isCorrect,
-          learningRecorded: false,
-        };
-      }
-      return {
-        ...session,
-        ...summarizeImageAnswers(answers),
-        answers,
-        lastSettledAt: new Date().toISOString(),
-      };
-    }),
   );
 }
 

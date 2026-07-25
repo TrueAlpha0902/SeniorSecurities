@@ -1,11 +1,6 @@
 .git
 .vercel
 .env*
-.github
-dist
-supabase
-update-backups
-scripts/__pycache__
 node_modules
 .netlify
 netlify
@@ -19,6 +14,10 @@ source-materials
 public/data/backups
 desktop
 docs
+supabase
+update-backups
+dist
+.github
 README-v*.txt
 *.bak
 *.exe
@@ -28,11 +27,4 @@ README-v*.txt
 playwright-report
 test-results
 tests
-
-public/pdf-pages
-.venv-audit
-patch
-preview
-/manifest.json
-patch-manifest.json
-*.bak-*
+scripts/__pycache__

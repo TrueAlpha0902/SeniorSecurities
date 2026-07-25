@@ -27,9 +27,3 @@ test-results/
 
 __pycache__/
 *.pyc
-.venv-audit/
-/patch/
-/preview/
-/manifest.json
-/patch-manifest.json
-*.bak-*
