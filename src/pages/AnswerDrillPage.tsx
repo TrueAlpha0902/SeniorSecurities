@@ -6,18 +6,10 @@ import { EncouragementNote } from "../components/EncouragementNote";
 import { GlassButton } from "../components/GlassButton";
 import { GlassCard } from "../components/GlassCard";
 import { LoadingState } from "../components/LoadingState";
-import {
-  ScanExplanationContent,
-  ScanQuestionContent,
-  ScanStaticOptionList,
-} from "../components/ScanDerivedQuestionContent";
+import { PdfSegmentStack } from "../components/PdfSegmentStack";
 import { ProgressBar } from "../components/ProgressBar";
 import { useAsync } from "../hooks/useAsync";
-import {
-  loadAllImageQuestions,
-  resetImageQuizCaches,
-  type ImageQuizQuestion,
-} from "../lib/imageQuiz";
+import { loadAllImageQuestions, type ImageQuizQuestion } from "../lib/imageQuiz";
 
 const T = {
   loading: "\u8f09\u5165\u6b63\u89e3\u6a21\u5f0f",
@@ -42,7 +34,7 @@ async function loadAnswerDrillData(): Promise<AnswerDrillData> {
 }
 
 export function AnswerDrillPage() {
-  const { data, error, loading, retry } = useAsync(loadAnswerDrillData, []);
+  const { data, error, loading } = useAsync(loadAnswerDrillData, []);
   const questions = useMemo(() => data?.questions ?? [], [data?.questions]);
   const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -51,16 +43,7 @@ export function AnswerDrillPage() {
   }
 
   if (error) {
-    return (
-      <ErrorState
-        title="無法載入正解模式"
-        message={error}
-        onRetry={() => {
-          resetImageQuizCaches();
-          retry();
-        }}
-      />
-    );
+    return <ErrorState message={error} />;
   }
 
   if (!questions.length) {
@@ -98,12 +81,11 @@ export function AnswerDrillPage() {
           label={`${currentIndex + 1} / ${questions.length}`}
         />
 
-        <ScanQuestionContent
-          question={currentQuestion}
+        <PdfSegmentStack
           label={`${currentQuestion.bankTitle} ${currentQuestion.chapterTitle} ${currentQuestion.number} \u984c`}
+          segments={currentQuestion.questionSegments}
+          priority="high"
         />
-
-        <ScanStaticOptionList question={currentQuestion} />
 
         <div className="answer-drill-key">
           <span>{T.answer}</span>
@@ -114,9 +96,10 @@ export function AnswerDrillPage() {
 
         <div className="glass-explanation">
           <h2>{T.explanation}</h2>
-          <ScanExplanationContent
-            question={currentQuestion}
+          <PdfSegmentStack
             label={`${currentQuestion.bankTitle} ${currentQuestion.chapterTitle} ${currentQuestion.number} \u984c\u89e3\u6790`}
+            segments={currentQuestion.explanationSegments}
+            priority="auto"
           />
         </div>
       </GlassCard>

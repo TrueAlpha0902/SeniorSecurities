@@ -27,8 +27,6 @@ import { AdminToolsPanel } from "../components/AdminToolsPanel";
 import { GlassButton } from "../components/GlassButton";
 import { GlassCard } from "../components/GlassCard";
 import { LoadingState } from "../components/LoadingState";
-import { V93ConfirmDialog, V93InlineNotice } from "../components/V93InteractionPrimitives";
-import { announceInteractionFeedback } from "../lib/interactionFeedback";
 import { formatTotalPracticeTime } from "../lib/practiceTime";
 import "../styles/admin-leaderboard-v42.css";
 import "../styles/admin-premium-v65.css";
@@ -200,16 +198,6 @@ type AuditResponse = { events?: AdminAuditEvent[]; error?: string };
 type ActionResponse = { ok?: boolean; message?: string; error?: string };
 type UserFilter = "all" | "active" | "inactive";
 type UserAction = "revoke" | "restore" | "send-password-reset" | "reset-devices" | "revoke-device";
-type AdminConfirmation =
-  | {
-      kind: "user-action";
-      action: UserAction;
-      target: AdminUserRow;
-      deviceId?: string;
-      deviceLabel?: string;
-      examId?: ExamId;
-    }
-  | { kind: "leaderboard-delete"; entry: LeaderboardAdminEntry };
 
 function formatDate(value: string | null): string {
   if (!value) return "—";
@@ -354,7 +342,6 @@ function AdminContent() {
   const [leaderboardError, setLeaderboardError] = useState<string | null>(null);
   const [auditLoading, setAuditLoading] = useState(false);
   const [auditError, setAuditError] = useState<string | null>(null);
-  const [pendingConfirmation, setPendingConfirmation] = useState<AdminConfirmation | null>(null);
   const userDetailRequest = useRef<{ sequence: number; controller: AbortController | null }>({
     sequence: 0,
     controller: null,
@@ -546,15 +533,12 @@ function AdminContent() {
   }, []);
 
   useEffect(() => {
-    const hasOverlay = Boolean(
-      selectedUserId || toolsOpen || leaderboardOpen || auditOpen || pendingConfirmation,
-    );
+    const hasOverlay = Boolean(selectedUserId || toolsOpen || leaderboardOpen || auditOpen);
     if (!hasOverlay) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const closeTopOverlay = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
-      if (pendingConfirmation) return;
       if (toolsOpen) setToolsOpen(false);
       else if (leaderboardOpen) setLeaderboardOpen(false);
       else if (auditOpen) setAuditOpen(false);
@@ -565,32 +549,19 @@ function AdminContent() {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", closeTopOverlay);
     };
-  }, [auditOpen, leaderboardOpen, pendingConfirmation, selectedUserId, toolsOpen]);
-
-  function requestUserAction(
-    action: UserAction,
-    target: AdminUserRow,
-    deviceId?: string,
-    deviceLabel?: string,
-    examId?: ExamId,
-  ): void {
-    setPendingConfirmation({
-      kind: "user-action",
-      action,
-      target,
-      deviceId,
-      deviceLabel,
-      examId,
-    });
-  }
+  }, [auditOpen, leaderboardOpen, selectedUserId, toolsOpen]);
 
   async function runUserAction(
     action: UserAction,
     target: AdminUserRow,
     deviceId?: string,
+    deviceLabel?: string,
     examId?: ExamId,
   ): Promise<void> {
     if (!accessToken) return;
+    const targetLabel = deviceLabel ? target.email + " 的「" + deviceLabel + "」" : target.email;
+    if (!window.confirm("確定要對 " + targetLabel + " 執行「" + actionLabel(action, examId) + "」？")) return;
+
     const key = action + ":" + (examId ? examId + ":" : "") + (deviceId || target.id);
     setBusyKey(key);
     setMessage(null);
@@ -606,28 +577,21 @@ function AdminContent() {
       });
       const payload = await readJsonResponse<ActionResponse>(response);
       if (!response.ok) throw new Error(payload.error || "操作失敗。");
-      const successMessage = payload.message || "操作完成。";
-      setMessage(successMessage);
-      announceInteractionFeedback(successMessage, "success", 3200);
+      setMessage(payload.message || "操作完成。");
       await loadUsers(true);
       if (selectedUserId === target.id) await loadUserDetail(true);
     } catch (actionError: unknown) {
       const actionMessage = actionError instanceof Error ? actionError.message : "操作失敗。";
       setError(actionMessage);
       setUserDetailError(actionMessage);
-      announceInteractionFeedback(actionMessage, "error", 4800);
     } finally {
       setBusyKey(null);
-      setPendingConfirmation(null);
     }
-  }
-
-  function requestDeleteLeaderboardEntry(entry: LeaderboardAdminEntry): void {
-    setPendingConfirmation({ kind: "leaderboard-delete", entry });
   }
 
   async function deleteLeaderboardEntry(entry: LeaderboardAdminEntry): Promise<void> {
     if (!accessToken) return;
+    if (!window.confirm("確定要刪除「" + entry.displayName + "」的排行榜紀錄？這不會刪除帳號或作答紀錄。")) return;
     setBusyKey("leaderboard:" + entry.userId);
     setLeaderboardError(null);
     try {
@@ -638,17 +602,12 @@ function AdminContent() {
       });
       const payload = await readJsonResponse<ActionResponse>(response);
       if (!response.ok) throw new Error(payload.error || "刪除排行榜紀錄失敗。");
-      const successMessage = payload.message || "已刪除排行榜紀錄。";
-      setMessage(successMessage);
-      announceInteractionFeedback(successMessage, "success", 3200);
+      setMessage(payload.message || "已刪除排行榜紀錄。");
       await Promise.all([loadUsers(true), loadLeaderboard()]);
     } catch (actionError: unknown) {
-      const errorMessage = actionError instanceof Error ? actionError.message : "刪除排行榜紀錄失敗。";
-      setLeaderboardError(errorMessage);
-      announceInteractionFeedback(errorMessage, "error", 4800);
+      setLeaderboardError(actionError instanceof Error ? actionError.message : "刪除排行榜紀錄失敗。");
     } finally {
       setBusyKey(null);
-      setPendingConfirmation(null);
     }
   }
 
@@ -746,8 +705,8 @@ function AdminContent() {
           </div>
         </div>
 
-        {message ? <V93InlineNotice tone="success" className="admin-premium-notice">{message}</V93InlineNotice> : null}
-        {error ? <V93InlineNotice tone="error" className="admin-premium-notice">{error}</V93InlineNotice> : null}
+        {message ? <p className="form-success admin-premium-notice">{message}</p> : null}
+        {error ? <p className="form-error admin-premium-notice">{error}</p> : null}
 
         <div className="admin-member-table">
           <div className="admin-member-table-head" aria-hidden="true">
@@ -839,7 +798,7 @@ function AdminContent() {
                       key={examId}
                       variant={action === "revoke" ? "danger" : "primary"}
                       disabled={busyKey === actionKey}
-                      onClick={() => requestUserAction(action, selectedUser, undefined, undefined, examId)}
+                      onClick={() => void runUserAction(action, selectedUser, undefined, undefined, examId)}
                     >
                       {action === "revoke" ? <ShieldOff size={17} /> : <ShieldCheck size={17} />}
                       {action === "revoke" ? `取消${EXAM_LABELS[examId]}` : `開通${EXAM_LABELS[examId]}`}
@@ -849,14 +808,14 @@ function AdminContent() {
                 <GlassButton
                   variant="secondary"
                   disabled={busyKey === "send-password-reset:" + selectedUser.id}
-                  onClick={() => requestUserAction("send-password-reset", selectedUser)}
+                  onClick={() => void runUserAction("send-password-reset", selectedUser)}
                 >
                   <MailCheck size={17} />重設密碼
                 </GlassButton>
                 <GlassButton
                   variant="secondary"
                   disabled={busyKey === "reset-devices:" + selectedUser.id}
-                  onClick={() => requestUserAction("reset-devices", selectedUser)}
+                  onClick={() => void runUserAction("reset-devices", selectedUser)}
                 >
                   <MonitorSmartphone size={17} />封存裝置
                 </GlassButton>
@@ -941,7 +900,7 @@ function AdminContent() {
                             <button
                               type="button"
                               disabled={busyKey === "revoke-device:" + device.id}
-                              onClick={() => requestUserAction("revoke-device", selectedUser, device.id, device.label)}
+                              onClick={() => void runUserAction("revoke-device", selectedUser, device.id, device.label)}
                             >
                               封存
                             </button>
@@ -1126,7 +1085,7 @@ function AdminContent() {
                   <GlassButton
                     variant="danger"
                     disabled={busyKey === "leaderboard:" + entry.userId}
-                    onClick={() => requestDeleteLeaderboardEntry(entry)}
+                    onClick={() => void deleteLeaderboardEntry(entry)}
                   >
                     <Trash2 size={16} /><span>刪除</span>
                   </GlassButton>
@@ -1136,48 +1095,6 @@ function AdminContent() {
           </GlassCard>
         </div>
       ) : null}
-
-      <V93ConfirmDialog
-        open={Boolean(pendingConfirmation)}
-        title={
-          pendingConfirmation?.kind === "leaderboard-delete"
-            ? "刪除排行榜紀錄"
-            : pendingConfirmation?.kind === "user-action"
-              ? actionLabel(pendingConfirmation.action, pendingConfirmation.examId)
-              : "確認管理操作"
-        }
-        message={
-          pendingConfirmation?.kind === "leaderboard-delete"
-            ? `確定要刪除「${pendingConfirmation.entry.displayName}」的排行榜紀錄？這不會刪除帳號或作答紀錄。`
-            : pendingConfirmation?.kind === "user-action"
-              ? `確定要對 ${pendingConfirmation.deviceLabel
-                ? `${pendingConfirmation.target.email} 的「${pendingConfirmation.deviceLabel}」`
-                : pendingConfirmation.target.email} 執行「${actionLabel(pendingConfirmation.action, pendingConfirmation.examId)}」？`
-              : ""
-        }
-        confirmLabel="確認執行"
-        tone={
-          pendingConfirmation?.kind === "user-action" &&
-          (pendingConfirmation.action === "restore" ||
-            pendingConfirmation.action === "send-password-reset")
-            ? "primary"
-            : "danger"
-        }
-        busy={Boolean(pendingConfirmation && busyKey)}
-        onCancel={() => setPendingConfirmation(null)}
-        onConfirm={() => {
-          if (pendingConfirmation?.kind === "leaderboard-delete") {
-            void deleteLeaderboardEntry(pendingConfirmation.entry);
-          } else if (pendingConfirmation?.kind === "user-action") {
-            void runUserAction(
-              pendingConfirmation.action,
-              pendingConfirmation.target,
-              pendingConfirmation.deviceId,
-              pendingConfirmation.examId,
-            );
-          }
-        }}
-      />
     </div>
   );
 }

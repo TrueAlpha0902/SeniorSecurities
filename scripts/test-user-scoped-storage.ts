@@ -91,34 +91,30 @@ const settingsStorage = new MemoryStorage();
 installWindow(settingsStorage);
 setActiveUserStorageScope("settings-user");
 
-assert.equal(
-  getAnswerModeEnabled(),
-  false,
-  "Global answer mode must default to off.",
-);
-
 setAnswerModeEnabled(true);
+assert.equal(getAnswerModeEnabled(), true);
 assert.equal(
-  getAnswerModeEnabled(),
-  true,
-  "The one answer-mode switch must enable ordinary practice across all question banks.",
+  getMockExamDeferredFeedbackEnabled(),
+  false,
+  "Enabling answer mode must disable deferred mock-exam grading.",
 );
 
 setMockExamDeferredFeedbackEnabled(true);
 assert.equal(
-  getMockExamDeferredFeedbackEnabled(),
-  true,
-  "Mock-exam deferred grading must remain enabled independently.",
-);
-assert.equal(
   getAnswerModeEnabled(),
-  true,
-  "Mock-exam feedback settings must not mutate practice answer mode.",
+  false,
+  "Enabling deferred mock-exam grading must disable answer mode.",
 );
+assert.equal(getMockExamDeferredFeedbackEnabled(), true);
 
-setAnswerModeEnabled(false);
-assert.equal(getAnswerModeEnabled(), false);
+setAnswerModeEnabled(true);
+assert.equal(getAnswerModeEnabled(), true);
+assert.equal(
+  getMockExamDeferredFeedbackEnabled(),
+  false,
+  "The two answer-reveal modes must remain mutually exclusive.",
+);
 
 console.log(
-  "User-scoped storage isolation, migration, and single-switch answer-mode tests passed.",
+  "User-scoped storage isolation, migration, and answer-mode exclusivity tests passed.",
 );

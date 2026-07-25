@@ -1,10 +1,9 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 type AsyncState<T> = {
   data: T | null;
   error: string | null;
   loading: boolean;
-  retry: () => void;
 };
 
 export function toErrorMessage(error: unknown): string {
@@ -14,19 +13,12 @@ export function toErrorMessage(error: unknown): string {
   return "發生未知錯誤";
 }
 
-export function useAsync<T>(
-  loader: () => Promise<T>,
-  dependencies: readonly unknown[],
-): AsyncState<T> {
-  const [state, setState] = useState<Omit<AsyncState<T>, "retry">>({
+export function useAsync<T>(loader: () => Promise<T>, dependencies: readonly unknown[]): AsyncState<T> {
+  const [state, setState] = useState<AsyncState<T>>({
     data: null,
     error: null,
     loading: true,
   });
-  const [retryRevision, setRetryRevision] = useState(0);
-  const retry = useCallback(() => {
-    setRetryRevision((revision) => revision + 1);
-  }, []);
 
   useEffect(() => {
     let active = true;
@@ -49,7 +41,7 @@ export function useAsync<T>(
     };
     // The caller owns the dependency list, matching useMemo/useCallback call sites.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [...dependencies, retryRevision]);
+  }, dependencies);
 
-  return { ...state, retry };
+  return state;
 }

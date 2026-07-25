@@ -5,10 +5,6 @@ import { syncLocalRecordsToCloud } from "../lib/db";
 import { flushPracticeSecondsToCloud } from "../lib/practiceTime";
 import { setActiveUserStorageScope } from "../lib/userScopedStorage";
 import { initializeLearningStore } from "../lib/learningStateStore";
-import {
-  hydrateForeignExchangeProgressFromSyncedRecords,
-  prepareForeignExchangeCloudSync,
-} from "../lib/foreignExchangeProgress";
 
 export const EXAM_IDS = ["senior-securities", "junior-foreign-exchange"] as const;
 export type ExamId = typeof EXAM_IDS[number];
@@ -56,13 +52,6 @@ function emptyExamAccess(): ExamAccessMap {
 }
 
 const localPreviewEnabled = import.meta.env.DEV && import.meta.env.VITE_LOCAL_PREVIEW_ACCESS === "1";
-const LOCAL_PREVIEW_AUTH_STATE_KEY = "truealpha:v93:e2e-auth-state";
-
-function localPreviewShouldAuthenticate(): boolean {
-  if (typeof window === "undefined") return true;
-  return window.localStorage.getItem(LOCAL_PREVIEW_AUTH_STATE_KEY) !== "signed-out";
-}
-
 const localPreviewUser = {
   id: "local-preview-user",
   email: "preview@example.com",
@@ -97,22 +86,12 @@ async function triggerCloudRecordSync(userId: string): Promise<void> {
   if (activeCloudSync?.userId === userId) return activeCloudSync.promise;
   const promise = (async () => {
     await initializeLearningStore(userId);
-    try {
-      await prepareForeignExchangeCloudSync();
-    } catch (error) {
-      console.warn("Foreign-exchange local progress could not be prepared for sync", error);
-    }
     const results = await Promise.allSettled([
       syncLocalRecordsToCloud(),
       flushPracticeSecondsToCloud(true),
     ]);
     for (const result of results) {
       if (result.status === "rejected") console.warn("Cloud learning-record sync failed", result.reason);
-    }
-    try {
-      await hydrateForeignExchangeProgressFromSyncedRecords();
-    } catch (error) {
-      console.warn("Foreign-exchange synced progress could not be hydrated", error);
     }
   })().finally(() => {
     if (activeCloudSync?.userId === userId) activeCloudSync = null;
@@ -166,11 +145,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshAccessForUser = useCallback(async (currentUser: AuthUser | null) => {
     if (localPreviewEnabled) {
-      if (!currentUser) {
-        verifiedAccessUserId.current = null;
-        setExamAccess(emptyExamAccess());
-        return;
-      }
       verifiedAccessUserId.current = localPreviewUser.id;
       setExamAccess({
         "senior-securities": { hasEntitlement: true, plan: "preview", redeemedAt: null, error: null },
@@ -238,14 +212,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     async function initializeAuth() {
       if (localPreviewEnabled) {
-        if (!localPreviewShouldAuthenticate()) {
-          setActiveUserStorageScope(null);
-          setSession(null);
-          setUser(null);
-          await refreshAccessForUser(null);
-          if (mounted) setLoading(false);
-          return;
-        }
         setActiveUserStorageScope(localPreviewUser.id);
         setUser(localPreviewUser);
         await refreshAccessForUser(localPreviewUser);
@@ -302,13 +268,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [refreshAccessForUser]);
 
   const signIn = useCallback(async (email: string, password: string) => {
-    if (localPreviewEnabled) {
-      window.localStorage.removeItem(LOCAL_PREVIEW_AUTH_STATE_KEY);
-      setActiveUserStorageScope(localPreviewUser.id);
-      setUser(localPreviewUser);
-      await refreshAccessForUser(localPreviewUser);
-      return;
-    }
     if (!supabase) throw new Error("尚未設定 Supabase。請先建立 .env.local。");
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
@@ -322,13 +281,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [refreshAccessForUser]);
 
   const signUp = useCallback(async (email: string, password: string) => {
-    if (localPreviewEnabled) {
-      window.localStorage.removeItem(LOCAL_PREVIEW_AUTH_STATE_KEY);
-      setActiveUserStorageScope(localPreviewUser.id);
-      setUser(localPreviewUser);
-      await refreshAccessForUser(localPreviewUser);
-      return null;
-    }
     if (!supabase) throw new Error("尚未設定 Supabase。請先建立 .env.local。");
     const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) throw error;
@@ -343,14 +295,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [refreshAccessForUser]);
 
   const signOut = useCallback(async () => {
-    if (localPreviewEnabled) {
-      window.localStorage.setItem(LOCAL_PREVIEW_AUTH_STATE_KEY, "signed-out");
-      setActiveUserStorageScope(null);
-      setSession(null);
-      setUser(null);
-      setExamAccess(emptyExamAccess());
-      return;
-    }
+    if (localPreviewEnabled) return;
     if (!supabase) return;
     void sendAuthAudit(session, "sign_out");
     const { error } = await supabase.auth.signOut();
@@ -373,7 +318,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [refreshAccessForUser]);
 
   const requestPasswordReset = useCallback(async (email: string, redirectTo?: string) => {
-    if (localPreviewEnabled) return;
     if (!supabase) throw new Error("尚未設定 Supabase。請先建立 .env.local。");
     const normalizedEmail = email.trim();
     if (!normalizedEmail) throw new Error("請輸入 Email。");
@@ -383,7 +327,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updatePassword = useCallback(async (password: string) => {
-    if (localPreviewEnabled) return;
     if (!supabase) throw new Error("尚未設定 Supabase。請先建立 .env.local。");
     if (password.trim().length < 6) throw new Error("新密碼至少需要 6 個字元。");
     const { error } = await supabase.auth.updateUser({ password });

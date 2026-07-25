@@ -13,19 +13,10 @@
       "D": "freight to be prepaid"
     },
     "answer": "A",
-    "acceptedAnswers": [
-      "A"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "CIF 由賣方支付至目的港的海運費，因此提單應標示 freight prepaid。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -54,19 +45,10 @@
       "D": "DDP"
     },
     "answer": "C",
-    "acceptedAnswers": [
-      "C"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "DPU 的交貨點在指定目的地，賣方須承擔運輸風險並把貨物卸下後才完成交貨。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -95,19 +77,10 @@
       "D": "CIF"
     },
     "answer": "C",
-    "acceptedAnswers": [
-      "C"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "CFR 適用港至港海運，賣方支付運費但沒有替買方投保的義務，正符合題目條件。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -136,19 +109,10 @@
       "D": "信用狀開狀申請人"
     },
     "answer": "D",
-    "acceptedAnswers": [
-      "D"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "Applicant 是向銀行申請開發信用狀的買方，即開狀申請人。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -177,19 +141,10 @@
       "D": "保兌銀行"
     },
     "answer": "A",
-    "acceptedAnswers": [
-      "A"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "Reimbursing Bank 接受開狀行的補償授權，向求償銀行支付信用狀款項，中文為補償銀行。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -218,19 +173,10 @@
       "D": "D/P > O/A > L/C"
     },
     "answer": "A",
-    "acceptedAnswers": [
-      "A"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "站在進口商立場，O/A可先取貨後付款最有利；D/P須先付款取單；L/C還須承擔開狀承諾與費用，故排序為O/A＞D/P＞L/C。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -259,19 +205,10 @@
       "D": "可容許接受 A、B、C、D 四點"
     },
     "answer": "D",
-    "acceptedAnswers": [
-      "D"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "同一修改書必須整體接受或拒絕，不能挑選部分條款；完整接受A、B、C、D符合規定。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -300,19 +237,10 @@
       "D": "開狀銀行"
     },
     "answer": "D",
-    "acceptedAnswers": [
-      "D"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "將運送單據受貨人作成開狀銀行，可讓銀行控制物權單據，在申請人未清償時保全債權。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -341,19 +269,10 @@
       "D": "船長"
     },
     "answer": "A",
-    "acceptedAnswers": [
-      "A"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "擔保提貨由開狀銀行向船公司保證正本提單日後補交，因此銀行對放行貨物承擔無限責任。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -382,19 +301,10 @@
       "D": "二十一日"
     },
     "answer": "C",
-    "acceptedAnswers": [
-      "C"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "UCP600給銀行最長五個銀行營業日審單；逾期未發完整拒付通知，就不能再以單據瑕疵拒付。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -423,19 +333,10 @@
       "D": "傭船提單"
     },
     "answer": "A",
-    "acceptedAnswers": [
-      "A"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "海運提單具有物權證券性質，銀行持有正本可控制提貨權，保障程度高於空運提單或海運貨單。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -464,19 +365,10 @@
       "D": "INSTITUTE WAR CLAUSES(CARGO)"
     },
     "answer": "D",
-    "acceptedAnswers": [
-      "D"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "Institute War Clauses 是在基本貨物保險之外加保戰爭風險的附加條款。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -505,19 +397,10 @@
       "D": "除讓購費用及轉讓費用外，其餘由申請人負擔"
     },
     "answer": "D",
-    "acceptedAnswers": [
-      "D"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "依該屆SWIFT開狀實務，71D未填時除讓購與轉讓費用外，其餘信用狀費用由申請人負擔。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -546,19 +429,10 @@
       "D": "提示信用狀未規定之單據"
     },
     "answer": "D",
-    "acceptedAnswers": [
-      "D"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "信用狀未規定的單據不在審查範圍，銀行不得因提示該額外單據而拒付。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -587,19 +461,10 @@
       "D": "檢驗證明"
     },
     "answer": "A",
-    "acceptedAnswers": [
-      "A"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "CIP 要求賣方安排運輸並投保，所以信用狀除發票與運送單據外還應要求保險單據。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -628,19 +493,10 @@
       "D": "起運地點及目的地（港口改為機場）"
     },
     "answer": "B",
-    "acceptedAnswers": [
-      "B"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "海運改空運必須同步修改運送單據、起訖地與適用保險；是否延長裝運期限不是運送方式改變的必然結果。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -669,19 +525,10 @@
       "D": "加減百分之十"
     },
     "answer": "B",
-    "acceptedAnswers": [
-      "B"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "以kg等重量單位表示且未禁止差異時，UCP600容許數量上下5%，但總金額不得超過信用狀金額。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -710,19 +557,10 @@
       "D": "3 月 18 日"
     },
     "answer": "B",
-    "acceptedAnswers": [
-      "B"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "票期以原始裝運日3月1日為基準，次日起算15天，到期為3月16日；3月3日轉運不改變原裝運日。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -751,19 +589,10 @@
       "D": "自收到提示完成通知之日後之次一銀行營業日"
     },
     "answer": "D",
-    "acceptedAnswers": [
-      "D"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "eUCP以提示完成通知界定文件已全部提交，審查期間從該通知日後的次一銀行營業日起算。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -792,19 +621,10 @@
       "D": "BUYER’S CARGO RECEIPT"
     },
     "answer": "D",
-    "acceptedAnswers": [
-      "D"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "Buyer’s Cargo Receipt 不在UCP600明確定義的運送單據內，法律效果取決於自訂條款，開狀時須特別授權與說明。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -833,19 +653,10 @@
       "D": "副提單背書"
     },
     "answer": "D",
-    "acceptedAnswers": [
-      "D"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "副提單背書是進口商持正本提單請開狀行背書後提貨，屬典型進口外匯業務。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -874,19 +685,10 @@
       "D": "申請人"
     },
     "answer": "C",
-    "acceptedAnswers": [
-      "C"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "信用狀規定在通知銀行以承兌方式使用時，遠期匯票應以通知銀行為付款人，由其承兌。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -915,19 +717,10 @@
       "D": "由託收銀行指定"
     },
     "answer": "A",
-    "acceptedAnswers": [
-      "A"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "eURC只在提示含電子記錄時發揮補充作用；若實際提示全是紙本，按URC處理。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -956,19 +749,10 @@
       "D": "是代收銀行的一種授信行為"
     },
     "answer": "D",
-    "acceptedAnswers": [
-      "D"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "託收單據未到即由銀行擔保先行放貨，會形成對進口商的信用曝險，因此屬授信行為。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -997,19 +781,10 @@
       "D": "到單後，憑承兌交單"
     },
     "answer": "A",
-    "acceptedAnswers": [
-      "A"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "Usance D/P可先辦承兌以確定到期日，但商業單據仍須在到期或到期前實際付款後才交付。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -1038,19 +813,10 @@
       "D": "付款人"
     },
     "answer": "D",
-    "acceptedAnswers": [
-      "D"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "URC522所稱當事人包括委託人及經辦銀行，不包括被提示並付款／承兌的drawee。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -1079,19 +845,10 @@
       "D": "產地證明簽發日"
     },
     "answer": "C",
-    "acceptedAnswers": [
-      "C"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "有輸入許可證時，貨物實際裝運日須在許可有效期內，因此應核對提單裝船日。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -1120,19 +877,10 @@
       "D": "COLLECTING BANK"
     },
     "answer": "B",
-    "acceptedAnswers": [
-      "B"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "拒絕證書由代收／提示端依託收指示辦理，所生公證費先向發出指示的託收銀行收取。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -1161,19 +909,10 @@
       "D": "L/C"
     },
     "answer": "A",
-    "acceptedAnswers": [
-      "A"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "D/A在進口商承兌後就交單，出口商直到到期才收款，承擔買方不付款風險最高。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -1202,19 +941,10 @@
       "D": "代收"
     },
     "answer": "B",
-    "acceptedAnswers": [
-      "B"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "提示是提示銀行依託收指示向付款人出示單據並要求付款或承兌的程序。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -1243,19 +973,10 @@
       "D": "通關時"
     },
     "answer": "B",
-    "acceptedAnswers": [
-      "B"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "遠期D/P的核心仍是付款交單，故即使匯票先承兌，也要到付款時才交付單據。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -1284,19 +1005,10 @@
       "D": "隨銀行意思自行處理"
     },
     "answer": "C",
-    "acceptedAnswers": [
-      "C"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "託收方式不明且又沒有匯票時，銀行不能自行選D/A或D/P，應請申請人以書面補充指示。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -1325,19 +1037,10 @@
       "D": "背書日"
     },
     "answer": "A",
-    "acceptedAnswers": [
-      "A"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "30 days after sight 以付款人見票並承兌之日為基準，從承兌日後起算。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -1366,19 +1069,10 @@
       "D": "受益人"
     },
     "answer": "C",
-    "acceptedAnswers": [
-      "C"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "Case-of-Need 是委託人在付款地指定、遇拒付或其他問題時可供聯繫的預備人。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -1407,19 +1101,10 @@
       "D": "裝運日後起算"
     },
     "answer": "C",
-    "acceptedAnswers": [
-      "C"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "At X days after date 的 date 是匯票發票日，故期限由發票日後起算。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -1448,19 +1133,10 @@
       "D": "承兌"
     },
     "answer": "B",
-    "acceptedAnswers": [
-      "B"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "Standby L/C 的功能是擔保申請人未履約或未付款時的備援付款，正常履約下通常不會動用。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -1489,19 +1165,10 @@
       "D": "應付帳款"
     },
     "answer": "B",
-    "acceptedAnswers": [
-      "B"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "銀行簽發保證時尚未實際付款，但若申請人違約可能須賠付，因此屬或有負債。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -1530,19 +1197,10 @@
       "D": "申請人"
     },
     "answer": "C",
-    "acceptedAnswers": [
-      "C"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "直接保證的申請人與保證銀行通常在國內，保證是為國外交易相對人而開，受益人通常在國外。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -1571,19 +1229,10 @@
       "D": "三十個曆日"
     },
     "answer": "B",
-    "acceptedAnswers": [
-      "B"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "ISP98認為三個營業日內通知通常合理；超過七個營業日才發出拒付通知則視為不合理。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -1612,19 +1261,10 @@
       "D": "押標金保證"
     },
     "answer": "C",
-    "acceptedAnswers": [
-      "C"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "得標人簽約後不履行工程契約時啟動的保證，是保障契約履行的履約保證。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -1653,19 +1293,10 @@
       "D": "擔保函之付款須依賴申請人之資金"
     },
     "answer": "A",
-    "acceptedAnswers": [
-      "A"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "ISP98中的PRIMARY只強調簽發人的付款義務是獨立且直接的，不以申請人先提供資金為前提。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -1694,19 +1325,10 @@
       "D": "應確信所通知信用狀外觀之真實性且其通知書須正確反映所收到之信用狀條款"
     },
     "answer": "D",
-    "acceptedAnswers": [
-      "D"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "未保兌通知銀行不負付款、承兌或讓購義務，只須確認外觀真實並正確通知信用狀條款。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -1735,19 +1357,10 @@
       "D": "須將此意旨儘速告知外觀上顯示所由收受指示之銀行"
     },
     "answer": "D",
-    "acceptedAnswers": [
-      "D"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "若無法確認外觀真實，受託銀行須儘速告知外觀上顯示的指示來源銀行；若仍通知，也應揭露疑義。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -1776,19 +1389,10 @@
       "D": "保兌銀行之義務與通知銀行完全相同"
     },
     "answer": "B",
-    "acceptedAnswers": [
-      "B"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "保兌不會自動涵蓋修改；保兌銀行未同意延伸的修改條款，對其不具拘束力。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -1817,19 +1421,10 @@
       "D": "保兌信用狀項下之單據，原則上先向保兌行或任何其他指定銀行提示"
     },
     "answer": "A",
-    "acceptedAnswers": [
-      "A"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "保兌銀行與開狀銀行各負獨立而同等的兌付義務，不是保兌銀行承擔『更多』責任，因此選項（1）錯誤。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -1858,19 +1453,10 @@
       "D": "保險投保之百分比得酌予增加"
     },
     "answer": "C",
-    "acceptedAnswers": [
-      "C"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "轉讓時可減少金額、縮短效期及裝運期間、提高投保比例；不得延長原裝運期間。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -1899,19 +1485,10 @@
       "D": "信用狀轉讓時，第一受益人之名稱得取代申請人之名稱"
     },
     "answer": "B",
-    "acceptedAnswers": [
-      "B"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "多個第二受益人可各自決定接受或拒絕修改，一人拒絕不會使其他第二受益人自動拒絕。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -1940,19 +1517,10 @@
       "D": "轉押匯銀行"
     },
     "answer": "B",
-    "acceptedAnswers": [
-      "B"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "補償銀行未付款不解除開狀銀行對符合提示的補償義務，求償銀行仍可向開狀銀行請款。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -1981,19 +1549,10 @@
       "D": "保險單據"
     },
     "answer": "B",
-    "acceptedAnswers": [
-      "B"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "Inspection Certificate 就是證明貨物經檢驗及結果的檢驗證明書。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -2022,19 +1581,10 @@
       "D": "船東"
     },
     "answer": "D",
-    "acceptedAnswers": [
-      "D"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "一般海運提單可由運送人、船長或明示代表其簽署的代理人簽發；船東本身不是UCP600列示的簽發身分。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -2063,19 +1613,10 @@
       "D": "聲明書(Declaration)"
     },
     "answer": "B",
-    "acceptedAnswers": [
-      "B"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "商業發票依其性質不必簽署；匯票、證明書與聲明書通常須有簽發人簽署。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -2104,19 +1645,10 @@
       "D": "辦理中華民國境外法人之外幣匯款"
     },
     "answer": "C",
-    "acceptedAnswers": [
-      "C"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "DBU可代同一銀行OBU處理境外法人的外幣信用狀及外幣匯款，但不能代辦其新臺幣匯款。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -2145,19 +1677,10 @@
       "D": "由通知銀行認定是否部分裝運"
     },
     "answer": "B",
-    "acceptedAnswers": [
-      "B"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "同一運輸工具、同一航次且同一目的地的多套運送單據，實質仍是一批運送，不視為部分裝運。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -2186,19 +1709,10 @@
       "D": "drums slightly rusty"
     },
     "answer": "C",
-    "acceptedAnswers": [
-      "C"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "『said by shipper to contain』只是託運人申報內容的保留語，不表示貨物或包裝有瑕疵，仍可接受。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -2227,19 +1741,10 @@
       "D": "轉讓信用狀之指定銀行或信用狀特別授權之轉讓銀行"
     },
     "answer": "D",
-    "acceptedAnswers": [
-      "D"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "自由讓購不等於自由轉讓；只有信用狀指定的轉讓銀行或特別授權銀行可辦轉讓。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -2268,19 +1773,10 @@
       "D": "20XX 年 4 月 7 日"
     },
     "answer": "C",
-    "acceptedAnswers": [
-      "C"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "最遲裝運日遇假日不會依UCP600自動順延，故仍須不遲於4月5日裝運。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -2309,19 +1805,10 @@
       "D": "應向開狀銀行要求立即付款，所發生之遲延利息及費用，亦應請其負擔"
     },
     "answer": "D",
-    "acceptedAnswers": [
-      "D"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "補償銀行未收到授權時無義務付款，開狀銀行仍負最終付款責任，並應承擔因此產生的遲延利息與費用。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -2350,19 +1837,10 @@
       "D": "百分之十"
     },
     "answer": "D",
-    "acceptedAnswers": [
-      "D"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "ABOUT、APPROXIMATELY 對相關金額、數量或單價表示可有不超過10%的上下差額。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -2391,19 +1869,10 @@
       "D": "海運提單"
     },
     "answer": "C",
-    "acceptedAnswers": [
-      "C"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "同時標示接管地與最終目的地，表示跨越兩種以上運送方式，應使用複合運送單據。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -2432,19 +1901,10 @@
       "D": "表面載有「三箱遭水漬」註記"
     },
     "answer": "A",
-    "acceptedAnswers": [
-      "A"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "『三件裝在木箱』只是中性包裝描述；其餘生鏽、鬆脫、水漬均明示瑕疵，會使單據不清潔。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -2473,19 +1933,10 @@
       "D": "公證檢驗機構簽署者"
     },
     "answer": "A",
-    "acceptedAnswers": [
-      "A"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "「qualified」要求由具適當專業資格的簽發人出具；受益人僅以自身身分簽署，未顯示具該資格，因此不得接受。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -2514,19 +1965,10 @@
       "D": "信用狀無效"
     },
     "answer": "B",
-    "acceptedAnswers": [
-      "B"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "非單據性條件沒有指定證明文件，銀行視為未敘明而不審查。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -2555,19 +1997,10 @@
       "D": "指定銀行為保兌銀行時，不適用此合作要點"
     },
     "answer": "A",
-    "acceptedAnswers": [
-      "A"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "信用狀在指定銀行可使用，並不排除也可在開狀銀行使用；因此『不得在開狀銀行使用』錯誤。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -2596,19 +2029,10 @@
       "D": "當適用 eUCP 時，在其與 UCP 所產生之不同結果範圍內，應優先適用 eUCP"
     },
     "answer": "A",
-    "acceptedAnswers": [
-      "A"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "eUCP是UCP的補充規則，不是取代或修訂UCP全文；現行2.0版處理電子或混合提示，衝突時就該事項優先適用。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -2637,19 +2061,10 @@
       "D": "保險單據得包含任何不承保條款之附註"
     },
     "answer": "B",
-    "acceptedAnswers": [
-      "B"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "較高層級的保險單可以取代保險證明書，但保險證明書不能反向取代信用狀明確要求的保險單。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -2678,19 +2093,10 @@
       "D": "信用狀受益人"
     },
     "answer": "D",
-    "acceptedAnswers": [
-      "D"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "不可轉讓信用狀下，匯票原則由信用狀受益人簽發。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -2719,19 +2125,10 @@
       "D": "乙份正本提單，但無須經受益人背書"
     },
     "answer": "B",
-    "acceptedAnswers": [
-      "B"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "提單已作成to order of issuing bank，開狀銀行本身就是指示權人，受益人只須提示全套正本，無須另背書。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -2760,19 +2157,10 @@
       "D": "進口商所在國之政治風險"
     },
     "answer": "B",
-    "acceptedAnswers": [
-      "B"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "Forfaiting可移轉開狀行信用與國家政治風險，但買賣雙方的貨物品質或詐欺等商業糾紛仍由出口商承擔。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -2801,19 +2189,10 @@
       "D": "須開狀銀行承兌或授權讓購後，買斷始生效"
     },
     "answer": "C",
-    "acceptedAnswers": [
-      "C"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "Forfaiting可承作美元、歐元等主要可兌換貨幣，不限美元，因此選項（3）錯誤。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -2842,19 +2221,10 @@
       "D": "買斷銀行"
     },
     "answer": "A",
-    "acceptedAnswers": [
-      "A"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "應收款債權屬信用狀受益人所有，確認條件後由受益人簽署信用狀讓渡書移轉給買斷行。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -2883,19 +2253,10 @@
       "D": "寄送運送單據"
     },
     "answer": "D",
-    "acceptedAnswers": [
-      "D"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "Factor負責融資、帳款管理與催收；寄送運送單據是出口商或託收銀行的作業，不是Factor核心功能。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -2924,19 +2285,10 @@
       "D": "由進口帳款承購商決定優先次序"
     },
     "answer": "A",
-    "acceptedAnswers": [
-      "A"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "GRIF屬任意適用規則，當雙方書面協議另有約定且互相牴觸時，以書面協議為優先。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -2965,19 +2317,10 @@
       "D": "屬出口廠商辦理短期資金流通方式之一"
     },
     "answer": "A",
-    "acceptedAnswers": [
-      "A"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "Factoring以D/A或O/A產生的短期應收帳款為基礎，不以跟單信用狀為典型交易基礎。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -3006,19 +2349,10 @@
       "D": "Import Factor"
     },
     "answer": "A",
-    "acceptedAnswers": [
-      "A"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "雙承購交易的主要當事人是供應商、債務人、Export Factor與Import Factor，沒有Processing Bank這一角色。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -3047,19 +2381,10 @@
       "D": "D/A、D/P 擔保提貨／副提單背書"
     },
     "answer": "B",
-    "acceptedAnswers": [
-      "B"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "應收帳款收買／承購是出口商融資與債權管理，並非進口外匯業務。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -3088,19 +2413,10 @@
       "D": "月底餘額及承作量，依短期及中長期類別"
     },
     "answer": "B",
-    "acceptedAnswers": [
-      "B"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "指定銀行辦理外幣保證，依該屆作業規範報送月底餘額及各筆保證性質。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -3129,19 +2445,10 @@
       "D": "A、B 均不得"
     },
     "answer": "D",
-    "acceptedAnswers": [
-      "D"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "OBU不得收受外幣現鈔，也不得將外匯存款兌換新臺幣提取，因此A、B均不得。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -3170,19 +2477,10 @@
       "D": "銀行辦理出口後外幣貸款，得兌換為新臺幣"
     },
     "answer": "C",
-    "acceptedAnswers": [
-      "C"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "出口前外幣貸款須用於外幣用途，不能兌換新臺幣；出口後融資在符合規定下可結售，故選項（3）錯誤。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -3211,19 +2509,10 @@
       "D": "不得辦理直接投資及不動產投資業務"
     },
     "answer": "D",
-    "acceptedAnswers": [
-      "D"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "國際金融業務分行依法不得辦理直接投資及不動產投資，以維持其金融中介業務範圍。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",
@@ -3252,19 +2541,10 @@
       "D": "其他交易憑證"
     },
     "answer": "A",
-    "acceptedAnswers": [
-      "A"
-    ],
-    "allAnsweredCredit": false,
-    "automaticCredit": false,
-    "answerNote": null,
     "explanation": "出口押匯或信用狀項下託收款結售新臺幣，應開立出口結匯證實書。",
-    "explanationKind": "project-authored-detailed",
-    "sourceFile": "47-trade.pdf",
-    "sourcePath": "47/47-trade.pdf",
-    "sourcePdfSha256": "f750502dc565880b0aca1ffab7c1abbbfb5a8ef581e96c85bf9ddc2778221157",
-    "batchId": "fx-archive-47",
-    "importedAt": "2026-07-20",
+    "sourceFile": "666077-4.pdf",
+    "batchId": "fx-official-47",
+    "importedAt": "2026-07-19",
     "reviewStatus": "checked",
     "tags": [
       "初階外匯",

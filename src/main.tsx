@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { registerSW } from "virtual:pwa-register";
 import { App } from "./App";
-import { announceAppUpdate, recoverFromChunkLoadError, settleAppRecoveryAfterLoad } from "./lib/appRecovery";
+import { announceAppUpdate, recoverFromChunkLoadError } from "./lib/appRecovery";
 import { reportClientError } from "./lib/telemetry";
 import "./styles/glass.css";
 
@@ -74,5 +74,4 @@ createRoot(document.getElementById("root")!).render(
   </StrictMode>,
 );
 
-settleAppRecoveryAfterLoad();
 registerServiceWorkerAfterFirstPaint();

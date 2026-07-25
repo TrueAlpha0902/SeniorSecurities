@@ -149,7 +149,6 @@ async function handleLoginAudit(req: ApiRequest, res: ApiResponse): Promise<void
 }
 
 export default async function handler(req: ApiRequest, res: ApiResponse) {
-  res.setHeader("Cache-Control", "no-store");
   if (req.method !== "POST") {
     sendJson(res, 405, { error: "Method not allowed" });
     return;

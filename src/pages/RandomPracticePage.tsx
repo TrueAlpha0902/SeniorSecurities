@@ -13,7 +13,6 @@ import { ErrorState } from "../components/ErrorState";
 import { GlassButton, GlassLinkButton } from "../components/GlassButton";
 import { GlassCard } from "../components/GlassCard";
 import { LoadingState } from "../components/LoadingState";
-import { V93ConfirmDialog, V93InlineNotice } from "../components/V93InteractionPrimitives";
 import { useAsync } from "../hooks/useAsync";
 import {
   commitImageQuizSessionLearningAnswers,
@@ -28,22 +27,20 @@ import {
 import {
   loadImageBankQuestions,
   loadImageQuestionsByIds,
-  isSecuritiesQuestionId,
-  loadImageQuizBankSummaries,
-  resetImageQuizCaches,
-  startSecuritiesMock,
+  loadImageQuizBanks,
   type ImageQuizBank,
   type ImageQuizQuestion,
 } from "../lib/imageQuiz";
 import {
+  ANSWER_MODE_SETTING_CHANGED,
   MOCK_EXAM_FEEDBACK_SETTING_CHANGED,
+  getAnswerModeEnabled,
   getMockExamDeferredFeedbackEnabled,
+  setAnswerModeEnabled,
   setMockExamDeferredFeedbackEnabled,
 } from "../lib/appSettings";
 import { buildSessionId, calculateAccuracy, shuffleQuestions } from "../lib/quiz";
-import { announceInteractionFeedback } from "../lib/interactionFeedback";
 import { USER_STORAGE_SCOPE_CHANGED } from "../lib/userScopedStorage";
-import { writeSecuritiesMockToken } from "../lib/securitiesMockTokenStore";
 import {
   isMockExamSessionSubmitted,
   resolveMockExamFeedbackMode,
@@ -96,7 +93,7 @@ type RandomPracticeData = {
 
 async function loadRandomPracticeData(): Promise<RandomPracticeData> {
   const [banks, loadedSessions] = await Promise.all([
-    loadImageQuizBankSummaries(),
+    loadImageQuizBanks(),
     listImageQuizSessions(),
   ]);
   const sessionsWithPendingLearning = loadedSessions.filter(
@@ -123,13 +120,14 @@ async function loadRandomPracticeData(): Promise<RandomPracticeData> {
       : Promise.resolve(loadedSessions),
     listUserAnswers(),
   ]);
-  return { banks, sessions, answers: answers.filter((answer) => isSecuritiesQuestionId(answer.questionId)) };
+  return { banks, sessions, answers };
 }
 
 export function RandomPracticePage() {
   const navigate = useNavigate();
   const [refreshKey, setRefreshKey] = useState(0);
   const [avoidAnswered, setAvoidAnswered] = useState(true);
+  const [answerModeEnabled, setAnswerModeEnabledState] = useState(() => getAnswerModeEnabled());
   const [deferredFeedback, setDeferredFeedback] = useState(() =>
     getMockExamDeferredFeedbackEnabled(),
   );
@@ -137,21 +135,22 @@ export function RandomPracticePage() {
   const [startingBankId, setStartingBankId] = useState<string | null>(null);
   const [deleteMode, setDeleteMode] = useState(false);
   const [selectedSessionIds, setSelectedSessionIds] = useState<Set<string>>(new Set());
-  const [deleteConfirmationOpen, setDeleteConfirmationOpen] = useState(false);
-  const [deleteBusy, setDeleteBusy] = useState(false);
-  const [operationError, setOperationError] = useState<string | null>(null);
-  const [operationMessage, setOperationMessage] = useState<string | null>(null);
-  const { data, error, loading, retry } = useAsync(loadRandomPracticeData, [refreshKey]);
+  const { data, error, loading } = useAsync(loadRandomPracticeData, [refreshKey]);
 
   useEffect(() => {
     function refreshMockExamSettings(): void {
-      setDeferredFeedback(getMockExamDeferredFeedbackEnabled());
+      const nextAnswerModeEnabled = getAnswerModeEnabled();
+      const nextDeferredFeedback = getMockExamDeferredFeedbackEnabled();
+      setAnswerModeEnabledState(nextAnswerModeEnabled);
+      setDeferredFeedback(nextDeferredFeedback);
     }
 
+    window.addEventListener(ANSWER_MODE_SETTING_CHANGED, refreshMockExamSettings);
     window.addEventListener(MOCK_EXAM_FEEDBACK_SETTING_CHANGED, refreshMockExamSettings);
     window.addEventListener(USER_STORAGE_SCOPE_CHANGED, refreshMockExamSettings);
     window.addEventListener("storage", refreshMockExamSettings);
     return () => {
+      window.removeEventListener(ANSWER_MODE_SETTING_CHANGED, refreshMockExamSettings);
       window.removeEventListener(MOCK_EXAM_FEEDBACK_SETTING_CHANGED, refreshMockExamSettings);
       window.removeEventListener(USER_STORAGE_SCOPE_CHANGED, refreshMockExamSettings);
       window.removeEventListener("storage", refreshMockExamSettings);
@@ -161,6 +160,7 @@ export function RandomPracticePage() {
   function handleDeferredFeedbackChange(enabled: boolean): void {
     setMockExamDeferredFeedbackEnabled(enabled);
     const persistedEnabled = getMockExamDeferredFeedbackEnabled();
+    setAnswerModeEnabledState(getAnswerModeEnabled());
     setDeferredFeedback(persistedEnabled);
 
     if (persistedEnabled) {
@@ -187,50 +187,41 @@ export function RandomPracticePage() {
   async function handleStart(bank: ImageQuizBank): Promise<void> {
     if (startingBankId !== null) return;
     setStartingBankId(bank.bankId);
-    setOperationError(null);
-    setOperationMessage(null);
 
     try {
+      const allQuestions = await loadImageBankQuestions(bank.bankId);
       const answeredIds = new Set((data?.answers ?? []).map((answer) => answer.questionId));
       const targetCount = normalizeQuestionCount(questionCount === "" ? DEFAULT_RANDOM_SIZE : questionCount);
+      const questions = buildProportionalMockExamQuestions({
+        bank,
+        allQuestions,
+        answeredIds,
+        avoidAnswered,
+        targetCount,
+      });
 
-      // Read preferences at click time so the persisted session always matches
-      // the visible grading controls.
-      const currentDeferredFeedback = getMockExamDeferredFeedbackEnabled();
-      const feedbackMode = resolveMockExamFeedbackMode(
-        false,
-        currentDeferredFeedback,
-      );
-      setDeferredFeedback(currentDeferredFeedback);
-
-      let questionIds: string[];
-      let protectedMockToken: string | null = null;
-
-      if (feedbackMode === "deferred") {
-        const created = await startSecuritiesMock({
-          bankId: bank.bankId,
-          randomCount: targetCount,
-          avoidIds: avoidAnswered ? Array.from(answeredIds) : [],
-        });
-        questionIds = created.questions.map((question) => question.id);
-        protectedMockToken = created.mockToken;
-      } else {
-        const allQuestions = await loadImageBankQuestions(bank.bankId);
-        const questions = buildProportionalMockExamQuestions({
-          bank,
-          allQuestions,
-          answeredIds,
-          avoidAnswered,
-          targetCount,
-        });
-        questionIds = questions.map((question) => question.id);
-      }
-
-      if (questionIds.length === 0) {
-        setOperationMessage(T.noAvailable);
-        announceInteractionFeedback(T.noAvailable, "warning", 3600);
+      if (questions.length === 0) {
+        window.alert(T.noAvailable);
         return;
       }
+
+      // Read the persisted preference at click time. This avoids a stale React
+      // state or account-scope transition creating a session with the opposite
+      // grading mode from the visible switch.
+      let currentAnswerModeEnabled = getAnswerModeEnabled();
+      const currentDeferredFeedback = getMockExamDeferredFeedbackEnabled();
+      if (currentDeferredFeedback && currentAnswerModeEnabled) {
+        // Repair legacy/conflicting preferences before creating the session.
+        // Deferred grading is fail-closed and therefore wins.
+        setAnswerModeEnabled(false);
+        currentAnswerModeEnabled = false;
+      }
+      const feedbackMode = resolveMockExamFeedbackMode(
+        currentAnswerModeEnabled,
+        currentDeferredFeedback,
+      );
+      setAnswerModeEnabledState(currentAnswerModeEnabled);
+      setDeferredFeedback(currentDeferredFeedback);
 
       const sessionId = buildSessionId();
       await createImageQuizSession({
@@ -238,18 +229,17 @@ export function RandomPracticePage() {
         mode: "random80",
         bankId: bank.bankId,
         bankTitle: bank.bankTitle,
-        questionIds,
+        questionIds: questions.map((question) => question.id),
         answers: {},
         wrongQuestionIds: [],
         startedAt: new Date().toISOString(),
-        totalQuestions: questionIds.length,
+        totalQuestions: questions.length,
         correctCount: 0,
         wrongCount: 0,
         accuracy: 0,
         feedbackMode,
         markedQuestionIds: [],
       });
-      if (protectedMockToken) writeSecuritiesMockToken(sessionId, protectedMockToken);
 
       const persistedSession = await getImageQuizSession(sessionId);
       if (!persistedSession || persistedSession.feedbackMode !== feedbackMode) {
@@ -261,11 +251,7 @@ export function RandomPracticePage() {
       });
     } catch (reason) {
       console.error("Unable to create mock exam", reason);
-      const errorMessage = reason instanceof Error
-        ? reason.message
-        : "模擬考建立失敗，請確認網路與題庫權限後再試一次。";
-      setOperationError(errorMessage);
-      announceInteractionFeedback(errorMessage, "error", 4600);
+      window.alert("模擬考建立失敗，批改方式尚未正確儲存，請再試一次。");
     } finally {
       setStartingBankId(null);
     }
@@ -273,31 +259,12 @@ export function RandomPracticePage() {
 
   async function handleDeleteSelected(): Promise<void> {
     const sessionIds = Array.from(selectedSessionIds);
-    if (sessionIds.length === 0 || deleteBusy) return;
-    setDeleteBusy(true);
-    setOperationError(null);
-    setOperationMessage(null);
-    try {
-      const skippedSessionIds = await deleteImageQuizSessions(sessionIds);
-      setSelectedSessionIds(new Set(skippedSessionIds));
-      setDeleteMode(skippedSessionIds.length > 0);
-      if (skippedSessionIds.length > 0) {
-        setOperationMessage(T.deletePending);
-        announceInteractionFeedback(T.deletePending, "warning", 4400);
-      } else {
-        const successMessage = `已刪除 ${sessionIds.length} 筆測驗紀錄。`;
-        setOperationMessage(successMessage);
-        announceInteractionFeedback(successMessage, "success");
-      }
-      setRefreshKey((key) => key + 1);
-    } catch (reason) {
-      const errorMessage = reason instanceof Error ? reason.message : "刪除測驗紀錄失敗。";
-      setOperationError(errorMessage);
-      announceInteractionFeedback(errorMessage, "error", 4400);
-    } finally {
-      setDeleteBusy(false);
-      setDeleteConfirmationOpen(false);
-    }
+    if (sessionIds.length === 0 || !window.confirm(T.deleteConfirm)) return;
+    const skippedSessionIds = await deleteImageQuizSessions(sessionIds);
+    setSelectedSessionIds(new Set(skippedSessionIds));
+    setDeleteMode(skippedSessionIds.length > 0);
+    if (skippedSessionIds.length > 0) window.alert(T.deletePending);
+    setRefreshKey((key) => key + 1);
   }
 
   function toggleSelected(sessionId: string, selected: boolean): void {
@@ -310,29 +277,16 @@ export function RandomPracticePage() {
   }
 
   if (loading) return <LoadingState label={T.loading} />;
-  if (error) {
-    return (
-      <ErrorState
-        title={T.startError}
-        message={error}
-        onRetry={() => {
-          resetImageQuizCaches();
-          retry();
-        }}
-      />
-    );
-  }
+  if (error) return <ErrorState title={T.startError} message={error} />;
 
   const banks = data?.banks ?? [];
   const sessions = data?.sessions ?? [];
   const answers = data?.answers ?? [];
+  const answeredIds = new Set(answers.map((answer) => answer.questionId));
   const normalizedQuestionCount = normalizeQuestionCount(questionCount === "" ? DEFAULT_RANDOM_SIZE : questionCount);
 
   return (
     <div className="page-stack learner-page random-practice-page mock-exam-v68-page">
-      {operationError ? <V93InlineNotice tone="error">{operationError}</V93InlineNotice> : null}
-      {operationMessage ? <V93InlineNotice tone={operationMessage === T.deletePending || operationMessage === T.noAvailable ? "warning" : "success"}>{operationMessage}</V93InlineNotice> : null}
-
       <GlassCard className="mock-exam-console-v797" as="section" aria-labelledby="mock-exam-title">
         <div className="mock-exam-console-head-v797">
           <div className="mock-exam-console-title-v797">
@@ -376,9 +330,11 @@ export function RandomPracticePage() {
               <small>批改方式</small>
               <strong>交卷後統一批改</strong>
               <span id="mock-exam-feedback-state" className="mock-setting-state-v797">
-                {deferredFeedback
-                  ? "作答期間不顯示正解，交卷後統一批改"
-                  : "每題作答後立即顯示正解與解析"}
+                {answerModeEnabled
+                  ? "正解模式已開啟；勾選本功能會自動關閉"
+                  : deferredFeedback
+                    ? "作答期間不顯示正解，且正解模式已關閉"
+                    : "每題立即顯示正解與解析"}
               </span>
             </span>
             <input
@@ -411,11 +367,10 @@ export function RandomPracticePage() {
           <div className="random-bank-grid">
             {banks.map((bank) => {
               const total = bank.chapters.reduce((sum, chapter) => sum + chapter.questionCount, 0);
-              const answeredCount = countAnsweredQuestionsForBank(bank.bankId, answers);
-              const availableCount = Math.max(0, total - answeredCount);
+              const availableCount = bank.chapters.flatMap((chapter) => chapter.questions).filter((question) => !answeredIds.has(question.id)).length;
               const drawableCount = avoidAnswered ? availableCount : total;
               const sessionQuestionCount = Math.min(normalizedQuestionCount, drawableCount);
-              const progress = calculateAccuracy(answeredCount, total);
+              const progress = calculateBankProgress(bank, answers);
 
               return (
                 <GlassCard key={bank.bankId} className="bank-card random-bank-card" interactive as="article">
@@ -437,9 +392,7 @@ export function RandomPracticePage() {
                     variant="primary"
                     className="random-start-button"
                     onClick={() => void handleStart(bank)}
-                    busy={startingBankId === bank.bankId}
                     disabled={sessionQuestionCount <= 0 || startingBankId !== null}
-                    aria-label={`${T.start} ${bank.bankTitle} ${sessionQuestionCount} 題`}
                   >
                     <Play aria-hidden="true" size={18} />
                     <span>
@@ -465,7 +418,7 @@ export function RandomPracticePage() {
             {deleteMode ? (
               <>
                 <GlassButton variant="secondary" onClick={() => { setDeleteMode(false); setSelectedSessionIds(new Set()); }}>{T.cancelDelete}</GlassButton>
-                <GlassButton variant="danger" disabled={selectedSessionIds.size === 0 || deleteBusy} onClick={() => setDeleteConfirmationOpen(true)}><Trash2 aria-hidden="true" size={17} /><span>{T.deleteSelected} {selectedSessionIds.size}</span></GlassButton>
+                <GlassButton variant="danger" disabled={selectedSessionIds.size === 0} onClick={() => void handleDeleteSelected()}><Trash2 aria-hidden="true" size={17} /><span>{T.deleteSelected} {selectedSessionIds.size}</span></GlassButton>
               </>
             ) : sessions.length > 0 ? (
               <GlassButton variant="secondary" onClick={() => setDeleteMode(true)}><Trash2 aria-hidden="true" size={17} /><span>{T.deleteMode}</span></GlassButton>
@@ -480,16 +433,6 @@ export function RandomPracticePage() {
           </div>
         )}
       </section>
-
-      <V93ConfirmDialog
-        open={deleteConfirmationOpen}
-        title="刪除測驗紀錄"
-        message={`確定要刪除選取的 ${selectedSessionIds.size} 筆模擬考紀錄嗎？此操作不會刪除已同步的學習作答。`}
-        confirmLabel={deleteBusy ? "刪除中" : "刪除紀錄"}
-        busy={deleteBusy}
-        onConfirm={() => void handleDeleteSelected()}
-        onCancel={() => setDeleteConfirmationOpen(false)}
-      />
     </div>
   );
 }
@@ -565,21 +508,8 @@ function buildProportionalMockExamQuestions({ bank, allQuestions, answeredIds, a
   return shuffleQuestions(quotas.flatMap((quota) => quota.bucket.questions.slice(0, quota.count)));
 }
 
-function countAnsweredQuestionsForBank(
-  bankId: string,
-  answers: UserAnswer[],
-): number {
-  const acceptedBankIds = bankId === "securities-laws-practice"
-    ? new Set([
-        "securities-laws-practice",
-        "securities-trading-regulations",
-        "securities-trading-practice",
-      ])
-    : new Set([bankId]);
-
-  return new Set(
-    answers
-      .filter((answer) => acceptedBankIds.has(answer.bankId))
-      .map((answer) => answer.questionId),
-  ).size;
+function calculateBankProgress(bank: ImageQuizBank, answers: UserAnswer[]): number {
+  const questionIds = new Set(bank.chapters.flatMap((chapter) => chapter.questions.map((question) => question.id)));
+  const answeredIds = new Set(answers.filter((answer) => questionIds.has(answer.questionId)).map((answer) => answer.questionId));
+  return calculateAccuracy(answeredIds.size, questionIds.size);
 }

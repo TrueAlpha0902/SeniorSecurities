@@ -3,20 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#07090c" />
-    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#ffffff" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="證券高業" />
     <link rel="icon" type="image/png" sizes="192x192" href="%BASE_URL%icons/icon-192.png" />
     <link rel="apple-touch-icon" href="%BASE_URL%icons/icon-180.png" />
     <link rel="preload" as="image" href="%BASE_URL%animation/frieren-story/study.webp" fetchpriority="high" />
-    <style>
-      html,body,#root{min-height:100%;margin:0;background:#07090c;color:#f4f7fa}
-      .app-boot-fallback{box-sizing:border-box;display:grid;place-content:center;gap:10px;min-height:100vh;padding:32px;text-align:center;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
-      .app-boot-fallback strong{font-size:1.1rem;letter-spacing:.08em}
-      .app-boot-fallback span{color:#9da8b4;font-size:.92rem}
-    </style>
     <title>證券高業</title>
     <script>
       (function () {
@@ -30,12 +23,7 @@
     </script>
   </head>
   <body>
-    <div id="root">
-      <div class="app-boot-fallback" role="status" aria-live="polite">
-        <strong>金融證照題庫</strong>
-        <span>正在載入；離線時會保留此安全畫面。</span>
-      </div>
-    </div>
+    <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

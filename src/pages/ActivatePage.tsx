@@ -4,10 +4,8 @@ import { Navigate, useLocation, useSearchParams } from "react-router-dom";
 import { GlassButton, GlassLinkButton } from "../components/GlassButton";
 import { GlassCard } from "../components/GlassCard";
 import { LoadingState } from "../components/LoadingState";
-import { V93InlineNotice } from "../components/V93InteractionPrimitives";
 import { useAuth, type ExamId } from "../auth/AuthContext";
 import { SupabaseSetupRequired } from "../auth/ProtectedRoute";
-import { announceInteractionFeedback } from "../lib/interactionFeedback";
 
 type ReturnState = { returnTo?: string };
 
@@ -38,29 +36,15 @@ export function ActivatePage() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
-    const normalizedCode = code.trim().toUpperCase();
-    if (!normalizedCode) {
-      const nextError = "請輸入啟用碼。";
-      setError(nextError);
-      announceInteractionFeedback(nextError, "warning", 2800);
-      return;
-    }
-
     setSubmitting(true);
     setError(null);
     setMessage(null);
     try {
-      await redeemActivationCode(normalizedCode);
-      const nextMessage = `${EXAM_LABELS[examId]}已啟用。`;
-      setMessage(nextMessage);
+      await redeemActivationCode(code);
+      setMessage("啟用成功。");
       setCode("");
-      announceInteractionFeedback(nextMessage, "success", 3400);
     } catch (activationError: unknown) {
-      const nextError = activationError instanceof Error
-        ? activationError.message
-        : "啟用失敗，請確認啟用碼。";
-      setError(nextError);
-      announceInteractionFeedback(nextError, "error", 4400);
+      setError(activationError instanceof Error ? activationError.message : "啟用失敗，請確認啟用碼。");
     } finally {
       setSubmitting(false);
     }
@@ -77,32 +61,21 @@ export function ActivatePage() {
             <div><h2>已開通</h2></div>
           </div>
         ) : (
-          <form className="auth-form" aria-busy={submitting || undefined} onSubmit={(event) => void handleSubmit(event)}>
+          <form className="auth-form" onSubmit={(event) => void handleSubmit(event)}>
             <label>
               <span>啟用碼</span>
               <input
                 type="text"
                 value={code}
                 required
-                disabled={submitting}
-                aria-invalid={Boolean(error) || undefined}
-                aria-describedby={error ? "activation-error" : message ? "activation-success" : undefined}
-                onChange={(event) => {
-                  setCode(event.currentTarget.value.toUpperCase().slice(0, 64));
-                  if (error) setError(null);
-                }}
+                onChange={(event) => setCode(event.currentTarget.value.toUpperCase())}
                 placeholder={examId === "junior-foreign-exchange" ? "FOREX-XXXX-XXXX" : "SENIOR-XXXX-XXXX"}
                 autoComplete="one-time-code"
               />
             </label>
-            {error ? <V93InlineNotice id="activation-error" tone="error">{error}</V93InlineNotice> : null}
-            {message ? <V93InlineNotice id="activation-success" tone="success">{message}</V93InlineNotice> : null}
-            <GlassButton
-              type="submit"
-              variant="primary"
-              busy={submitting}
-              disabled={submitting || !code.trim()}
-            >
+            {error ? <p className="form-error">{error}</p> : null}
+            {message ? <p className="form-success">{message}</p> : null}
+            <GlassButton type="submit" variant="primary" disabled={submitting}>
               <KeyRound aria-hidden="true" size={18} />
               <span>{submitting ? "啟用中" : "啟用"}</span>
             </GlassButton>

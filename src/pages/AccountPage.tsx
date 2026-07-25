@@ -1,34 +1,16 @@
-import {
-  BookOpenCheck,
-  Cloud,
-  Clock3,
-  LogOut,
-  RefreshCcw,
-  Shield,
-  UserRound,
-} from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { BadgeDollarSign, BookOpenCheck, Cloud, Clock, LogOut, Shield } from "lucide-react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { ProtectedRoute } from "../auth/ProtectedRoute";
-import { useAuth, type ExamId } from "../auth/AuthContext";
+import { useAuth } from "../auth/AuthContext";
 import { GlassButton, GlassLinkButton } from "../components/GlassButton";
 import { GlassCard } from "../components/GlassCard";
 import { LoadingState } from "../components/LoadingState";
-import { ProgressBar } from "../components/ProgressBar";
-import { V93InlineNotice } from "../components/V93InteractionPrimitives";
 import {
   getSyncedRecordSummary,
   syncLocalRecordsToCloud,
   type CloudSyncSummary,
 } from "../lib/db";
-import {
-  EXAM_QUESTION_COUNTS,
-  loadExamProgress,
-  type ExamProgressSummary,
-} from "../lib/examProgress";
-import { FOREIGN_EXCHANGE_PROGRESS_CHANGED } from "../lib/foreignExchangeProgress";
-import { announceInteractionFeedback } from "../lib/interactionFeedback";
-import { USER_STORAGE_SCOPE_CHANGED } from "../lib/userScopedStorage";
 
 const DATE_FORMATTER = new Intl.DateTimeFormat("zh-TW", {
   year: "numeric",
@@ -38,21 +20,8 @@ const DATE_FORMATTER = new Intl.DateTimeFormat("zh-TW", {
   minute: "2-digit",
 });
 
-const EXAM_META: Record<ExamId, { title: string; path: string; activatePath: string }> = {
-  "senior-securities": {
-    title: "證券高業",
-    path: "/securities",
-    activatePath: "/activate?exam=senior-securities",
-  },
-  "junior-foreign-exchange": {
-    title: "初階外匯",
-    path: "/foreign-exchange",
-    activatePath: "/activate?exam=junior-foreign-exchange",
-  },
-};
-
 function formatDate(value: string | null | undefined): string {
-  if (!value) return "尚未同步";
+  if (!value) return "—";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return DATE_FORMATTER.format(date);
@@ -69,50 +38,34 @@ export function AccountPage() {
 function AccountContent() {
   const navigate = useNavigate();
   const { examAccess, loading, session, signOut, user } = useAuth();
+  const securitiesAccess = examAccess["senior-securities"];
+  const foreignExchangeAccess = examAccess["junior-foreign-exchange"];
+  const configuredClientAdminEmails = new Set(
+    (import.meta.env.VITE_ADMIN_EMAILS ?? "").split(",")
+      .map((email) => email.trim().toLowerCase())
+      .filter(Boolean),
+  );
+  const clientAdminFallback = Boolean(user?.email && configuredClientAdminEmails.has(user.email.toLowerCase()));
   const [adminAccessState, setAdminAccessState] = useState<"checking" | "allowed" | "denied" | "unavailable">("checking");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [syncBusy, setSyncBusy] = useState(false);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
-  const [syncMessageTone, setSyncMessageTone] = useState<"success" | "warning">("success");
   const [syncSummary, setSyncSummary] = useState<CloudSyncSummary | null>(null);
-  const [progress, setProgress] = useState<Record<ExamId, ExamProgressSummary> | null>(null);
 
-  const loadAccountData = useCallback(async () => {
+  const loadSyncSummary = useCallback(async () => {
     if (!user) {
       setSyncSummary(null);
-      setProgress(null);
       return;
     }
-    const [summary, progressSummary] = await Promise.all([
-      getSyncedRecordSummary(),
-      loadExamProgress(),
-    ]);
-    setSyncSummary(summary);
-    setProgress(progressSummary);
+    setSyncSummary(await getSyncedRecordSummary());
   }, [user]);
 
   useEffect(() => {
-    void loadAccountData().catch((reason: unknown) => {
-      const message = reason instanceof Error ? reason.message : "讀取會員資料失敗。";
-      setError(message);
-      announceInteractionFeedback(message, "error", 4200);
+    void loadSyncSummary().catch((loadError: unknown) => {
+      setError(loadError instanceof Error ? loadError.message : "讀取同步資料失敗。 ");
     });
-  }, [loadAccountData]);
-
-  useEffect(() => {
-    const refresh = () => void loadAccountData().catch(() => undefined);
-    window.addEventListener("records:changed", refresh);
-    window.addEventListener(FOREIGN_EXCHANGE_PROGRESS_CHANGED, refresh);
-    window.addEventListener(USER_STORAGE_SCOPE_CHANGED, refresh);
-    window.addEventListener("storage", refresh);
-    return () => {
-      window.removeEventListener("records:changed", refresh);
-      window.removeEventListener(FOREIGN_EXCHANGE_PROGRESS_CHANGED, refresh);
-      window.removeEventListener(USER_STORAGE_SCOPE_CHANGED, refresh);
-      window.removeEventListener("storage", refresh);
-    };
-  }, [loadAccountData]);
+  }, [loadSyncSummary]);
 
   useEffect(() => {
     const token = session?.access_token || "";
@@ -120,6 +73,7 @@ function AccountContent() {
       setAdminAccessState("denied");
       return;
     }
+
     const controller = new AbortController();
     setAdminAccessState("checking");
     void fetch("/api/admin/tools?tool=access", {
@@ -127,15 +81,22 @@ function AccountContent() {
       signal: controller.signal,
       headers: { Authorization: `Bearer ${token}` },
     }).then((response) => {
-      if (response.ok) setAdminAccessState("allowed");
-      else if (response.status === 401 || response.status === 403) setAdminAccessState("denied");
-      else setAdminAccessState("unavailable");
+      if (response.ok) {
+        setAdminAccessState("allowed");
+        return;
+      }
+      if (response.status === 401 || response.status === 403) {
+        setAdminAccessState(clientAdminFallback ? "allowed" : "denied");
+        return;
+      }
+      setAdminAccessState(clientAdminFallback ? "allowed" : "unavailable");
     }).catch((reason: unknown) => {
       if (reason instanceof DOMException && reason.name === "AbortError") return;
-      setAdminAccessState("unavailable");
+      setAdminAccessState(clientAdminFallback ? "allowed" : "unavailable");
     });
+
     return () => controller.abort();
-  }, [session?.access_token, user]);
+  }, [clientAdminFallback, session?.access_token, user]);
 
   if (loading) return <LoadingState label="載入帳號" />;
 
@@ -144,12 +105,9 @@ function AccountContent() {
     setError(null);
     try {
       await signOut();
-      announceInteractionFeedback("已安全登出。", "success");
       navigate("/", { replace: true });
-    } catch (reason: unknown) {
-      const message = reason instanceof Error ? reason.message : "登出失敗。";
-      setError(message);
-      announceInteractionFeedback(message, "error", 4200);
+    } catch (signOutError: unknown) {
+      setError(signOutError instanceof Error ? signOutError.message : "登出失敗。 ");
     } finally {
       setBusy(false);
     }
@@ -162,110 +120,88 @@ function AccountContent() {
     try {
       const summary = await syncLocalRecordsToCloud();
       setSyncSummary(summary);
-      setProgress(await loadExamProgress());
-      const message = summary.pendingMutations > 0 ? `同步完成，仍有 ${summary.pendingMutations} 筆待重試。` : "學習紀錄已完成同步。";
-      setSyncMessage(message);
-      setSyncMessageTone(summary.pendingMutations > 0 ? "warning" : "success");
-      announceInteractionFeedback(message, summary.pendingMutations > 0 ? "warning" : "success", 3600);
-    } catch (reason: unknown) {
-      const message = reason instanceof Error ? reason.message : "同步學習紀錄失敗。";
-      setError(message);
-      announceInteractionFeedback(message, "error", 4600);
+      setSyncMessage("學習紀錄已完成同步。");
+    } catch (syncError: unknown) {
+      setError(syncError instanceof Error ? syncError.message : "同步學習紀錄失敗。請確認已執行 Supabase SQL。 ");
     } finally {
       setSyncBusy(false);
     }
   }
 
-  const localRecordCount = syncSummary
-    ? Object.values(syncSummary.local).reduce((sum, value) => sum + value, 0)
-    : 0;
-
   return (
-    <div className="page-stack product-account-page product-account-page-v84">
-      <header className="product-account-heading">
-        <div><p>會員中心</p><h1>我的帳號</h1><span>{user?.email}</span></div>
-        <div className="product-account-avatar" aria-hidden="true"><UserRound size={28} /></div>
-      </header>
+    <div className="page-stack account-page">
+      <GlassCard className="auth-card account-card-polished">
+        <h1>我的帳號</h1>
+        <p>{user?.email}</p>
 
-      {error ? <V93InlineNotice tone="error">{error}</V93InlineNotice> : null}
-      {syncMessage ? <V93InlineNotice tone={syncMessageTone}>{syncMessage}</V93InlineNotice> : null}
-
-      <section aria-labelledby="account-banks-title">
-        <div className="product-section-heading"><div><h2 id="account-banks-title">我的題庫</h2><p>查看各題庫的實際學習進度。</p></div></div>
-        <div className="product-account-exam-grid">
-          {(Object.keys(EXAM_META) as ExamId[]).map((examId) => {
-            const meta = EXAM_META[examId];
-            const access = examAccess[examId];
-            const examProgress = progress?.[examId];
-            const questionCount = EXAM_QUESTION_COUNTS[examId];
-            return (
-              <GlassCard key={examId} className="product-account-exam-card product-account-exam-card-v84">
-                <div className="product-account-exam-head">
-                  <BookOpenCheck aria-hidden="true" size={23} />
-                  <div>
-                    <h3>{meta.title}</h3>
-                    <span className={`account-access-state${access.hasEntitlement ? " has-access" : ""}`}>
-                      <i aria-hidden="true" />{access.hasEntitlement ? "已開通" : "尚未開通"}
-                    </span>
-                  </div>
-                </div>
-                <div className="account-exam-progress">
-                  <div><span>學習進度</span><strong>{examProgress?.progressPercent ?? 0}%</strong></div>
-                  <ProgressBar
-                    value={examProgress?.answered ?? 0}
-                    max={questionCount}
-                    label={`已作答 ${(examProgress?.answered ?? 0).toLocaleString()} / ${questionCount.toLocaleString()} 題`}
-                  />
-                  <div className="account-exam-metrics">
-                    <span>正確率 <strong>{examProgress?.accuracy ?? 0}%</strong></span>
-                    <span>錯題 <strong>{examProgress?.wrong ?? 0}</strong></span>
-                    <span>收藏 <strong>{examProgress?.favorites ?? 0}</strong></span>
-                  </div>
-                </div>
-                {access.error ? <V93InlineNotice tone="error">{access.error}</V93InlineNotice> : null}
-                <div className="button-row">
-                  <GlassLinkButton to={access.hasEntitlement ? meta.path : meta.activatePath} variant="primary">
-                    {access.hasEntitlement ? "進入題庫" : "啟用題庫"}
-                  </GlassLinkButton>
-                </div>
-              </GlassCard>
-            );
-          })}
+        <div className="account-status-grid">
+          <StatusItem
+            icon={<BadgeDollarSign aria-hidden="true" size={24} />}
+            label="證券高業"
+            value={securitiesAccess.hasEntitlement ? "已開通" : "尚未開通"}
+          />
+          <StatusItem
+            icon={<BookOpenCheck aria-hidden="true" size={24} />}
+            label="初階外匯"
+            value={foreignExchangeAccess.hasEntitlement ? "已開通" : "尚未開通"}
+          />
         </div>
-      </section>
 
-      <GlassCard className="product-account-section" as="section" aria-labelledby="account-sync-title">
-        <div className="product-account-section-head">
-          <div><h2 id="account-sync-title">學習資料</h2><p>兩套題庫的作答、錯題與收藏會依帳號隔離。</p></div>
-          <GlassButton variant="secondary" busy={syncBusy} disabled={syncBusy} onClick={() => void handleSyncRecords()}>
-            <RefreshCcw aria-hidden="true" size={17} />{syncBusy ? "同步中" : "立即同步"}
-          </GlassButton>
-        </div>
-        <div className="product-account-sync-grid" role="list" aria-label="同步狀態">
-          <div role="listitem"><Cloud aria-hidden="true" size={20} /><span>雲端狀態</span><strong>{syncSummary?.cloudAvailable ? "已啟用" : "尚未啟用"}</strong></div>
-          <div role="listitem"><Clock3 aria-hidden="true" size={20} /><span>最後同步</span><strong>{formatDate(syncSummary?.syncedAt)}</strong></div>
-          <div role="listitem"><BookOpenCheck aria-hidden="true" size={20} /><span>本機紀錄</span><strong>{localRecordCount.toLocaleString("zh-TW")}筆</strong></div>
-          <div role="listitem"><RefreshCcw aria-hidden="true" size={20} /><span>待同步</span><strong>{syncSummary?.pendingMutations ?? 0}筆</strong></div>
-        </div>
-        {syncSummary?.error ? <V93InlineNotice tone="warning">{syncSummary.error}</V93InlineNotice> : null}
-      </GlassCard>
+        {securitiesAccess.error ? <p className="form-error">{securitiesAccess.error}</p> : null}
+        {foreignExchangeAccess.error ? <p className="form-error">{foreignExchangeAccess.error}</p> : null}
+        {error ? <p className="form-error">{error}</p> : null}
+        {syncMessage ? <p className="form-success">{syncMessage}</p> : null}
 
-      <GlassCard className="product-account-section" as="section" aria-labelledby="account-security-title">
-        <div className="product-account-section-head"><div><h2 id="account-security-title">帳號與安全</h2><p>管理權限由伺服器角色確認。</p></div></div>
-        <div className="product-account-security-row">
-          <div><span>登入Email</span><strong>{user?.email}</strong></div>
-          <div className="button-row">
-            {adminAccessState === "allowed" ? (
-              <GlassLinkButton to="/admin" variant="secondary"><Shield aria-hidden="true" size={17} />管理後台</GlassLinkButton>
-            ) : null}
-            {adminAccessState === "checking" ? <span className="form-hint">確認管理權限中…</span> : null}
-            {adminAccessState === "unavailable" ? <span className="form-hint">暫時無法確認管理權限</span> : null}
-            <GlassButton variant="danger" busy={busy} disabled={busy || syncBusy} onClick={() => void handleSignOut()}>
-              <LogOut aria-hidden="true" size={17} />{busy ? "登出中" : "登出"}
+
+        <section className="account-device-section account-sync-compact" aria-labelledby="account-sync-title">
+          <div className="account-section-header">
+            <div>
+              <h2 id="account-sync-title">學習紀錄同步</h2>
+            </div>
+            <GlassButton variant="secondary" disabled={syncBusy} onClick={() => void handleSyncRecords()}>
+              <Cloud aria-hidden="true" size={18} />
+              <span>{syncBusy ? "同步中" : "立即同步"}</span>
             </GlassButton>
           </div>
+          <div className="account-sync-inline" role="list" aria-label="同步狀態">
+            <div role="listitem"><Cloud aria-hidden="true" size={21} /><span>雲端狀態</span><strong>{syncSummary?.cloudAvailable ? "已啟用" : "尚未啟用"}</strong></div>
+            <div role="listitem"><Clock aria-hidden="true" size={21} /><span>最後同步</span><strong>{formatDate(syncSummary?.syncedAt)}</strong></div>
+          </div>
+          {syncSummary?.error ? <p className="form-error">{syncSummary.error}</p> : null}
+        </section>
+
+        <div className="button-row">
+          {adminAccessState !== "denied" ? (
+            <GlassLinkButton to="/admin" variant="primary">
+              <Shield aria-hidden="true" size={18} />
+              <span>{adminAccessState === "checking" ? "檢查管理權限…" : "管理後台"}</span>
+            </GlassLinkButton>
+          ) : null}
+          {!securitiesAccess.hasEntitlement ? (
+            <GlassLinkButton to="/activate?exam=senior-securities" variant="primary">啟用證券高業</GlassLinkButton>
+          ) : null}
+          {!foreignExchangeAccess.hasEntitlement ? (
+            <GlassLinkButton to="/activate?exam=junior-foreign-exchange" variant="primary">啟用初階外匯</GlassLinkButton>
+          ) : null}
+          <GlassButton variant="danger" disabled={busy} onClick={() => void handleSignOut()}>
+            <LogOut aria-hidden="true" size={18} />
+            <span>登出</span>
+          </GlassButton>
         </div>
       </GlassCard>
+    </div>
+  );
+}
+
+
+function StatusItem({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
+  return (
+    <div className="account-status-item">
+      {icon}
+      <div>
+        <span>{label}</span>
+        <strong>{value}</strong>
+      </div>
     </div>
   );
 }

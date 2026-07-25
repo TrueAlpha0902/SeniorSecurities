@@ -21,7 +21,7 @@ async function main(): Promise<void> {
     adminLeaderboard,
     adminAction,
     adminTools,
-    questionsApi,
+    overrides,
     recovery,
     layout,
     analytics,
@@ -46,7 +46,7 @@ async function main(): Promise<void> {
     read("api/admin/leaderboard.ts"),
     read("api/admin/action.ts"),
     read("api/admin/tools.ts"),
-    read("api/questions.ts"),
+    read("api/question-overrides.ts"),
     read("src/lib/appRecovery.ts"),
     read("src/components/AppLayout.tsx"),
     read("src/components/DeferredAnalytics.tsx"),
@@ -164,14 +164,11 @@ async function main(): Promise<void> {
     "Activation-code plaintext must not be stored, queried or rendered.",
   );
   assert(
-    !questionsApi.includes("legacy-draft-fallback") &&
-      questionsApi.includes("listPublishedOverrides") &&
-      questionsApi.includes('type Resource = "securities" | "foreign-exchange" | "overrides"') &&
-      questionsApi.includes("await handleOverrides(req, res, body)") &&
-      questionsApi.includes("requireExamEntitlement(req, SECURITIES_EXAM_ID)") &&
-      questionsApi.includes('res.setHeader("ETag", etag)') &&
-      questionsApi.includes('releaseMode: published.releaseId ? "published" : "bundled-stable"'),
-    "Published overrides must use the unified authenticated API, ETag and bundled-stable fallback.",
+    !overrides.includes("legacy-draft-fallback") &&
+      overrides.includes("bundled") &&
+      overrides.includes("sendPublicJson") &&
+      overrides.includes("if-none-match"),
+    "Published overrides must use bundled fallback, ETag and public cache semantics.",
   );
 
   assert(
@@ -237,13 +234,9 @@ async function main(): Promise<void> {
   );
   assert(
     vite.includes("pdf-image-quiz.json") &&
-      vite.includes("Raw editor inputs") &&
-      vite.includes("rm(editorSourceOutputPath") &&
-      vite.includes('resolve(outputDirectory, "pdf-pages")') &&
-      vite.includes('resolve(outputDirectory, "data", "question-shards")') &&
-      vite.includes("rm(scanPagesOutputPath") &&
-      vite.includes("rm(publicQuestionShardsOutputPath"),
-    "Raw editor data, scan pages and public paid-content shards must be removed from production output.",
+      vite.includes("editor source") &&
+      vite.includes("rm(editorSourceOutputPath"),
+    "Raw editor question data must be removed from production output.",
   );
 
 
@@ -256,27 +249,22 @@ async function main(): Promise<void> {
   assert(
     randomPractice.includes("getMockExamDeferredFeedbackEnabled") &&
       randomPractice.includes("setMockExamDeferredFeedbackEnabled") &&
-      randomPractice.includes("startSecuritiesMock(") &&
-      randomPractice.includes("writeSecuritiesMockToken(") &&
       randomPractice.includes("getImageQuizSession(sessionId)") &&
       randomPractice.includes("persistedSession.feedbackMode !== feedbackMode") &&
       randomPractice.includes("resolveMockExamFeedbackMode("),
-    "Mock-exam grading mode and signed server session must be persisted and verified before navigation.",
+    "Mock-exam grading mode must be read at start time, persisted, and verified before navigation.",
   );
   assert(
     mockExam.includes("resolveMockExamSessionFeedbackMode") &&
       mockExam.includes("shouldRevealMockExamFeedback") &&
       mockExam.includes("getMockExamAnswerCardStatus") &&
-      imageQuizPage.includes("resumeSecuritiesMock(") &&
-      imageQuizPage.includes("submitSecuritiesMock(") &&
-      imageQuizPage.includes("applyImageQuizMockGrading(") &&
       imageQuizPage.includes("shouldEnforceDeferredMockExamFeedback(") &&
       imageQuizPage.includes("saveImageQuizSessionFeedbackMode(") &&
       imageQuizPage.includes("data-mock-exam-feedback-mode") &&
       imageQuizPage.includes("canChooseImageQuizAnswer({") &&
       imageQuizPage.includes("submitted-exam-answer-card") &&
       imageQuizPage.includes("reviewingSubmittedExam"),
-    "Mock exams must hide grading server-side, allow revisions, and expose a post-submit review answer card.",
+    "Mock exams must fail closed before submission, allow revisions, and expose a post-submit review answer card.",
   );
   assert(
     db.includes("learningEventId") &&
@@ -290,13 +278,12 @@ async function main(): Promise<void> {
   assert(
     db.includes("queueImageQuizSessionMutation(") &&
       db.includes("updateImageQuizSession(") &&
-      db.includes("export async function applyImageQuizMockGrading(") &&
       imageQuizPage.indexOf("await saveRandomSessionResult(") <
         imageQuizPage.lastIndexOf("await commitImageQuizSessionLearningAnswers("),
-    "Mock-exam grading/session mutations must be atomic and finish before learning records commit.",
+    "Mock-exam session mutations must be serialized and local submission must finish before learning records commit.",
   );
 
-  console.log("v83 security, synchronization and protected-content integrity contracts passed.");
+  console.log("v79 security, synchronization and deployment integrity contracts passed.");
 }
 
 void main();
