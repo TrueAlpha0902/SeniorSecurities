@@ -11,7 +11,10 @@ interface AdminDataRow {
   [key: string]: unknown;
 }
 
+type ExamId = "senior-securities" | "junior-foreign-exchange";
+
 const ONLINE_WINDOW_SECONDS = 90;
+const EXAM_IDS: readonly ExamId[] = ["senior-securities", "junior-foreign-exchange"];
 type AdminClient = Awaited<ReturnType<typeof requireAdminUser>>["supabase"];
 
 function toMapByUserId(rows: AdminDataRow[] | null | undefined): Map<string, AdminDataRow> {
@@ -35,6 +38,10 @@ function newestDate(...values: unknown[]): string | null {
     if (!Number.isNaN(time) && (!newest || time > newest.time)) newest = { value: normalized, time };
   }
   return newest?.value || null;
+}
+
+function examIdOf(value: unknown): ExamId | null {
+  return value === "senior-securities" || value === "junior-foreign-exchange" ? value : null;
 }
 
 async function safeSelect<T>(promise: PromiseLike<{ data: T | null; error: unknown }>, fallback: T): Promise<T> {
@@ -129,6 +136,30 @@ function isOnline(lastSeenAt: string | null): boolean {
   return Date.now() - seenTime <= ONLINE_WINDOW_SECONDS * 1000;
 }
 
+function buildEntitlementMap(examRows: AdminDataRow[], legacyRows: AdminDataRow[]): Map<string, Map<ExamId, AdminDataRow>> {
+  const byUser = new Map<string, Map<ExamId, AdminDataRow>>();
+  const ensureUser = (userId: string): Map<ExamId, AdminDataRow> => {
+    const current = byUser.get(userId);
+    if (current) return current;
+    const created = new Map<ExamId, AdminDataRow>();
+    byUser.set(userId, created);
+    return created;
+  };
+
+  for (const row of examRows) {
+    const userId = String(row.user_id || "");
+    const examId = examIdOf(row.exam_id);
+    if (userId && examId) ensureUser(userId).set(examId, row);
+  }
+  for (const row of legacyRows) {
+    const userId = String(row.user_id || "");
+    if (!userId) continue;
+    const map = ensureUser(userId);
+    if (!map.has("senior-securities")) map.set("senior-securities", { ...row, exam_id: "senior-securities" });
+  }
+  return byUser;
+}
+
 export default async function handler(req: ApiRequest, res: ApiResponse) {
   if (req.method !== "GET") {
     sendJson(res, 405, { error: "Method not allowed" });
@@ -151,9 +182,19 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       return;
     }
 
-    const [entitlements, overviewRows, leaderboardRows, presenceRows] = await Promise.all([
+    const [examEntitlements, legacyEntitlements, overviewRows, leaderboardRows, presenceRows] = await Promise.all([
       safeSelect(
-        supabase.from("user_entitlements").select("user_id, plan, status, source_code_hash, granted_at, expires_at").in("user_id", userIds),
+        supabase
+          .from("user_exam_entitlements")
+          .select("user_id, exam_id, plan, status, source_code_hash, granted_at, expires_at")
+          .in("user_id", userIds),
+        [],
+      ),
+      safeSelect(
+        supabase
+          .from("user_entitlements")
+          .select("user_id, plan, status, source_code_hash, granted_at, expires_at")
+          .in("user_id", userIds),
         [],
       ),
       loadUserOverview(supabase, userIds),
@@ -173,12 +214,16 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       ),
     ]);
 
-    const entitlementByUser = toMapByUserId(entitlements as AdminDataRow[]);
+    const entitlementByUser = buildEntitlementMap(
+      examEntitlements as AdminDataRow[],
+      legacyEntitlements as AdminDataRow[],
+    );
     const overviewByUser = toMapByUserId(overviewRows as AdminDataRow[]);
     const leaderboardByUser = toMapByUserId(leaderboardRows as AdminDataRow[]);
     const presenceByUser = toMapByUserId(presenceRows as AdminDataRow[]);
 
-    const sourceCodeHashes = Array.from(new Set((entitlements as AdminDataRow[])
+    const allEntitlementRows = Array.from(entitlementByUser.values()).flatMap((rows) => Array.from(rows.values()));
+    const sourceCodeHashes = Array.from(new Set(allEntitlementRows
       .map((row) => String(row.source_code_hash || ""))
       .filter(Boolean)));
     const activationCodeByHash = new Map<string, string>();
@@ -196,23 +241,36 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     }
 
     const result = users.map((user) => {
-      const entitlement = entitlementByUser.get(user.id);
+      const userEntitlements = entitlementByUser.get(user.id) || new Map<ExamId, AdminDataRow>();
       const overview = overviewByUser.get(user.id);
       const presence = presenceByUser.get(user.id);
       const lastSeenAt = normalizeDate(presence?.last_seen_at);
       const leaderboard = leaderboardByUser.get(user.id);
-      const sourceCodeHash = String(entitlement?.source_code_hash || "");
+      const entitlements = EXAM_IDS.map((examId) => {
+        const row = userEntitlements.get(examId);
+        const sourceCodeHash = String(row?.source_code_hash || "");
+        return {
+          examId,
+          status: row?.status || "none",
+          plan: row?.plan || null,
+          grantedAt: normalizeDate(row?.granted_at),
+          expiresAt: normalizeDate(row?.expires_at),
+          activationCode: sourceCodeHash ? activationCodeByHash.get(sourceCodeHash) || null : null,
+        };
+      });
+      const securities = entitlements.find((row) => row.examId === "senior-securities")!;
 
       return {
         id: user.id,
         email: user.email || "",
         createdAt: normalizeDate(user.created_at),
         lastSignInAt: normalizeDate(user.last_sign_in_at),
-        entitlementStatus: entitlement?.status || "none",
-        plan: entitlement?.plan || null,
-        grantedAt: normalizeDate(entitlement?.granted_at),
-        expiresAt: normalizeDate(entitlement?.expires_at),
-        activationCode: sourceCodeHash ? activationCodeByHash.get(sourceCodeHash) || null : null,
+        entitlements,
+        entitlementStatus: securities.status,
+        plan: securities.plan,
+        grantedAt: securities.grantedAt,
+        expiresAt: securities.expiresAt,
+        activationCode: securities.activationCode,
         lastEventAt: normalizeDate(overview?.last_event_at),
         lastEventType: overview?.last_event_type || null,
         lastIp: overview?.last_ip || null,

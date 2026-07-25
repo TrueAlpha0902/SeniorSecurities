@@ -22,6 +22,10 @@ export type QuestionOverride = {
   answer: "1" | "2" | "3" | "4";
   questionSegments: QuestionOverrideSegment[];
   explanationSegments: QuestionOverrideSegment[];
+  mobileQuestionSegments?: QuestionOverrideSegment[];
+  mobileExplanationSegments?: QuestionOverrideSegment[];
+  mobileQuestionSegmentsVerification?: `pixel-and-visual-reviewed:v2:${string}`;
+  mobileExplanationSegmentsVerification?: `pixel-and-visual-reviewed:v2:${string}`;
   updatedAt: string;
   updatedBy: string;
 };

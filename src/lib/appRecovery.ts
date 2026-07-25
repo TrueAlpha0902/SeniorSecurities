@@ -1,6 +1,7 @@
 const CHUNK_RECOVERY_KEY = "quizpwa:chunk-recovery-at";
-const CHUNK_RECOVERY_COOLDOWN_MS = 60_000;
-const APP_CACHE_PREFIXES = ["question-bank-", "workbox-precache-"];
+const CHUNK_RECOVERY_COOLDOWN_MS = 45_000;
+const RECOVERY_QUERY_KEY = "appRecovery";
+const RECOVERY_STABLE_DELAY_MS = 10_000;
 
 export const APP_UPDATE_AVAILABLE_EVENT = "app:update-available";
 
@@ -12,23 +13,100 @@ export type AppUpdateAvailableDetail = {
 };
 
 let currentUpdateHandler: UpdateHandler | null = null;
+let recoveryInProgress = false;
 const updateSubscribers = new Set<UpdateSubscriber>();
 
+function errorText(value: unknown): string {
+  if (value instanceof Error) return `${value.name}: ${value.message}`;
+  if (typeof value === "string") return value;
+  try {
+    return JSON.stringify(value ?? "");
+  } catch {
+    return String(value ?? "");
+  }
+}
+
 export function isChunkLoadError(value: unknown): boolean {
-  let text = "";
-  if (value instanceof Error) {
-    text = `${value.name}: ${value.message}`;
-  } else if (typeof value === "string") {
-    text = value;
-  } else {
-    try {
-      text = JSON.stringify(value ?? "");
-    } catch {
-      text = String(value ?? "");
-    }
+  const text = errorText(value);
+  return /ChunkLoadError|Loading chunk .* failed|Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module|Unable to preload CSS|Failed to load module script|JavaScript-or-Wasm module script|module script.*MIME|MIME type.*(?:text\/html|not executable)|disallowed MIME type/i.test(
+    text,
+  );
+}
+
+function readRecoveryTimestamp(): number {
+  try {
+    return Number(window.sessionStorage.getItem(CHUNK_RECOVERY_KEY) ?? "0");
+  } catch {
+    return 0;
+  }
+}
+
+function writeRecoveryTimestamp(timestamp: number): void {
+  try {
+    window.sessionStorage.setItem(CHUNK_RECOVERY_KEY, String(timestamp));
+  } catch {
+    // Storage may be unavailable in hardened/private browsing contexts.
+  }
+}
+
+function clearRecoveryTimestamp(): void {
+  try {
+    window.sessionStorage.removeItem(CHUNK_RECOVERY_KEY);
+  } catch {
+    // Storage may be unavailable in hardened/private browsing contexts.
+  }
+}
+
+function buildFreshUrl(reason: string): URL {
+  const url = new URL(window.location.href);
+  url.searchParams.set(RECOVERY_QUERY_KEY, `${reason}-${Date.now()}`);
+  return url;
+}
+
+async function purgeRuntimeState(): Promise<void> {
+  if ("serviceWorker" in navigator) {
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    const currentBase = new URL(import.meta.env.BASE_URL, window.location.origin).pathname;
+    await Promise.all(
+      registrations
+        .filter((registration) => {
+          const scope = new URL(registration.scope);
+          return scope.origin === window.location.origin && scope.pathname.startsWith(currentBase);
+        })
+        .map((registration) => registration.unregister()),
+    );
   }
 
-  return /ChunkLoadError|Loading chunk .* failed|Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module|Unable to preload CSS/i.test(text);
+  if ("caches" in window) {
+    const cacheNames = await window.caches.keys();
+    const appOwnedCacheNames = cacheNames.filter(
+      (cacheName) =>
+        cacheName.startsWith("question-bank-") ||
+        cacheName.startsWith("workbox-precache-"),
+    );
+    await Promise.all(appOwnedCacheNames.map((cacheName) => window.caches.delete(cacheName)));
+  }
+}
+
+async function navigateToFreshApp(reason: string, purgeCaches: boolean): Promise<void> {
+  if (typeof window === "undefined" || recoveryInProgress) return;
+  recoveryInProgress = true;
+  const freshUrl = buildFreshUrl(reason);
+
+  try {
+    if (purgeCaches) await purgeRuntimeState();
+    await fetch(freshUrl, {
+      cache: "reload",
+      credentials: "same-origin",
+      redirect: "follow",
+      headers: {
+        "Cache-Control": "no-cache",
+        Pragma: "no-cache",
+      },
+    }).catch(() => undefined);
+  } finally {
+    window.location.replace(freshUrl.toString());
+  }
 }
 
 export function recoverFromChunkLoadError(value: unknown): boolean {
@@ -36,43 +114,44 @@ export function recoverFromChunkLoadError(value: unknown): boolean {
   if (typeof navigator !== "undefined" && navigator.onLine === false) return false;
 
   const now = Date.now();
-  const previous = Number(window.sessionStorage.getItem(CHUNK_RECOVERY_KEY) ?? "0");
-  if (Number.isFinite(previous) && now - previous < CHUNK_RECOVERY_COOLDOWN_MS) {
+  const previous = readRecoveryTimestamp();
+  if (Number.isFinite(previous) && previous > 0 && now - previous < CHUNK_RECOVERY_COOLDOWN_MS) {
     return false;
   }
 
-  window.sessionStorage.setItem(CHUNK_RECOVERY_KEY, String(now));
-  window.location.reload();
+  writeRecoveryTimestamp(now);
+  void navigateToFreshApp("chunk", true);
   return true;
-}
-
-function isAppCache(cacheName: string): boolean {
-  return APP_CACHE_PREFIXES.some((prefix) => cacheName.startsWith(prefix));
 }
 
 export async function clearRuntimeCachesAndReload(): Promise<void> {
   if (typeof window === "undefined") return;
-
-  try {
-    if ("serviceWorker" in navigator) {
-      const registrations = await navigator.serviceWorker.getRegistrations();
-      const currentBase = new URL(import.meta.env.BASE_URL, window.location.origin).pathname;
-      await Promise.all(
-        registrations
-          .filter((registration) => new URL(registration.scope).pathname.startsWith(currentBase))
-          .map((registration) => registration.unregister()),
-      );
-    }
-
-    if ("caches" in window) {
-      const cacheNames = await window.caches.keys();
-      await Promise.all(cacheNames.filter(isAppCache).map((cacheName) => window.caches.delete(cacheName)));
-    }
-  } finally {
-    window.location.reload();
-  }
+  clearRecoveryTimestamp();
+  recoveryInProgress = false;
+  await navigateToFreshApp("clear-cache", true);
 }
 
+export async function reloadAppWithCacheBust(reason = "reload"): Promise<void> {
+  if (typeof window === "undefined") return;
+  clearRecoveryTimestamp();
+  recoveryInProgress = false;
+  await navigateToFreshApp(reason, false);
+}
+
+export function settleAppRecoveryAfterLoad(): void {
+  if (typeof window === "undefined") return;
+
+  const url = new URL(window.location.href);
+  if (url.searchParams.has(RECOVERY_QUERY_KEY)) {
+    url.searchParams.delete(RECOVERY_QUERY_KEY);
+    window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+  }
+
+  window.setTimeout(() => {
+    clearRecoveryTimestamp();
+    recoveryInProgress = false;
+  }, RECOVERY_STABLE_DELAY_MS);
+}
 
 function wait(milliseconds: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
@@ -111,7 +190,9 @@ export async function applyAppUpdateAndReload(applyUpdate: UpdateHandler): Promi
     ]);
   } finally {
     removeControllerListener();
-    window.location.reload();
+    clearRecoveryTimestamp();
+    recoveryInProgress = false;
+    await navigateToFreshApp("update", false);
   }
 }
 

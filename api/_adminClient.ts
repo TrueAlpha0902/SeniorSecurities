@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 export interface ApiRequest {
   method?: string;
@@ -28,6 +28,13 @@ export function getErrorStatusCode(error: unknown): number {
 
 const supabaseUrl = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "").trim();
 const serviceRoleKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || "").trim();
+const publishableKey = (
+  process.env.SUPABASE_PUBLISHABLE_KEY
+  || process.env.VITE_SUPABASE_PUBLISHABLE_KEY
+  || process.env.SUPABASE_ANON_KEY
+  || process.env.VITE_SUPABASE_ANON_KEY
+  || ""
+).trim();
 const configuredAdminEmails = Array.from(new Set(
   [process.env.PRIMARY_ADMIN_EMAILS || "", process.env.ADMIN_EMAILS || ""]
     .join(",")
@@ -57,6 +64,68 @@ export function getAdminClient() {
       autoRefreshToken: false,
     },
   });
+}
+
+export type QuestionAuthConfiguration = {
+  supabaseUrlConfigured: boolean;
+  serviceRoleConfigured: boolean;
+  publishableKeyConfigured: boolean;
+  questionAuthConfigured: boolean;
+  mockSigningSecretConfigured: boolean;
+};
+
+export function getQuestionAuthConfiguration(): QuestionAuthConfiguration {
+  return {
+    supabaseUrlConfigured: Boolean(supabaseUrl),
+    serviceRoleConfigured: Boolean(serviceRoleKey),
+    publishableKeyConfigured: Boolean(publishableKey),
+    questionAuthConfigured: Boolean(supabaseUrl && (serviceRoleKey || publishableKey)),
+    mockSigningSecretConfigured: Boolean(
+      String(
+        process.env.MOCK_EXAM_SIGNING_SECRET
+        || process.env.SUPABASE_SERVICE_ROLE_KEY
+        || process.env.SUPABASE_SECRET_KEY
+        || "",
+      ).trim(),
+    ),
+  };
+}
+
+function getAuthenticatedQuestionClient(token: string): {
+  supabase: SupabaseClient;
+  usingServiceRole: boolean;
+} {
+  if (!supabaseUrl) {
+    throw new HttpError("題庫伺服器缺少 Supabase URL 環境變數。", 503);
+  }
+
+  const apiKey = serviceRoleKey || publishableKey;
+  if (!apiKey) {
+    throw new HttpError(
+      "題庫伺服器缺少 Supabase 金鑰；請設定 service-role 或 publishable key 後重新部署。",
+      503,
+    );
+  }
+
+  const usingServiceRole = Boolean(serviceRoleKey);
+  return {
+    supabase: createClient(supabaseUrl, apiKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+      ...(usingServiceRole
+        ? {}
+        : {
+            global: {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            },
+          }),
+    }),
+    usingServiceRole,
+  };
 }
 
 export function getConfiguredAdminEmails(): string[] {
@@ -98,10 +167,26 @@ async function getDatabaseAdminAccess(userId: string, email: string): Promise<Da
   return { role: normalizeAdminRole(data.role) };
 }
 
-function extractBearerToken(req: ApiRequest): string | null {
+export function extractBearerToken(req: ApiRequest): string | null {
   const header = String(req.headers?.authorization || req.headers?.Authorization || "");
   const match = header.match(/^Bearer\s+(.+)$/i);
   return match?.[1] ?? null;
+}
+
+export async function requireAuthenticatedUser(req: ApiRequest) {
+  const token = extractBearerToken(req);
+  if (!token) throw new HttpError("尚未登入，或登入狀態已過期。", 401);
+
+  const { supabase, usingServiceRole } = getAuthenticatedQuestionClient(token);
+  const { data, error } = await supabase.auth.getUser(token);
+  if (error || !data.user) throw new HttpError("無法驗證目前登入帳號。", 401);
+
+  return {
+    supabase,
+    user: data.user,
+    token,
+    usingServiceRole,
+  };
 }
 
 export async function requireAdminUser(

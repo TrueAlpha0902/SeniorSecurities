@@ -1,5 +1,11 @@
 import assert from "node:assert/strict";
 import {
+  getAnswerModeEnabled,
+  getMockExamDeferredFeedbackEnabled,
+  setAnswerModeEnabled,
+  setMockExamDeferredFeedbackEnabled,
+} from "../src/lib/appSettings";
+import {
   clearScopedStorageByPrefix,
   readScopedStorageItem,
   removeScopedStorageItem,
@@ -81,4 +87,38 @@ assert.equal(legacyStorage.getItem("quizpwa:total-practice-seconds"), null);
 setActiveUserStorageScope("different-user");
 assert.equal(readScopedStorageItem("quizpwa:total-practice-seconds"), null);
 
-console.log("User-scoped storage isolation and legacy migration tests passed.");
+const settingsStorage = new MemoryStorage();
+installWindow(settingsStorage);
+setActiveUserStorageScope("settings-user");
+
+assert.equal(
+  getAnswerModeEnabled(),
+  false,
+  "Global answer mode must default to off.",
+);
+
+setAnswerModeEnabled(true);
+assert.equal(
+  getAnswerModeEnabled(),
+  true,
+  "The one answer-mode switch must enable ordinary practice across all question banks.",
+);
+
+setMockExamDeferredFeedbackEnabled(true);
+assert.equal(
+  getMockExamDeferredFeedbackEnabled(),
+  true,
+  "Mock-exam deferred grading must remain enabled independently.",
+);
+assert.equal(
+  getAnswerModeEnabled(),
+  true,
+  "Mock-exam feedback settings must not mutate practice answer mode.",
+);
+
+setAnswerModeEnabled(false);
+assert.equal(getAnswerModeEnabled(), false);
+
+console.log(
+  "User-scoped storage isolation, migration, and single-switch answer-mode tests passed.",
+);

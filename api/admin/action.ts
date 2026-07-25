@@ -9,9 +9,23 @@ import {
 } from "../_adminClient.js";
 
 const DEFAULT_PASSWORD_RESET_URL = "https://senior-securities.vercel.app/reset-password";
+const EXPECTED_MIGRATION = "20260719120000_exam_scoped_entitlements_v80";
 const EMAIL_LIMIT_PER_HOUR = Number(process.env.PASSWORD_RESET_EMAIL_LIMIT_PER_HOUR || 3);
 type AdminClient = Awaited<ReturnType<typeof requireAdminUser>>["supabase"];
 type JsonObject = Record<string, unknown>;
+type ExamId = "senior-securities" | "junior-foreign-exchange";
+type HealthCheck = { id: string; ok: boolean; message: string };
+
+const EXAM_LABELS: Record<ExamId, string> = {
+  "senior-securities": "證券高業",
+  "junior-foreign-exchange": "初階外匯",
+};
+
+function normalizeExamId(value: unknown): ExamId {
+  const examId = String(value || "senior-securities").trim().toLowerCase();
+  if (examId === "senior-securities" || examId === "junior-foreign-exchange") return examId;
+  throw new HttpError("題庫種類不正確。", 400);
+}
 
 function getEnv(name: string): string {
   return String(process.env[name] || "").trim();
@@ -95,7 +109,92 @@ async function recordPasswordResetRequest(supabase: AdminClient, args: {
   if (error) console.error("Failed to record admin password reset request:", error);
 }
 
+async function handleAuditEvents(req: ApiRequest, res: ApiResponse): Promise<void> {
+  try {
+    const { supabase } = await requireAdminUser(req);
+    const { data, error } = await supabase
+      .from("admin_audit_events")
+      .select("id, actor_user_id, actor_email, target_user_id, target_email, action, metadata, ip_address, created_at")
+      .order("created_at", { ascending: false })
+      .limit(100);
+    if (error) throw error;
+    sendJson(res, 200, {
+      events: (data || []).map((row) => ({
+        id: row.id,
+        actorUserId: row.actor_user_id,
+        actorEmail: row.actor_email,
+        targetUserId: row.target_user_id,
+        targetEmail: row.target_email,
+        action: row.action,
+        metadata: row.metadata || {},
+        ipAddress: row.ip_address,
+        createdAt: row.created_at,
+      })),
+    });
+  } catch (error) {
+    console.error("/api/admin/action audit-events failed:", error);
+    sendError(res, error);
+  }
+}
+
+async function handleHealthCheck(req: ApiRequest, res: ApiResponse): Promise<void> {
+  try {
+    const { supabase, role } = await requireAdminUser(req);
+    const checks: HealthCheck[] = [];
+
+    const { error: authError } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1 });
+    checks.push({
+      id: "auth-admin",
+      ok: !authError,
+      message: authError ? `Auth Admin API：${authError.message}` : "Auth Admin API 可用",
+    });
+
+    const tableChecks = [
+      ["tombstones", "user_record_tombstones", "record_key"],
+      ["telemetry", "app_client_errors", "id"],
+      ["image-sessions", "user_image_quiz_sessions", "session_id"],
+      ["release-pointer", "question_release_pointer", "singleton"],
+      ["release-batches", "question_release_batches", "id"],
+      ["activation-codes", "activation_codes", "id"],
+      ["exam-entitlements", "user_exam_entitlements", "user_id"],
+    ] as const;
+
+    for (const [id, table, column] of tableChecks) {
+      const { error } = await supabase.from(table).select(column, { head: true, count: "exact" }).limit(1);
+      checks.push({
+        id,
+        ok: !error,
+        message: error ? `${table}：${error.message}` : `${table} 可用`,
+      });
+    }
+
+    const ok = checks.every((check) => check.ok);
+    sendJson(res, 200, {
+      ok,
+      message: ok ? "System health OK" : "System health requires attention",
+      health: {
+        releaseId: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 12) || "local",
+        environment: process.env.VERCEL_ENV || process.env.NODE_ENV || "unknown",
+        expectedMigration: EXPECTED_MIGRATION,
+        role,
+        checkedAt: new Date().toISOString(),
+        checks,
+      },
+    });
+  } catch (error) {
+    console.error("/api/admin/ping failed:", error);
+    sendError(res, error);
+  }
+}
+
 export default async function handler(req: ApiRequest, res: ApiResponse) {
+  if (req.method === "GET") {
+    const operationValue = req.query?.operation;
+    const operation = Array.isArray(operationValue) ? String(operationValue[0] || "") : String(operationValue || "");
+    if (operation === "audit-events") await handleAuditEvents(req, res);
+    else await handleHealthCheck(req, res);
+    return;
+  }
   if (req.method !== "POST") {
     sendJson(res, 405, { error: "Method not allowed" });
     return;
@@ -112,13 +211,23 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     if (!userId) throw new Error("缺少 userId 或 email。 ");
 
     if (action === "revoke") {
+      const examId = normalizeExamId(body.examId);
       const { data: updatedEntitlements, error: entitlementError } = await supabase
-        .from("user_entitlements")
+        .from("user_exam_entitlements")
         .update({ status: "revoked" })
         .eq("user_id", userId)
+        .eq("exam_id", examId)
         .select("user_id");
       if (entitlementError) throw entitlementError;
-      if (!updatedEntitlements?.length) throw new HttpError("找不到可取消的有效授權。", 404);
+      if (!updatedEntitlements?.length) throw new HttpError(`找不到可取消的${EXAM_LABELS[examId]}授權。`, 404);
+
+      if (examId === "senior-securities") {
+        const { error: legacyError } = await supabase
+          .from("user_entitlements")
+          .update({ status: "revoked" })
+          .eq("user_id", userId);
+        if (legacyError) throw legacyError;
+      }
 
       await writeAdminAudit({
         supabase,
@@ -127,21 +236,36 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
         action: "user.entitlement.revoke",
         targetUserId: userId,
         targetEmail: email,
+        metadata: { examId },
       });
 
-      sendJson(res, 200, { ok: true, message: "已取消完整題庫權限。" });
+      sendJson(res, 200, { ok: true, message: `${EXAM_LABELS[examId]}權限已取消。` });
       return;
     }
 
     if (action === "restore") {
-      const { error: upsertError } = await supabase.from("user_entitlements").upsert({
+      const examId = normalizeExamId(body.examId);
+      const grantedAt = new Date().toISOString();
+      const { error: upsertError } = await supabase.from("user_exam_entitlements").upsert({
         user_id: userId,
+        exam_id: examId,
         plan: "full",
         status: "active",
-        granted_at: new Date().toISOString(),
+        granted_at: grantedAt,
         expires_at: null,
-      });
+      }, { onConflict: "user_id,exam_id" });
       if (upsertError) throw upsertError;
+
+      if (examId === "senior-securities") {
+        const { error: legacyError } = await supabase.from("user_entitlements").upsert({
+          user_id: userId,
+          plan: "full",
+          status: "active",
+          granted_at: grantedAt,
+          expires_at: null,
+        }, { onConflict: "user_id" });
+        if (legacyError) throw legacyError;
+      }
 
       await writeAdminAudit({
         supabase,
@@ -150,9 +274,10 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
         action: "user.entitlement.restore",
         targetUserId: userId,
         targetEmail: email,
+        metadata: { examId },
       });
 
-      sendJson(res, 200, { ok: true, message: "已恢復永久完整題庫權限。" });
+      sendJson(res, 200, { ok: true, message: `${EXAM_LABELS[examId]}權限已開通。` });
       return;
     }
 

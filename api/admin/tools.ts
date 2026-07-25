@@ -11,6 +11,12 @@ import {
 } from "../_adminClient.js";
 
 type JsonObject = Record<string, unknown>;
+type ExamId = "senior-securities" | "junior-foreign-exchange";
+
+const EXAM_LABELS: Record<ExamId, string> = {
+  "senior-securities": "證券高業",
+  "junior-foreign-exchange": "初階外匯",
+};
 
 function parseBody(req: ApiRequest): JsonObject {
   const parsed: unknown = typeof req.body === "string" ? JSON.parse(req.body || "{}") : req.body;
@@ -34,8 +40,15 @@ function normalizeActivationCode(value: unknown): string | null {
   return code;
 }
 
-function activationCodeRecord(customCode: string | null) {
-  const raw = customCode || `SENIOR${randomBytes(8).toString("hex")}`;
+function normalizeExamId(value: unknown): ExamId {
+  const examId = String(value || "senior-securities").trim().toLowerCase();
+  if (examId === "senior-securities" || examId === "junior-foreign-exchange") return examId;
+  throw new HttpError("題庫種類不正確。", 400);
+}
+
+function activationCodeRecord(customCode: string | null, examId: ExamId) {
+  const prefix = examId === "junior-foreign-exchange" ? "FOREX" : "SENIOR";
+  const raw = customCode || `${prefix}${randomBytes(8).toString("hex")}`;
   const normalized = raw.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
   if (normalized.length < 10) throw new HttpError("啟用碼至少需要 10 個英數字元。", 400);
   const formatted = normalized.match(/.{1,4}/g)?.join("-") || normalized;
@@ -91,7 +104,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
         const auth = await requireAdminUser(req, { roles: ["primary_admin", "admin"] });
         const { data, error } = await auth.supabase
           .from("activation_codes")
-          .select("id, code_preview, max_uses, use_count, is_active, note, created_at, redeemed_at")
+          .select("id, exam_id, code_preview, max_uses, use_count, is_active, note, created_at, redeemed_at")
           .order("created_at", { ascending: false })
           .limit(100);
         if (error) throw error;
@@ -147,11 +160,12 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     }
 
     if (action === "create-activation-code") {
+      const examId = normalizeExamId(body.examId);
       const customCode = normalizeActivationCode(body.code);
       const note = String(body.note || "").trim().slice(0, 500) || null;
       const maxUses = Math.min(999, Math.max(1, Math.trunc(Number(body.maxUses) || 1)));
-      const code = activationCodeRecord(customCode);
-      const { error } = await supabase.rpc("create_activation_code_v79", {
+      const code = activationCodeRecord(customCode, examId);
+      const { error } = await supabase.rpc("create_activation_code_v80", {
         p_actor_user_id: user.id,
         p_actor_email: actorEmail,
         p_code_hash: code.hash,
@@ -159,10 +173,16 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
         p_max_uses: maxUses,
         p_note: note,
         p_custom_code: Boolean(customCode),
+        p_exam_id: examId,
         p_ip_address: ipAddress,
       });
       if (error) throw error;
-      sendJson(res, 200, { ok: true, code: code.formatted, message: "啟用碼已建立。" });
+      sendJson(res, 200, {
+        ok: true,
+        code: code.formatted,
+        examId,
+        message: `${EXAM_LABELS[examId]}啟用碼已建立。`,
+      });
       return;
     }
 

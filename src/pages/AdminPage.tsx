@@ -27,6 +27,8 @@ import { AdminToolsPanel } from "../components/AdminToolsPanel";
 import { GlassButton } from "../components/GlassButton";
 import { GlassCard } from "../components/GlassCard";
 import { LoadingState } from "../components/LoadingState";
+import { V93ConfirmDialog, V93InlineNotice } from "../components/V93InteractionPrimitives";
+import { announceInteractionFeedback } from "../lib/interactionFeedback";
 import { formatTotalPracticeTime } from "../lib/practiceTime";
 import "../styles/admin-leaderboard-v42.css";
 import "../styles/admin-premium-v65.css";
@@ -46,11 +48,37 @@ const SHORT_DATE_FORMATTER = new Intl.DateTimeFormat("zh-TW", {
   minute: "2-digit",
 });
 
+type ExamId = "senior-securities" | "junior-foreign-exchange";
+
+const EXAM_IDS: readonly ExamId[] = ["senior-securities", "junior-foreign-exchange"];
+const EXAM_LABELS: Record<ExamId, string> = {
+  "senior-securities": "證券高業",
+  "junior-foreign-exchange": "初階外匯",
+};
+
+type ExamEntitlement = {
+  examId: ExamId;
+  plan: string | null;
+  status: string;
+  grantedAt: string | null;
+  expiresAt: string | null;
+  activationCode: {
+    code_preview?: string | null;
+    max_uses?: number;
+    use_count?: number;
+    is_active?: boolean;
+    note?: string | null;
+    created_at?: string | null;
+    redeemed_at?: string | null;
+  } | null;
+};
+
 type AdminUserRow = {
   id: string;
   email: string;
   createdAt: string | null;
   lastSignInAt: string | null;
+  entitlements: ExamEntitlement[];
   entitlementStatus: "active" | "revoked" | "none" | string;
   plan: string | null;
   grantedAt: string | null;
@@ -134,21 +162,8 @@ type UserDetail = {
     lastActivityAt: string | null;
     isOnline: boolean;
   };
-  entitlement: {
-    plan: string | null;
-    status: string;
-    grantedAt: string | null;
-    expiresAt: string | null;
-    activationCode: {
-      code_preview?: string | null;
-      max_uses?: number;
-      use_count?: number;
-      is_active?: boolean;
-      note?: string | null;
-      created_at?: string | null;
-      redeemed_at?: string | null;
-    } | null;
-  } | null;
+  entitlements: ExamEntitlement[];
+  entitlement: Omit<ExamEntitlement, "examId"> | null;
   learning: {
     totalAnswered: number;
     totalCorrect: number;
@@ -185,6 +200,16 @@ type AuditResponse = { events?: AdminAuditEvent[]; error?: string };
 type ActionResponse = { ok?: boolean; message?: string; error?: string };
 type UserFilter = "all" | "active" | "inactive";
 type UserAction = "revoke" | "restore" | "send-password-reset" | "reset-devices" | "revoke-device";
+type AdminConfirmation =
+  | {
+      kind: "user-action";
+      action: UserAction;
+      target: AdminUserRow;
+      deviceId?: string;
+      deviceLabel?: string;
+      examId?: ExamId;
+    }
+  | { kind: "leaderboard-delete"; entry: LeaderboardAdminEntry };
 
 function formatDate(value: string | null): string {
   if (!value) return "—";
@@ -225,9 +250,20 @@ function eventLabel(eventType: string): string {
   return "工作階段";
 }
 
-function actionLabel(action: UserAction): string {
-  if (action === "revoke") return "取消完整題庫權限";
-  if (action === "restore") return "恢復完整題庫權限";
+function entitlementFor(entitlements: ExamEntitlement[] | undefined, examId: ExamId): ExamEntitlement {
+  return entitlements?.find((entitlement) => entitlement.examId === examId) ?? {
+    examId,
+    plan: null,
+    status: "none",
+    grantedAt: null,
+    expiresAt: null,
+    activationCode: null,
+  };
+}
+
+function actionLabel(action: UserAction, examId?: ExamId): string {
+  if (action === "revoke") return `取消${EXAM_LABELS[examId ?? "senior-securities"]}權限`;
+  if (action === "restore") return `開通${EXAM_LABELS[examId ?? "senior-securities"]}權限`;
   if (action === "send-password-reset") return "寄送重設密碼信";
   if (action === "reset-devices") return "封存全部有效裝置紀錄（不會強制登出）";
   return "封存這台裝置紀錄（不會強制登出）";
@@ -318,6 +354,7 @@ function AdminContent() {
   const [leaderboardError, setLeaderboardError] = useState<string | null>(null);
   const [auditLoading, setAuditLoading] = useState(false);
   const [auditError, setAuditError] = useState<string | null>(null);
+  const [pendingConfirmation, setPendingConfirmation] = useState<AdminConfirmation | null>(null);
   const userDetailRequest = useRef<{ sequence: number; controller: AbortController | null }>({
     sequence: 0,
     controller: null,
@@ -330,7 +367,7 @@ function AdminContent() {
 
   const summary = useMemo(() => ({
     total: users.length,
-    active: users.filter((row) => row.entitlementStatus === "active").length,
+    active: users.filter((row) => row.entitlements?.some((entitlement) => entitlement.status === "active") || row.entitlementStatus === "active").length,
     online: users.filter((row) => row.isOnline).length,
     practiced: users.reduce((sum, row) => sum + (row.totalAnswered || row.practicedQuestionCount || 0), 0),
     practiceSeconds: users.reduce((sum, row) => sum + (row.totalPracticeSeconds || 0), 0),
@@ -340,10 +377,18 @@ function AdminContent() {
     const normalizedQuery = query.trim().toLowerCase();
     return users
       .filter((row) => {
-        if (userFilter === "active" && row.entitlementStatus !== "active") return false;
-        if (userFilter === "inactive" && row.entitlementStatus === "active") return false;
+        const hasAnyAccess = row.entitlements?.some((entitlement) => entitlement.status === "active") || row.entitlementStatus === "active";
+        if (userFilter === "active" && !hasAnyAccess) return false;
+        if (userFilter === "inactive" && hasAnyAccess) return false;
         if (!normalizedQuery) return true;
-        return [row.email, row.lastIp, row.entitlementStatus, row.activationCode, row.plan]
+        return [
+          row.email,
+          row.lastIp,
+          row.entitlementStatus,
+          row.activationCode,
+          row.plan,
+          ...(row.entitlements || []).flatMap((entitlement) => [EXAM_LABELS[entitlement.examId], entitlement.status, entitlement.activationCode]),
+        ]
           .filter(Boolean)
           .some((value) => String(value).toLowerCase().includes(normalizedQuery));
       })
@@ -501,12 +546,15 @@ function AdminContent() {
   }, []);
 
   useEffect(() => {
-    const hasOverlay = Boolean(selectedUserId || toolsOpen || leaderboardOpen || auditOpen);
+    const hasOverlay = Boolean(
+      selectedUserId || toolsOpen || leaderboardOpen || auditOpen || pendingConfirmation,
+    );
     if (!hasOverlay) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const closeTopOverlay = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
+      if (pendingConfirmation) return;
       if (toolsOpen) setToolsOpen(false);
       else if (leaderboardOpen) setLeaderboardOpen(false);
       else if (auditOpen) setAuditOpen(false);
@@ -517,19 +565,33 @@ function AdminContent() {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", closeTopOverlay);
     };
-  }, [auditOpen, leaderboardOpen, selectedUserId, toolsOpen]);
+  }, [auditOpen, leaderboardOpen, pendingConfirmation, selectedUserId, toolsOpen]);
+
+  function requestUserAction(
+    action: UserAction,
+    target: AdminUserRow,
+    deviceId?: string,
+    deviceLabel?: string,
+    examId?: ExamId,
+  ): void {
+    setPendingConfirmation({
+      kind: "user-action",
+      action,
+      target,
+      deviceId,
+      deviceLabel,
+      examId,
+    });
+  }
 
   async function runUserAction(
     action: UserAction,
     target: AdminUserRow,
     deviceId?: string,
-    deviceLabel?: string,
+    examId?: ExamId,
   ): Promise<void> {
     if (!accessToken) return;
-    const targetLabel = deviceLabel ? target.email + " 的「" + deviceLabel + "」" : target.email;
-    if (!window.confirm("確定要對 " + targetLabel + " 執行「" + actionLabel(action) + "」？")) return;
-
-    const key = action + ":" + (deviceId || target.id);
+    const key = action + ":" + (examId ? examId + ":" : "") + (deviceId || target.id);
     setBusyKey(key);
     setMessage(null);
     setError(null);
@@ -540,25 +602,32 @@ function AdminContent() {
           "Content-Type": "application/json",
           Authorization: "Bearer " + accessToken,
         },
-        body: JSON.stringify({ action, userId: target.id, email: target.email, deviceId }),
+        body: JSON.stringify({ action, userId: target.id, email: target.email, deviceId, examId }),
       });
       const payload = await readJsonResponse<ActionResponse>(response);
       if (!response.ok) throw new Error(payload.error || "操作失敗。");
-      setMessage(payload.message || "操作完成。");
+      const successMessage = payload.message || "操作完成。";
+      setMessage(successMessage);
+      announceInteractionFeedback(successMessage, "success", 3200);
       await loadUsers(true);
       if (selectedUserId === target.id) await loadUserDetail(true);
     } catch (actionError: unknown) {
       const actionMessage = actionError instanceof Error ? actionError.message : "操作失敗。";
       setError(actionMessage);
       setUserDetailError(actionMessage);
+      announceInteractionFeedback(actionMessage, "error", 4800);
     } finally {
       setBusyKey(null);
+      setPendingConfirmation(null);
     }
+  }
+
+  function requestDeleteLeaderboardEntry(entry: LeaderboardAdminEntry): void {
+    setPendingConfirmation({ kind: "leaderboard-delete", entry });
   }
 
   async function deleteLeaderboardEntry(entry: LeaderboardAdminEntry): Promise<void> {
     if (!accessToken) return;
-    if (!window.confirm("確定要刪除「" + entry.displayName + "」的排行榜紀錄？這不會刪除帳號或作答紀錄。")) return;
     setBusyKey("leaderboard:" + entry.userId);
     setLeaderboardError(null);
     try {
@@ -569,12 +638,17 @@ function AdminContent() {
       });
       const payload = await readJsonResponse<ActionResponse>(response);
       if (!response.ok) throw new Error(payload.error || "刪除排行榜紀錄失敗。");
-      setMessage(payload.message || "已刪除排行榜紀錄。");
+      const successMessage = payload.message || "已刪除排行榜紀錄。";
+      setMessage(successMessage);
+      announceInteractionFeedback(successMessage, "success", 3200);
       await Promise.all([loadUsers(true), loadLeaderboard()]);
     } catch (actionError: unknown) {
-      setLeaderboardError(actionError instanceof Error ? actionError.message : "刪除排行榜紀錄失敗。");
+      const errorMessage = actionError instanceof Error ? actionError.message : "刪除排行榜紀錄失敗。";
+      setLeaderboardError(errorMessage);
+      announceInteractionFeedback(errorMessage, "error", 4800);
     } finally {
       setBusyKey(null);
+      setPendingConfirmation(null);
     }
   }
 
@@ -672,8 +746,8 @@ function AdminContent() {
           </div>
         </div>
 
-        {message ? <p className="form-success admin-premium-notice">{message}</p> : null}
-        {error ? <p className="form-error admin-premium-notice">{error}</p> : null}
+        {message ? <V93InlineNotice tone="success" className="admin-premium-notice">{message}</V93InlineNotice> : null}
+        {error ? <V93InlineNotice tone="error" className="admin-premium-notice">{error}</V93InlineNotice> : null}
 
         <div className="admin-member-table">
           <div className="admin-member-table-head" aria-hidden="true">
@@ -706,7 +780,11 @@ function AdminContent() {
                 <span className="admin-member-cell"><strong>{answered.toLocaleString("zh-TW")} 題</strong><small>{row.totalAnswered > 0 ? accuracy + "% 正確率" : "尚無完整統計"}</small></span>
                 <span className="admin-member-cell"><strong>{formatTotalPracticeTime(row.totalPracticeSeconds || 0)}</strong><small>累積練習時間</small></span>
                 <span className="admin-member-cell"><strong>{row.isOnline ? "正在使用" : relativeActivity(row.lastActivityAt)}</strong><small>{formatShortDate(row.lastActivityAt || row.lastEventAt || row.lastSignInAt)}</small></span>
-                <span className={"admin-status admin-status-" + row.entitlementStatus}>{statusLabel(row.entitlementStatus)}</span>
+                {(() => {
+                  const activeCount = EXAM_IDS.filter((examId) => entitlementFor(row.entitlements, examId).status === "active").length;
+                  const aggregateStatus = activeCount > 0 ? "active" : "none";
+                  return <span className={"admin-status admin-status-" + aggregateStatus}>{activeCount} / 2 已開通</span>;
+                })()}
                 <ChevronRight className="admin-member-chevron" size={20} aria-hidden="true" />
               </button>
             );
@@ -734,7 +812,14 @@ function AdminContent() {
                   <p className="eyebrow">Member Profile</p>
                   <h2 id="admin-user-detail-title">{selectedUser.email}</h2>
                   <div className="admin-drawer-badges">
-                    <span className={"admin-status admin-status-" + selectedUser.entitlementStatus}>{statusLabel(selectedUser.entitlementStatus)}</span>
+                    {EXAM_IDS.map((examId) => {
+                      const entitlement = entitlementFor(selectedUser.entitlements, examId);
+                      return (
+                        <span key={examId} className={"admin-status admin-status-" + entitlement.status}>
+                          {EXAM_LABELS[examId]} · {statusLabel(entitlement.status)}
+                        </span>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -745,34 +830,33 @@ function AdminContent() {
 
             <div className="admin-drawer-scroll">
               <div className="admin-detail-actions">
-                {selectedUser.entitlementStatus === "active" ? (
-                  <GlassButton
-                    variant="danger"
-                    disabled={busyKey === "revoke:" + selectedUser.id}
-                    onClick={() => void runUserAction("revoke", selectedUser)}
-                  >
-                    <ShieldOff size={17} />取消權限
-                  </GlassButton>
-                ) : (
-                  <GlassButton
-                    variant="primary"
-                    disabled={busyKey === "restore:" + selectedUser.id}
-                    onClick={() => void runUserAction("restore", selectedUser)}
-                  >
-                    <ShieldCheck size={17} />恢復權限
-                  </GlassButton>
-                )}
+                {EXAM_IDS.map((examId) => {
+                  const entitlement = entitlementFor(selectedUser.entitlements, examId);
+                  const action: UserAction = entitlement.status === "active" ? "revoke" : "restore";
+                  const actionKey = `${action}:${examId}:${selectedUser.id}`;
+                  return (
+                    <GlassButton
+                      key={examId}
+                      variant={action === "revoke" ? "danger" : "primary"}
+                      disabled={busyKey === actionKey}
+                      onClick={() => requestUserAction(action, selectedUser, undefined, undefined, examId)}
+                    >
+                      {action === "revoke" ? <ShieldOff size={17} /> : <ShieldCheck size={17} />}
+                      {action === "revoke" ? `取消${EXAM_LABELS[examId]}` : `開通${EXAM_LABELS[examId]}`}
+                    </GlassButton>
+                  );
+                })}
                 <GlassButton
                   variant="secondary"
                   disabled={busyKey === "send-password-reset:" + selectedUser.id}
-                  onClick={() => void runUserAction("send-password-reset", selectedUser)}
+                  onClick={() => requestUserAction("send-password-reset", selectedUser)}
                 >
                   <MailCheck size={17} />重設密碼
                 </GlassButton>
                 <GlassButton
                   variant="secondary"
                   disabled={busyKey === "reset-devices:" + selectedUser.id}
-                  onClick={() => void runUserAction("reset-devices", selectedUser)}
+                  onClick={() => requestUserAction("reset-devices", selectedUser)}
                 >
                   <MonitorSmartphone size={17} />封存裝置
                 </GlassButton>
@@ -813,19 +897,29 @@ function AdminContent() {
                       <div><span>建立時間</span><strong>{formatDate(userDetail.user.createdAt)}</strong></div>
                       <div><span>Email 驗證</span><strong>{formatDate(userDetail.user.emailConfirmedAt)}</strong></div>
                       <div><span>最後登入</span><strong>{formatDate(userDetail.user.lastSignInAt)}</strong></div>
-                      <div><span>授權方案</span><strong>{userDetail.entitlement?.plan || "未設定"}</strong></div>
-                      <div><span>授權時間</span><strong>{formatDate(userDetail.entitlement?.grantedAt || null)}</strong></div>
+                      {EXAM_IDS.map((examId) => {
+                        const entitlement = entitlementFor(userDetail.entitlements, examId);
+                        return (
+                          <div key={examId}>
+                            <span>{EXAM_LABELS[examId]}權限</span>
+                            <strong>{statusLabel(entitlement.status)} · {formatDate(entitlement.grantedAt)}</strong>
+                          </div>
+                        );
+                      })}
                     </div>
-                    {userDetail.entitlement?.activationCode ? (
-                      <div className="admin-entitlement-code">
-                        <KeyRound size={18} />
-                        <div>
-                          <span>啟用碼</span>
-                          <strong>{userDetail.entitlement.activationCode.code_preview || "—"}</strong>
-                          <small>{userDetail.entitlement.activationCode.note || "無備註"} · 已使用 {userDetail.entitlement.activationCode.use_count || 0}/{userDetail.entitlement.activationCode.max_uses || 1}</small>
+                    {EXAM_IDS.map((examId) => {
+                      const activationCode = entitlementFor(userDetail.entitlements, examId).activationCode;
+                      return activationCode ? (
+                        <div className="admin-entitlement-code" key={examId}>
+                          <KeyRound size={18} />
+                          <div>
+                            <span>{EXAM_LABELS[examId]}啟用碼</span>
+                            <strong>{activationCode.code_preview || "—"}</strong>
+                            <small>{activationCode.note || "無備註"} · 已使用 {activationCode.use_count || 0}/{activationCode.max_uses || 1}</small>
+                          </div>
                         </div>
-                      </div>
-                    ) : null}
+                      ) : null;
+                    })}
                   </section>
 
                   <section className="admin-detail-section">
@@ -847,7 +941,7 @@ function AdminContent() {
                             <button
                               type="button"
                               disabled={busyKey === "revoke-device:" + device.id}
-                              onClick={() => void runUserAction("revoke-device", selectedUser, device.id, device.label)}
+                              onClick={() => requestUserAction("revoke-device", selectedUser, device.id, device.label)}
                             >
                               封存
                             </button>
@@ -1032,7 +1126,7 @@ function AdminContent() {
                   <GlassButton
                     variant="danger"
                     disabled={busyKey === "leaderboard:" + entry.userId}
-                    onClick={() => void deleteLeaderboardEntry(entry)}
+                    onClick={() => requestDeleteLeaderboardEntry(entry)}
                   >
                     <Trash2 size={16} /><span>刪除</span>
                   </GlassButton>
@@ -1042,6 +1136,48 @@ function AdminContent() {
           </GlassCard>
         </div>
       ) : null}
+
+      <V93ConfirmDialog
+        open={Boolean(pendingConfirmation)}
+        title={
+          pendingConfirmation?.kind === "leaderboard-delete"
+            ? "刪除排行榜紀錄"
+            : pendingConfirmation?.kind === "user-action"
+              ? actionLabel(pendingConfirmation.action, pendingConfirmation.examId)
+              : "確認管理操作"
+        }
+        message={
+          pendingConfirmation?.kind === "leaderboard-delete"
+            ? `確定要刪除「${pendingConfirmation.entry.displayName}」的排行榜紀錄？這不會刪除帳號或作答紀錄。`
+            : pendingConfirmation?.kind === "user-action"
+              ? `確定要對 ${pendingConfirmation.deviceLabel
+                ? `${pendingConfirmation.target.email} 的「${pendingConfirmation.deviceLabel}」`
+                : pendingConfirmation.target.email} 執行「${actionLabel(pendingConfirmation.action, pendingConfirmation.examId)}」？`
+              : ""
+        }
+        confirmLabel="確認執行"
+        tone={
+          pendingConfirmation?.kind === "user-action" &&
+          (pendingConfirmation.action === "restore" ||
+            pendingConfirmation.action === "send-password-reset")
+            ? "primary"
+            : "danger"
+        }
+        busy={Boolean(pendingConfirmation && busyKey)}
+        onCancel={() => setPendingConfirmation(null)}
+        onConfirm={() => {
+          if (pendingConfirmation?.kind === "leaderboard-delete") {
+            void deleteLeaderboardEntry(pendingConfirmation.entry);
+          } else if (pendingConfirmation?.kind === "user-action") {
+            void runUserAction(
+              pendingConfirmation.action,
+              pendingConfirmation.target,
+              pendingConfirmation.deviceId,
+              pendingConfirmation.examId,
+            );
+          }
+        }}
+      />
     </div>
   );
 }

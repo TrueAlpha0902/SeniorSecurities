@@ -68,6 +68,7 @@ export type BuildDailyPlanArgs<TQuestion extends DailyPlanQuestion = DailyPlanQu
   wrongRecords: WrongQuestionRecord[];
   userId: string | null;
   config?: StudyPlanConfig;
+  planScopeId?: string;
   now?: Date;
   learningStates?: QuestionLearningState[];
   useStoredPlan?: boolean;
@@ -84,6 +85,7 @@ export function buildOrReadDailyPlan<TQuestion extends DailyPlanQuestion>({
   wrongRecords,
   userId,
   config = getStudyPlanConfig(),
+  planScopeId = "all",
   now = new Date(),
   learningStates = listLocalLearningStates(userId),
   useStoredPlan = true,
@@ -177,6 +179,7 @@ export function buildOrReadDailyPlan<TQuestion extends DailyPlanQuestion>({
       expectedPlanSignature: getStudyPlanSignature(config),
       expectedQuestionUniverseSignature: questionUniverseSignature,
       fallbackPlan: plan,
+      planScopeId,
     });
     if (storedResult) return storedResult;
   }
@@ -229,6 +232,7 @@ export function buildOrReadDailyPlan<TQuestion extends DailyPlanQuestion>({
     dateKey,
     config,
     questionUniverseSignature,
+    planScopeId,
     now,
   });
   return result;
@@ -312,9 +316,10 @@ function readStoredDailyPlan<TQuestion extends DailyPlanQuestion>(args: {
   expectedPlanSignature: string;
   expectedQuestionUniverseSignature: string;
   fallbackPlan: SmartStudyPlanStats;
+  planScopeId: string;
 }): DailyPlanResult<TQuestion> | undefined {
   if (typeof window === "undefined") return undefined;
-  const raw = readScopedStorageItem(dailyPlanStorageKey(args.dateKey));
+  const raw = readScopedStorageItem(dailyPlanStorageKey(args.planScopeId, args.dateKey));
   if (!raw) return undefined;
 
   try {
@@ -351,6 +356,7 @@ function writeStoredDailyPlan(args: {
   dateKey: string;
   config: StudyPlanConfig;
   questionUniverseSignature: string;
+  planScopeId: string;
   now: Date;
 }): void {
   if (
@@ -372,13 +378,14 @@ function writeStoredDailyPlan(args: {
     planSnapshot: args.result.plan,
   };
   writeScopedStorageItem(
-    dailyPlanStorageKey(args.dateKey),
+    dailyPlanStorageKey(args.planScopeId, args.dateKey),
     JSON.stringify(stored),
   );
 }
 
-function dailyPlanStorageKey(dateKey: string): string {
-  return `${DAILY_PLAN_KEY_PREFIX}${dateKey}`;
+function dailyPlanStorageKey(planScopeId: string, dateKey: string): string {
+  const safeScope = planScopeId.replace(/[^a-z0-9-]/gi, "-").toLowerCase() || "all";
+  return `${DAILY_PLAN_KEY_PREFIX}${safeScope}:${dateKey}`;
 }
 
 function getTodayAnsweredIds(
