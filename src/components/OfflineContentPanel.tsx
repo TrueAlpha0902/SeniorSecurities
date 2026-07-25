@@ -51,7 +51,7 @@ export function OfflineContentPanel() {
 
   return (
     <div className="offline-content-panel">
-      <div className="offline-content-intro"><HardDrive size={22} /><div><strong>離線科目包</strong><p>按科目下載題目資料與 PDF 圖片。下載時建議使用 Wi-Fi 並保持 App 開啟。</p></div></div>
+      <div className="offline-content-intro"><HardDrive size={22} /><div><strong>離線科目包</strong><p>按科目下載文字題目與解析，不包含掃描頁。下載完成後可在沒有網路時練習。</p></div></div>
       {message ? <p className="inline-success">{message}</p> : null}
       {error ? <p className="inline-error">{error}</p> : null}
       {progress ? <p className="offline-progress"><RefreshCcw className="is-spinning" size={16} />{progress.label}</p> : null}

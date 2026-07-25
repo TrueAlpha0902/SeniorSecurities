@@ -9,10 +9,12 @@ import {
 } from "../_adminClient.js";
 
 const DEFAULT_PASSWORD_RESET_URL = "https://senior-securities.vercel.app/reset-password";
+const EXPECTED_MIGRATION = "20260719120000_exam_scoped_entitlements_v80";
 const EMAIL_LIMIT_PER_HOUR = Number(process.env.PASSWORD_RESET_EMAIL_LIMIT_PER_HOUR || 3);
 type AdminClient = Awaited<ReturnType<typeof requireAdminUser>>["supabase"];
 type JsonObject = Record<string, unknown>;
 type ExamId = "senior-securities" | "junior-foreign-exchange";
+type HealthCheck = { id: string; ok: boolean; message: string };
 
 const EXAM_LABELS: Record<ExamId, string> = {
   "senior-securities": "證券高業",
@@ -107,7 +109,92 @@ async function recordPasswordResetRequest(supabase: AdminClient, args: {
   if (error) console.error("Failed to record admin password reset request:", error);
 }
 
+async function handleAuditEvents(req: ApiRequest, res: ApiResponse): Promise<void> {
+  try {
+    const { supabase } = await requireAdminUser(req);
+    const { data, error } = await supabase
+      .from("admin_audit_events")
+      .select("id, actor_user_id, actor_email, target_user_id, target_email, action, metadata, ip_address, created_at")
+      .order("created_at", { ascending: false })
+      .limit(100);
+    if (error) throw error;
+    sendJson(res, 200, {
+      events: (data || []).map((row) => ({
+        id: row.id,
+        actorUserId: row.actor_user_id,
+        actorEmail: row.actor_email,
+        targetUserId: row.target_user_id,
+        targetEmail: row.target_email,
+        action: row.action,
+        metadata: row.metadata || {},
+        ipAddress: row.ip_address,
+        createdAt: row.created_at,
+      })),
+    });
+  } catch (error) {
+    console.error("/api/admin/action audit-events failed:", error);
+    sendError(res, error);
+  }
+}
+
+async function handleHealthCheck(req: ApiRequest, res: ApiResponse): Promise<void> {
+  try {
+    const { supabase, role } = await requireAdminUser(req);
+    const checks: HealthCheck[] = [];
+
+    const { error: authError } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1 });
+    checks.push({
+      id: "auth-admin",
+      ok: !authError,
+      message: authError ? `Auth Admin API：${authError.message}` : "Auth Admin API 可用",
+    });
+
+    const tableChecks = [
+      ["tombstones", "user_record_tombstones", "record_key"],
+      ["telemetry", "app_client_errors", "id"],
+      ["image-sessions", "user_image_quiz_sessions", "session_id"],
+      ["release-pointer", "question_release_pointer", "singleton"],
+      ["release-batches", "question_release_batches", "id"],
+      ["activation-codes", "activation_codes", "id"],
+      ["exam-entitlements", "user_exam_entitlements", "user_id"],
+    ] as const;
+
+    for (const [id, table, column] of tableChecks) {
+      const { error } = await supabase.from(table).select(column, { head: true, count: "exact" }).limit(1);
+      checks.push({
+        id,
+        ok: !error,
+        message: error ? `${table}：${error.message}` : `${table} 可用`,
+      });
+    }
+
+    const ok = checks.every((check) => check.ok);
+    sendJson(res, 200, {
+      ok,
+      message: ok ? "System health OK" : "System health requires attention",
+      health: {
+        releaseId: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 12) || "local",
+        environment: process.env.VERCEL_ENV || process.env.NODE_ENV || "unknown",
+        expectedMigration: EXPECTED_MIGRATION,
+        role,
+        checkedAt: new Date().toISOString(),
+        checks,
+      },
+    });
+  } catch (error) {
+    console.error("/api/admin/ping failed:", error);
+    sendError(res, error);
+  }
+}
+
 export default async function handler(req: ApiRequest, res: ApiResponse) {
+  if (req.method === "GET") {
+    const operationValue = req.query?.operation;
+    const operation = Array.isArray(operationValue) ? String(operationValue[0] || "") : String(operationValue || "");
+    if (operation === "audit-events") await handleAuditEvents(req, res);
+    else await handleHealthCheck(req, res);
+    return;
+  }
   if (req.method !== "POST") {
     sendJson(res, 405, { error: "Method not allowed" });
     return;

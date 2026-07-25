@@ -1,7 +1,12 @@
 import { defineConfig, devices } from "@playwright/test";
 
 const chromiumExecutablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH;
-const baseURL = process.env.PLAYWRIGHT_BASE_URL || "http://127.0.0.1:4173";
+const previewHost = process.env.PLAYWRIGHT_PREVIEW_HOST || "127.0.0.1";
+const previewPort = Number(process.env.PLAYWRIGHT_PREVIEW_PORT || 4173);
+if (!Number.isInteger(previewPort) || previewPort < 1024 || previewPort > 65_535) {
+  throw new Error(`Invalid PLAYWRIGHT_PREVIEW_PORT: ${process.env.PLAYWRIGHT_PREVIEW_PORT || ""}`);
+}
+const baseURL = process.env.PLAYWRIGHT_BASE_URL || `http://${previewHost}:${previewPort}`;
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -50,13 +55,16 @@ export default defineConfig({
     { name: "ipad-webkit", use: { ...devices["iPad Pro 11"] } },
   ],
   webServer: {
-    command: "npm run build && npm run preview -- --host 0.0.0.0 --port 4173",
-    url: "http://127.0.0.1:4173/auth",
+    // Browser interaction tests use the Vite development server so the
+    // explicitly gated local preview account and local /api/questions
+    // middleware are active. npm run verify still performs the production
+    // TypeScript and Vite build before this focused browser suite runs.
+    command: `npm run dev -- --host ${previewHost} --port ${previewPort}`,
+    url: `${baseURL}/auth`,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
     env: {
-      VITE_SUPABASE_URL: "https://e2e.supabase.co",
-      VITE_SUPABASE_PUBLISHABLE_KEY: "e2e-public-anon-key",
+      VITE_LOCAL_PREVIEW_ACCESS: "1",
     },
   },
 });

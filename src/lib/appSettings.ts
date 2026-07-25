@@ -1,10 +1,22 @@
 import { readScopedStorageItem, writeScopedStorageItem } from "./userScopedStorage";
 
-const ANSWER_MODE_ENABLED_KEY = "quizpwa:answer-mode-enabled";
+const ANSWER_MODE_ENABLED_KEY = "quizpwa:answer-mode-enabled:global";
+const LEGACY_ANSWER_MODE_ENABLED_KEY = "quizpwa:answer-mode-enabled";
+const LEGACY_ANSWER_MODE_SCOPES = [
+  "senior-securities",
+  "junior-foreign-exchange",
+  "investment",
+  "financial-analysis",
+  "securities-trading-regulations",
+  "securities-trading-practice",
+  "fx-remittance",
+  "fx-trade",
+] as const;
+
 const AUTO_NEXT_CORRECT_ENABLED_KEY = "quizpwa:auto-next-correct-enabled";
 const MOCK_EXAM_DEFERRED_FEEDBACK_KEY = "quizpwa:mock-exam-deferred-feedback";
 const SETTINGS_DEFAULTS_VERSION_KEY = "quizpwa:settings-defaults-version";
-const SETTINGS_DEFAULTS_VERSION = "2026-07-06-default-off-v1";
+const SETTINGS_DEFAULTS_VERSION = "2026-07-22-global-answer-mode-v6";
 
 export const ANSWER_MODE_SETTING_CHANGED = "quizpwa:answer-mode-setting-changed";
 export const AUTO_NEXT_CORRECT_SETTING_CHANGED = "quizpwa:auto-next-correct-setting-changed";
@@ -16,7 +28,14 @@ function ensureSettingsDefaultsInitialized(): void {
   const currentVersion = readScopedStorageItem(SETTINGS_DEFAULTS_VERSION_KEY);
   if (currentVersion === SETTINGS_DEFAULTS_VERSION) return;
 
+  // v85.1 reduces answer mode to one global practice switch. The migration
+  // deliberately starts it disabled and clears every historical per-exam or
+  // per-bank switch so stale settings can never reveal answers unexpectedly.
   writeScopedStorageItem(ANSWER_MODE_ENABLED_KEY, "false");
+  writeScopedStorageItem(LEGACY_ANSWER_MODE_ENABLED_KEY, "false");
+  for (const legacyScopeId of LEGACY_ANSWER_MODE_SCOPES) {
+    writeScopedStorageItem(`${LEGACY_ANSWER_MODE_ENABLED_KEY}:${legacyScopeId}`, "false");
+  }
   writeScopedStorageItem(AUTO_NEXT_CORRECT_ENABLED_KEY, "false");
   writeScopedStorageItem(SETTINGS_DEFAULTS_VERSION_KEY, SETTINGS_DEFAULTS_VERSION);
 }
@@ -30,24 +49,12 @@ export function getAnswerModeEnabled(): boolean {
 export function setAnswerModeEnabled(enabled: boolean): void {
   if (typeof window === "undefined") return;
   ensureSettingsDefaultsInitialized();
-
-  // These modes are intentionally mutually exclusive. Answer mode reveals the
-  // correct answer immediately, while deferred mock-exam grading must keep it
-  // hidden until submission. Persist both values before dispatching events so
-  // listeners never observe a transient state where both are enabled.
-  if (enabled) {
-    writeScopedStorageItem(MOCK_EXAM_DEFERRED_FEEDBACK_KEY, "false");
-  }
   writeScopedStorageItem(ANSWER_MODE_ENABLED_KEY, enabled ? "true" : "false");
-  if (enabled) {
-    window.dispatchEvent(
-      new CustomEvent<{ enabled: boolean }>(
-        MOCK_EXAM_FEEDBACK_SETTING_CHANGED,
-        { detail: { enabled: false } },
-      ),
-    );
-  }
-  window.dispatchEvent(new CustomEvent<{ enabled: boolean }>(ANSWER_MODE_SETTING_CHANGED, { detail: { enabled } }));
+  window.dispatchEvent(
+    new CustomEvent<{ enabled: boolean }>(ANSWER_MODE_SETTING_CHANGED, {
+      detail: { enabled },
+    }),
+  );
 }
 
 export function getAutoNextCorrectEnabled(): boolean {
@@ -60,7 +67,11 @@ export function setAutoNextCorrectEnabled(enabled: boolean): void {
   if (typeof window === "undefined") return;
   ensureSettingsDefaultsInitialized();
   writeScopedStorageItem(AUTO_NEXT_CORRECT_ENABLED_KEY, enabled ? "true" : "false");
-  window.dispatchEvent(new CustomEvent<{ enabled: boolean }>(AUTO_NEXT_CORRECT_SETTING_CHANGED, { detail: { enabled } }));
+  window.dispatchEvent(
+    new CustomEvent<{ enabled: boolean }>(AUTO_NEXT_CORRECT_SETTING_CHANGED, {
+      detail: { enabled },
+    }),
+  );
 }
 
 export function getMockExamDeferredFeedbackEnabled(): boolean {
@@ -70,22 +81,7 @@ export function getMockExamDeferredFeedbackEnabled(): boolean {
 
 export function setMockExamDeferredFeedbackEnabled(enabled: boolean): void {
   if (typeof window === "undefined") return;
-
-  // Enabling deferred grading must turn off answer mode first. This is the
-  // fail-closed direction: a mock exam may lose immediate feedback, but it must
-  // never leak the correct answer before submission.
-  if (enabled) {
-    ensureSettingsDefaultsInitialized();
-    writeScopedStorageItem(ANSWER_MODE_ENABLED_KEY, "false");
-  }
   writeScopedStorageItem(MOCK_EXAM_DEFERRED_FEEDBACK_KEY, enabled ? "true" : "false");
-  if (enabled) {
-    window.dispatchEvent(
-      new CustomEvent<{ enabled: boolean }>(ANSWER_MODE_SETTING_CHANGED, {
-        detail: { enabled: false },
-      }),
-    );
-  }
   window.dispatchEvent(
     new CustomEvent<{ enabled: boolean }>(MOCK_EXAM_FEEDBACK_SETTING_CHANGED, {
       detail: { enabled },

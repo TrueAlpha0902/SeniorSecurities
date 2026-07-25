@@ -3,8 +3,10 @@ import { type FormEvent, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { GlassButton } from "../components/GlassButton";
 import { GlassCard } from "../components/GlassCard";
+import { V93InlineNotice } from "../components/V93InteractionPrimitives";
 import { useAuth } from "../auth/AuthContext";
 import { SupabaseSetupRequired } from "../auth/ProtectedRoute";
+import { announceInteractionFeedback } from "../lib/interactionFeedback";
 
 const DEFAULT_SITE_ORIGIN = "https://senior-securities.vercel.app";
 
@@ -24,7 +26,7 @@ function getFriendlyResetError(error: unknown): string {
   const normalized = message.toLowerCase();
 
   if (normalized.includes("rate limit")) {
-    return "Supabase 內建寄信服務已達到限制。請約 1 小時後再試；正式上線建議設定自訂 SMTP，才不會被每小時 2 封的內建寄信限制卡住。";
+    return "寄信服務目前已達限制。請稍後再試；若持續發生，請聯絡管理員確認 SMTP 設定。";
   }
 
   return message || "寄送重設密碼信失敗，請稍後再試。";
@@ -52,9 +54,13 @@ export function ForgotPasswordPage() {
 
     try {
       await requestPasswordReset(email, getPasswordResetRedirectTo(isAdmin));
-      setMessage("已寄出重設密碼信。請到信箱點擊連結後設定新密碼，也請檢查垃圾郵件。 ");
+      const successMessage = "已寄出重設密碼信。請檢查收件匣與垃圾郵件。";
+      setMessage(successMessage);
+      announceInteractionFeedback(successMessage, "success", 4200);
     } catch (resetError: unknown) {
-      setError(getFriendlyResetError(resetError));
+      const errorMessage = getFriendlyResetError(resetError);
+      setError(errorMessage);
+      announceInteractionFeedback(errorMessage, "error", 5000);
     } finally {
       setSubmitting(false);
     }
@@ -74,7 +80,7 @@ export function ForgotPasswordPage() {
           </div>
         </div>
 
-        <form className="auth-form" onSubmit={(event) => void handleSubmit(event)}>
+        <form className="auth-form" aria-busy={submitting} onSubmit={(event) => void handleSubmit(event)}>
           <label>
             <span>Email</span>
             <input
@@ -82,21 +88,23 @@ export function ForgotPasswordPage() {
               autoComplete="email"
               value={email}
               required
+              disabled={submitting}
+              aria-invalid={Boolean(error) || undefined}
               onChange={(event) => setEmail(event.currentTarget.value)}
               placeholder="you@example.com"
             />
           </label>
 
-          {error ? <p className="form-error">{error}</p> : null}
-          {message ? <p className="form-success">{message}</p> : null}
+          {error ? <V93InlineNotice tone="error">{error}</V93InlineNotice> : null}
+          {message ? <V93InlineNotice tone="success">{message}</V93InlineNotice> : null}
 
-          <GlassButton type="submit" variant="primary" className="auth-submit-button" disabled={submitting}>
+          <GlassButton type="submit" variant="primary" className="auth-submit-button" busy={submitting} disabled={submitting || !email.trim()}>
             <MailCheck aria-hidden="true" size={18} />
             <span>{submitting ? "寄送中" : "寄送重設密碼信"}</span>
           </GlassButton>
         </form>
 
-        <button type="button" className="auth-admin-entry" onClick={() => navigate("/auth", { state: isAdmin ? { returnTo: "/admin" } : undefined })}>
+        <button type="button" className="auth-admin-entry" disabled={submitting} onClick={() => navigate("/auth", { state: isAdmin ? { returnTo: "/admin" } : undefined })}>
           <ArrowLeft aria-hidden="true" size={18} />
           <span>回登入頁</span>
         </button>

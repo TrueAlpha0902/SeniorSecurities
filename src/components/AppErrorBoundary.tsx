@@ -1,5 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
-import { clearRuntimeCachesAndReload, recoverFromChunkLoadError } from "../lib/appRecovery";
+import { clearRuntimeCachesAndReload, recoverFromChunkLoadError, reloadAppWithCacheBust } from "../lib/appRecovery";
 import { reportClientError } from "../lib/telemetry";
 
 type AppErrorBoundaryProps = {
@@ -28,7 +28,7 @@ export class AppErrorBoundary extends Component<AppErrorBoundaryProps, AppErrorB
   }
 
   private handleReload = (): void => {
-    window.location.reload();
+    void reloadAppWithCacheBust("manual-reload");
   };
 
   private handleClearCaches = async (): Promise<void> => {

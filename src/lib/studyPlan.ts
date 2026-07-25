@@ -5,22 +5,56 @@ import {
   writeScopedStorageItem,
 } from "./userScopedStorage";
 
-const EXAM_DATE_KEY = "quizpwa:exam-date";
-const DAILY_STUDY_MINUTES_KEY = "quizpwa:daily-study-minutes";
-const STUDY_INTENSITY_KEY = "quizpwa:study-intensity";
+const LEGACY_EXAM_DATE_KEY = "quizpwa:exam-date";
+const LEGACY_DAILY_STUDY_MINUTES_KEY = "quizpwa:daily-study-minutes";
+const LEGACY_STUDY_INTENSITY_KEY = "quizpwa:study-intensity";
+const LEGACY_STUDY_PLAN_V2_KEY_PREFIX = "quizpwa:study-plan:v2:";
+const LEGACY_STUDY_PLAN_V3_KEY_PREFIX = "quizpwa:study-plan:v3:";
+const STUDY_PLAN_KEY_PREFIX = "quizpwa:study-plan:v4:";
+const STUDY_PLAN_MIGRATION_KEY = "quizpwa:study-plan:v4:migrated";
 const DAILY_PLAN_KEY_PREFIX = "quizpwa:daily-plan:";
 
 export const STUDY_PLAN_CHANGED = "quizpwa:study-plan-changed";
-export const DAILY_PLAN_STORAGE_VERSION = 43;
+export const DAILY_PLAN_STORAGE_VERSION = 45;
 export const DAY_MS = 24 * 60 * 60 * 1000;
 
 export type StudyIntensity = "steady" | "standard" | "sprint";
 export type DailyPlanCategory = "new" | "wrong" | "review" | "mixed";
+export type StudyPlanExamId = "senior-securities" | "junior-foreign-exchange";
+
+export const STUDY_PLAN_EXAMS = [
+  { id: "senior-securities", title: "證券高業" },
+  { id: "junior-foreign-exchange", title: "初階外匯" },
+] as const satisfies ReadonlyArray<{ id: StudyPlanExamId; title: string }>;
+
+export const STUDY_PLAN_SCOPES = [
+  { id: "investment", examId: "senior-securities", title: "投資學" },
+  { id: "financial-analysis", examId: "senior-securities", title: "財務分析" },
+  { id: "securities-laws-practice", examId: "senior-securities", title: "證券相關法規與實務" },
+  { id: "fx-remittance", examId: "junior-foreign-exchange", title: "國外匯兌業務" },
+  { id: "fx-trade", examId: "junior-foreign-exchange", title: "進出口外匯業務" },
+] as const;
+
+export type StudyPlanScopeId = (typeof STUDY_PLAN_SCOPES)[number]["id"];
+export type StudyPlanScope = (typeof STUDY_PLAN_SCOPES)[number];
 
 export type StudyPlanConfig = {
   examDate: string | null;
   dailyStudyMinutes: number;
   intensity: StudyIntensity;
+};
+
+export type StudyPlanChangeDetail = {
+  examId: StudyPlanExamId;
+  config: StudyPlanConfig;
+  /** Legacy compatibility for listeners created before plans became exam-scoped. */
+  scopeId?: StudyPlanScopeId;
+};
+
+export const DEFAULT_STUDY_PLAN_CONFIG: StudyPlanConfig = {
+  examDate: null,
+  dailyStudyMinutes: 60,
+  intensity: "standard",
 };
 
 export type DailyPlanAllocation = {
@@ -131,30 +165,142 @@ const CATEGORY_DESCRIPTIONS: Record<DailyPlanCategory, string> = {
   mixed: "跨章混合測試穩定度，避免只會章節內順風局。",
 };
 
-export function getStudyPlanConfig(): StudyPlanConfig {
+export function isStudyPlanScopeId(value: unknown): value is StudyPlanScopeId {
+  return STUDY_PLAN_SCOPES.some((scope) => scope.id === value);
+}
+
+export function getStudyPlanScope(scopeId: StudyPlanScopeId): StudyPlanScope {
+  return STUDY_PLAN_SCOPES.find((scope) => scope.id === scopeId) ?? STUDY_PLAN_SCOPES[0];
+}
+
+export function getStudyPlanScopesForExam(examId: StudyPlanExamId): StudyPlanScope[] {
+  return STUDY_PLAN_SCOPES.filter((scope) => scope.examId === examId);
+}
+
+export function getDefaultStudyPlanScopeForExam(examId: StudyPlanExamId): StudyPlanScopeId {
+  return examId === "junior-foreign-exchange" ? "fx-remittance" : "investment";
+}
+
+export function getStudyPlanExamTitle(examId: StudyPlanExamId): string {
+  return examId === "junior-foreign-exchange" ? "初階外匯" : "證券高業";
+}
+
+export function getStudyPlanExamId(scopeId: StudyPlanScopeId): StudyPlanExamId {
+  return getStudyPlanScope(scopeId).examId;
+}
+
+export function isSecuritiesStudyPlanScopeId(
+  scopeId: StudyPlanScopeId,
+): boolean {
+  return getStudyPlanScope(scopeId).examId === "senior-securities";
+}
+
+export function isForeignExchangeStudyPlanScopeId(
+  scopeId: StudyPlanScopeId,
+): boolean {
+  return getStudyPlanScope(scopeId).examId === "junior-foreign-exchange";
+}
+
+export function studyPlanScopeMatchesBankId(
+  scopeId: StudyPlanScopeId,
+  bankId: string,
+): boolean {
+  if (scopeId === "securities-laws-practice") {
+    return bankId === "securities-trading-regulations" ||
+      bankId === "securities-trading-practice" ||
+      bankId === "securities-laws-practice";
+  }
+  return scopeId === bankId;
+}
+
+export function getStudyPlanConfig(scopeId: StudyPlanScopeId = "investment"): StudyPlanConfig {
+  return getStudyPlanConfigForExam(getStudyPlanExamId(scopeId));
+}
+
+export function getStudyPlanConfigForExam(examId: StudyPlanExamId): StudyPlanConfig {
+  migrateLegacyStudyPlan();
+  const raw = readScopedStorageItem(studyPlanExamStorageKey(examId), false);
+  if (!raw) return { ...DEFAULT_STUDY_PLAN_CONFIG };
+  try {
+    return sanitizeStudyPlanConfig(JSON.parse(raw));
+  } catch {
+    return { ...DEFAULT_STUDY_PLAN_CONFIG };
+  }
+}
+
+export function getStudyPlanConfigs(): Record<StudyPlanScopeId, StudyPlanConfig> {
+  const securities = getStudyPlanConfigForExam("senior-securities");
+  const foreignExchange = getStudyPlanConfigForExam("junior-foreign-exchange");
+  return Object.fromEntries(
+    STUDY_PLAN_SCOPES.map((scope) => [
+      scope.id,
+      { ...(scope.examId === "senior-securities" ? securities : foreignExchange) },
+    ]),
+  ) as Record<StudyPlanScopeId, StudyPlanConfig>;
+}
+
+export function getStudyPlanConfigsByExam(): Record<StudyPlanExamId, StudyPlanConfig> {
   return {
-    examDate: getStoredDate(EXAM_DATE_KEY),
-    dailyStudyMinutes: getStoredNumber(DAILY_STUDY_MINUTES_KEY, 60),
-    intensity: getStoredIntensity(),
+    "senior-securities": getStudyPlanConfigForExam("senior-securities"),
+    "junior-foreign-exchange": getStudyPlanConfigForExam("junior-foreign-exchange"),
   };
 }
 
-export function setStudyPlanConfig(config: StudyPlanConfig): void {
+export function setStudyPlanConfig(config: StudyPlanConfig): void;
+export function setStudyPlanConfig(scopeId: StudyPlanScopeId, config: StudyPlanConfig): void;
+export function setStudyPlanConfig(
+  scopeOrConfig: StudyPlanScopeId | StudyPlanConfig,
+  maybeConfig?: StudyPlanConfig,
+): void {
   if (typeof window === "undefined") return;
-  if (config.examDate) writeScopedStorageItem(EXAM_DATE_KEY, config.examDate);
-  else removeScopedStorageItem(EXAM_DATE_KEY);
-  writeScopedStorageItem(DAILY_STUDY_MINUTES_KEY, clampMinutes(config.dailyStudyMinutes).toString());
-  writeScopedStorageItem(STUDY_INTENSITY_KEY, config.intensity);
-  clearStoredDailyPlans();
-  window.dispatchEvent(new CustomEvent<StudyPlanConfig>(STUDY_PLAN_CHANGED, { detail: getStudyPlanConfig() }));
+  if (typeof scopeOrConfig === "string") {
+    writeStudyPlanConfig(scopeOrConfig, maybeConfig ?? DEFAULT_STUDY_PLAN_CONFIG);
+    return;
+  }
+  writeStudyPlanConfig("investment", scopeOrConfig);
+}
+
+export function setStudyPlanConfigForExam(
+  examId: StudyPlanExamId,
+  config: StudyPlanConfig,
+): void {
+  if (typeof window === "undefined") return;
+  writeExamStudyPlanConfig(examId, config);
+}
+
+export function clearStudyPlanConfig(scopeId: StudyPlanScopeId): void {
+  if (typeof window === "undefined") return;
+  const examId = getStudyPlanExamId(scopeId);
+  removeScopedStorageItem(studyPlanExamStorageKey(examId));
+  clearStoredDailyPlansForExam(examId);
+  window.dispatchEvent(new CustomEvent<StudyPlanChangeDetail>(STUDY_PLAN_CHANGED, {
+    detail: {
+      scopeId: getDefaultStudyPlanScopeForExam(examId),
+      examId,
+      config: { ...DEFAULT_STUDY_PLAN_CONFIG },
+    },
+  }));
+}
+
+export function clearStudyPlanConfigForExam(examId: StudyPlanExamId): void {
+  if (typeof window === "undefined") return;
+  removeScopedStorageItem(studyPlanExamStorageKey(examId));
+  clearStoredDailyPlansForExam(examId);
+  window.dispatchEvent(new CustomEvent<StudyPlanChangeDetail>(STUDY_PLAN_CHANGED, {
+    detail: { examId, scopeId: getDefaultStudyPlanScopeForExam(examId), config: { ...DEFAULT_STUDY_PLAN_CONFIG } },
+  }));
+}
+
+export function isStudyPlanConfigured(config: StudyPlanConfig): boolean {
+  return Boolean(config.examDate);
 }
 
 export function getStudyPlanSignature(config: StudyPlanConfig = getStudyPlanConfig()): string {
   return [config.examDate ?? "unset", clampMinutes(config.dailyStudyMinutes), config.intensity].join("|");
 }
 
-export function clearStoredDailyPlans(): void {
-  clearScopedStorageByPrefix(DAILY_PLAN_KEY_PREFIX);
+export function clearStoredDailyPlans(scopeId?: string): void {
+  clearScopedStorageByPrefix(scopeId ? `${DAILY_PLAN_KEY_PREFIX}${scopeId}:` : DAILY_PLAN_KEY_PREFIX);
 }
 
 export function localTodayKey(date = new Date()): string {
@@ -317,21 +463,159 @@ function allocateByTime(
   return counts;
 }
 
-function getStoredDate(key: string): string | null {
-  if (typeof window === "undefined") return null;
-  const value = readScopedStorageItem(key);
-  return value && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : null;
+function studyPlanExamStorageKey(examId: StudyPlanExamId): string {
+  return `${STUDY_PLAN_KEY_PREFIX}${examId}`;
 }
 
-function getStoredNumber(key: string, fallback: number): number {
-  if (typeof window === "undefined") return fallback;
-  return clampMinutes(Number(readScopedStorageItem(key)) || fallback);
+function legacyStudyPlanV3StorageKey(scopeId: StudyPlanScopeId): string {
+  return `${LEGACY_STUDY_PLAN_V3_KEY_PREFIX}${scopeId}`;
 }
 
-function getStoredIntensity(): StudyIntensity {
-  if (typeof window === "undefined") return "standard";
-  const value = readScopedStorageItem(STUDY_INTENSITY_KEY);
-  return value === "steady" || value === "standard" || value === "sprint" ? value : "standard";
+function sanitizeStudyPlanConfig(value: unknown): StudyPlanConfig {
+  if (!value || typeof value !== "object") return { ...DEFAULT_STUDY_PLAN_CONFIG };
+  const source = value as Partial<StudyPlanConfig>;
+  const examDate = typeof source.examDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(source.examDate)
+    ? source.examDate
+    : null;
+  const intensity = source.intensity === "steady" || source.intensity === "sprint"
+    ? source.intensity
+    : "standard";
+  return {
+    examDate,
+    dailyStudyMinutes: clampMinutes(Number(source.dailyStudyMinutes ?? 60)),
+    intensity,
+  };
+}
+
+function writeStudyPlanConfig(
+  scopeId: StudyPlanScopeId,
+  config: StudyPlanConfig,
+  dispatch = true,
+): void {
+  writeExamStudyPlanConfig(getStudyPlanExamId(scopeId), config, dispatch);
+}
+
+function writeExamStudyPlanConfig(
+  examId: StudyPlanExamId,
+  config: StudyPlanConfig,
+  dispatch = true,
+): void {
+  const sanitized = sanitizeStudyPlanConfig(config);
+  writeScopedStorageItem(studyPlanExamStorageKey(examId), JSON.stringify(sanitized));
+  clearStoredDailyPlansForExam(examId);
+  if (dispatch) {
+    window.dispatchEvent(new CustomEvent<StudyPlanChangeDetail>(STUDY_PLAN_CHANGED, {
+      detail: {
+        examId,
+        scopeId: getDefaultStudyPlanScopeForExam(examId),
+        config: sanitized,
+      },
+    }));
+  }
+}
+
+function clearStoredDailyPlansForExam(examId: StudyPlanExamId): void {
+  for (const scope of getStudyPlanScopesForExam(examId)) {
+    clearStoredDailyPlans(scope.id);
+  }
+  clearStoredDailyPlans(examId);
+}
+
+function migrateLegacyStudyPlan(): void {
+  if (typeof window === "undefined") return;
+  if (readScopedStorageItem(STUDY_PLAN_MIGRATION_KEY, false) === "true") return;
+
+  migrateExamPlan("senior-securities", [
+    readLegacyV3Config("investment"),
+    readLegacyV3Config("financial-analysis"),
+    readLegacyV3Config("securities-laws-practice"),
+    readLegacyV2Config("investment"),
+    readLegacyV2Config("financial-analysis"),
+    chooseCombinedLawsPracticeConfig(
+      readLegacyV2Config("securities-trading-regulations"),
+      readLegacyV2Config("securities-trading-practice"),
+      null,
+    ),
+    readLegacyExamScopedConfig("senior-securities"),
+    readLegacyGlobalConfig(),
+  ]);
+
+  migrateExamPlan("junior-foreign-exchange", [
+    readLegacyV3Config("fx-remittance"),
+    readLegacyV3Config("fx-trade"),
+    readLegacyV2Config("fx-remittance"),
+    readLegacyV2Config("fx-trade"),
+    readLegacyExamScopedConfig("junior-foreign-exchange"),
+  ]);
+
+  clearStoredDailyPlans();
+  writeScopedStorageItem(STUDY_PLAN_MIGRATION_KEY, "true");
+}
+
+function migrateExamPlan(
+  examId: StudyPlanExamId,
+  candidates: Array<StudyPlanConfig | null>,
+): void {
+  if (readScopedStorageItem(studyPlanExamStorageKey(examId), false) !== null) return;
+  const available = candidates.filter((candidate): candidate is StudyPlanConfig => Boolean(candidate));
+  if (available.length === 0) return;
+  const configured = available.find((candidate) => Boolean(candidate.examDate));
+  const selected = configured ?? available[0];
+  if (!selected) return;
+  writeScopedStorageItem(studyPlanExamStorageKey(examId), JSON.stringify(selected));
+}
+
+function chooseCombinedLawsPracticeConfig(
+  regulations: StudyPlanConfig | null,
+  practice: StudyPlanConfig | null,
+  fallback: StudyPlanConfig | null,
+): StudyPlanConfig | null {
+  const configured = [regulations, practice].find((config) => Boolean(config?.examDate));
+  return configured ?? regulations ?? practice ?? fallback;
+}
+
+function readLegacyV3Config(scopeId: StudyPlanScopeId): StudyPlanConfig | null {
+  const raw = readScopedStorageItem(legacyStudyPlanV3StorageKey(scopeId), false);
+  if (!raw) return null;
+  try {
+    return sanitizeStudyPlanConfig(JSON.parse(raw));
+  } catch {
+    return null;
+  }
+}
+
+function readLegacyV2Config(scopeId: string): StudyPlanConfig | null {
+  const raw = readScopedStorageItem(`${LEGACY_STUDY_PLAN_V2_KEY_PREFIX}${scopeId}`, false);
+  if (!raw) return null;
+  try {
+    return sanitizeStudyPlanConfig(JSON.parse(raw));
+  } catch {
+    return null;
+  }
+}
+
+function readLegacyGlobalConfig(): StudyPlanConfig | null {
+  const examDate = readScopedStorageItem(LEGACY_EXAM_DATE_KEY);
+  const minutes = readScopedStorageItem(LEGACY_DAILY_STUDY_MINUTES_KEY);
+  const intensity = readScopedStorageItem(LEGACY_STUDY_INTENSITY_KEY);
+  if (examDate === null && minutes === null && intensity === null) return null;
+  return sanitizeStudyPlanConfig({
+    examDate,
+    dailyStudyMinutes: Number(minutes ?? 60),
+    intensity,
+  });
+}
+
+function readLegacyExamScopedConfig(examId: StudyPlanExamId): StudyPlanConfig | null {
+  const examDate = readScopedStorageItem(`quizpwa:study-plan:${examId}:exam-date`, false);
+  const minutes = readScopedStorageItem(`quizpwa:study-plan:${examId}:daily-study-minutes`, false);
+  const intensity = readScopedStorageItem(`quizpwa:study-plan:${examId}:study-intensity`, false);
+  if (examDate === null && minutes === null && intensity === null) return null;
+  return sanitizeStudyPlanConfig({
+    examDate,
+    dailyStudyMinutes: Number(minutes ?? 60),
+    intensity,
+  });
 }
 
 function clampMinutes(value: number): number {
