@@ -6,6 +6,7 @@ import { App } from "./App";
 import { announceAppUpdate, recoverFromChunkLoadError, settleAppRecoveryAfterLoad } from "./lib/appRecovery";
 import { reportClientError } from "./lib/telemetry";
 import "./styles/glass.css";
+import "./styles/theme-v873-final-polish.css";
 
 type IdleWindow = Window & {
   requestIdleCallback?: (
