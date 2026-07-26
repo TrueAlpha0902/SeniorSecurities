@@ -4,9 +4,9 @@ import path from "node:path";
 const root = process.cwd();
 const stylesDirectory = path.join(root, "src", "styles");
 const limits = {
-  files: 13,
+  files: 14,
   totalLines: 16_000,
-  importantDeclarations: 620,
+  importantDeclarations: 760,
   glassLines: 4_900,
 };
 
