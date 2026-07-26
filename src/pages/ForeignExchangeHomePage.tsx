@@ -115,7 +115,7 @@ export function ForeignExchangeHomePage() {
                       to={`/foreign-exchange/practice?mode=practice&session=${session.session}&subject=${subject.id}`}
                       variant="primary"
                     >
-                      逐題練習
+                      練習
                     </GlassLinkButton>
                     <GlassLinkButton
                       to={`/foreign-exchange/practice?mode=mock&session=${session.session}&subject=${subject.id}`}
