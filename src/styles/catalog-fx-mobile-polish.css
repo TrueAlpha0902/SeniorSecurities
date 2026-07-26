@@ -1,0 +1,143 @@
+/* Catalog icon cleanup and foreign-exchange mobile parity. */
+
+/* Catalog icons: black symbols on the card's white surface, without a frame. */
+.exam-catalog .exam-card-icon {
+  position: relative;
+  display: grid;
+  width: 50px;
+  height: 50px;
+  padding: 0;
+  place-items: center;
+  border: 0 !important;
+  border-radius: 0 !important;
+  color: #111827 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.exam-catalog .exam-card-icon > svg {
+  color: inherit !important;
+  stroke: currentColor !important;
+}
+
+.exam-catalog .exam-card-icon-global-exchange {
+  isolation: isolate;
+}
+
+.exam-catalog .exam-card-icon-globe {
+  width: 42px;
+  height: 42px;
+  stroke-width: 2;
+}
+
+.exam-catalog .exam-card-icon-exchange {
+  position: absolute;
+  right: -5px;
+  bottom: -3px;
+  z-index: 1;
+  width: 24px;
+  height: 24px;
+  padding: 2px;
+  color: #111827 !important;
+  background: #ffffff;
+  stroke-width: 2.4;
+}
+
+/* Foreign-exchange question heading is native; never render an injected copy. */
+.image-quiz-layout .fx-question-card .quiz-heading-host {
+  display: none !important;
+}
+
+/* Match the securities answer-card treatment: no separate reversed key pill. */
+.image-quiz-layout .fx-option-key {
+  min-width: 34px;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  color: var(--final-theme-blue, #1d6f8a) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  font-size: 0.96rem;
+  font-weight: 820;
+  line-height: 1.35;
+  text-align: left;
+  -webkit-text-fill-color: currentColor !important;
+}
+
+.image-quiz-layout .fx-option-text {
+  min-width: 0;
+  color: #172033;
+  font-size: 0.98rem;
+  font-weight: 680;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+  -webkit-text-fill-color: currentColor !important;
+}
+
+.image-quiz-layout .fx-option.is-correct .fx-option-key,
+.image-quiz-layout .fx-option.is-correct .fx-option-text,
+.image-quiz-layout .fx-option.is-wrong .fx-option-key,
+.image-quiz-layout .fx-option.is-wrong .fx-option-text {
+  color: #ffffff !important;
+  background: transparent !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
+.image-quiz-layout .fx-option .v93-answer-badge {
+  align-self: center;
+  justify-self: end;
+}
+
+@media (max-width: 760px) {
+  .exam-catalog .exam-card-icon {
+    width: 44px;
+    height: 44px;
+  }
+
+  .exam-catalog .exam-card-icon-globe,
+  .exam-catalog .exam-card-icon > svg:not(.exam-card-icon-exchange) {
+    width: 38px;
+    height: 38px;
+  }
+
+  .exam-catalog .exam-card-icon-exchange {
+    right: -4px;
+    bottom: -3px;
+    width: 22px;
+    height: 22px;
+  }
+
+  .image-quiz-layout .fx-option {
+    grid-template-columns: auto minmax(0, 1fr) auto !important;
+    gap: 9px !important;
+  }
+
+  .image-quiz-layout .fx-option-key {
+    min-width: 30px;
+    font-size: 0.9rem;
+  }
+
+  .image-quiz-layout .fx-option-text {
+    font-size: 0.94rem;
+    line-height: 1.5;
+  }
+
+  .image-quiz-layout .fx-option .v93-answer-badge {
+    grid-column: auto !important;
+    justify-self: end !important;
+    margin: 0 !important;
+    font-size: 0.8rem !important;
+  }
+}
+
+@media (max-width: 390px) {
+  .image-quiz-layout .fx-option {
+    grid-template-columns: auto minmax(0, 1fr) !important;
+  }
+
+  .image-quiz-layout .fx-option .v93-answer-badge {
+    grid-column: 2 !important;
+    justify-self: start !important;
+    margin-top: 4px !important;
+  }
+}
