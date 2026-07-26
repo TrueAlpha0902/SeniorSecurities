@@ -1,6 +1,7 @@
 import { ListChecks } from "lucide-react";
 import {
   type FormEvent,
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -72,7 +73,7 @@ export function QuizNavigationEnhancer() {
   const [items, setItems] = useState<QuizQuestionItem[]>([]);
   const [jumpValue, setJumpValue] = useState("1");
 
-  function syncQuestionState(): void {
+  const syncQuestionState = useCallback((): void => {
     const nextPosition = readQuizPosition();
     setPosition((previous) =>
       previous.current === nextPosition.current &&
@@ -87,9 +88,9 @@ export function QuizNavigationEnhancer() {
       itemsSignatureRef.current = nextSignature;
       setItems(nextItems);
     }
-  }
+  }, []);
 
-  function ensureNativeQuestionList(): void {
+  const ensureNativeQuestionList = useCallback((): void => {
     if (nativeQuestionButtons().length > 0) {
       syncQuestionState();
       return;
@@ -111,7 +112,7 @@ export function QuizNavigationEnhancer() {
       if (attempt <= 16) window.requestAnimationFrame(waitForButtons);
     };
     window.requestAnimationFrame(waitForButtons);
-  }
+  }, [syncQuestionState]);
 
   useEffect(() => {
     function removeHost(): void {
@@ -165,15 +166,13 @@ export function QuizNavigationEnhancer() {
       observer.disconnect();
       removeHost();
     };
-  }, []);
+  }, [syncQuestionState]);
 
   useEffect(() => {
     if (!open) return;
 
     previousFocusRef.current = document.activeElement as HTMLElement | null;
     document.body.classList.add("quiz-answer-card-open");
-    setJumpValue(String(position.current));
-    ensureNativeQuestionList();
 
     const focusTimer = window.setTimeout(() => {
       dialogRef.current
@@ -195,8 +194,10 @@ export function QuizNavigationEnhancer() {
   }, [open]);
 
   useEffect(() => {
-    if (open) setJumpValue(String(position.current));
-  }, [open, position.current]);
+    if (!open) return;
+    setJumpValue(String(position.current));
+    ensureNativeQuestionList();
+  }, [ensureNativeQuestionList, open, position.current]);
 
   function selectQuestion(requested: number): void {
     if (
