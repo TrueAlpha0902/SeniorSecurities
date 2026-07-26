@@ -1,6 +1,7 @@
 import { Bookmark, BookOpen, RotateCcw, Shuffle, TimerReset } from "lucide-react";
-import { useEffect, useState } from "react";
-import { GlassLinkButton } from "../components/GlassButton";
+import { type FormEvent, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { GlassButton, GlassLinkButton } from "../components/GlassButton";
 import { GlassCard } from "../components/GlassCard";
 import { FOREIGN_EXCHANGE_SESSIONS } from "../lib/foreignExchange";
 import {
@@ -11,7 +12,9 @@ import { USER_STORAGE_SCOPE_CHANGED } from "../lib/userScopedStorage";
 import "../styles/foreign-exchange-compact.css";
 
 export function ForeignExchangeHomePage() {
+  const navigate = useNavigate();
   const [summary, setSummary] = useState(() => foreignExchangeProgressSummary());
+  const [randomCount, setRandomCount] = useState("20");
 
   useEffect(() => {
     const refresh = () => setSummary(foreignExchangeProgressSummary());
@@ -25,8 +28,19 @@ export function ForeignExchangeHomePage() {
     };
   }, []);
 
+  function startRandomPractice(event: FormEvent<HTMLFormElement>): void {
+    event.preventDefault();
+    const parsed = Number.parseInt(randomCount, 10);
+    const safeCount = Math.min(
+      100,
+      Math.max(1, Number.isFinite(parsed) ? parsed : 20),
+    );
+    setRandomCount(String(safeCount));
+    navigate(`/foreign-exchange/practice?mode=random&count=${safeCount}`);
+  }
+
   return (
-    <div className="page-stack">
+    <div className="page-stack fx-home-page">
       <GlassCard className="fx-hero">
         <div>
           <h1>初階外匯</h1>
@@ -39,17 +53,36 @@ export function ForeignExchangeHomePage() {
         </div>
       </GlassCard>
 
-      <div className="fx-actions">
-        <GlassLinkButton to="/foreign-exchange/practice?mode=random&count=20" variant="primary">
-          <Shuffle aria-hidden="true" size={17} />隨機20題
-        </GlassLinkButton>
-        <GlassLinkButton to="/foreign-exchange/practice?mode=wrong" variant="secondary">
-          <RotateCcw aria-hidden="true" size={17} />錯題重練
-        </GlassLinkButton>
-        <GlassLinkButton to="/foreign-exchange/practice?mode=favorites" variant="secondary">
-          <Bookmark aria-hidden="true" size={17} />收藏題目
-        </GlassLinkButton>
-      </div>
+      <section className="fx-practice-launcher" aria-label="快速練習">
+        <form className="fx-random-form" onSubmit={startRandomPractice}>
+          <label htmlFor="fx-random-count">
+            <span>隨機題數</span>
+            <input
+              id="fx-random-count"
+              type="number"
+              min={1}
+              max={100}
+              inputMode="numeric"
+              value={randomCount}
+              onChange={(event) => setRandomCount(event.currentTarget.value)}
+              aria-describedby="fx-random-count-hint"
+            />
+          </label>
+          <GlassButton type="submit" variant="primary">
+            <Shuffle aria-hidden="true" size={17} />開始練習
+          </GlassButton>
+          <small id="fx-random-count-hint">可選 1–100 題</small>
+        </form>
+
+        <div className="fx-quick-actions">
+          <GlassLinkButton to="/foreign-exchange/practice?mode=wrong" variant="secondary">
+            <RotateCcw aria-hidden="true" size={17} />錯題重練
+          </GlassLinkButton>
+          <GlassLinkButton to="/foreign-exchange/practice?mode=favorites" variant="secondary">
+            <Bookmark aria-hidden="true" size={17} />收藏題目
+          </GlassLinkButton>
+        </div>
+      </section>
 
       <section
         className="fx-session-list fx-session-list-compact"
@@ -59,7 +92,6 @@ export function ForeignExchangeHomePage() {
           <GlassCard key={session.session} className="fx-session-row">
             <div className="fx-session-identity">
               <h2>第{session.session}屆</h2>
-              <span className="fx-standard">{session.standardVersion}</span>
             </div>
 
             <div className="fx-session-subjects-compact">
@@ -67,7 +99,7 @@ export function ForeignExchangeHomePage() {
                 <article key={subject.id} className="fx-subject-compact">
                   <div className="fx-subject-compact-copy">
                     <span className="fx-subject-compact-icon" aria-hidden="true">
-                      <BookOpen size={19} />
+                      <BookOpen size={18} />
                     </span>
                     <div>
                       <h3>{subject.title}</h3>

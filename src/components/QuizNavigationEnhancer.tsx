@@ -1,6 +1,5 @@
 import { ListChecks } from "lucide-react";
 import {
-  type FormEvent,
   useCallback,
   useEffect,
   useRef,
@@ -21,6 +20,14 @@ type QuizQuestionItem = {
 };
 
 const EMPTY_POSITION: QuizPosition = { current: 1, total: 1 };
+const PAGE_SELECTOR = [
+  ".image-quiz-layout .image-quiz-page",
+  ".image-quiz-layout .fx-practice-page",
+].join(", ");
+const ACTIONS_SELECTOR = ".quiz-header-actions, .fx-question-top-actions";
+const FAVORITE_SELECTOR = ".quiz-favorite-button, .fx-favorite";
+const QUESTION_BUTTON_SELECTOR =
+  ".image-quiz-layout .v90-question-list-grid button";
 
 function readQuizPosition(): QuizPosition {
   const label = document.querySelector(
@@ -38,9 +45,7 @@ function readQuizPosition(): QuizPosition {
 
 function readQuestionItems(): QuizQuestionItem[] {
   return Array.from(
-    document.querySelectorAll<HTMLButtonElement>(
-      ".image-quiz-layout .v90-question-list-grid button",
-    ),
+    document.querySelectorAll<HTMLButtonElement>(QUESTION_BUTTON_SELECTOR),
   ).map((button, index) => ({
     number: Number.parseInt(button.textContent?.trim() ?? "", 10) || index + 1,
     answered: button.classList.contains("is-answered"),
@@ -56,9 +61,7 @@ function questionItemsSignature(items: QuizQuestionItem[]): string {
 
 function nativeQuestionButtons(): HTMLButtonElement[] {
   return Array.from(
-    document.querySelectorAll<HTMLButtonElement>(
-      ".image-quiz-layout .v90-question-list-grid button",
-    ),
+    document.querySelectorAll<HTMLButtonElement>(QUESTION_BUTTON_SELECTOR),
   );
 }
 
@@ -71,7 +74,6 @@ export function QuizNavigationEnhancer() {
   const [open, setOpen] = useState(false);
   const [position, setPosition] = useState<QuizPosition>(EMPTY_POSITION);
   const [items, setItems] = useState<QuizQuestionItem[]>([]);
-  const [jumpValue, setJumpValue] = useState("1");
 
   const syncQuestionState = useCallback((): void => {
     const nextPosition = readQuizPosition();
@@ -122,15 +124,9 @@ export function QuizNavigationEnhancer() {
     }
 
     function syncEnhancer(): void {
-      const page = document.querySelector<HTMLElement>(
-        ".image-quiz-layout .image-quiz-page",
-      );
-      const actions = page?.querySelector<HTMLElement>(
-        ".quiz-header-actions",
-      );
-      const favorite = actions?.querySelector<HTMLElement>(
-        ".quiz-favorite-button",
-      );
+      const page = document.querySelector<HTMLElement>(PAGE_SELECTOR);
+      const actions = page?.querySelector<HTMLElement>(ACTIONS_SELECTOR);
+      const favorite = actions?.querySelector<HTMLElement>(FAVORITE_SELECTOR);
       const hasNativeAnswerCard = Boolean(
         actions?.querySelector(".quiz-exam-action"),
       );
@@ -195,9 +191,8 @@ export function QuizNavigationEnhancer() {
 
   useEffect(() => {
     if (!open) return;
-    setJumpValue(String(position.current));
     ensureNativeQuestionList();
-  }, [ensureNativeQuestionList, open, position.current]);
+  }, [ensureNativeQuestionList, open]);
 
   function selectQuestion(requested: number): void {
     if (
@@ -206,7 +201,7 @@ export function QuizNavigationEnhancer() {
       requested > position.total
     ) {
       announceInteractionFeedback(
-        `請輸入 1 到 ${position.total} 之間的題號。`,
+        `請選擇 1 到 ${position.total} 之間的題號。`,
         "warning",
         3600,
       );
@@ -234,11 +229,6 @@ export function QuizNavigationEnhancer() {
     };
 
     choose();
-  }
-
-  function jumpToQuestion(event: FormEvent<HTMLFormElement>): void {
-    event.preventDefault();
-    selectQuestion(Number.parseInt(jumpValue, 10));
   }
 
   const answeredCount = items.filter((item) => item.answered).length;
@@ -328,22 +318,6 @@ export function QuizNavigationEnhancer() {
                     </button>
                   ))}
                 </div>
-
-                <form className="quiz-answer-card-jump" onSubmit={jumpToQuestion}>
-                  <label htmlFor="quiz-answer-card-jump-input">直接輸入題號</label>
-                  <div>
-                    <input
-                      id="quiz-answer-card-jump-input"
-                      type="number"
-                      min={1}
-                      max={position.total}
-                      inputMode="numeric"
-                      value={jumpValue}
-                      onChange={(event) => setJumpValue(event.currentTarget.value)}
-                    />
-                    <button type="submit">跳轉</button>
-                  </div>
-                </form>
               </section>
             </div>,
             document.body,
