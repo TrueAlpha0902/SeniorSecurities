@@ -1,6 +1,7 @@
 import { ListChecks } from "lucide-react";
 import {
   type FormEvent,
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -11,6 +12,12 @@ import { announceInteractionFeedback } from "../lib/interactionFeedback";
 type QuizPosition = {
   current: number;
   total: number;
+};
+
+type QuizQuestionItem = {
+  number: number;
+  answered: boolean;
+  current: boolean;
 };
 
 const EMPTY_POSITION: QuizPosition = { current: 1, total: 1 };
@@ -29,23 +36,89 @@ function readQuizPosition(): QuizPosition {
   };
 }
 
+function readQuestionItems(): QuizQuestionItem[] {
+  return Array.from(
+    document.querySelectorAll<HTMLButtonElement>(
+      ".image-quiz-layout .v90-question-list-grid button",
+    ),
+  ).map((button, index) => ({
+    number: Number.parseInt(button.textContent?.trim() ?? "", 10) || index + 1,
+    answered: button.classList.contains("is-answered"),
+    current: button.classList.contains("is-current"),
+  }));
+}
+
+function questionItemsSignature(items: QuizQuestionItem[]): string {
+  return items
+    .map((item) => `${item.number}:${item.answered ? 1 : 0}:${item.current ? 1 : 0}`)
+    .join("|");
+}
+
+function nativeQuestionButtons(): HTMLButtonElement[] {
+  return Array.from(
+    document.querySelectorAll<HTMLButtonElement>(
+      ".image-quiz-layout .v90-question-list-grid button",
+    ),
+  );
+}
+
 export function QuizNavigationEnhancer() {
   const headerHostRef = useRef<HTMLSpanElement | null>(null);
-  const panelHostRef = useRef<HTMLDivElement | null>(null);
+  const dialogRef = useRef<HTMLElement | null>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+  const itemsSignatureRef = useRef("");
   const [headerHost, setHeaderHost] = useState<HTMLSpanElement | null>(null);
-  const [panelHost, setPanelHost] = useState<HTMLDivElement | null>(null);
   const [open, setOpen] = useState(false);
   const [position, setPosition] = useState<QuizPosition>(EMPTY_POSITION);
+  const [items, setItems] = useState<QuizQuestionItem[]>([]);
   const [jumpValue, setJumpValue] = useState("1");
 
+  const syncQuestionState = useCallback((): void => {
+    const nextPosition = readQuizPosition();
+    setPosition((previous) =>
+      previous.current === nextPosition.current &&
+      previous.total === nextPosition.total
+        ? previous
+        : nextPosition,
+    );
+
+    const nextItems = readQuestionItems();
+    const nextSignature = questionItemsSignature(nextItems);
+    if (nextSignature !== itemsSignatureRef.current) {
+      itemsSignatureRef.current = nextSignature;
+      setItems(nextItems);
+    }
+  }, []);
+
+  const ensureNativeQuestionList = useCallback((): void => {
+    if (nativeQuestionButtons().length > 0) {
+      syncQuestionState();
+      return;
+    }
+
+    const trigger = document.querySelector<HTMLButtonElement>(
+      ".image-quiz-layout .v90-question-list-trigger",
+    );
+    if (!trigger) return;
+
+    trigger.click();
+    let attempt = 0;
+    const waitForButtons = () => {
+      attempt += 1;
+      if (nativeQuestionButtons().length > 0) {
+        syncQuestionState();
+        return;
+      }
+      if (attempt <= 16) window.requestAnimationFrame(waitForButtons);
+    };
+    window.requestAnimationFrame(waitForButtons);
+  }, [syncQuestionState]);
+
   useEffect(() => {
-    function removeHosts(): void {
+    function removeHost(): void {
       headerHostRef.current?.remove();
-      panelHostRef.current?.remove();
       headerHostRef.current = null;
-      panelHostRef.current = null;
       setHeaderHost(null);
-      setPanelHost(null);
     }
 
     function syncEnhancer(): void {
@@ -58,15 +131,12 @@ export function QuizNavigationEnhancer() {
       const favorite = actions?.querySelector<HTMLElement>(
         ".quiz-favorite-button",
       );
-      const questionCard = page?.querySelector<HTMLElement>(
-        ".image-quiz-card",
-      );
       const hasNativeAnswerCard = Boolean(
         actions?.querySelector(".quiz-exam-action"),
       );
 
-      if (!page || !actions || !favorite || !questionCard || hasNativeAnswerCard) {
-        removeHosts();
+      if (!page || !actions || !favorite || hasNativeAnswerCard) {
+        removeHost();
         setOpen(false);
         return;
       }
@@ -79,20 +149,7 @@ export function QuizNavigationEnhancer() {
         setHeaderHost(host);
       }
 
-      if (!panelHostRef.current?.isConnected) {
-        const host = document.createElement("div");
-        host.className = "quiz-jump-panel-host";
-        questionCard.parentNode?.insertBefore(host, questionCard.nextSibling);
-        panelHostRef.current = host;
-        setPanelHost(host);
-      }
-
-      const next = readQuizPosition();
-      setPosition((previous) =>
-        previous.current === next.current && previous.total === next.total
-          ? previous
-          : next,
-      );
+      syncQuestionState();
     }
 
     syncEnhancer();
@@ -101,21 +158,48 @@ export function QuizNavigationEnhancer() {
       childList: true,
       subtree: true,
       characterData: true,
+      attributes: true,
+      attributeFilter: ["class"],
     });
 
     return () => {
       observer.disconnect();
-      removeHosts();
+      removeHost();
     };
-  }, []);
+  }, [syncQuestionState]);
 
   useEffect(() => {
-    if (open) setJumpValue(String(position.current));
-  }, [open, position.current]);
+    if (!open) return;
 
-  function jumpToQuestion(event: FormEvent<HTMLFormElement>): void {
-    event.preventDefault();
-    const requested = Number.parseInt(jumpValue, 10);
+    previousFocusRef.current = document.activeElement as HTMLElement | null;
+    document.body.classList.add("quiz-answer-card-open");
+
+    const focusTimer = window.setTimeout(() => {
+      dialogRef.current
+        ?.querySelector<HTMLButtonElement>(".quiz-answer-card-close")
+        ?.focus();
+    }, 0);
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.clearTimeout(focusTimer);
+      window.removeEventListener("keydown", handleKeyDown);
+      document.body.classList.remove("quiz-answer-card-open");
+      previousFocusRef.current?.focus();
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    setJumpValue(String(position.current));
+    ensureNativeQuestionList();
+  }, [ensureNativeQuestionList, open, position.current]);
+
+  function selectQuestion(requested: number): void {
     if (
       !Number.isInteger(requested) ||
       requested < 1 ||
@@ -129,21 +213,9 @@ export function QuizNavigationEnhancer() {
       return;
     }
 
-    const trigger = document.querySelector<HTMLButtonElement>(
-      ".image-quiz-layout .v90-question-list-trigger",
-    );
-    if (!trigger) {
-      announceInteractionFeedback("目前無法開啟答案卡，請稍後再試。", "error");
-      return;
-    }
-
     let attempt = 0;
-    const selectQuestion = () => {
-      const buttons = Array.from(
-        document.querySelectorAll<HTMLButtonElement>(
-          ".image-quiz-layout .v90-question-list-grid button",
-        ),
-      );
+    const choose = () => {
+      const buttons = nativeQuestionButtons();
       const target = buttons[requested - 1];
       if (target) {
         target.click();
@@ -152,17 +224,33 @@ export function QuizNavigationEnhancer() {
         return;
       }
 
-      if (attempt === 0) trigger.click();
+      if (attempt === 0) ensureNativeQuestionList();
       attempt += 1;
-      if (attempt <= 12) {
-        window.requestAnimationFrame(selectQuestion);
+      if (attempt <= 16) {
+        window.requestAnimationFrame(choose);
       } else {
         announceInteractionFeedback("答案卡尚未完成載入，請再試一次。", "error");
       }
     };
 
-    selectQuestion();
+    choose();
   }
+
+  function jumpToQuestion(event: FormEvent<HTMLFormElement>): void {
+    event.preventDefault();
+    selectQuestion(Number.parseInt(jumpValue, 10));
+  }
+
+  const answeredCount = items.filter((item) => item.answered).length;
+  const fallbackItems = Array.from(
+    { length: position.total },
+    (_, index): QuizQuestionItem => ({
+      number: index + 1,
+      answered: false,
+      current: index + 1 === position.current,
+    }),
+  );
+  const visibleItems = items.length === position.total ? items : fallbackItems;
 
   return (
     <>
@@ -182,41 +270,83 @@ export function QuizNavigationEnhancer() {
           )
         : null}
 
-      {panelHost && open
+      {open
         ? createPortal(
-            <section className="quiz-jump-panel" aria-label="答案卡跳題">
-              <div className="quiz-jump-panel-copy">
-                <span className="quiz-jump-panel-icon" aria-hidden="true">
-                  <ListChecks size={20} />
-                </span>
-                <div>
-                  <strong>答案卡</strong>
-                  <span>
-                    目前第 {position.current} 題，共 {position.total} 題
-                  </span>
+            <div
+              className="quiz-answer-card-backdrop"
+              role="presentation"
+              onMouseDown={(event) => {
+                if (event.currentTarget === event.target) setOpen(false);
+              }}
+            >
+              <section
+                ref={dialogRef}
+                className="quiz-answer-card-dialog"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="quiz-answer-card-title"
+              >
+                <header className="quiz-answer-card-dialog-header">
+                  <div className="quiz-answer-card-title-group">
+                    <span className="quiz-answer-card-title-icon" aria-hidden="true">
+                      <ListChecks size={22} />
+                    </span>
+                    <div>
+                      <h2 id="quiz-answer-card-title">答案卡</h2>
+                      <p>
+                        已作答 {answeredCount}／{position.total} 題・目前第 {position.current} 題
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="quiz-answer-card-close"
+                    aria-label="關閉答案卡"
+                    onClick={() => setOpen(false)}
+                  >
+                    <span aria-hidden="true">×</span>
+                  </button>
+                </header>
+
+                <div className="quiz-answer-card-legend" aria-label="答案卡圖例">
+                  <span className="is-current">目前題目</span>
+                  <span className="is-answered">已作答</span>
+                  <span>未作答</span>
                 </div>
-              </div>
-              <form className="quiz-jump-form" onSubmit={jumpToQuestion}>
-                <label htmlFor="quiz-jump-input">跳到題號</label>
-                <div>
-                  <input
-                    id="quiz-jump-input"
-                    type="number"
-                    min={1}
-                    max={position.total}
-                    inputMode="numeric"
-                    value={jumpValue}
-                    onChange={(event) => setJumpValue(event.currentTarget.value)}
-                    aria-describedby="quiz-jump-hint"
-                  />
-                  <button type="submit">跳轉</button>
+
+                <div className="quiz-answer-card-grid" role="list" aria-label="題目列表">
+                  {visibleItems.map((item) => (
+                    <button
+                      type="button"
+                      key={item.number}
+                      className={`${item.current ? "is-current" : ""}${item.answered ? " is-answered" : ""}`}
+                      aria-label={`第 ${item.number} 題${item.current ? "，目前題目" : ""}${item.answered ? "，已作答" : "，未作答"}`}
+                      aria-current={item.current ? "step" : undefined}
+                      onClick={() => selectQuestion(item.number)}
+                    >
+                      {item.number}
+                    </button>
+                  ))}
                 </div>
-                <small id="quiz-jump-hint">
-                  請輸入 1–{position.total}；跳轉後會自動回到題目。
-                </small>
-              </form>
-            </section>,
-            panelHost,
+
+                <form className="quiz-answer-card-jump" onSubmit={jumpToQuestion}>
+                  <label htmlFor="quiz-answer-card-jump-input">直接輸入題號</label>
+                  <div>
+                    <input
+                      id="quiz-answer-card-jump-input"
+                      type="number"
+                      min={1}
+                      max={position.total}
+                      inputMode="numeric"
+                      value={jumpValue}
+                      onChange={(event) => setJumpValue(event.currentTarget.value)}
+                    />
+                    <button type="submit">跳轉</button>
+                  </div>
+                </form>
+              </section>
+            </div>,
+            document.body,
           )
         : null}
     </>

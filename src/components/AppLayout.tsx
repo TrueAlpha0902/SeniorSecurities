@@ -25,6 +25,7 @@ import "../styles/interface-polish.css";
 import "../styles/quiz-settings-refinement.css";
 import "../styles/quiz-navigation-panel.css";
 import "../styles/settings-sidebar-layout.css";
+import "../styles/answer-card-feedback-settings-final.css";
 
 const loadSettingsPanel = () => import("./SettingsPanel");
 const loadCalculatorModal = () => import("./CalculatorModal");
