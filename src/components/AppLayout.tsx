@@ -28,6 +28,7 @@ import "../styles/settings-sidebar-layout.css";
 import "../styles/answer-card-feedback-settings-final.css";
 import "../styles/quiz-navigation-panel.css";
 import "../styles/final-global-polish.css";
+import "../styles/catalog-fx-mobile-polish.css";
 
 const loadSettingsPanel = () => import("./SettingsPanel");
 const loadCalculatorModal = () => import("./CalculatorModal");
