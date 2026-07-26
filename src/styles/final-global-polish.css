@@ -1,0 +1,334 @@
+/* Final global alignment for quiz headings and learning-data reset. */
+
+/* Every learner quiz engine uses the same explicit question heading. */
+.image-quiz-layout .quiz-heading-host {
+  width: 100%;
+  margin: 22px 0 12px;
+}
+
+.image-quiz-layout .quiz-section-heading,
+.image-quiz-layout .unified-explanation-surface > h2 {
+  display: flex;
+  width: auto;
+  min-height: 0;
+  align-items: center;
+  margin: 0 0 12px;
+  padding: 0 0 0 12px;
+  border: 0;
+  border-left: 4px solid var(--final-theme-blue, #1d6f8a);
+  border-radius: 0;
+  color: #172033;
+  background: transparent;
+  font-size: 1rem;
+  font-weight: 840;
+  line-height: 1.35;
+  letter-spacing: 0;
+}
+
+.image-quiz-layout .active-question-panel::before {
+  display: none !important;
+  content: none !important;
+}
+
+.image-quiz-layout .quiz-heading-host + .active-question-panel,
+.image-quiz-layout .quiz-heading-host + .fx-question-text {
+  margin-top: 0 !important;
+}
+
+/* Learning-data reset: replace raw fieldsets and black browser borders. */
+.glass-page .settings-dialog:not(.settings-menu-dialog) {
+  width: min(980px, calc(100vw - 48px));
+  max-height: min(92dvh, 940px);
+  overflow: hidden auto;
+  border: 1px solid #d9e2e9 !important;
+  border-radius: 28px;
+  background: #ffffff !important;
+  box-shadow: 0 28px 80px rgba(17, 30, 45, 0.18) !important;
+}
+
+.glass-page .settings-dialog:not(.settings-menu-dialog) .settings-dialog-header {
+  position: sticky;
+  z-index: 5;
+  top: 0;
+  padding: 22px 26px 18px;
+  border-bottom: 1px solid #e8edf2 !important;
+  background: #ffffff !important;
+}
+
+.glass-page .memory-reset-workspace {
+  display: grid;
+  gap: 18px;
+  padding: 22px 26px 24px;
+}
+
+.glass-page .memory-reset-intro {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr);
+  align-items: start;
+  gap: 14px;
+  padding: 17px 18px;
+  border: 1px solid #dfe7ed;
+  border-radius: 18px;
+  background: #f8fafb;
+}
+
+.glass-page .memory-reset-intro > span {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border-radius: 13px;
+  color: #ffffff;
+  background: var(--final-theme-blue, #1d6f8a);
+}
+
+.glass-page .memory-reset-intro h3,
+.glass-page .memory-reset-intro p {
+  margin: 0;
+}
+
+.glass-page .memory-reset-intro h3 {
+  color: #172033;
+  font-size: 1rem;
+  font-weight: 820;
+}
+
+.glass-page .memory-reset-intro p {
+  margin-top: 5px;
+  color: #64748b;
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+
+.glass-page .memory-reset-group {
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0 !important;
+}
+
+.glass-page .memory-reset-group > legend {
+  width: 100%;
+  margin: 0 0 10px;
+  padding: 0;
+  color: #172033;
+  font-size: 0.92rem;
+  font-weight: 820;
+}
+
+.glass-page .memory-reset-choice-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.glass-page .memory-reset-choice-grid.is-scope,
+.glass-page .memory-reset-choice-grid.is-level {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.glass-page .memory-reset-choice {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  min-height: 118px;
+  align-content: start;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid #dbe4eb !important;
+  border-radius: 16px;
+  color: #172033;
+  background: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(28, 46, 66, 0.035) !important;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.glass-page .memory-reset-choice:hover {
+  border-color: #9fb9c8 !important;
+  background: #f8fafb !important;
+}
+
+.glass-page .memory-reset-choice.is-selected {
+  border-color: var(--final-theme-blue, #1d6f8a) !important;
+  background: #ffffff !important;
+  box-shadow: 0 0 0 3px rgba(29, 111, 138, 0.12) !important;
+}
+
+.glass-page .memory-reset-choice.is-selected::after {
+  position: absolute;
+  top: 13px;
+  right: 13px;
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border-radius: 50%;
+  color: #ffffff;
+  background: var(--final-theme-blue, #1d6f8a);
+  font-size: 0.78rem;
+  font-weight: 900;
+  content: "✓";
+}
+
+.glass-page .memory-reset-choice.is-danger.is-selected {
+  border-color: #b83245 !important;
+  box-shadow: 0 0 0 3px rgba(184, 50, 69, 0.11) !important;
+}
+
+.glass-page .memory-reset-choice.is-danger.is-selected::after {
+  background: #b83245;
+}
+
+.glass-page .memory-reset-choice > span {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  padding-right: 28px;
+}
+
+.glass-page .memory-reset-choice strong {
+  color: #172033;
+  font-size: 0.96rem;
+  font-weight: 820;
+}
+
+.glass-page .memory-reset-choice small {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  padding: 0 8px;
+  border-radius: 999px;
+  color: #ffffff;
+  background: var(--final-theme-blue, #1d6f8a);
+  font-size: 0.7rem;
+  font-weight: 780;
+}
+
+.glass-page .memory-reset-choice p {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
+.glass-page .memory-reset-summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 5px 14px;
+  padding: 16px 18px;
+  border: 1px solid #dfe7ed;
+  border-left: 4px solid var(--final-theme-blue, #1d6f8a);
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.glass-page .memory-reset-summary strong {
+  grid-row: 1 / 3;
+  align-self: center;
+  color: var(--final-theme-blue-strong, #15556c);
+}
+
+.glass-page .memory-reset-summary p,
+.glass-page .memory-reset-summary span {
+  margin: 0;
+}
+
+.glass-page .memory-reset-summary p {
+  color: #172033;
+  font-weight: 800;
+}
+
+.glass-page .memory-reset-summary span {
+  color: #64748b;
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.glass-page .memory-reset-acknowledgement {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid #e1e8ee;
+  border-radius: 14px;
+  color: #475467;
+  background: #f8fafb;
+  line-height: 1.5;
+}
+
+.glass-page .memory-reset-acknowledgement input {
+  width: 19px;
+  height: 19px;
+  flex: 0 0 19px;
+  margin-top: 1px;
+  accent-color: var(--final-theme-blue, #1d6f8a);
+}
+
+.glass-page .settings-dialog:not(.settings-menu-dialog) .clear-record-actions {
+  position: sticky;
+  z-index: 4;
+  bottom: 0;
+  padding: 15px 26px max(18px, env(safe-area-inset-bottom));
+  border-top: 1px solid #e8edf2;
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(12px);
+}
+
+.glass-page .settings-dialog:not(.settings-menu-dialog) .clear-record-actions .glass-button {
+  width: auto !important;
+  min-width: 150px;
+  min-height: 46px;
+  border-radius: 12px;
+}
+
+@media (max-width: 760px) {
+  .image-quiz-layout .quiz-heading-host {
+    margin-top: 18px;
+  }
+
+  .glass-page .settings-dialog:not(.settings-menu-dialog) {
+    width: 100vw;
+    max-height: 100dvh;
+    min-height: 100dvh;
+    border: 0 !important;
+    border-radius: 0;
+  }
+
+  .glass-page .memory-reset-workspace {
+    gap: 14px;
+    padding: 16px 16px 22px;
+  }
+
+  .glass-page .memory-reset-choice-grid.is-scope,
+  .glass-page .memory-reset-choice-grid.is-level {
+    grid-template-columns: 1fr;
+  }
+
+  .glass-page .memory-reset-choice {
+    min-height: 0;
+    padding: 15px;
+  }
+
+  .glass-page .memory-reset-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .glass-page .memory-reset-summary strong {
+    grid-row: auto;
+  }
+
+  .glass-page .settings-dialog:not(.settings-menu-dialog) .clear-record-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
+  .glass-page .settings-dialog:not(.settings-menu-dialog) .clear-record-actions .glass-button {
+    width: 100% !important;
+  }
+}
