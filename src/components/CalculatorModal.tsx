@@ -15,6 +15,8 @@ import {
   RotateCcw,
   X,
 } from "lucide-react";
+import { useDialogFocusTrap } from "../hooks/useDialogFocusTrap";
+import { announceInteractionFeedback } from "../lib/interactionFeedback";
 import {
   equationResidual,
   evaluateCalculatorExpression,
@@ -103,6 +105,12 @@ export function CalculatorModal({ open, onClose }: CalculatorModalProps) {
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const panelRef = useRef<HTMLElement | null>(null);
   const dragRef = useRef<DragState | null>(null);
+  useDialogFocusTrap(
+    open && !floatingEnabled,
+    panelRef,
+    inputRef,
+    onClose,
+  );
 
   const displayResult = useMemo(() => {
     if (showFractionResult && fractionResult) return null;
@@ -136,7 +144,7 @@ export function CalculatorModal({ open, onClose }: CalculatorModalProps) {
   }, []);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || !floatingEnabled) return;
     function handleGlobalKey(event: globalThis.KeyboardEvent): void {
       if (event.key === "Escape") {
         event.preventDefault();
@@ -145,7 +153,7 @@ export function CalculatorModal({ open, onClose }: CalculatorModalProps) {
     }
     window.addEventListener("keydown", handleGlobalKey);
     return () => window.removeEventListener("keydown", handleGlobalKey);
-  }, [onClose, open]);
+  }, [floatingEnabled, onClose, open]);
 
   if (!open) return null;
 
@@ -219,7 +227,9 @@ export function CalculatorModal({ open, onClose }: CalculatorModalProps) {
   function calculate(): void {
     const source = expression.trim();
     if (!source) {
-      setError("請先輸入算式。");
+      const message = "請先輸入算式。";
+      setError(message);
+      announceInteractionFeedback(message, "warning", 2600);
       errorFeedback();
       return;
     }
@@ -246,12 +256,17 @@ export function CalculatorModal({ open, onClose }: CalculatorModalProps) {
       setHistory((rows) => [{ expression: source, result: formatted }, ...rows].slice(0, 12));
       setResultPulse(false);
       window.requestAnimationFrame(() => setResultPulse(true));
+      announceInteractionFeedback(`計算完成：${formatted}`, "success", 2200);
       successFeedback();
     } catch (calculationError) {
       setResult("");
       setResultValue(null);
       setFractionResult(null);
-      setError(calculationError instanceof Error ? localizeCalculatorError(calculationError.message) : "無法完成計算。");
+      const message = calculationError instanceof Error
+        ? localizeCalculatorError(calculationError.message)
+        : "無法完成計算。";
+      setError(message);
+      announceInteractionFeedback(message, "error", 3600);
       errorFeedback();
     }
   }
@@ -260,7 +275,9 @@ export function CalculatorModal({ open, onClose }: CalculatorModalProps) {
     const numerator = fractionNumerator.trim();
     const denominator = fractionDenominator.trim();
     if (!numerator || !denominator) {
-      setError("請完整輸入分子與分母。");
+      const message = "請完整輸入分子與分母。";
+      setError(message);
+      announceInteractionFeedback(message, "warning", 2800);
       errorFeedback();
       return;
     }
@@ -312,8 +329,10 @@ export function CalculatorModal({ open, onClose }: CalculatorModalProps) {
         ref={panelRef}
         className="floating-calculator"
         role="dialog"
-        aria-modal="false"
+        aria-modal={!floatingEnabled}
         aria-labelledby="floating-calculator-title"
+        aria-describedby="floating-calculator-help"
+        tabIndex={-1}
         style={floatingEnabled && position ? { left: position.x, top: position.y } : undefined}
       >
         <header
@@ -328,18 +347,34 @@ export function CalculatorModal({ open, onClose }: CalculatorModalProps) {
             <div>
               <p className="eyebrow">Finance Calculator</p>
               <h2 id="floating-calculator-title">計算機</h2>
+              <span id="floating-calculator-help" className="sr-only">可輸入算式，按 Enter 或 EXE 執行計算。</span>
             </div>
           </div>
-          <button type="button" className="floating-calculator-close" onClick={onClose} aria-label="關閉計算機"><X size={21} /></button>
+          <button type="button" className="floating-calculator-close" onClick={onClose} aria-label="關閉計算機"><X aria-hidden="true" size={21} /></button>
         </header>
 
         <div className="floating-calculator-toolbar">
           <div className="floating-calculator-toolbar-left">
-            <button type="button" onClick={() => { setAngleUnit((unit) => unit === "deg" ? "rad" : "deg"); softFeedback(); }}>
+            <button
+              type="button"
+              aria-label={`切換角度單位，目前為${angleUnit === "deg" ? "角度" : "弧度"}`}
+              aria-pressed={angleUnit === "rad"}
+              onClick={() => {
+                setAngleUnit((unit) => unit === "deg" ? "rad" : "deg");
+                softFeedback();
+              }}
+            >
               {angleUnit.toUpperCase()}
             </button>
             {resultValue !== null && fractionResult ? (
-              <button type="button" onClick={() => setShowFractionResult((current) => !current)}>S⇔D</button>
+              <button
+                type="button"
+                aria-label={showFractionResult ? "顯示小數結果" : "顯示分數結果"}
+                aria-pressed={showFractionResult}
+                onClick={() => setShowFractionResult((current) => !current)}
+              >
+                S⇔D
+              </button>
             ) : null}
           </div>
         </div>
@@ -352,10 +387,17 @@ export function CalculatorModal({ open, onClose }: CalculatorModalProps) {
             spellCheck={false}
             inputMode="text"
             aria-label="輸入算式或含 x 的方程式"
+            aria-describedby="floating-calculator-result"
             onChange={(event) => { setExpression(event.currentTarget.value.slice(0, 320)); resetOutput(); }}
             onKeyDown={handleInputKeyDown}
           />
-          <div className={`floating-screen-result${error ? " has-error" : ""}${resultPulse ? " result-pulse" : ""}`}>
+          <div
+            id="floating-calculator-result"
+            className={`floating-screen-result${error ? " has-error" : ""}${resultPulse ? " result-pulse" : ""}`}
+            role={error ? "alert" : "status"}
+            aria-live={error ? "assertive" : "polite"}
+            aria-atomic="true"
+          >
             {error ? <span>{error}</span> : showFractionResult && fractionResult ? <FractionView numerator={fractionResult.numerator} denominator={fractionResult.denominator} /> : <strong>{displayResult || "0"}</strong>}
           </div>
         </div>
@@ -367,7 +409,7 @@ export function CalculatorModal({ open, onClose }: CalculatorModalProps) {
               <span aria-hidden="true" />
               <input value={fractionDenominator} onChange={(event) => setFractionDenominator(event.currentTarget.value.slice(0, 100))} aria-label="分母" />
             </div>
-            <button type="button" onClick={insertFraction}>插入</button>
+            <button type="button" onClick={insertFraction} aria-label="將分數插入算式">插入</button>
           </div>
         ) : null}
 
@@ -379,12 +421,32 @@ export function CalculatorModal({ open, onClose }: CalculatorModalProps) {
         </div>
 
         <footer className="floating-calculator-footer">
-          <button type="button" onClick={() => setHistoryOpen((current) => !current)}><History size={16} />歷史{historyOpen ? <ChevronUp size={15} /> : <ChevronDown size={15} />}</button>
+          <button
+            type="button"
+            aria-expanded={historyOpen}
+            aria-controls="floating-calculator-history"
+            onClick={() => setHistoryOpen((current) => !current)}
+          >
+            <History aria-hidden="true" size={16} />歷史
+            {historyOpen ? <ChevronUp aria-hidden="true" size={15} /> : <ChevronDown aria-hidden="true" size={15} />}
+          </button>
         </footer>
 
         {historyOpen ? (
-          <div className="floating-calculator-history">
-            <div><strong>最近計算</strong><button type="button" onClick={() => setHistory([])}><RotateCcw size={15} />清除</button></div>
+          <div id="floating-calculator-history" className="floating-calculator-history">
+            <div>
+              <strong>最近計算</strong>
+              <button
+                type="button"
+                disabled={history.length === 0}
+                onClick={() => {
+                  setHistory([]);
+                  announceInteractionFeedback("計算紀錄已清除。", "info");
+                }}
+              >
+                <RotateCcw aria-hidden="true" size={15} />清除
+              </button>
+            </div>
             {history.length ? history.map((row, index) => <button type="button" key={`${row.expression}-${index}`} onClick={() => restoreHistoryRow(row)}><span>{row.expression}</span><strong>{row.result}</strong></button>) : <p>尚無計算紀錄。</p>}
           </div>
         ) : null}
@@ -399,11 +461,34 @@ function CalculatorKey({ spec, onPress }: { spec: KeySpec; onPress: (spec: KeySp
       type="button"
       className={`floating-calculator-key key-${spec.tone ?? "plain"}`}
       style={spec.span ? { gridColumn: `span ${spec.span}` } : undefined}
+      aria-label={calculatorKeyAriaLabel(spec)}
       onClick={() => onPress(spec)}
     >
-      {spec.action === "delete" ? <Delete size={17} /> : spec.label}
+      {spec.action === "delete" ? <Delete aria-hidden="true" size={17} /> : spec.label}
     </button>
   );
+}
+
+function calculatorKeyAriaLabel(spec: KeySpec): string {
+  if (spec.action === "clear") return "全部清除";
+  if (spec.action === "delete") return "刪除前一個字元";
+  if (spec.action === "execute") return "執行計算";
+  if (spec.action === "ans") return "插入上一個答案";
+  if (spec.action === "fraction") return "開啟分數輸入";
+
+  const labels: Record<string, string> = {
+    "×": "乘以",
+    "÷": "除以",
+    "−": "減去",
+    "+": "加上",
+    "=": "等號",
+    "√": "平方根",
+    "π": "圓周率",
+    "%": "百分比",
+    "x²": "平方",
+    "xʸ": "次方",
+  };
+  return labels[spec.label] ?? `輸入 ${spec.label}`;
 }
 
 function FractionView({ numerator, denominator }: FractionResult) {

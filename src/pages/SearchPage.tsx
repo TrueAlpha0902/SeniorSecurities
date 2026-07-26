@@ -1,220 +1,162 @@
-import { Search } from "lucide-react";
-import { useMemo, useState } from "react";
-import { GlassLinkButton } from "../components/GlassButton";
-import { GlassCard } from "../components/GlassCard";
-import { LoadingState } from "../components/LoadingState";
+import { BookOpen, Search, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { useAuth, type ExamId } from "../auth/AuthContext";
+import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
-import { useAsync } from "../hooks/useAsync";
-import { loadAllQuestions } from "../lib/data";
-import { loadImageQuizBanks, type ImageQuizBank, type ImageQuizQuestion } from "../lib/imageQuiz";
-import type { Question } from "../types";
+import { formatLearnerText } from "../lib/learnerText";
+import { GlassButton, GlassLinkButton } from "../components/GlassButton";
+import { GlassCard } from "../components/GlassCard";
+import { V93InlineNotice } from "../components/V93InteractionPrimitives";
+import { announceInteractionFeedback } from "../lib/interactionFeedback";
+import {
+  searchQuestionBank,
+  type ForeignExchangeSearchResult,
+  type QuestionSearchResult,
+  type SecuritiesSearchResult,
+} from "../lib/questionSearch";
 
-const T = {
-  loading: "載入搜尋資料",
-  loadError: "無法載入搜尋資料",
-  title: "搜尋題目",
-  subtitle: "輸入關鍵字、科目、章節、來源檔名、題號或答案，快速找到想看的題目。",
-  placeholder: "例如：債券、投資學、第一章、25、正解 3",
-  imageSourceNote: "PDF 圖片題目前先支援科目、章節、檔名、題號與正解搜尋；若未來補上 OCR 文字欄位，就能擴充成題幹全文搜尋。",
-  noQuery: "請先輸入關鍵字。",
-  noResults: "找不到符合的題目。",
-  resultCount: "筆結果",
-  imageQuestion: "PDF 圖片題",
-  textQuestion: "文字題庫",
-  goPractice: "前往題目",
-  openTextList: "查看文字題",
-  correctAnswer: "正解",
-  question: "題",
-};
-
-type ImageResult = {
-  type: "image";
-  bankId: string;
-  bankTitle: string;
-  chapterId: string;
-  chapterTitle: string;
-  question: ImageQuizQuestion;
-  position: number;
-};
-
-type TextResult = {
-  type: "text";
-  question: Question;
-};
-
-
-type SearchData = {
-  imageResults: ImageResult[];
-  textQuestions: Question[];
-};
-
-async function loadSearchData(): Promise<SearchData> {
-  const [imageBanks, textQuestions] = await Promise.all([
-    loadImageQuizBanks(),
-    loadAllQuestions().catch(() => [] as Question[]),
-  ]);
-
-  return {
-    imageResults: flattenImageQuestions(imageBanks),
-    textQuestions,
-  };
-}
+type ExamFilter = "all" | ExamId;
 
 export function SearchPage() {
+  const { user, hasExamAccess } = useAuth();
+  const includeSecurities = Boolean(user && hasExamAccess("senior-securities"));
+  const includeForeignExchange = Boolean(user && hasExamAccess("junior-foreign-exchange"));
   const [query, setQuery] = useState("");
-  const { data, error, loading } = useAsync(loadSearchData, []);
+  const [examFilter, setExamFilter] = useState<ExamFilter>("all");
+  const [results, setResults] = useState<QuestionSearchResult[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [searchRevision, setSearchRevision] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
   const normalizedQuery = normalizeSearchText(query);
 
-  const results = useMemo(() => {
-    if (!data || !normalizedQuery) {
-      return [];
+  useEffect(() => {
+    if (!user || normalizedQuery.length < 2) {
+      setResults([]);
+      setLoading(false);
+      setError(null);
+      return;
     }
 
-    const imageMatches = data.imageResults.filter((result) =>
-      buildImageHaystack(result).includes(normalizedQuery),
-    );
-    const textMatches = data.textQuestions
-      .filter((question) => buildTextHaystack(question).includes(normalizedQuery))
-      .map<TextResult>((question) => ({ type: "text", question }));
+    const exams: ExamId[] = [];
+    if ((examFilter === "all" || examFilter === "senior-securities") && includeSecurities) exams.push("senior-securities");
+    if ((examFilter === "all" || examFilter === "junior-foreign-exchange") && includeForeignExchange) exams.push("junior-foreign-exchange");
+    if (!exams.length) {
+      setResults([]);
+      setLoading(false);
+      return;
+    }
 
-    return [...imageMatches, ...textMatches].slice(0, 80);
-  }, [data, normalizedQuery]);
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      setLoading(true);
+      setError(null);
+      void Promise.all(exams.map((examId) => searchQuestionBank(examId, normalizedQuery, controller.signal)))
+        .then((pages) => setResults(pages.flat().slice(0, 80)))
+        .catch((reason: unknown) => {
+          if (reason instanceof DOMException && reason.name === "AbortError") return;
+          setResults([]);
+          const message = reason instanceof Error ? reason.message : "搜尋失敗，請稍後再試。";
+          setError(message);
+          announceInteractionFeedback(message, "error", 4200);
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) setLoading(false);
+        });
+    }, 260);
 
-  if (loading) {
-    return <LoadingState label={T.loading} />;
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [examFilter, includeForeignExchange, includeSecurities, normalizedQuery, searchRevision, user]);
+
+  if (!user) {
+    return <ErrorState title="請先登入" message="登入後才能搜尋已開通的題庫。" backLabel="前往登入" backTo="/auth" />;
   }
 
-  if (error) {
-    return <ErrorState title={T.loadError} message={error} />;
+  if (!includeSecurities && !includeForeignExchange) {
+    return <EmptyState title="尚未開通可搜尋的題庫" message="先輸入啟用碼開通證券高業或初階外匯，再回來跨題庫搜尋。" actionLabel="選擇題庫" actionTo="/" />;
+  }
+
+  function clearSearch(): void {
+    setQuery("");
+    setResults([]);
+    setError(null);
+    window.requestAnimationFrame(() => inputRef.current?.focus());
   }
 
   return (
-    <div className="page-stack search-page">
-      <GlassCard className="search-hero">
-        <p className="eyebrow">Search</p>
-        <h1>{T.title}</h1>
-        <p>{T.subtitle}</p>
-        <label className="search-field">
-          <Search aria-hidden="true" size={20} />
-          <input
-            type="search"
-            value={query}
-            placeholder={T.placeholder}
-            aria-label={T.title}
-            autoFocus
-            onChange={(event) => setQuery(event.currentTarget.value)}
-          />
-        </label>
-        <p className="helper-note">{T.imageSourceNote}</p>
-        <div className="metric-row">
-          <span className="glass-badge">{results.length} {T.resultCount}</span>
+    <div className="page-stack product-search-page">
+      <header className="product-search-head">
+        <div><p>跨題庫查找</p><h1>搜尋題目</h1><span>只搜尋你已開通的題庫，結果不提供正解與解析。</span></div>
+      </header>
+
+      <GlassCard className="product-search-controls">
+        <div className="product-search-field-wrap">
+          <label className="product-search-field" htmlFor="question-search-input">
+            <Search aria-hidden="true" size={20} />
+            <input ref={inputRef} id="question-search-input" type="search" value={query} placeholder="至少兩個字，例如：債券、信用狀、資產報酬率" autoComplete="off" spellCheck={false} aria-label="搜尋題目" aria-describedby="question-search-status" aria-controls="question-search-results" onChange={(event) => setQuery(event.currentTarget.value)} />
+          </label>
+          {query ? <button type="button" className="v93-search-clear" aria-label="清除搜尋文字" onClick={clearSearch}><X aria-hidden="true" size={17} /></button> : null}
+        </div>
+        <div className="segmented-control" role="group" aria-label="題庫篩選">
+          <button type="button" className={examFilter === "all" ? "is-active" : ""} aria-pressed={examFilter === "all"} onClick={() => setExamFilter("all")}>全部</button>
+          {includeSecurities ? <button type="button" className={examFilter === "senior-securities" ? "is-active" : ""} aria-pressed={examFilter === "senior-securities"} onClick={() => setExamFilter("senior-securities")}>證券高業</button> : null}
+          {includeForeignExchange ? <button type="button" className={examFilter === "junior-foreign-exchange" ? "is-active" : ""} aria-pressed={examFilter === "junior-foreign-exchange"} onClick={() => setExamFilter("junior-foreign-exchange")}>初階外匯</button> : null}
         </div>
       </GlassCard>
 
-      {!normalizedQuery ? (
-        <GlassCard className="state-card"><p>{T.noQuery}</p></GlassCard>
-      ) : results.length === 0 ? (
-        <GlassCard className="state-card"><p>{T.noResults}</p></GlassCard>
+      {error ? <V93InlineNotice tone="error"><span>{error}</span><GlassButton variant="secondary" onClick={() => setSearchRevision((value) => value + 1)}>重新搜尋</GlassButton></V93InlineNotice> : null}
+      <div id="question-search-status" className="product-search-summary" role="status" aria-live="polite" aria-atomic="true">
+        <span>
+          {normalizedQuery.length < 2
+            ? "請輸入至少兩個字"
+            : loading
+              ? "搜尋中…"
+              : `找到 ${results.length} 筆結果${results.length === 80 ? "（僅顯示前80筆）" : ""}`}
+        </span>
+      </div>
+
+      {!loading && normalizedQuery.length >= 2 && results.length === 0 && !error ? (
+        <EmptyState title="找不到符合的題目" message="可縮短關鍵字，或切換題庫篩選後再搜尋。" />
       ) : (
-        <section className="search-result-list" aria-label={T.title}>
-          {results.map((result) =>
-            result.type === "image" ? <ImageSearchCard key={`${result.bankId}-${result.chapterId}-${result.question.id}`} result={result} /> : <TextSearchCard key={result.question.id} result={result} />,
-          )}
+        <section id="question-search-results" className="product-search-results" aria-label="搜尋結果" aria-busy={loading}>
+          {results.map((result) => result.examId === "senior-securities"
+            ? <SecuritiesSearchCard key={result.id} result={result} />
+            : <ForeignExchangeSearchCard key={result.id} result={result} />)}
         </section>
       )}
     </div>
   );
 }
 
-function ImageSearchCard({ result }: { result: ImageResult }) {
+function SecuritiesSearchCard({ result }: { result: SecuritiesSearchResult }) {
   return (
-    <GlassCard className="search-result-card" as="article">
-      <div>
-        <p className="eyebrow">{T.imageQuestion}</p>
-        <h2>{result.bankTitle} / {result.chapterTitle} / 第 {result.question.number} {T.question}</h2>
-        <div className="metric-row">
-          <span className="glass-badge">{T.correctAnswer} {result.question.answer}</span>
-          <span className="glass-badge">{result.question.sourceFile}</span>
-        </div>
+    <GlassCard className="product-search-result" as="article">
+      <div className="product-search-result-icon"><BookOpen aria-hidden="true" size={19} /></div>
+      <div className="product-search-result-copy">
+        <div className="product-search-result-meta"><span>證券高業</span><span>{result.bankTitle}</span><span>{result.chapterTitle}</span></div>
+        <h2>{formatLearnerText(result.question)}</h2>
       </div>
-      <GlassLinkButton
-        to={`/image-quiz/bank/${result.bankId}/chapter/${encodeURIComponent(result.chapterId)}?jump=${result.position}`}
-        variant="primary"
-      >
-        {T.goPractice}
-      </GlassLinkButton>
+      <GlassLinkButton to={`/image-quiz/bank/${result.bankId}/chapter/${encodeURIComponent(result.chapterId)}?jump=${result.questionNumber}`} variant="secondary" aria-label={`前往${result.bankTitle}${result.chapterTitle}第 ${result.questionNumber} 題`}>前往題目</GlassLinkButton>
     </GlassCard>
   );
 }
 
-function TextSearchCard({ result }: { result: TextResult }) {
-  const question = result.question;
+function ForeignExchangeSearchCard({ result }: { result: ForeignExchangeSearchResult }) {
   return (
-    <GlassCard className="search-result-card" as="article">
-      <div>
-        <p className="eyebrow">{T.textQuestion}</p>
-        <h2>{question.question}</h2>
-        <p>{question.bankTitle} / {question.chapter}</p>
-        <div className="metric-row">
-          <span className="glass-badge">{T.correctAnswer} {question.answer}</span>
-          <span className="glass-badge">{question.sourceFile}</span>
-        </div>
+    <GlassCard className="product-search-result" as="article">
+      <div className="product-search-result-icon"><BookOpen aria-hidden="true" size={19} /></div>
+      <div className="product-search-result-copy">
+        <div className="product-search-result-meta"><span>初階外匯</span><span>第{result.session}屆</span><span>{result.bankTitle}</span></div>
+        <h2>{formatLearnerText(result.question)}</h2>
       </div>
-      <GlassLinkButton to={`/questions/bank/${question.bankId}/chapter/${encodeURIComponent(question.chapter)}`} variant="secondary">
-        {T.openTextList}
-      </GlassLinkButton>
+      <GlassLinkButton to={`/foreign-exchange/practice?mode=practice&id=${encodeURIComponent(result.id)}`} variant="secondary" aria-label={`前往第 ${result.session} 屆${result.bankTitle}題目`}>前往題目</GlassLinkButton>
     </GlassCard>
-  );
-}
-
-function flattenImageQuestions(banks: ImageQuizBank[]): ImageResult[] {
-  return banks.flatMap((bank) =>
-    bank.chapters.flatMap((chapter) =>
-      chapter.questions.map((question, index) => ({
-        type: "image" as const,
-        bankId: bank.bankId,
-        bankTitle: bank.bankTitle,
-        chapterId: chapter.chapterId,
-        chapterTitle: [chapter.chapterTitle, chapter.chapterTopic].filter(Boolean).join(" "),
-        question,
-        position: index + 1,
-      })),
-    ),
   );
 }
 
 function normalizeSearchText(value: string): string {
   return value.trim().toLowerCase().replace(/\s+/g, " ");
-}
-
-function buildImageHaystack(result: ImageResult): string {
-  return normalizeSearchText([
-    result.bankId,
-    result.bankTitle,
-    result.chapterId,
-    result.chapterTitle,
-    result.question.number,
-    `第 ${result.question.number} 題`,
-    result.question.answer,
-    `正解 ${result.question.answer}`,
-    result.question.sourceFile,
-  ].join(" "));
-}
-
-function buildTextHaystack(question: Question): string {
-  return normalizeSearchText([
-    question.bankId,
-    question.bankTitle,
-    question.chapter,
-    question.question,
-    question.options.A,
-    question.options.B,
-    question.options.C,
-    question.options.D,
-    question.answer,
-    `正解 ${question.answer}`,
-    question.explanation,
-    question.sourceFile,
-    ...(question.tags ?? []),
-  ].join(" "));
 }
