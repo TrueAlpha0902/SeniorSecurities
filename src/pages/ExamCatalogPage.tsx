@@ -75,10 +75,6 @@ export function ExamCatalogPage() {
 
   return (
     <div className="page-stack exam-catalog">
-      <GlassCard className="exam-catalog-head">
-        <h1>金融證照題庫</h1>
-      </GlassCard>
-
       <div className="exam-card-grid">
         {EXAMS.map((exam) => {
           const Icon = exam.icon;
