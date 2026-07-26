@@ -8,6 +8,7 @@ import {
   foreignExchangeProgressSummary,
 } from "../lib/foreignExchangeProgress";
 import { USER_STORAGE_SCOPE_CHANGED } from "../lib/userScopedStorage";
+import "../styles/foreign-exchange-compact.css";
 
 export function ForeignExchangeHomePage() {
   const [summary, setSummary] = useState(() => foreignExchangeProgressSummary());
@@ -50,23 +51,34 @@ export function ForeignExchangeHomePage() {
         </GlassLinkButton>
       </div>
 
-      <section className="fx-session-list" aria-label="歷屆試題">
+      <section
+        className="fx-session-list fx-session-list-compact"
+        aria-label="歷屆試題"
+      >
         {FOREIGN_EXCHANGE_SESSIONS.map((session) => (
-          <GlassCard key={session.session} className="fx-session-card">
-            <div className="fx-session-head">
+          <GlassCard key={session.session} className="fx-session-row">
+            <div className="fx-session-identity">
               <h2>第{session.session}屆</h2>
               <span className="fx-standard">{session.standardVersion}</span>
             </div>
-            <div className="fx-subject-grid">
+
+            <div className="fx-session-subjects-compact">
               {session.subjects.map((subject) => (
-                <article key={subject.id} className="fx-subject">
-                  <BookOpen aria-hidden="true" size={22} />
-                  <h3>{subject.title}</h3>
-                  <div className="fx-subject-meta">
-                    <span>{subject.questionCount}題</span>
-                    <span>{subject.durationMinutes}分鐘</span>
+                <article key={subject.id} className="fx-subject-compact">
+                  <div className="fx-subject-compact-copy">
+                    <span className="fx-subject-compact-icon" aria-hidden="true">
+                      <BookOpen size={19} />
+                    </span>
+                    <div>
+                      <h3>{subject.title}</h3>
+                      <div className="fx-subject-compact-meta">
+                        <span>{subject.questionCount}題</span>
+                        <span>{subject.durationMinutes}分鐘</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="fx-subject-actions">
+
+                  <div className="fx-subject-compact-actions">
                     <GlassLinkButton
                       to={`/foreign-exchange/practice?mode=practice&session=${session.session}&subject=${subject.id}`}
                       variant="primary"
@@ -77,7 +89,7 @@ export function ForeignExchangeHomePage() {
                       to={`/foreign-exchange/practice?mode=mock&session=${session.session}&subject=${subject.id}`}
                       variant="secondary"
                     >
-                      <TimerReset aria-hidden="true" size={16} />模擬測驗
+                      <TimerReset aria-hidden="true" size={15} />模擬測驗
                     </GlassLinkButton>
                   </div>
                 </article>
