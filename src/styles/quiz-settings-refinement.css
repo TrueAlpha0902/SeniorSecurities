@@ -1,0 +1,389 @@
+/* Focused refinements for quiz feedback, question navigation, and settings. */
+
+:root {
+  --quiz-success: #238356;
+  --quiz-success-strong: #145c3a;
+  --quiz-success-soft: #e9f8ef;
+  --quiz-success-line: #53ad78;
+  --quiz-danger: #c94150;
+  --quiz-danger-strong: #8c2530;
+  --quiz-danger-soft: #fff0f2;
+  --quiz-danger-line: #df6f79;
+}
+
+/* Question list: larger targets, fewer columns, and calmer spacing. */
+.image-quiz-layout .v90-question-list-panel {
+  width: min(980px, 100%);
+  margin: 28px auto 0;
+  padding: 24px;
+}
+
+.image-quiz-layout .v90-question-list-head {
+  margin-bottom: 20px;
+}
+
+.image-quiz-layout .v90-question-list-head strong {
+  font-size: 1.05rem;
+}
+
+.image-quiz-layout .v90-question-list-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 54px);
+  justify-content: start;
+  gap: 10px;
+}
+
+.image-quiz-layout .v90-question-list-grid button {
+  width: 54px;
+  min-width: 54px;
+  height: 48px;
+  min-height: 48px;
+  padding: 0;
+  border-radius: 14px;
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Answer feedback: tint the entire option, not only the label. */
+.image-quiz-layout .numeric-option-grid .glass-answer-button.glass-answer-correct {
+  border-color: var(--quiz-success-line) !important;
+  color: var(--quiz-success-strong) !important;
+  background: var(--quiz-success-soft) !important;
+  box-shadow:
+    0 0 0 2px rgba(35, 131, 86, 0.12),
+    0 8px 20px rgba(35, 131, 86, 0.08) !important;
+  opacity: 1 !important;
+}
+
+.image-quiz-layout .numeric-option-grid .glass-answer-button.glass-answer-wrong {
+  border-color: var(--quiz-danger-line) !important;
+  color: var(--quiz-danger-strong) !important;
+  background: var(--quiz-danger-soft) !important;
+  box-shadow:
+    0 0 0 2px rgba(201, 65, 80, 0.11),
+    0 8px 20px rgba(201, 65, 80, 0.07) !important;
+  opacity: 1 !important;
+}
+
+.image-quiz-layout .glass-answer-correct .answer-key,
+.image-quiz-layout .glass-answer-correct .scan-option-text,
+.image-quiz-layout .glass-answer-correct .structured-scan-text {
+  color: var(--quiz-success-strong) !important;
+}
+
+.image-quiz-layout .glass-answer-wrong .answer-key,
+.image-quiz-layout .glass-answer-wrong .scan-option-text,
+.image-quiz-layout .glass-answer-wrong .structured-scan-text {
+  color: var(--quiz-danger-strong) !important;
+}
+
+.image-quiz-layout .glass-answer-correct .v93-answer-badge {
+  border-color: rgba(35, 131, 86, 0.22) !important;
+  color: var(--quiz-success-strong) !important;
+  background: rgba(255, 255, 255, 0.72) !important;
+}
+
+.image-quiz-layout .glass-answer-wrong .v93-answer-badge {
+  border-color: rgba(201, 65, 80, 0.22) !important;
+  color: var(--quiz-danger-strong) !important;
+  background: rgba(255, 255, 255, 0.72) !important;
+}
+
+/* Settings: symmetrical frame and equal-width category tabs. */
+.glass-page .settings-overlay {
+  padding: 28px;
+}
+
+.glass-page .settings-dialog.settings-menu-dialog {
+  width: min(900px, calc(100vw - 56px));
+  min-height: 0;
+  max-height: min(88dvh, 820px);
+  grid-template-rows: auto auto minmax(0, 1fr);
+  border-radius: 26px;
+}
+
+.glass-page .settings-dialog-header {
+  min-height: 94px;
+  align-items: center;
+  padding: 22px 26px;
+}
+
+.glass-page .settings-dialog-header > div:first-child {
+  display: grid;
+  gap: 4px;
+}
+
+.glass-page .settings-dialog-header .eyebrow {
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+}
+
+.glass-page .settings-dialog-header h2 {
+  margin: 0;
+  font-size: 1.75rem;
+}
+
+.glass-page .settings-workspace {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 18px;
+  min-height: 0;
+  padding: 20px 24px 26px;
+}
+
+.glass-page .settings-section-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+  padding: 6px;
+  border-radius: 17px;
+}
+
+.glass-page .settings-section-tabs button {
+  min-width: 0;
+  min-height: 50px;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  text-align: center;
+}
+
+.glass-page .settings-section-tabs button.is-active {
+  color: #ffffff !important;
+  border-color: var(--polish-primary) !important;
+  background: var(--polish-primary) !important;
+  box-shadow: 0 7px 16px rgba(29, 111, 138, 0.18) !important;
+}
+
+.glass-page .settings-section-content {
+  min-width: 0;
+}
+
+.glass-page .settings-section-panel {
+  border-radius: 20px;
+}
+
+.glass-page .settings-section-panel > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 20px 22px 17px;
+}
+
+.glass-page .settings-section-panel > header p {
+  max-width: 620px;
+}
+
+.glass-page .settings-section-panel > div {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  padding: 18px;
+}
+
+.glass-page .settings-toggle-row,
+.glass-page .settings-action-row,
+.glass-page .settings-plan-row-v86 {
+  min-width: 0;
+  min-height: 148px;
+  margin: 0;
+  padding: 18px;
+  border: 1px solid #e0e7ed;
+  border-radius: 17px;
+  background: #fbfcfd;
+  box-shadow: 0 4px 14px rgba(28, 46, 66, 0.035);
+}
+
+.glass-page .settings-toggle-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: 1fr auto;
+  align-items: end;
+  gap: 16px;
+  cursor: pointer;
+}
+
+.glass-page .settings-toggle-row > span:first-child {
+  grid-column: 1 / -1;
+  display: grid;
+  align-content: start;
+  gap: 7px;
+}
+
+.glass-page .settings-toggle-row > input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+}
+
+.glass-page .settings-toggle-row > .settings-switch {
+  grid-column: 2;
+  grid-row: 2;
+  width: 54px;
+  height: 30px;
+  border: 1px solid #cbd6df;
+  border-radius: 999px;
+  background: #e6ebef;
+  box-shadow: inset 0 1px 2px rgba(16, 24, 40, 0.08);
+}
+
+.glass-page .settings-toggle-row > .settings-switch::after {
+  width: 24px;
+  height: 24px;
+  top: 2px;
+  left: 2px;
+  background: #ffffff;
+  box-shadow: 0 2px 6px rgba(16, 24, 40, 0.18);
+}
+
+.glass-page .settings-toggle-row > input:checked + .settings-switch {
+  border-color: var(--polish-primary);
+  background: var(--polish-primary) !important;
+}
+
+.glass-page .settings-toggle-row > input:checked + .settings-switch::after {
+  transform: translateX(24px);
+}
+
+.glass-page .settings-toggle-row strong,
+.glass-page .settings-action-row strong,
+.glass-page .settings-plan-row-v86 strong {
+  color: var(--polish-text);
+  font-size: 1rem;
+  font-weight: 820;
+}
+
+.glass-page .settings-toggle-row small,
+.glass-page .settings-action-row small,
+.glass-page .settings-plan-row-v86 small {
+  color: var(--polish-muted);
+  line-height: 1.55;
+}
+
+.glass-page .settings-action-row {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  align-items: stretch;
+  gap: 16px;
+}
+
+.glass-page .settings-action-row > span {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+}
+
+.glass-page .settings-action-row .glass-button {
+  width: 100%;
+  min-height: 46px;
+}
+
+.glass-page .settings-plan-list-v86 {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  width: 100%;
+}
+
+.glass-page .settings-plan-row-v86 {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  align-items: stretch;
+  gap: 16px;
+  min-height: 214px;
+}
+
+.glass-page .settings-plan-row-v86 > div {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+}
+
+.glass-page .settings-plan-subjects {
+  align-content: start;
+  gap: 7px;
+}
+
+.glass-page .settings-plan-row-v86 .glass-button {
+  width: 100%;
+  min-height: 46px;
+}
+
+.glass-page .settings-section-panel > div > :last-child,
+.glass-page .settings-plan-list-v86 > :last-child {
+  border-bottom: 1px solid #e0e7ed;
+}
+
+@media (max-width: 760px) {
+  .image-quiz-layout .v90-question-list-panel {
+    padding: 18px;
+  }
+
+  .image-quiz-layout .v90-question-list-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 9px;
+  }
+
+  .image-quiz-layout .v90-question-list-grid button {
+    width: 100%;
+    min-width: 0;
+    height: 46px;
+    min-height: 46px;
+  }
+
+  .glass-page .settings-overlay {
+    padding: 0;
+  }
+
+  .glass-page .settings-dialog.settings-menu-dialog {
+    width: 100vw;
+    max-height: 100dvh;
+    min-height: 100dvh;
+    border-radius: 0;
+  }
+
+  .glass-page .settings-dialog-header {
+    min-height: 82px;
+    padding: 17px 18px;
+  }
+
+  .glass-page .settings-dialog-header h2 {
+    font-size: 1.45rem;
+  }
+
+  .glass-page .settings-workspace {
+    gap: 14px;
+    padding: 14px 14px 22px;
+  }
+
+  .glass-page .settings-section-tabs {
+    gap: 5px;
+    padding: 5px;
+  }
+
+  .glass-page .settings-section-tabs button {
+    min-height: 54px;
+    flex-direction: column;
+    gap: 4px;
+    padding: 7px 5px;
+    font-size: 0.78rem;
+  }
+
+  .glass-page .settings-section-panel > div,
+  .glass-page .settings-plan-list-v86 {
+    grid-template-columns: 1fr;
+  }
+
+  .glass-page .settings-toggle-row,
+  .glass-page .settings-action-row,
+  .glass-page .settings-plan-row-v86 {
+    min-height: 0;
+  }
+}

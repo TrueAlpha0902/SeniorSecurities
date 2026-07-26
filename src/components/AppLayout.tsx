@@ -21,6 +21,7 @@ import {
 import { ModalLoadingFallback } from "./ModalLoadingFallback";
 import "../styles/theme-current.css";
 import "../styles/interface-polish.css";
+import "../styles/quiz-settings-refinement.css";
 
 const loadSettingsPanel = () => import("./SettingsPanel");
 const loadCalculatorModal = () => import("./CalculatorModal");
