@@ -1,7 +1,3 @@
-import {
-  CircleCheck,
-  CircleX,
-} from "lucide-react";
 import type { ReactNode } from "react";
 import { ExamBrandMark, type ExamBrandKind } from "./ExamBrandMark";
 
@@ -116,16 +112,16 @@ export type V93AnswerStatus = "correct" | "wrong";
 
 export function V93AnswerBadge({ status }: { status: V93AnswerStatus }) {
   const correct = status === "correct";
-  const Icon = correct ? CircleCheck : CircleX;
   const label = correct ? "正解" : "錯誤";
+  const symbol = correct ? "✓" : "×";
 
   return (
     <span
       className={`answer-result-label v93-answer-badge is-${status}`}
-      role="img"
+      role="status"
       aria-label={label}
     >
-      <Icon aria-hidden="true" size={18} strokeWidth={2.1} />
+      <span className="v93-answer-symbol" aria-hidden="true">{symbol}</span>
       <span>{label}</span>
     </span>
   );
