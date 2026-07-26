@@ -100,11 +100,20 @@ async function main(): Promise<void> {
   for (const entry of evidenceFiles) {
     if (!entry.isFile() || !entry.name.endsWith(".json")) continue;
     const raw = await readFile(path.join(evidenceDirectory, entry.name));
-    const hash = createHash("sha256").update(raw).digest("hex");
     try {
-      const parsed: unknown = JSON.parse(raw.toString("utf8"));
+      const rawText = raw.toString("utf8");
+      const parsed: unknown = JSON.parse(rawText);
       if (isRecord(parsed)) {
-        parsedEvidenceByHash.set(hash, parsed);
+        const normalizedLf = rawText.replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n");
+        const normalizedCrlf = normalizedLf.replace(/\n/g, "\r\n");
+        const evidenceHashes = new Set([
+          createHash("sha256").update(raw).digest("hex"),
+          createHash("sha256").update(normalizedLf, "utf8").digest("hex"),
+          createHash("sha256").update(normalizedCrlf, "utf8").digest("hex"),
+        ]);
+        for (const hash of evidenceHashes) {
+          parsedEvidenceByHash.set(hash, parsed);
+        }
       } else {
         errors.push(`${entry.name}: review evidence must be a JSON object`);
       }

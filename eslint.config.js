@@ -5,7 +5,7 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist", "dev-dist", ".vercel", "node_modules", "staging", "tmp", "update-backups"] },
+  { ignores: ["dist", "dev-dist", ".vercel", "node_modules", "staging", "tmp", "update-backups", "playwright-report", "test-results", "coverage", ".venv-audit", "patch", "preview"] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {

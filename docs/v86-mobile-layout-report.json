@@ -1,0 +1,138 @@
+[
+  {
+    "case": "securities-home",
+    "width": 360,
+    "height": 800,
+    "horizontalOverflow": 0,
+    "firstItemWidth": 316
+  },
+  {
+    "case": "fx-home",
+    "width": 360,
+    "height": 800,
+    "horizontalOverflow": 0,
+    "firstItemWidth": 316
+  },
+  {
+    "case": "securities-practice",
+    "width": 360,
+    "height": 800,
+    "horizontalOverflow": 0,
+    "controlsPosition": "static",
+    "controlsBelowLastItem": true,
+    "lastItemBottom": 660.7,
+    "controlsTop": 925.8
+  },
+  {
+    "case": "fx-practice",
+    "width": 360,
+    "height": 800,
+    "horizontalOverflow": 0,
+    "controlsPosition": "static",
+    "controlsBelowLastItem": true,
+    "lastItemBottom": 689.7,
+    "controlsTop": 893.7
+  },
+  {
+    "case": "securities-home",
+    "width": 390,
+    "height": 844,
+    "horizontalOverflow": 0,
+    "firstItemWidth": 346
+  },
+  {
+    "case": "fx-home",
+    "width": 390,
+    "height": 844,
+    "horizontalOverflow": 0,
+    "firstItemWidth": 346
+  },
+  {
+    "case": "securities-practice",
+    "width": 390,
+    "height": 844,
+    "horizontalOverflow": 0,
+    "controlsPosition": "static",
+    "controlsBelowLastItem": true,
+    "lastItemBottom": 660.7,
+    "controlsTop": 925.8
+  },
+  {
+    "case": "fx-practice",
+    "width": 390,
+    "height": 844,
+    "horizontalOverflow": 0,
+    "controlsPosition": "static",
+    "controlsBelowLastItem": true,
+    "lastItemBottom": 689.7,
+    "controlsTop": 893.7
+  },
+  {
+    "case": "securities-home",
+    "width": 412,
+    "height": 915,
+    "horizontalOverflow": 0,
+    "firstItemWidth": 368
+  },
+  {
+    "case": "fx-home",
+    "width": 412,
+    "height": 915,
+    "horizontalOverflow": 0,
+    "firstItemWidth": 368
+  },
+  {
+    "case": "securities-practice",
+    "width": 412,
+    "height": 915,
+    "horizontalOverflow": 0,
+    "controlsPosition": "static",
+    "controlsBelowLastItem": true,
+    "lastItemBottom": 660.5,
+    "controlsTop": 925.8
+  },
+  {
+    "case": "fx-practice",
+    "width": 412,
+    "height": 915,
+    "horizontalOverflow": 0,
+    "controlsPosition": "static",
+    "controlsBelowLastItem": true,
+    "lastItemBottom": 664.0,
+    "controlsTop": 868.1
+  },
+  {
+    "case": "securities-home",
+    "width": 430,
+    "height": 932,
+    "horizontalOverflow": 0,
+    "firstItemWidth": 386
+  },
+  {
+    "case": "fx-home",
+    "width": 430,
+    "height": 932,
+    "horizontalOverflow": 0,
+    "firstItemWidth": 386
+  },
+  {
+    "case": "securities-practice",
+    "width": 430,
+    "height": 932,
+    "horizontalOverflow": 0,
+    "controlsPosition": "static",
+    "controlsBelowLastItem": true,
+    "lastItemBottom": 660.7,
+    "controlsTop": 895.0
+  },
+  {
+    "case": "fx-practice",
+    "width": 430,
+    "height": 932,
+    "horizontalOverflow": 0,
+    "controlsPosition": "static",
+    "controlsBelowLastItem": true,
+    "lastItemBottom": 666.6,
+    "controlsTop": 870.7
+  }
+]

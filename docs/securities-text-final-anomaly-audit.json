@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "source": "project-scan-pages-only",
+  "input": "build-data/securities-text-final.json",
+  "inputSha256": "c62c12ccecb071fb2bc870f4b8b097f96b1718268bfe9cdcd5de11acb0e8e7b7",
+  "questionCount": 3526,
+  "learnerFieldCount": 21156,
+  "questionAndExplanationFieldCount": 7052,
+  "optionFieldCount": 14104,
+  "uniqueIdCount": 3526,
+  "bankCounts": {
+    "financial-analysis": 895,
+    "investment": 1110,
+    "securities-trading-practice": 708,
+    "securities-trading-regulations": 813
+  },
+  "chapterCount": 40,
+  "manualOverrideQuestionCount": 412,
+  "highRiskReviewQuestionCount": 187,
+  "visualReviewQuestionCount": 152,
+  "multiEngineConsensusQuestionCount": 3114,
+  "scanPageCount": 818,
+  "duplicateOptionTextQuestionCount": 1,
+  "markdownTableQuestionCount": 14,
+  "issueCounts": {},
+  "totalAnomalyCount": 0,
+  "issues": {},
+  "passed": true,
+  "forbiddenExternalSourcesUsed": false
+}

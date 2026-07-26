@@ -1,103 +1,67 @@
 import {
-  AlertTriangle,
+  BarChart3,
   BookOpen,
-  CalendarDays,
+  ClipboardX,
   Heart,
-  Info,
-  ListChecks,
-  PlayCircle,
+  PenLine,
   Shuffle,
-  Target,
-  Trophy,
-  X,
+  TimerReset,
 } from "lucide-react";
-import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useAuth } from "../auth/AuthContext";
+import {
+  ExamHomeHero,
+  ExamLearningSummary,
+  ExamQuickActions,
+  ExamSubjectPath,
+  type SubjectPathItem,
+} from "../components/ExamHomeSections";
+import { ExamStudyPlanDialog } from "../components/ExamStudyPlanDialog";
 import { ErrorState } from "../components/ErrorState";
-import { GlassButton, GlassLinkButton } from "../components/GlassButton";
+import { GlassLinkButton } from "../components/GlassButton";
 import { GlassCard } from "../components/GlassCard";
 import { LoadingState } from "../components/LoadingState";
 import { useAsync } from "../hooks/useAsync";
-import { useAuth } from "../auth/AuthContext";
-import { listUserAnswers, listWrongQuestions } from "../lib/db";
 import {
+  listFavoriteQuestions,
+  listUserAnswers,
+  listWrongQuestions,
+} from "../lib/db";
+import {
+  buildOrReadDailyPlan,
+  type DailyPlanResult,
+} from "../lib/dailyPlanService";
+import {
+  isSecuritiesQuestionId,
   loadImageQuizBankSummaries,
+  resetImageQuizCaches,
   loadImageQuizPlanningIndex,
   type ImageQuizBank,
   type ImageQuizPlanningQuestion,
 } from "../lib/imageQuiz";
-import { calculateAccuracy } from "../lib/quiz";
 import {
   formatTotalPracticeTime,
   getTotalPracticeSeconds,
   PRACTICE_TIME_CHANGED,
 } from "../lib/practiceTime";
 import {
-  calculateSmartStudyPlanStats,
-  formatExamDate,
-  getStudyPlanConfig,
-  localTodayKey,
-  setStudyPlanConfig,
+  getStudyPlanConfigForExam,
+  isStudyPlanConfigured,
   STUDY_PLAN_CHANGED,
-  type DailyPlanCategory,
-  type StudyIntensity,
-  type StudyPlanConfig,
+  type StudyPlanScopeId,
+  type StudyPlanExamId,
 } from "../lib/studyPlan";
-import {
-  buildOrReadDailyPlan,
-  type DailyPlanResult,
-} from "../lib/dailyPlanService";
 import { USER_STORAGE_SCOPE_CHANGED } from "../lib/userScopedStorage";
-import type { UserAnswer } from "../types";
+import type {
+  FavoriteQuestionRecord,
+  UserAnswer,
+  WrongQuestionRecord,
+} from "../types";
 
-const T = {
-  loading: "載入題庫",
-  title: "證券高業",
-  tools: "複習與測驗",
-  subject: "科目",
-  question: "題",
-  mixed: "全題庫練習",
-  random80: "模擬考測驗",
-  weakFirst: "弱點練習",
-  similar: "相似題測驗",
-  favorites: "收藏題目",
-  leaderboard: "排行榜",
-  bankList: "題庫科目",
-  chapters: "章",
-  enter: "進入題庫",
-  progress: "首輪覆蓋",
-  setupTitle: "建立每日智能練習",
-  setupDescription:
-    "請設定考試日期、每天讀書時間與備考強度；App 會同時檢查期限壓力，不會只把總題庫平均除以天數。",
-  examDate: "考試日期",
-  dailyStudyTime: "每天讀書時間",
-  intensity: "備考強度",
-  save: "開始規劃",
-  skip: "稍後設定",
-  required: "請選擇考試日期。",
-  countdown: "考試倒數",
-  days: "天",
-  examToday: "就是今天",
-  smartPractice: "每日練習",
-  startDaily: "開始今日練習",
-  todayWrongReview: "今日錯題複習",
-  wrongCorrection: "錯題訂正",
-};
-
-const HOMEPAGE_FRIEREN_IMAGE = `${import.meta.env.BASE_URL}frieren-cheer-home.webp`;
-
-const STUDY_TIME_OPTIONS = [30, 60, 90, 120, 240] as const;
-const INTENSITY_OPTIONS: {
-  id: StudyIntensity;
-  label: string;
-  description: string;
-}[] = [
-  { id: "steady", label: "穩定型", description: "壓力小，複習比重較高。" },
-  { id: "standard", label: "標準型", description: "新題、錯題、複習均衡。" },
-  {
-    id: "sprint",
-    label: "衝刺型",
-    description: "期限優先，首輪覆蓋與錯題訂正比重較高。",
-  },
+const SUBJECT_ORDER: StudyPlanScopeId[] = [
+  "investment",
+  "financial-analysis",
+  "securities-laws-practice",
 ];
 
 const EMPTY_BANKS: ImageQuizBank[] = [];
@@ -106,124 +70,104 @@ const EMPTY_ANSWERS: UserAnswer[] = [];
 type HomeData = {
   banks: ImageQuizBank[];
   answers: UserAnswer[];
-  dailyPlan?: DailyPlanResult;
+  wrongRecords: WrongQuestionRecord[];
+  favorites: FavoriteQuestionRecord[];
+  examDailyPlan?: DailyPlanResult<ImageQuizPlanningQuestion>;
 };
 
 async function loadHomeData(
   includePrivateData: boolean,
   userId: string | null,
-  examDate: string | null,
-  dailyStudyMinutes: number,
-  intensity: StudyIntensity,
 ): Promise<HomeData> {
-  const [banks, allQuestions, answers, wrongRecords] = await Promise.all([
-    loadImageQuizBankSummaries(),
-    includePrivateData
-      ? loadImageQuizPlanningIndex()
-      : Promise.resolve([] as ImageQuizPlanningQuestion[]),
-    includePrivateData ? listUserAnswers() : Promise.resolve([]),
-    includePrivateData ? listWrongQuestions() : Promise.resolve([]),
-  ]);
-  const dailyPlan = includePrivateData
+  const [rawBanks, planningQuestions, answers, wrongRecords, favorites] =
+    await Promise.all([
+      loadImageQuizBankSummaries(),
+      includePrivateData
+        ? loadImageQuizPlanningIndex()
+        : Promise.resolve([] as ImageQuizPlanningQuestion[]),
+      includePrivateData ? listUserAnswers() : Promise.resolve([]),
+      includePrivateData ? listWrongQuestions() : Promise.resolve([]),
+      includePrivateData ? listFavoriteQuestions() : Promise.resolve([]),
+    ]);
+
+  const banks = sortSecuritiesBanks(rawBanks);
+  const securitiesAnswers = answers.filter((record) =>
+    isSecuritiesQuestionId(record.questionId),
+  );
+  const securitiesWrongRecords = wrongRecords.filter((record) =>
+    isSecuritiesQuestionId(record.questionId),
+  );
+  const securitiesFavorites = favorites.filter((record) =>
+    isSecuritiesQuestionId(record.questionId),
+  );
+
+  const examDailyPlan = includePrivateData
     ? buildOrReadDailyPlan({
-        allQuestions,
-        storedAnswers: answers,
-        wrongRecords,
+        allQuestions: planningQuestions,
+        storedAnswers: securitiesAnswers,
+        wrongRecords: securitiesWrongRecords,
         userId,
-        config: { examDate, dailyStudyMinutes, intensity },
+        config: getStudyPlanConfigForExam("senior-securities"),
+        planScopeId: "senior-securities",
       })
     : undefined;
-  return { banks, answers, dailyPlan };
+
+  return {
+    banks,
+    answers: securitiesAnswers,
+    wrongRecords: securitiesWrongRecords,
+    favorites: securitiesFavorites,
+    examDailyPlan,
+  };
 }
 
 export function HomePage() {
   const [refreshKey, setRefreshKey] = useState(0);
-  const [studyConfig, setStudyConfigState] = useState<StudyPlanConfig>(() =>
-    getStudyPlanConfig(),
-  );
-  const [draftExamDate, setDraftExamDate] = useState(
-    () => getStudyPlanConfig().examDate ?? "",
-  );
-  const [draftStudyMinutes, setDraftStudyMinutes] = useState(
-    () => getStudyPlanConfig().dailyStudyMinutes,
-  );
-  const [draftIntensity, setDraftIntensity] = useState<StudyIntensity>(
-    () => getStudyPlanConfig().intensity,
-  );
-  const [totalPracticeSeconds, setTotalPracticeSeconds] = useState(() =>
-    getTotalPracticeSeconds(),
-  );
-  const [setupDismissed, setSetupDismissed] = useState(false);
-  const [dailyDetailsOpen, setDailyDetailsOpen] = useState(false);
+  const [planRevision, setPlanRevision] = useState(0);
+  const [practiceSeconds, setPracticeSeconds] = useState(() => getTotalPracticeSeconds());
+  const [editingPlanExamId, setEditingPlanExamId] =
+    useState<StudyPlanExamId | null>(null);
   const { isActivated, user } = useAuth();
-  const { data, error, loading } = useAsync(
-    () =>
-      loadHomeData(
-        isActivated,
-        user?.id ?? null,
-        studyConfig.examDate,
-        studyConfig.dailyStudyMinutes,
-        studyConfig.intensity,
-      ),
-    [
-      refreshKey,
-      isActivated,
-      user?.id,
-      studyConfig.examDate,
-      studyConfig.dailyStudyMinutes,
-      studyConfig.intensity,
-    ],
+  const { data, error, loading, retry } = useAsync(
+    () => loadHomeData(isActivated, user?.id ?? null),
+    [refreshKey, planRevision, isActivated, user?.id],
   );
-
-  const banks = data?.banks ?? EMPTY_BANKS;
-  const answers = data?.answers ?? EMPTY_ANSWERS;
 
   useEffect(() => {
-    const refreshRecords = () => setRefreshKey((key) => key + 1);
-    window.addEventListener("records:changed", refreshRecords);
-    return () => window.removeEventListener("records:changed", refreshRecords);
+    const refresh = () => setRefreshKey((value) => value + 1);
+    window.addEventListener("records:changed", refresh);
+    return () => window.removeEventListener("records:changed", refresh);
   }, []);
 
   useEffect(() => {
-    const refreshPracticeTime = () =>
-      setTotalPracticeSeconds(getTotalPracticeSeconds());
+    const refreshPlans = () => setPlanRevision((value) => value + 1);
+    window.addEventListener(STUDY_PLAN_CHANGED, refreshPlans);
+    window.addEventListener(USER_STORAGE_SCOPE_CHANGED, refreshPlans);
+    window.addEventListener("storage", refreshPlans);
+    return () => {
+      window.removeEventListener(STUDY_PLAN_CHANGED, refreshPlans);
+      window.removeEventListener(USER_STORAGE_SCOPE_CHANGED, refreshPlans);
+      window.removeEventListener("storage", refreshPlans);
+    };
+  }, []);
+
+  useEffect(() => {
+    const refreshPracticeTime = () => setPracticeSeconds(getTotalPracticeSeconds());
     window.addEventListener(PRACTICE_TIME_CHANGED, refreshPracticeTime);
     window.addEventListener(USER_STORAGE_SCOPE_CHANGED, refreshPracticeTime);
-    window.addEventListener("storage", refreshPracticeTime);
     return () => {
       window.removeEventListener(PRACTICE_TIME_CHANGED, refreshPracticeTime);
       window.removeEventListener(USER_STORAGE_SCOPE_CHANGED, refreshPracticeTime);
-      window.removeEventListener("storage", refreshPracticeTime);
     };
   }, []);
 
-  useEffect(() => {
-    const refreshStudyPlan = () => {
-      const config = getStudyPlanConfig();
-      setStudyConfigState(config);
-      setDraftExamDate(config.examDate ?? "");
-      setDraftStudyMinutes(config.dailyStudyMinutes);
-      setDraftIntensity(config.intensity);
-    };
-    window.addEventListener(STUDY_PLAN_CHANGED, refreshStudyPlan);
-    window.addEventListener(USER_STORAGE_SCOPE_CHANGED, refreshStudyPlan);
-    window.addEventListener("storage", refreshStudyPlan);
-    return () => {
-      window.removeEventListener(STUDY_PLAN_CHANGED, refreshStudyPlan);
-      window.removeEventListener(USER_STORAGE_SCOPE_CHANGED, refreshStudyPlan);
-      window.removeEventListener("storage", refreshStudyPlan);
-    };
-  }, []);
-
-  const sourceBankIds = useMemo(
-    () => new Set(banks.flatMap((bank) => Array.from(getBankSourceIds(bank)))),
-    [banks],
-  );
+  const banks = data?.banks ?? EMPTY_BANKS;
+  const answers = data?.answers ?? EMPTY_ANSWERS;
   const questionCount = useMemo(
     () =>
       banks.reduce(
-        (bankSum, bank) =>
-          bankSum +
+        (sum, bank) =>
+          sum +
           bank.chapters.reduce(
             (chapterSum, chapter) => chapterSum + chapter.questionCount,
             0,
@@ -232,455 +176,173 @@ export function HomePage() {
       ),
     [banks],
   );
-  const overallProgress = calculateOverallProgress(
-    questionCount,
-    answers,
-    sourceBankIds,
+  const answeredCount = useMemo(
+    () => new Set(answers.map((answer) => answer.questionId)).size,
+    [answers],
   );
-  const dailyPlan = data?.dailyPlan;
-  const studyPlan = dailyPlan?.plan ??
-    calculateSmartStudyPlanStats({
-      totalQuestions: questionCount,
-      unattemptedQuestions: questionCount,
-      wrongDueQuestions: 0,
-      reviewDueQuestions: 0,
-      mixedPoolQuestions: 0,
-      examDate: studyConfig.examDate,
-      dailyStudyMinutes: studyConfig.dailyStudyMinutes,
-      intensity: studyConfig.intensity,
-    });
-  const dailyDisplayPlan = {
-    count: dailyPlan?.remainingCount ?? studyPlan.suggestedDailyCount,
-    allocations: dailyPlan?.remainingAllocations ?? studyPlan.allocations,
-  };
-  const homeDailyAllocations = (["wrong", "review", "new"] as DailyPlanCategory[]).map(
-    (category) => dailyDisplayPlan.allocations[category],
-  );
+  const planConfig = getStudyPlanConfigForExam("senior-securities");
+  const dailyCount = data?.examDailyPlan?.remainingCount ?? 0;
+  const weeklyValues = useMemo(() => buildWeeklyAnswerSeries(answers), [answers]);
+  const weeklyAnswered = weeklyValues.reduce((sum, value) => sum + value, 0);
+  const completion = questionCount > 0 ? (answeredCount / questionCount) * 100 : 0;
 
-  async function handlePlanSubmit(
-    event: FormEvent<HTMLFormElement>,
-  ): Promise<void> {
-    event.preventDefault();
-    if (!draftExamDate) {
-      window.alert(T.required);
-      return;
-    }
-    setStudyPlanConfig({
-      examDate: draftExamDate,
-      dailyStudyMinutes: draftStudyMinutes,
-      intensity: draftIntensity,
-    });
-    setStudyConfigState(getStudyPlanConfig());
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent("exam-home:daily-target", {
+      detail: {
+        examId: "senior-securities",
+        count: dailyCount,
+        completed: data?.examDailyPlan?.completedBeforePlanCount ?? 0,
+        planned: data?.examDailyPlan?.plannedCount ?? dailyCount,
+      },
+    }));
+  }, [dailyCount, data?.examDailyPlan?.completedBeforePlanCount, data?.examDailyPlan?.plannedCount]);
+
+  if (loading) return <LoadingState label="載入證券高業" />;
+  if (error) {
+    return (
+      <ErrorState
+        title="無法載入證券高業題庫"
+        message={error}
+        onRetry={() => {
+          resetImageQuizCaches();
+          retry();
+        }}
+      />
+    );
   }
 
+  const subjectItems: SubjectPathItem[] = banks.map((bank) => {
+    const total = bank.chapters.reduce(
+      (sum, chapter) => sum + chapter.questionCount,
+      0,
+    );
+    const answered = countBankAnswers(bank, answers);
+    const progress = total > 0
+      ? Math.round((answered / total) * 1000) / 10
+      : 0;
+    const wrong = countBankRecords(bank, data?.wrongRecords ?? []);
+    return {
+      id: bank.bankId,
+      title: bank.bankTitle,
+      progress,
+      answered,
+      total,
+      to: `/banks/${bank.bankId}`,
+      meta: wrong > 0 ? `待訂正 ${wrong} 題` : "目前沒有待訂正題目",
+    };
+  });
+
   return (
-    <div className="page-stack">
-      {loading ? (
-        <LoadingState label={T.loading} />
-      ) : error ? (
-        <ErrorState message={error} />
-      ) : (
+    <div className="page-stack premium-exam-home securities-dashboard-v87">
+      <ExamHomeHero
+        tone="securities"
+        eyebrow="測驗題庫"
+        title="證券高業"
+        subtitle="穩紮穩打，累積實力！"
+        answered={answeredCount}
+        total={questionCount}
+        wrong={data?.wrongRecords.length ?? 0}
+        favorites={data?.favorites.length ?? 0}
+        examDate={planConfig.examDate}
+        dailyCount={dailyCount}
+        dailyActionLabel={dailyCount > 0 ? "開始練習" : "開始練習"}
+        dailyActionTo={dailyCount > 0 ? "/image-quiz/daily?scope=all" : "/image-quiz/all"}
+        onEditPlan={() => setEditingPlanExamId("senior-securities")}
+        planConfigured={isStudyPlanConfigured(planConfig)}
+      />
+
+      {isActivated ? (
         <>
-          {isActivated && !studyConfig.examDate && !setupDismissed ? (
-            <ExamSetupDialog
-              draftExamDate={draftExamDate}
-              draftStudyMinutes={draftStudyMinutes}
-              draftIntensity={draftIntensity}
-              onDateChange={setDraftExamDate}
-              onStudyMinutesChange={setDraftStudyMinutes}
-              onIntensityChange={setDraftIntensity}
-              onDismiss={() => setSetupDismissed(true)}
-              onSubmit={(event) => void handlePlanSubmit(event)}
-            />
-          ) : null}
+          <ExamQuickActions
+            actions={[
+              {
+                label: "隨機練習",
+                description: "不指定範圍",
+                to: "/image-quiz/all",
+                icon: Shuffle,
+              },
+              {
+                label: "章節練習",
+                description: "依章節學習",
+                to: "/securities#learning-path",
+                icon: PenLine,
+              },
+              {
+                label: "模擬考",
+                description: "全真模擬",
+                to: "/random",
+                icon: TimerReset,
+              },
+              {
+                label: "錯題練習",
+                description: "強化弱點",
+                to: "/image-quiz/wrong",
+                icon: ClipboardX,
+              },
+              {
+                label: "收藏練習",
+                description: "重點題目",
+                to: "/image-quiz/favorites",
+                icon: Heart,
+              },
+              {
+                label: "弱點分析",
+                description: "精準提升",
+                to: "/similar",
+                icon: BarChart3,
+              },
+            ]}
+          />
 
-          <section className="home-overview">
-            <GlassCard className="overview-panel">
-              <div>
-                <h1>{T.title}</h1>
-              </div>
-              <div className="metric-row">
-                <span className="glass-badge">
-                  {banks.length} {T.subject}
-                </span>
-                <span className="glass-badge">
-                  {questionCount} {T.question}
-                </span>
-                <span className="glass-badge">
-                  {T.progress} {overallProgress}%
-                </span>
-                {isActivated ? (
-                  <span className="glass-badge">
-                    累積 {formatTotalPracticeTime(totalPracticeSeconds)}
-                  </span>
-                ) : null}
-              </div>
-            </GlassCard>
-          </section>
+          <ExamSubjectPath items={subjectItems} />
 
-          {isActivated ? (
-            <>
-              <section
-                className="daily-plan-section"
-                aria-label={T.smartPractice}
-              >
-                <GlassCard className="daily-compact-card daily-deadline-card-v70">
-                  <div className="daily-countdown-panel-v70">
-                    <p className="eyebrow">Countdown</p>
-                    <div className="smart-countdown-number">
-                      <CalendarDays aria-hidden="true" size={30} />
-                      <strong>
-                        {studyPlan.daysLeft === 0
-                          ? T.examToday
-                          : studyPlan.daysLeft ?? "--"}
-                      </strong>
-                      {studyPlan.daysLeft !== null && studyPlan.daysLeft > 0 ? (
-                        <span>{T.days}</span>
-                      ) : null}
-                    </div>
-                    <p>
-                      {T.examDate}：{formatExamDate(studyConfig.examDate)}
-                    </p>
-                  </div>
-                  <div className="daily-compact-main-v70">
-                    <div className="daily-compact-copy">
-                      <p className="eyebrow">Daily Practice</p>
-                      <div className="daily-compact-title-row">
-                        <h2>
-                          今日應做 <strong>{dailyDisplayPlan.count}</strong>{" "}
-                          {T.question}
-                        </h2>
-                        <button
-                          type="button"
-                          className="daily-info-button"
-                          aria-label="查看今日練習安排說明"
-                          title="查看今日練習安排"
-                          aria-expanded={dailyDetailsOpen}
-                          onClick={() => setDailyDetailsOpen(true)}
-                        >
-                          <Info aria-hidden="true" size={18} />
-                        </button>
-                      </div>
-                      <p>依目前進度安排，完成後即可結束今日練習。</p>
-                    </div>
-                    <GlassLinkButton
-                      to="/image-quiz/daily"
-                      variant="primary"
-                      className="daily-primary-action"
-                    >
-                      <PlayCircle aria-hidden="true" size={19} />
-                      <span>{T.startDaily}</span>
-                    </GlassLinkButton>
-                  </div>
-                </GlassCard>
-              </section>
-
-              {dailyDetailsOpen ? (
-                <div
-                  className="daily-details-overlay"
-                  role="presentation"
-                  onMouseDown={(event) => {
-                    if (event.target === event.currentTarget)
-                      setDailyDetailsOpen(false);
-                  }}
-                >
-                  <GlassCard
-                    className="daily-details-dialog"
-                    as="section"
-                    role="dialog"
-                    aria-modal="true"
-                    aria-labelledby="daily-details-title"
-                  >
-                    <div className="daily-details-header">
-                      <div>
-                        <p className="eyebrow">Today Plan</p>
-                        <h2 id="daily-details-title">今日練習安排</h2>
-                      </div>
-                      <button
-                        type="button"
-                        className="daily-details-close"
-                        onClick={() => setDailyDetailsOpen(false)}
-                        aria-label="關閉說明"
-                      >
-                        <X aria-hidden="true" size={20} />
-                      </button>
-                    </div>
-                    <div className="daily-detail-summary">
-                      <div>
-                        <CalendarDays aria-hidden="true" size={18} />
-                        <span>{T.examDate}</span>
-                        <strong>{formatExamDate(studyConfig.examDate)}</strong>
-                      </div>
-                      <div>
-                        <Target aria-hidden="true" size={18} />
-                        <span>今日應做</span>
-                        <strong>{dailyDisplayPlan.count} 題</strong>
-                      </div>
-                      <div>
-                        <span>每日時間</span>
-                        <strong>{studyPlan.dailyStudyMinutes} 分鐘</strong>
-                      </div>
-                      <div>
-                        <span>理論新題需求</span>
-                        <strong>{studyPlan.requiredNewPerDay} 題／天</strong>
-                      </div>
-                    </div>
-                    <div
-                      className={`daily-detail-warning${studyPlan.isOverloaded ? " warning" : ""}`}
-                    >
-                      {studyPlan.isOverloaded ? (
-                        <AlertTriangle aria-hidden="true" size={20} />
-                      ) : (
-                        <Target aria-hidden="true" size={20} />
-                      )}
-                      <div>
-                        <strong>{studyPlan.warningTitle}</strong>
-                        <p>{studyPlan.warningMessage}</p>
-                      </div>
-                    </div>
-                    <div
-                      className="daily-detail-allocation"
-                      aria-label="今日題目分配"
-                    >
-                      {homeDailyAllocations.map((allocation) => (
-                        <div key={allocation.id}>
-                          <span>{allocation.label}</span>
-                          <strong>{allocation.count} 題</strong>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="daily-details-actions">
-                      <GlassLinkButton
-                        to="/image-quiz/today-wrong"
-                        variant="secondary"
-                        onClick={() => setDailyDetailsOpen(false)}
-                      >
-                        <Target aria-hidden="true" size={18} />
-                        <span>{T.todayWrongReview}</span>
-                      </GlassLinkButton>
-                      <GlassLinkButton
-                        to="/image-quiz/daily"
-                        variant="primary"
-                        onClick={() => setDailyDetailsOpen(false)}
-                      >
-                        <PlayCircle aria-hidden="true" size={18} />
-                        <span>{T.startDaily}</span>
-                      </GlassLinkButton>
-                    </div>
-                  </GlassCard>
-                </div>
-              ) : null}
-            </>
-          ) : (
-            <GlassCard className="daily-simple-card auth-banner" as="section">
-              <div>
-                <p className="eyebrow">Preview</p>
-                <h2>
-                  完整開通後會解鎖每日智能練習、錯題訂正、模擬考測驗與收藏複習。
-                </h2>
-                <p>目前可以先使用 10 題試用模式。</p>
-              </div>
-              <GlassLinkButton to="/trial" variant="primary">
-                試用 10 題
-              </GlassLinkButton>
-            </GlassCard>
-          )}
-
-          <section className="priority-bank-grid" aria-label={T.bankList}>
-            {banks.map((bank) => {
-              const total = bank.chapters.reduce(
-                (sum, chapter) => sum + chapter.questionCount,
-                0,
-              );
-              const progress = calculateBankProgress(bank, answers, total);
-              return (
-                <GlassCard
-                  key={bank.bankId}
-                  interactive
-                  as="article"
-                  className="bank-card"
-                >
-                  <div className="card-title-row">
-                    <div className="title-icon" aria-hidden="true">
-                      <BookOpen size={22} />
-                    </div>
-                    <div>
-                      <h2>{bank.bankTitle}</h2>
-                      <p>
-                        {bank.chapters.length} {T.chapters} / {total}{" "}
-                        {T.question}
-                      </p>
-                      <div className="metric-row">
-                        <span className="glass-badge">
-                          {T.progress} {progress}%
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  <GlassLinkButton
-                    to={`/banks/${bank.bankId}`}
-                    variant="primary"
-                  >
-                    {T.enter}
-                  </GlassLinkButton>
-                </GlassCard>
-              );
-            })}
-          </section>
-
-          <section className="home-tools" aria-label={T.tools}>
-            <div className="section-heading home-tools-heading">
-              <h2>{T.tools}</h2>
-            </div>
-            <div className="tool-strip">
-              <GlassLinkButton to="/image-quiz/all" variant="secondary">
-                <ListChecks aria-hidden="true" size={19} />
-                <span>{T.mixed}</span>
-              </GlassLinkButton>
-              <GlassLinkButton to="/random" variant="secondary">
-                <Shuffle aria-hidden="true" size={19} />
-                <span>{T.random80}</span>
-              </GlassLinkButton>
-              <GlassLinkButton to="/image-quiz/wrong" variant="secondary">
-                <Target aria-hidden="true" size={19} />
-                <span>{T.weakFirst}</span>
-              </GlassLinkButton>
-              <GlassLinkButton to="/similar" variant="secondary">
-                <ListChecks aria-hidden="true" size={19} />
-                <span>{T.similar}</span>
-              </GlassLinkButton>
-              <GlassLinkButton to="/image-quiz/favorites" variant="secondary">
-                <Heart aria-hidden="true" size={19} />
-                <span>{T.favorites}</span>
-              </GlassLinkButton>
-              <GlassLinkButton to="/leaderboard" variant="secondary">
-                <Trophy aria-hidden="true" size={19} />
-                <span>{T.leaderboard}</span>
-              </GlassLinkButton>
-            </div>
-          </section>
-
-          <section
-            className="cat-playground"
-            aria-label="主頁底部加油插圖"
-          >
-            <figure className="homepage-frieren-figure">
-              <img
-                className="homepage-frieren-image"
-                src={HOMEPAGE_FRIEREN_IMAGE}
-                alt="Q版芙莉蓮握拳加油插圖"
-                width={983}
-                height={973}
-                loading="lazy"
-                decoding="async"
-              />
-            </figure>
-          </section>
+          <ExamLearningSummary
+            tone="securities"
+            weeklyValues={weeklyValues}
+            weeklyAnswered={weeklyAnswered}
+            completion={completion}
+            studyTimeLabel={formatTotalPracticeTime(practiceSeconds)}
+            examDate={planConfig.examDate}
+            subjectCount={3}
+            totalQuestions={questionCount}
+            mockTimeLabel="依題數限時"
+            onEditPlan={() => setEditingPlanExamId("senior-securities")}
+          />
         </>
+      ) : (
+        <GlassCard className="premium-trial-card" as="section">
+          <div>
+            <span>尚未開通</span>
+            <h2>先試用 10 題</h2>
+            <p>開通後可使用完整題庫、共同考試計畫、錯題與模擬考。</p>
+          </div>
+          <GlassLinkButton to="/trial" variant="primary">
+            <BookOpen aria-hidden="true" size={18} />開始試用
+          </GlassLinkButton>
+        </GlassCard>
       )}
+
+      {editingPlanExamId ? (
+        <ExamStudyPlanDialog
+          examId={editingPlanExamId}
+          onClose={() => setEditingPlanExamId(null)}
+          onSaved={() => setPlanRevision((value) => value + 1)}
+        />
+      ) : null}
     </div>
   );
 }
 
-function ExamSetupDialog({
-  draftExamDate,
-  draftStudyMinutes,
-  draftIntensity,
-  onDateChange,
-  onStudyMinutesChange,
-  onIntensityChange,
-  onDismiss,
-  onSubmit,
-}: {
-  draftExamDate: string;
-  draftStudyMinutes: number;
-  draftIntensity: StudyIntensity;
-  onDateChange: (date: string) => void;
-  onStudyMinutesChange: (minutes: number) => void;
-  onIntensityChange: (intensity: StudyIntensity) => void;
-  onDismiss: () => void;
-  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
-}) {
-  return (
-    <div className="clear-record-overlay exam-date-overlay" role="presentation">
-      <GlassCard
-        className="exam-setup-dialog"
-        as="div"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="exam-setup-title"
-      >
-        <form className="exam-setup-form" onSubmit={onSubmit}>
-          <p className="eyebrow">Smart Plan</p>
-          <h2 id="exam-setup-title">{T.setupTitle}</h2>
-          <p>{T.setupDescription}</p>
-          <label className="exam-date-field">
-            <span>{T.examDate}</span>
-            <input
-              type="date"
-              min={localTodayKey()}
-              value={draftExamDate}
-              onChange={(event) => onDateChange(event.currentTarget.value)}
-            />
-          </label>
-          <div className="smart-setup-section">
-            <span>{T.dailyStudyTime}</span>
-            <div className="setup-choice-grid setup-time-grid">
-              {STUDY_TIME_OPTIONS.map((minutes) => (
-                <button
-                  key={minutes}
-                  type="button"
-                  aria-pressed={draftStudyMinutes === minutes}
-                  className={`setup-choice-button ${draftStudyMinutes === minutes ? "is-selected" : ""}`}
-                  onClick={() => onStudyMinutesChange(minutes)}
-                >
-                  {minutes} 分鐘
-                </button>
-              ))}
-            </div>
-            <label className="custom-minutes-field">
-              <span>自訂</span>
-              <input
-                type="number"
-                min={15}
-                max={720}
-                step={5}
-                value={draftStudyMinutes}
-                onChange={(event) =>
-                  onStudyMinutesChange(Number(event.currentTarget.value))
-                }
-              />
-            </label>
-          </div>
-          <div className="smart-setup-section">
-            <span>{T.intensity}</span>
-            <div className="setup-choice-grid setup-intensity-grid">
-              {INTENSITY_OPTIONS.map((option) => (
-                <button
-                  key={option.id}
-                  type="button"
-                  aria-pressed={draftIntensity === option.id}
-                  className={`setup-choice-button setup-intensity-button ${draftIntensity === option.id ? "is-selected" : ""}`}
-                  onClick={() => onIntensityChange(option.id)}
-                >
-                  <strong>{option.label}</strong>
-                  <small>{option.description}</small>
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="setup-action-row">
-            <GlassButton type="button" variant="secondary" onClick={onDismiss}>
-              {T.skip}
-            </GlassButton>
-            <GlassButton type="submit" variant="primary">
-              {T.save}
-            </GlassButton>
-          </div>
-        </form>
-      </GlassCard>
-    </div>
-  );
+function sortSecuritiesBanks(banks: ImageQuizBank[]): ImageQuizBank[] {
+  const order = new Map(SUBJECT_ORDER.map((scopeId, index) => [scopeId, index]));
+  return banks
+    .filter((bank) => order.has(bank.bankId as StudyPlanScopeId))
+    .slice()
+    .sort(
+      (left, right) =>
+        (order.get(left.bankId as StudyPlanScopeId) ?? 99) -
+        (order.get(right.bankId as StudyPlanScopeId) ?? 99),
+    );
 }
 
 function getBankSourceIds(bank: ImageQuizBank): Set<string> {
@@ -691,29 +353,34 @@ function getBankSourceIds(bank: ImageQuizBank): Set<string> {
   );
 }
 
-function calculateBankProgress(
-  bank: ImageQuizBank,
-  answers: UserAnswer[],
-  questionCount: number,
-): number {
+function countBankAnswers(bank: ImageQuizBank, answers: UserAnswer[]): number {
   const sourceIds = getBankSourceIds(bank);
-  const answeredIds = new Set(
+  return new Set(
     answers
       .filter((answer) => sourceIds.has(answer.bankId))
       .map((answer) => answer.questionId),
-  );
-  return calculateAccuracy(answeredIds.size, questionCount);
+  ).size;
 }
 
-function calculateOverallProgress(
-  questionCount: number,
-  answers: UserAnswer[],
-  sourceBankIds: Set<string>,
+function countBankRecords(
+  bank: ImageQuizBank,
+  records: Array<{ bankId: string }>,
 ): number {
-  const answeredIds = new Set(
-    answers
-      .filter((answer) => sourceBankIds.has(answer.bankId))
-      .map((answer) => answer.questionId),
-  );
-  return calculateAccuracy(answeredIds.size, questionCount);
+  const sourceIds = getBankSourceIds(bank);
+  return records.filter((record) => sourceIds.has(record.bankId)).length;
+}
+
+function buildWeeklyAnswerSeries(answers: UserAnswer[]): number[] {
+  const series = Array.from({ length: 7 }, () => 0);
+  const today = new Date();
+  today.setHours(23, 59, 59, 999);
+  for (const answer of answers) {
+    const timestamp = new Date(answer.answeredAt).getTime();
+    if (!Number.isFinite(timestamp)) continue;
+    const daysAgo = Math.floor((today.getTime() - timestamp) / (24 * 60 * 60 * 1000));
+    if (daysAgo < 0 || daysAgo > 6) continue;
+    const bucketIndex = 6 - daysAgo;
+    series[bucketIndex] = (series[bucketIndex] ?? 0) + 1;
+  }
+  return series;
 }

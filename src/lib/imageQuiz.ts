@@ -1,4 +1,19 @@
+import {
+  fetchQuestionBankResponse,
+  getQuestionBankAccess,
+  requestQuestionBankJson,
+} from "./questionBankApi";
+
+const RUNTIME_ENV = (import.meta as ImportMeta & { env?: ImportMetaEnv }).env;
+const LOCAL_PREVIEW_ACCESS = Boolean(RUNTIME_ENV?.DEV && RUNTIME_ENV.VITE_LOCAL_PREVIEW_ACCESS === "1");
+
 export type NumericAnswer = "1" | "2" | "3" | "4";
+
+export const SECURITIES_QUESTION_ID_PATTERN = /^[a-z0-9][a-z0-9-]{2,120}-pdf-\d{4}$/;
+
+export function isSecuritiesQuestionId(value: unknown): value is string {
+  return typeof value === "string" && SECURITIES_QUESTION_ID_PATTERN.test(value);
+}
 
 export type PdfCropSegment = {
   page: number;
@@ -31,6 +46,7 @@ export type ImageQuizQuestion = {
   chapterTopic?: string;
   number: number;
   answer: NumericAnswer;
+  answerRedacted?: boolean;
   sourceFile: string;
   questionSegments: PdfCropSegment[];
   explanationSegments: PdfCropSegment[];
@@ -39,6 +55,14 @@ export type ImageQuizQuestion = {
   mobileQuestionSegmentsVerification?: MobileSegmentVerification;
   mobileExplanationSegmentsVerification?: MobileSegmentVerification;
   answerMask: PdfMaskRect | null;
+  questionText?: string;
+  optionTexts?: Record<NumericAnswer, string>;
+  explanationText?: string;
+  textSource?: {
+    kind: "project-scan-pages-only";
+    questionSegmentsSha256: string;
+    explanationSegmentsSha256: string;
+  };
 };
 
 export type ImageQuizChapter = {
@@ -64,6 +88,14 @@ export type ImageQuizBank = {
 
 type ImageQuizData = {
   banks: ImageQuizBank[];
+};
+
+export type ImageQuizLearnerOverride = {
+  questionId: string;
+  bankTitle?: string;
+  chapterTitle?: string;
+  questionNumber?: number;
+  answer: NumericAnswer;
 };
 
 export type ImageQuizQuestionOverride = {
@@ -169,6 +201,10 @@ export function getImageQuizSegments(
 }
 
 type QuestionOverridesResponse = {
+  overrides?: ImageQuizLearnerOverride[];
+};
+
+type AdminQuestionOverridesResponse = {
   overrides?: ImageQuizQuestionOverride[];
 };
 
@@ -179,6 +215,12 @@ export type SimilarQuestionGroup = {
   chapterId: string;
   chapterTitle: string;
   score: number;
+  similarity?: number;
+  reason?: string;
+  matchType?: "same-stem" | "numeric-variant" | "near-duplicate" | "same-concept";
+  reviewed?: boolean;
+  sharedTerms?: string[];
+  contrastTerms?: string[];
   questionIds: string[];
 };
 
@@ -227,7 +269,7 @@ export type ImageQuizEditorBankSummary = {
 };
 
 export type QuestionReleaseManifest = {
-  schemaVersion: 2;
+  schemaVersion: 3;
   releaseId: string;
   sourceHash: string;
   generatedAt: string;
@@ -242,6 +284,30 @@ type QuestionShardPayload = {
   chapter: ImageQuizChapter;
 };
 
+type SecuritiesMockApiQuestion = Omit<ImageQuizQuestion, "answer" | "sourceFile" | "questionSegments" | "explanationSegments" | "answerMask"> & {
+  answer?: NumericAnswer;
+  sourceFile?: string;
+  questionSegments?: PdfCropSegment[];
+  explanationSegments?: PdfCropSegment[];
+  answerMask?: PdfMaskRect | null;
+};
+
+export type SecuritiesMockSession = {
+  mockToken: string;
+  questions: ImageQuizQuestion[];
+};
+
+export type SecuritiesMockResult = ImageQuizQuestion & {
+  selectedAnswer: NumericAnswer | null;
+  isCorrect: boolean;
+};
+
+export type SecuritiesMockSubmission = {
+  questionCount: number;
+  correctCount: number;
+  results: SecuritiesMockResult[];
+};
+
 const dataCache: { promise?: Promise<ImageQuizData> } = {};
 const manifestCache: { promise?: Promise<QuestionReleaseManifest> } = {};
 const sourceBankCache = new Map<string, Promise<ImageQuizBank | undefined>>();
@@ -252,9 +318,52 @@ const summaryBanksCache: { promise?: Promise<ImageQuizBank[]> } = {};
 const planningIndexCache: { promise?: Promise<ImageQuizPlanningQuestion[]> } =
   {};
 const questionOverridesCache: {
-  promise?: Promise<Map<string, ImageQuizQuestionOverride>>;
+  promise?: Promise<Map<string, ImageQuizLearnerOverride>>;
 } = {};
-const questionOverrideSubsetCache = new Map<string, Promise<Map<string, ImageQuizQuestionOverride>>>();
+
+type PromiseCache<T> = { promise?: Promise<T> };
+
+function rememberRecoverable<T>(
+  cache: PromiseCache<T>,
+  loader: () => Promise<T>,
+): Promise<T> {
+  if (cache.promise) return cache.promise;
+  const promise = loader();
+  cache.promise = promise;
+  void promise.catch(() => {
+    if (cache.promise === promise) delete cache.promise;
+  });
+  return promise;
+}
+
+function rememberRecoverableMap<K, V>(
+  cache: Map<K, Promise<V>>,
+  key: K,
+  loader: () => Promise<V>,
+): Promise<V> {
+  const existing = cache.get(key);
+  if (existing) return existing;
+  const promise = loader();
+  cache.set(key, promise);
+  void promise.catch(() => {
+    if (cache.get(key) === promise) cache.delete(key);
+  });
+  return promise;
+}
+
+export function resetImageQuizCaches(): void {
+  delete dataCache.promise;
+  delete manifestCache.promise;
+  delete similarGroupsCache.promise;
+  delete trialQuestionsCache.promise;
+  delete summaryBanksCache.promise;
+  delete planningIndexCache.promise;
+  delete questionOverridesCache.promise;
+  sourceBankCache.clear();
+  sourceChapterCache.clear();
+}
+
+
 const SECURITIES_COMBINED_BANK_ID = "securities-laws-practice";
 const SECURITIES_COMBINED_BANK_TITLE =
   "\u8b49\u5238\u76f8\u95dc\u6cd5\u898f\u8207\u5be6\u52d9";
@@ -321,20 +430,223 @@ async function fetchJson<T>(path: string, version?: string): Promise<T> {
   const requestUrl = version
     ? `${url}${url.includes("?") ? "&" : "?"}v=${encodeURIComponent(version)}`
     : url;
-  const response = await fetch(requestUrl);
+  const response = await fetch(requestUrl, { cache: "no-store" });
   if (!response.ok) {
     throw new Error(
       `\u7121\u6cd5\u8f09\u5165 ${path}: ${response.status} ${response.statusText}`,
     );
   }
+  if (!(response.headers.get("content-type") || "").includes("application/json")) {
+    throw new Error(`\u7121\u6cd5\u8b58\u5225 ${path} \u7684\u56de\u61c9\u683c\u5f0f\u3002`);
+  }
   return (await response.json()) as T;
 }
 
+const SECURITIES_OFFLINE_CACHE = "question-bank-data";
+
+async function securitiesAccess(): Promise<{ token: string; account: string }> {
+  return getQuestionBankAccess();
+}
+
+async function securitiesApiPost<T>(
+  body: Record<string, unknown>,
+  signal?: AbortSignal,
+): Promise<T> {
+  return requestQuestionBankJson<T>({
+    url: assetUrl("api/questions"),
+    method: "POST",
+    signal,
+    context: "證券高業題庫",
+    body: { resource: "securities", ...body },
+  });
+}
+
+function normalizeSecuritiesApiQuestion(question: SecuritiesMockApiQuestion): ImageQuizQuestion {
+  const hasAnswer = question.answer === "1" || question.answer === "2" || question.answer === "3" || question.answer === "4";
+  return {
+    ...question,
+    answer: hasAnswer ? question.answer as NumericAnswer : "1",
+    answerRedacted: !hasAnswer,
+    sourceFile: "",
+    questionSegments: [],
+    explanationSegments: [],
+    answerMask: null,
+  };
+}
+
+function encodeLocalSecuritiesMockToken(questionIds: string[]): string {
+  return `local.${btoa(JSON.stringify({ questionIds }))}`;
+}
+
+function decodeLocalSecuritiesMockToken(token: string): string[] {
+  if (!token.startsWith("local.")) return [];
+  try {
+    const parsed = JSON.parse(atob(token.slice(6))) as { questionIds?: unknown };
+    return Array.isArray(parsed.questionIds) ? parsed.questionIds.map(String) : [];
+  } catch {
+    return [];
+  }
+}
+
+function redactLocalSecuritiesQuestion(question: ImageQuizQuestion): ImageQuizQuestion {
+  return {
+    ...question,
+    answer: "1",
+    answerRedacted: true,
+    explanationText: undefined,
+    sourceFile: "",
+    questionSegments: [],
+    explanationSegments: [],
+    answerMask: null,
+  };
+}
+
+export async function startSecuritiesMock(args: {
+  bankId: string;
+  randomCount: number;
+  avoidIds?: string[];
+  signal?: AbortSignal;
+}): Promise<SecuritiesMockSession> {
+  if (LOCAL_PREVIEW_ACCESS) {
+    const source = await loadImageBankQuestions(args.bankId);
+    const avoided = new Set(args.avoidIds ?? []);
+    const available = source.filter((question) => !avoided.has(question.id));
+    const pool = available.length ? available : source;
+    const questions = [...pool].sort(() => Math.random() - 0.5).slice(0, args.randomCount);
+    return {
+      mockToken: encodeLocalSecuritiesMockToken(questions.map((question) => question.id)),
+      questions: questions.map(redactLocalSecuritiesQuestion),
+    };
+  }
+  const payload = await securitiesApiPost<{ mockToken?: string; questions?: SecuritiesMockApiQuestion[] }>({
+    action: "mock-start",
+    bankId: args.bankId,
+    randomCount: args.randomCount,
+    avoidIds: args.avoidIds ?? [],
+  }, args.signal);
+  if (!payload.mockToken || !Array.isArray(payload.questions)) throw new Error("模擬考建立失敗。");
+  return { mockToken: payload.mockToken, questions: payload.questions.map(normalizeSecuritiesApiQuestion) };
+}
+
+export async function resumeSecuritiesMock(mockToken: string, signal?: AbortSignal): Promise<SecuritiesMockSession> {
+  if (LOCAL_PREVIEW_ACCESS) {
+    const questionIds = decodeLocalSecuritiesMockToken(mockToken);
+    const questions = await loadImageQuestionsByIds(questionIds);
+    return { mockToken, questions: questions.map(redactLocalSecuritiesQuestion) };
+  }
+  const payload = await securitiesApiPost<{ mockToken?: string; questions?: SecuritiesMockApiQuestion[] }>({
+    action: "mock-resume",
+    mockToken,
+  }, signal);
+  if (!payload.mockToken || !Array.isArray(payload.questions)) throw new Error("模擬考恢復失敗。");
+  return { mockToken: payload.mockToken, questions: payload.questions.map(normalizeSecuritiesApiQuestion) };
+}
+
+export async function submitSecuritiesMock(
+  mockToken: string,
+  answers: Record<string, NumericAnswer>,
+  signal?: AbortSignal,
+): Promise<SecuritiesMockSubmission> {
+  if (LOCAL_PREVIEW_ACCESS) {
+    const questionIds = decodeLocalSecuritiesMockToken(mockToken);
+    const questions = await loadImageQuestionsByIds(questionIds);
+    const results = questions.map((question) => ({
+      ...question,
+      answerRedacted: false,
+      selectedAnswer: answers[question.id] ?? null,
+      isCorrect: answers[question.id] === question.answer,
+    }));
+    return {
+      questionCount: results.length,
+      correctCount: results.filter((question) => question.isCorrect).length,
+      results,
+    };
+  }
+  const payload = await securitiesApiPost<{
+    questionCount?: number;
+    correctCount?: number;
+    results?: Array<SecuritiesMockApiQuestion & { selectedAnswer?: NumericAnswer | null; isCorrect?: boolean }>;
+  }>({ action: "mock-submit", mockToken, answers }, signal);
+  if (!Array.isArray(payload.results)) throw new Error("模擬考批改失敗。");
+  const results = payload.results.map((question) => ({
+    ...normalizeSecuritiesApiQuestion(question),
+    selectedAnswer: question.selectedAnswer ?? null,
+    isCorrect: Boolean(question.isCorrect),
+  }));
+  return {
+    questionCount: Number(payload.questionCount ?? results.length),
+    correctCount: Number(payload.correctCount ?? results.filter((question) => question.isCorrect).length),
+    results,
+  };
+}
+
+export async function securitiesChapterApiRequest(
+  path: string,
+  version?: string,
+): Promise<{ url: string; headers: HeadersInit }> {
+  const access = await securitiesAccess();
+  const query = new URLSearchParams({
+    resource: "securities",
+    action: "chapter",
+    path,
+    account: access.account,
+  });
+  if (version) query.set("v", version);
+  return {
+    url: `${assetUrl("api/questions")}?${query.toString()}`,
+    headers: access.token ? { Authorization: `Bearer ${access.token}` } : {},
+  };
+}
+
+async function readCachedSecuritiesChapter<T>(url: string): Promise<T | undefined> {
+  if (typeof window === "undefined" || !("caches" in window)) return undefined;
+  const cache = await caches.open(SECURITIES_OFFLINE_CACHE);
+  const cached = await cache.match(url);
+  return cached ? await cached.json() as T : undefined;
+}
+
+async function fetchSecuritiesChapterPayload(
+  path: string,
+  version?: string,
+): Promise<QuestionShardPayload> {
+  if (LOCAL_PREVIEW_ACCESS) return fetchJson<QuestionShardPayload>(path, version);
+  const request = await securitiesChapterApiRequest(path, version);
+  try {
+    const response = await fetchQuestionBankResponse({
+      url: request.url,
+      headers: request.headers,
+      context: "證券高業題庫章節",
+    });
+    return await response.json() as QuestionShardPayload;
+  } catch (error) {
+    const cached = await readCachedSecuritiesChapter<QuestionShardPayload>(request.url);
+    if (cached) return cached;
+    throw error;
+  }
+}
+
+export async function cacheSecuritiesChapterForOffline(
+  path: string,
+  version?: string,
+): Promise<string> {
+  if (typeof window === "undefined" || !("caches" in window)) {
+    throw new Error("此瀏覽器不支援離線快取。");
+  }
+  const request = await securitiesChapterApiRequest(path, version);
+  const response = await fetchQuestionBankResponse({
+    url: request.url,
+    headers: request.headers,
+    context: "證券高業離線題庫",
+  });
+  const cache = await caches.open(SECURITIES_OFFLINE_CACHE);
+  await cache.put(request.url, response.clone());
+  return request.url;
+}
+
 export async function loadQuestionReleaseManifest(): Promise<QuestionReleaseManifest> {
-  manifestCache.promise ??= fetchJson<QuestionReleaseManifest>(
-    "data/question-release-manifest.json",
+  return rememberRecoverable(manifestCache, () =>
+    fetchJson<QuestionReleaseManifest>("data/question-release-manifest.json"),
   );
-  return manifestCache.promise;
 }
 
 async function loadSourceChapter(
@@ -342,14 +654,11 @@ async function loadSourceChapter(
   chapter: QuestionShardManifestChapter,
 ): Promise<ImageQuizChapter> {
   const key = `${bank.bankId}:${chapter.chapterId}:${chapter.hash}`;
-  let promise = sourceChapterCache.get(key);
-  if (!promise) {
-    promise = fetchJson<QuestionShardPayload>(chapter.path, chapter.hash).then(
+  return rememberRecoverableMap(sourceChapterCache, key, () =>
+    fetchSecuritiesChapterPayload(chapter.path, chapter.hash).then(
       (payload) => payload.chapter,
-    );
-    sourceChapterCache.set(key, promise);
-  }
-  return promise;
+    ),
+  );
 }
 
 function findManifestChapterByPath(
@@ -370,9 +679,8 @@ function findManifestChapterByPath(
 async function loadSourceBank(
   bankId: string,
 ): Promise<ImageQuizBank | undefined> {
-  let promise = sourceBankCache.get(bankId);
-  if (!promise) {
-    promise = loadQuestionReleaseManifest().then(async (manifest) => {
+  return rememberRecoverableMap(sourceBankCache, bankId, () =>
+    loadQuestionReleaseManifest().then(async (manifest) => {
       const bank = manifest.banks.find(
         (candidate) => candidate.bankId === bankId,
       );
@@ -385,27 +693,26 @@ async function loadSourceBank(
         bankTitle: bank.bankTitle,
         chapters,
       });
-    });
-    sourceBankCache.set(bankId, promise);
-  }
-  return promise;
+    }),
+  );
 }
 
 export async function loadImageQuizData(): Promise<ImageQuizData> {
-  dataCache.promise ??= Promise.all([
-    loadQuestionReleaseManifest(),
-    loadQuestionOverrides(),
-  ]).then(async ([manifest, overrides]) => {
-    const sourceBanks = (
-      await Promise.all(
-        manifest.banks.map((bank) => loadSourceBank(bank.bankId)),
-      )
-    ).filter((bank): bank is ImageQuizBank => Boolean(bank));
-    return normalizeImageQuizData(
-      applyQuestionOverrides({ banks: sourceBanks }, overrides),
-    );
-  });
-  return dataCache.promise;
+  return rememberRecoverable(dataCache, () =>
+    Promise.all([
+      loadQuestionReleaseManifest(),
+      loadQuestionOverrides(),
+    ]).then(async ([manifest, overrides]) => {
+      const sourceBanks = (
+        await Promise.all(
+          manifest.banks.map((bank) => loadSourceBank(bank.bankId)),
+        )
+      ).filter((bank): bank is ImageQuizBank => Boolean(bank));
+      return normalizeImageQuizData(
+        applyQuestionOverrides({ banks: sourceBanks }, overrides),
+      );
+    }),
+  );
 }
 
 export async function loadImageQuizBanks(): Promise<ImageQuizBank[]> {
@@ -415,14 +722,14 @@ export async function loadImageQuizBanks(): Promise<ImageQuizBank[]> {
 export async function loadImageQuizEditorBanks(): Promise<ImageQuizBank[]> {
   const [manifest, overrides] = await Promise.all([
     loadQuestionReleaseManifest(),
-    loadQuestionOverrides(),
+    loadAllAdminQuestionOverrides(),
   ]);
   const sourceBanks = (
     await Promise.all(
       manifest.banks.map((bank) => loadSourceBank(bank.bankId)),
     )
   ).filter((bank): bank is ImageQuizBank => Boolean(bank));
-  return applyQuestionOverrides({ banks: sourceBanks }, overrides).banks;
+  return applyEditorQuestionOverrides({ banks: sourceBanks }, overrides).banks;
 }
 
 export async function loadImageQuizEditorCatalog(): Promise<ImageQuizEditorBankSummary[]> {
@@ -443,66 +750,94 @@ export async function loadImageQuizEditorCatalog(): Promise<ImageQuizEditorBankS
 }
 
 
-async function loadQuestionOverridesByIds(questionIds: readonly string[]): Promise<Map<string, ImageQuizQuestionOverride>> {
+async function loadAdminQuestionOverridesByIds(
+  questionIds: readonly string[],
+): Promise<Map<string, ImageQuizQuestionOverride>> {
+  if (LOCAL_PREVIEW_ACCESS) return new Map();
   const ids = Array.from(new Set(questionIds)).sort();
   if (!ids.length) return new Map();
-  const key = ids.join(",");
-  let promise = questionOverrideSubsetCache.get(key);
-  if (!promise) {
-    promise = Promise.all(
-      Array.from({ length: Math.ceil(ids.length / 75) }, (_, index) => ids.slice(index * 75, index * 75 + 75))
-        .map(async (batch) => {
-          const response = await fetch(`${assetUrl("api/question-overrides")}?ids=${encodeURIComponent(batch.join(","))}`, { cache: "no-store" });
-          if (!response.ok || !(response.headers.get("content-type") || "").includes("application/json")) return [] as ImageQuizQuestionOverride[];
-          const payload = await response.json() as QuestionOverridesResponse;
-          return payload.overrides || [];
-        }),
-    ).then((pages) => new Map(pages.flat().map((override) => [override.questionId, override])));
-    questionOverrideSubsetCache.set(key, promise);
+  const access = await securitiesAccess();
+  const response = await fetch(assetUrl("api/admin/question-editor"), {
+    method: "POST",
+    cache: "no-store",
+    headers: {
+      "Content-Type": "application/json",
+      ...(access.token ? { Authorization: `Bearer ${access.token}` } : {}),
+    },
+    body: JSON.stringify({ action: "load-overrides", questionIds: ids }),
+  });
+  if (!response.ok || !(response.headers.get("content-type") || "").includes("application/json")) {
+    throw new Error(`無法載入題目裁切覆寫（${response.status}）。`);
   }
-  return promise;
+  const payload = await response.json() as AdminQuestionOverridesResponse;
+  return new Map((payload.overrides || []).map((override) => [override.questionId, override]));
 }
+
+async function loadAllAdminQuestionOverrides(): Promise<Map<string, ImageQuizQuestionOverride>> {
+  if (LOCAL_PREVIEW_ACCESS) return new Map();
+  const access = await securitiesAccess();
+  const response = await fetch(assetUrl("api/admin/question-editor"), {
+    cache: "no-store",
+    headers: access.token ? { Authorization: `Bearer ${access.token}` } : {},
+  });
+  if (!response.ok || !(response.headers.get("content-type") || "").includes("application/json")) {
+    throw new Error(`無法載入題目裁切覆寫（${response.status}）。`);
+  }
+  const payload = await response.json() as AdminQuestionOverridesResponse;
+  return new Map((payload.overrides || []).map((override) => [override.questionId, override]));
+}
+
 export async function loadImageQuizEditorChapter(
   bankId: string,
   chapterId: string,
 ): Promise<ImageQuizChapter | undefined> {
   const chapter = await loadImageQuizChapter(bankId, chapterId);
   if (!chapter) return undefined;
-  const overrides = await loadQuestionOverridesByIds(chapter.questions.map((question) => question.id));
+  const overrides = await loadAdminQuestionOverridesByIds(chapter.questions.map((question) => question.id));
   const bank: ImageQuizBank = { bankId: chapter.bankId, bankTitle: chapter.bankTitle, chapters: [chapter] };
-  return applyQuestionOverrides({ banks: [bank] }, overrides).banks[0]?.chapters[0];
+  return applyEditorQuestionOverrides({ banks: [bank] }, overrides).banks[0]?.chapters[0];
 }
 
 export async function loadImageQuizBankSummaries(): Promise<ImageQuizBank[]> {
-  summaryBanksCache.promise ??= loadQuestionReleaseManifest()
-    .then((manifest) =>
-      fetchJson<ImageQuizData>(
-        "data/pdf-image-quiz-summary.json",
-        manifest.releaseId,
-      ),
-    )
-    .then(normalizeImageQuizData)
-    .then((data) => data.banks);
-  return summaryBanksCache.promise;
+  return rememberRecoverable(summaryBanksCache, () =>
+    loadQuestionReleaseManifest()
+      .then((manifest) =>
+        fetchJson<ImageQuizData>(
+          "data/pdf-image-quiz-summary.json",
+          manifest.releaseId,
+        ),
+      )
+      // Learner-facing navigation follows the three official exam subjects.
+      // Regulations and practice remain separate source banks internally, but
+      // are exposed as one combined subject everywhere users choose a subject.
+      .then((data) => normalizeImageQuizData(data).banks),
+  );
 }
 
 export async function loadImageQuizPlanningIndex(): Promise<
   ImageQuizPlanningQuestion[]
 > {
-  planningIndexCache.promise ??= loadQuestionReleaseManifest()
-    .then((manifest) =>
-      fetchJson<ImageQuizPlanningIndexData>(
-        "data/pdf-image-quiz-plan-index.json",
-        manifest.releaseId,
-      ),
-    )
-    .then((data) => data.questions);
-  return planningIndexCache.promise;
+  return rememberRecoverable(planningIndexCache, () =>
+    loadQuestionReleaseManifest()
+      .then((manifest) =>
+        fetchJson<ImageQuizPlanningIndexData>(
+          "data/pdf-image-quiz-plan-index.json",
+          manifest.releaseId,
+        ),
+      )
+      .then((data) => data.questions),
+  );
 }
 
 export async function loadImageQuizBank(
   bankId: string,
 ): Promise<ImageQuizBank | undefined> {
+  if (
+    bankId === "securities-trading-regulations" ||
+    bankId === "securities-trading-practice"
+  ) {
+    return loadImageQuizBank(SECURITIES_COMBINED_BANK_ID);
+  }
   if (bankId === SECURITIES_COMBINED_BANK_ID) {
     const [regulations, practice] = await Promise.all([
       loadSourceBank("securities-trading-regulations"),
@@ -660,47 +995,47 @@ export async function loadImageQuestionsByIds(
 }
 
 export async function loadTrialImageQuestions(): Promise<ImageQuizQuestion[]> {
-  trialQuestionsCache.promise ??= Promise.all([
-    loadQuestionReleaseManifest(),
-    loadQuestionOverrides(),
-  ])
-    .then(([manifest, overrides]) =>
-      Promise.all([
-        fetchJson<ImageQuizData>(
-          "data/pdf-image-quiz-trial.json",
-          manifest.releaseId,
-        ),
-        Promise.resolve(overrides),
-      ]),
-    )
-    .then(([data, overrides]) =>
-      normalizeImageQuizData(applyQuestionOverrides(data, overrides)),
-    )
-    .then((data) =>
-      data.banks
-        .flatMap((bank) =>
-          bank.chapters.flatMap((chapter) => chapter.questions),
-        )
-        .slice(0, 10),
-    );
-  return trialQuestionsCache.promise;
+  return rememberRecoverable(trialQuestionsCache, () =>
+    Promise.all([
+      loadQuestionReleaseManifest(),
+      loadQuestionOverrides(),
+    ])
+      .then(([manifest, overrides]) =>
+        Promise.all([
+          fetchJson<ImageQuizData>(
+            "data/pdf-image-quiz-trial.json",
+            manifest.releaseId,
+          ),
+          Promise.resolve(overrides),
+        ]),
+      )
+      .then(([data, overrides]) =>
+        normalizeImageQuizData(applyQuestionOverrides(data, overrides)),
+      )
+      .then((data) =>
+        data.banks
+          .flatMap((bank) =>
+            bank.chapters.flatMap((chapter) => chapter.questions),
+          )
+          .slice(0, 10),
+      ),
+  );
 }
 
 async function loadQuestionOverrides(): Promise<
-  Map<string, ImageQuizQuestionOverride>
+  Map<string, ImageQuizLearnerOverride>
 > {
-  questionOverridesCache.promise ??= (async () => {
+  if (LOCAL_PREVIEW_ACCESS) return new Map();
+  return rememberRecoverable(questionOverridesCache, async () => {
     try {
-      const response = await fetch(assetUrl("api/question-overrides"), {
-        cache: "no-store",
+      const access = await securitiesAccess();
+      const response = await fetchQuestionBankResponse({
+        url: `${assetUrl("api/questions")}?resource=overrides`,
+        headers: access.token
+          ? { Authorization: `Bearer ${access.token}` }
+          : {},
+        context: "題目修訂資料",
       });
-      if (
-        !response.ok ||
-        !(response.headers.get("content-type") || "").includes(
-          "application/json",
-        )
-      )
-        return new Map();
       const payload = (await response.json()) as QuestionOverridesResponse;
       return new Map(
         (payload.overrides || []).map((override) => [
@@ -709,14 +1044,42 @@ async function loadQuestionOverrides(): Promise<
         ]),
       );
     } catch {
-      // Offline and local Vite mode keep using the bundled question bank.
+      // Offline, incomplete optional override tables, and local Vite mode keep
+      // using the bundled stable question bank.
       return new Map();
     }
-  })();
-  return questionOverridesCache.promise;
+  });
 }
 
 function applyQuestionOverrides(
+  data: ImageQuizData,
+  overrides: Map<string, ImageQuizLearnerOverride>,
+): ImageQuizData {
+  if (overrides.size === 0) return data;
+  return {
+    banks: data.banks.map((bank) => ({
+      ...bank,
+      chapters: bank.chapters.map((chapter) => ({
+        ...chapter,
+        questions: chapter.questions.map((question) => {
+          const override = overrides.get(question.id);
+          if (!override) return question;
+          return {
+            ...question,
+            answer: override.answer,
+            bankTitle: override.bankTitle?.trim() || question.bankTitle,
+            chapterTitle: override.chapterTitle?.trim() || question.chapterTitle,
+            number: Number.isInteger(override.questionNumber) && Number(override.questionNumber) > 0
+              ? Number(override.questionNumber)
+              : question.number,
+          };
+        }),
+      })),
+    })),
+  };
+}
+
+function applyEditorQuestionOverrides(
   data: ImageQuizData,
   overrides: Map<string, ImageQuizQuestionOverride>,
 ): ImageQuizData {
@@ -738,6 +1101,11 @@ function applyQuestionOverrides(
             ? {
                 ...question,
                 answer: override.answer,
+                bankTitle: override.bankTitle?.trim() || question.bankTitle,
+                chapterTitle: override.chapterTitle?.trim() || question.chapterTitle,
+                number: Number.isInteger(override.questionNumber) && Number(override.questionNumber) > 0
+                  ? Number(override.questionNumber)
+                  : question.number,
                 questionSegments: override.questionSegments,
                 explanationSegments: override.explanationSegments,
                 // Remote overrides cannot create reviewed mobile fields. Preserve
@@ -746,6 +1114,13 @@ function applyQuestionOverrides(
                 mobileExplanationSegments: keepsExplanationCrop ? question.mobileExplanationSegments : undefined,
                 mobileQuestionSegmentsVerification: keepsQuestionCrop ? question.mobileQuestionSegmentsVerification : undefined,
                 mobileExplanationSegmentsVerification: keepsExplanationCrop ? question.mobileExplanationSegmentsVerification : undefined,
+                // Scan-derived text is bound to the exact bundled crop hashes.
+                // Any crop edit fails closed to the original scan until the text
+                // is transcribed and reviewed again.
+                questionText: keepsQuestionCrop ? question.questionText : undefined,
+                optionTexts: keepsQuestionCrop ? question.optionTexts : undefined,
+                explanationText: keepsExplanationCrop ? question.explanationText : undefined,
+                textSource: keepsQuestionCrop && keepsExplanationCrop ? question.textSource : undefined,
               }
             : question;
         }),
@@ -757,15 +1132,16 @@ function applyQuestionOverrides(
 export async function loadSimilarQuestionGroups(): Promise<
   SimilarQuestionGroup[]
 > {
-  similarGroupsCache.promise ??= loadQuestionReleaseManifest()
-    .then((manifest) =>
-      fetchJson<SimilarQuestionData>(
-        "data/similar-question-groups.json",
-        manifest.releaseId,
-      ),
-    )
-    .then((data) => data.groups);
-  return similarGroupsCache.promise;
+  return rememberRecoverable(similarGroupsCache, () =>
+    loadQuestionReleaseManifest()
+      .then((manifest) =>
+        fetchJson<SimilarQuestionData>(
+          "data/similar-question-groups.json",
+          manifest.releaseId,
+        ),
+      )
+      .then((data) => data.groups),
+  );
 }
 
 export function findImageQuestion(

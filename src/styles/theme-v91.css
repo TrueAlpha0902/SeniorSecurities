@@ -1,0 +1,275 @@
+/* v91 — generated handwritten image assets layered over the approved paper template. */
+:root {
+  --v91-paper: #f5f0e5;
+  --v91-paper-strong: #eee6d7;
+  --v91-ink: #26333a;
+  --v91-ink-soft: #68736f;
+  --v91-line: rgba(58, 67, 66, 0.25);
+  --v91-sage: #8aa49b;
+  --v91-sage-soft: #dce5df;
+  --v91-blue: #546f8e;
+  --v91-blue-soft: #dce3ea;
+  --v91-red: #a36861;
+  --v91-red-soft: #efe0dc;
+}
+
+.theme-v91,
+.theme-v90 {
+  background:
+    radial-gradient(circle at 14% 8%, rgba(255,255,255,.82), transparent 36%),
+    repeating-linear-gradient(0deg, rgba(45,54,54,.018) 0, rgba(45,54,54,.018) 1px, transparent 1px, transparent 5px),
+    var(--v91-paper);
+  color: var(--v91-ink);
+}
+
+.handwritten-asset {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  line-height: 1;
+  vertical-align: middle;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.handwritten-asset img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.handwritten-asset-fallback {
+  font-family: "Klee One", "BiauKai", "DFKai-SB", "KaiTi", "Noto Serif TC", serif;
+  letter-spacing: .04em;
+  line-height: 1.2;
+}
+
+
+/* Global visually-hidden utility. Handwritten assets no longer depend on this
+   for their accessible names, but other controls may use it safely. */
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  clip-path: inset(50%) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+.error-state-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.v91-icon-fallback { display: none !important; }
+
+/* Brand imagery */
+.v91-sidebar-brand-image {
+  width: 150px;
+  height: 52px;
+  justify-content: flex-start;
+}
+.v91-mobile-brand-image { width: 128px; height: 38px; justify-content: flex-start; }
+.v91-menu-brand-image { width: 158px; height: 50px; justify-content: flex-start; }
+.v91-hero-brand-art {
+  width: min(30%, 190px);
+  height: 150px;
+  justify-content: flex-end;
+  opacity: .96;
+}
+.v91-home-title-image { width: min(100%, 320px); height: 72px; justify-content: flex-start; }
+
+/* Handwritten section and action labels */
+.v91-section-label { width: auto; max-width: 260px; height: 42px; justify-content: flex-start; }
+.v91-inline-label { width: auto; max-width: 150px; height: 25px; justify-content: flex-start; }
+.v91-button-label { width: auto; max-width: 150px; height: 30px; }
+.v91-control-label { width: auto; min-width: 62px; max-width: 100px; height: 32px; }
+.v91-explanation-label { width: auto; max-width: 150px; height: 34px; justify-content: flex-start; }
+.v91-quick-label { width: auto; max-width: 150px; height: 36px; justify-content: flex-start; }
+.v91-subject-label { width: auto; max-width: 290px; height: 38px; justify-content: flex-start; }
+
+/* Sidebar and mobile navigation */
+.v90-sidebar-brand.v91-sidebar-brand,
+.v90-sidebar-brand {
+  min-height: 76px;
+}
+.v90-sidebar-nav button,
+.v90-sidebar-utilities button {
+  gap: 10px;
+  min-height: 48px;
+}
+.v91-nav-icon { width: 34px; height: 34px; flex: 0 0 34px; }
+.v91-nav-label { width: auto; max-width: 104px; height: 29px; justify-content: flex-start; }
+.v90-sidebar-nav button.is-active .v91-nav-label,
+.v90-mobile-bottom-nav button.is-active .v91-bottom-label { filter: saturate(.72) contrast(1.05); }
+.v90-mobile-bottom-nav button { gap: 2px; }
+.v91-bottom-icon { width: 27px; height: 27px; }
+.v91-bottom-label { width: auto; max-width: 62px; height: 20px; }
+
+/* Paper card treatment */
+.v90-paper-card,
+.v90-home-section,
+.v90-learning-data-card,
+.v90-exam-info-card,
+.glass-card,
+.settings-dialog,
+.exam-setup-dialog {
+  background-color: rgba(252, 249, 241, .92) !important;
+  border-color: var(--v91-line) !important;
+  box-shadow: 0 7px 18px rgba(57, 64, 63, .055) !important;
+}
+.v90-paper-card,
+.v90-home-section,
+.v90-learning-data-card,
+.v90-exam-info-card {
+  border-radius: 12px !important;
+}
+
+.v90-hero-banner {
+  min-height: 188px;
+  border: 1px solid var(--v91-line);
+  background:
+    linear-gradient(115deg, rgba(255,255,255,.72), rgba(255,255,255,.18)),
+    repeating-linear-gradient(-18deg, rgba(88,102,98,.025) 0, rgba(88,102,98,.025) 1px, transparent 1px, transparent 7px),
+    rgba(249,246,238,.9) !important;
+  box-shadow: none !important;
+}
+.v90-home-copy .v90-title-row h1 { margin: 0; line-height: 1; }
+.v90-home-copy .v90-title-row p,
+.v90-home-copy > span { font-family: "Klee One", "BiauKai", "DFKai-SB", serif; }
+
+/* Quick actions */
+.v90-quick-action {
+  min-height: 132px;
+  background: rgba(251,248,240,.78) !important;
+  border: 1px solid var(--v91-line) !important;
+  box-shadow: none !important;
+}
+.v90-quick-action:hover { transform: translateY(-2px); border-color: rgba(82,103,99,.48) !important; }
+.v91-quick-icon { width: 54px; height: 54px; }
+.v90-quick-action strong { min-height: 38px; display: flex; align-items: center; justify-content: center; }
+
+/* Subject path */
+.v90-subject-path > li {
+  background: rgba(252,249,241,.76) !important;
+  border-color: var(--v91-line) !important;
+  box-shadow: none !important;
+}
+.v90-path-copy strong { min-height: 42px; display: flex; align-items: center; }
+.v90-path-index {
+  background: transparent !important;
+  color: var(--v91-ink) !important;
+  border: 1px solid currentColor;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+/* Correct / wrong generated state labels */
+.v91-answer-state-image {
+  width: 108px;
+  height: 44px;
+  margin-inline-start: auto;
+  flex: 0 0 108px;
+}
+.answer-result-label.v91-answer-state-image.handwritten-asset-fallback {
+  width: auto;
+  min-width: 72px;
+  padding-inline: 8px;
+  font-weight: 800;
+}
+.glass-answer-correct,
+.fx-option.is-correct {
+  background: var(--v91-sage-soft) !important;
+  border-color: var(--v91-sage) !important;
+  color: #253d35 !important;
+}
+.glass-answer-wrong,
+.fx-option.is-wrong {
+  background: var(--v91-red-soft) !important;
+  border-color: var(--v91-red) !important;
+  color: #5b302d !important;
+}
+
+/* Quiz controls stay in normal flow and use image labels. */
+.image-quiz-controls.v90-bottom-controls,
+.fx-quiz-actions.v90-bottom-controls {
+  position: static !important;
+  inset: auto !important;
+  margin-top: 24px;
+  margin-bottom: max(22px, env(safe-area-inset-bottom));
+  border: 1px solid var(--v91-line);
+  background: rgba(250,247,239,.94) !important;
+  box-shadow: none !important;
+}
+.image-quiz-controls .glass-button,
+.fx-quiz-actions .glass-button,
+.fx-quiz-actions .glass-button-primary {
+  min-height: 54px;
+}
+.v90-explanation-disclosure summary {
+  background: rgba(246,242,232,.78) !important;
+  border-color: var(--v91-line) !important;
+}
+
+/* Empty and error states */
+.v91-illustrated-state-card { max-width: 720px; margin-inline: auto; text-align: center; }
+.v91-state-illustration { width: min(100%, 470px); height: 250px; margin: 0 auto 4px; }
+.v91-illustrated-state-card > svg { display: none; }
+
+/* Settings plan dialog: one plan per exam, visually explicit. */
+.exam-plan-dialog-v91 .exam-plan-dialog-description {
+  margin: 0 0 18px;
+  padding: 12px 14px;
+  border-inline-start: 3px solid var(--v91-sage);
+  background: rgba(220,229,223,.42);
+  font-family: "Klee One", "BiauKai", "DFKai-SB", serif;
+}
+.settings-plan-list-v86 { grid-template-columns: repeat(2, minmax(0,1fr)) !important; }
+.settings-plan-row-v86 { min-height: 150px; }
+
+@media (max-width: 900px) {
+  .v91-hero-brand-art { width: min(34%, 150px); height: 120px; }
+  .v91-home-title-image { height: 60px; }
+  .settings-plan-list-v86 { grid-template-columns: 1fr !important; }
+}
+
+@media (max-width: 640px) {
+  .theme-v90 { padding-bottom: 0; }
+  .v90-hero-banner { min-height: 142px; padding: 16px !important; }
+  .v91-hero-brand-art { width: min(32%, 104px); height: 92px; }
+  .v91-home-title-image { height: 48px; max-width: 220px; }
+  .v91-section-label { height: 34px; max-width: 210px; }
+  .v91-inline-label { height: 22px; max-width: 120px; }
+  .v91-quick-label { height: 28px; max-width: 116px; }
+  .v91-subject-label { height: 31px; max-width: 210px; }
+  .v90-quick-action { min-height: 104px; padding: 12px 8px !important; }
+  .v91-quick-icon { width: 42px; height: 42px; }
+  .v90-quick-grid { grid-template-columns: repeat(3, minmax(0,1fr)) !important; }
+  .v91-sidebar-brand-image { width: 135px; }
+  .v91-control-label { height: 28px; min-width: 55px; max-width: 82px; }
+  .v91-answer-state-image { width: 92px; height: 40px; flex-basis: 92px; }
+  .v91-state-illustration { height: 205px; }
+  .image-quiz-controls.v90-bottom-controls,
+  .fx-quiz-actions.v90-bottom-controls {
+    grid-template-columns: 1fr 1fr !important;
+    padding: 10px !important;
+    gap: 8px !important;
+  }
+  .v90-question-list-trigger { display: none !important; }
+  .submitted-review-controls.v90-bottom-controls { grid-template-columns: 1fr 1fr 1fr !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .v90-quick-action:hover { transform: none; }
+}
