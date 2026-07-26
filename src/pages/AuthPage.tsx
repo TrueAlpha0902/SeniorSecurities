@@ -3,10 +3,8 @@ import { type FormEvent, useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { GlassButton } from "../components/GlassButton";
 import { GlassCard } from "../components/GlassCard";
-import { V93InlineNotice, V93PasswordField } from "../components/V93InteractionPrimitives";
 import { useAuth } from "../auth/AuthContext";
 import { SupabaseSetupRequired } from "../auth/ProtectedRoute";
-import { announceInteractionFeedback } from "../lib/interactionFeedback";
 
 type AuthMode = "signIn" | "signUp";
 
@@ -75,19 +73,13 @@ export function AuthPage() {
         } else {
           window.localStorage.removeItem(REMEMBERED_EMAIL_KEY);
         }
-        const successMessage = isAdminReturn ? "登入成功，正在前往管理後台。" : "登入成功，正在檢查會員權限。";
-        setMessage(successMessage);
-        announceInteractionFeedback(successMessage, "success");
+        setMessage(isAdminReturn ? "登入成功，正在前往管理後台。" : "登入成功，正在檢查會員權限。");
       } else {
-        const signUpMessage = await signUp(email.trim(), password);
-        const successMessage = signUpMessage ?? "帳號建立成功，正在前往啟用頁。";
-        setMessage(successMessage);
-        announceInteractionFeedback(successMessage, "success", 3600);
+        const signUpMessage = await signUp(email, password);
+        setMessage(signUpMessage ?? "帳號建立成功，正在前往啟用頁。");
       }
     } catch (authError: unknown) {
-      const errorMessage = authError instanceof Error ? authError.message : "登入或註冊失敗，請稍後再試。";
-      setError(errorMessage);
-      announceInteractionFeedback(errorMessage, "error", 4200);
+      setError(authError instanceof Error ? authError.message : "登入或註冊失敗，請稍後再試。");
     } finally {
       setSubmitting(false);
     }
@@ -115,14 +107,10 @@ export function AuthPage() {
         </div>
 
         {!isAdminReturn ? (
-          <div className="auth-mode-toggle" role="tablist" aria-label="切換登入或註冊">
+          <div className="auth-mode-toggle" aria-label="切換登入或註冊">
             <button
               type="button"
-              role="tab"
-              aria-selected={isSignIn}
-              tabIndex={isSignIn ? 0 : -1}
               className={isSignIn ? "is-selected" : ""}
-              disabled={submitting}
               onClick={() => {
                 setMode("signIn");
                 setError(null);
@@ -133,11 +121,7 @@ export function AuthPage() {
             </button>
             <button
               type="button"
-              role="tab"
-              aria-selected={!isSignIn}
-              tabIndex={!isSignIn ? 0 : -1}
               className={!isSignIn ? "is-selected" : ""}
-              disabled={submitting}
               onClick={() => {
                 setMode("signUp");
                 setError(null);
@@ -149,7 +133,7 @@ export function AuthPage() {
           </div>
         ) : null}
 
-        <form className="auth-form" aria-busy={submitting} onSubmit={(event) => void handleSubmit(event)}>
+        <form className="auth-form" onSubmit={(event) => void handleSubmit(event)}>
           <label>
             <span>Email</span>
             <input
@@ -157,33 +141,29 @@ export function AuthPage() {
               autoComplete="email"
               value={email}
               required
-              disabled={submitting}
-              aria-invalid={Boolean(error) || undefined}
               onChange={(event) => setEmail(event.currentTarget.value)}
               placeholder="you@example.com"
             />
           </label>
 
-          <V93PasswordField
-            label="密碼"
-            name="password"
-            autoComplete={isSignIn ? "current-password" : "new-password"}
-            value={password}
-            required
-            minLength={6}
-            disabled={submitting}
-            invalid={Boolean(error)}
-            hint={!isSignIn ? "至少 6 個字元；請避免使用其他網站相同的密碼。" : undefined}
-            onChange={(event) => setPassword(event.currentTarget.value)}
-            placeholder="至少 6 個字元"
-          />
+          <label>
+            <span>密碼</span>
+            <input
+              type="password"
+              autoComplete={isSignIn ? "current-password" : "new-password"}
+              value={password}
+              required
+              minLength={6}
+              onChange={(event) => setPassword(event.currentTarget.value)}
+              placeholder="至少 6 個字元"
+            />
+          </label>
 
           {isSignIn ? (
             <label className="remember-account-row">
               <input
                 type="checkbox"
                 checked={rememberEmail}
-                disabled={submitting}
                 onChange={(event) => setRememberEmail(event.currentTarget.checked)}
               />
               <span>記住帳號</span>
@@ -194,24 +174,23 @@ export function AuthPage() {
             <button
               type="button"
               className="auth-forgot-link"
-              disabled={submitting}
               onClick={() => navigate(isAdminReturn ? "/forgot-password?admin=1" : "/forgot-password")}
             >
               忘記密碼？
             </button>
           ) : null}
 
-          {error ? <V93InlineNotice tone="error">{error}</V93InlineNotice> : null}
-          {message ? <V93InlineNotice tone="success">{message}</V93InlineNotice> : null}
+          {error ? <p className="form-error">{error}</p> : null}
+          {message ? <p className="form-success">{message}</p> : null}
 
-          <GlassButton type="submit" variant="primary" className="auth-submit-button" busy={submitting} disabled={submitting || !email.trim() || password.length < 6}>
+          <GlassButton type="submit" variant="primary" className="auth-submit-button" disabled={submitting}>
             {isSignIn ? <LogIn aria-hidden="true" size={18} /> : <UserPlus aria-hidden="true" size={18} />}
             <span>{submitting ? "處理中" : isSignIn ? isAdminReturn ? "登入管理後台" : "登入帳號" : "建立帳號"}</span>
           </GlassButton>
         </form>
 
         {!isAdminReturn ? (
-          <button type="button" className="auth-admin-entry" disabled={submitting} onClick={goAdminLogin}>
+          <button type="button" className="auth-admin-entry" onClick={goAdminLogin}>
             <ShieldCheck aria-hidden="true" size={18} />
             <span>管理員登入</span>
           </button>
