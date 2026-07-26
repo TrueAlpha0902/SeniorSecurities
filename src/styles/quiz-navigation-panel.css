@@ -1,0 +1,282 @@
+/* Quiz navigation, labels, and compact jump card. */
+
+.image-quiz-layout .quiz-answer-card-host {
+  display: inline-flex;
+  align-items: center;
+}
+
+.image-quiz-layout .quiz-answer-card-button {
+  display: inline-flex;
+  min-width: 46px;
+  min-height: 46px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 14px;
+  border: 1px solid var(--polish-line) !important;
+  border-radius: 14px;
+  color: #344054;
+  background: #ffffff;
+  box-shadow:
+    0 1px 2px rgba(16, 24, 40, 0.04),
+    0 7px 18px rgba(16, 24, 40, 0.05);
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 780;
+  cursor: pointer;
+}
+
+.image-quiz-layout .quiz-answer-card-button:hover,
+.image-quiz-layout .quiz-answer-card-button.is-active {
+  border-color: rgba(29, 111, 138, 0.3) !important;
+  color: var(--polish-primary-strong);
+  background: var(--polish-primary-soft);
+}
+
+/* The old dense number grid stays available to React for programmatic jumps,
+   but it is no longer presented to learners. */
+.image-quiz-layout .v90-question-list-trigger,
+.image-quiz-layout .v90-question-list-panel {
+  display: none !important;
+}
+
+.image-quiz-layout nav.v90-bottom-controls:not(.submitted-review-controls) {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 12px !important;
+}
+
+.image-quiz-layout .quiz-jump-panel-host {
+  width: min(1040px, 100%);
+  margin: 18px auto 0;
+}
+
+.image-quiz-layout .quiz-jump-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(320px, 1.1fr);
+  align-items: center;
+  gap: 24px;
+  padding: 20px 22px;
+  border: 1px solid var(--polish-line);
+  border-radius: 22px;
+  background: #ffffff;
+  box-shadow: var(--polish-shadow);
+}
+
+.image-quiz-layout .quiz-jump-panel-copy {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 13px;
+}
+
+.image-quiz-layout .quiz-jump-panel-icon {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  place-items: center;
+  border-radius: 14px;
+  color: var(--polish-primary);
+  background: var(--polish-primary-soft);
+}
+
+.image-quiz-layout .quiz-jump-panel-copy > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.image-quiz-layout .quiz-jump-panel-copy strong {
+  color: var(--polish-text);
+  font-size: 1rem;
+  font-weight: 840;
+}
+
+.image-quiz-layout .quiz-jump-panel-copy span {
+  color: var(--polish-muted);
+  font-size: 0.84rem;
+  font-weight: 650;
+}
+
+.image-quiz-layout .quiz-jump-form {
+  display: grid;
+  gap: 7px;
+}
+
+.image-quiz-layout .quiz-jump-form > label {
+  color: var(--polish-text);
+  font-size: 0.82rem;
+  font-weight: 760;
+}
+
+.image-quiz-layout .quiz-jump-form > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 9px;
+}
+
+.image-quiz-layout .quiz-jump-form input {
+  width: 100%;
+  min-height: 46px;
+  padding: 0 14px;
+  border: 1px solid var(--polish-line-strong);
+  border-radius: 12px;
+  color: var(--polish-text);
+  background: #ffffff;
+  font: inherit;
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 720;
+}
+
+.image-quiz-layout .quiz-jump-form input:focus {
+  border-color: var(--polish-primary);
+  outline: 0;
+  box-shadow: 0 0 0 3px rgba(29, 111, 138, 0.13);
+}
+
+.image-quiz-layout .quiz-jump-form button {
+  min-width: 92px;
+  min-height: 46px;
+  padding: 0 18px;
+  border: 1px solid var(--polish-primary);
+  border-radius: 12px;
+  color: #ffffff;
+  background: var(--polish-primary);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.image-quiz-layout .quiz-jump-form button:hover {
+  background: var(--polish-primary-strong);
+}
+
+.image-quiz-layout .quiz-jump-form small {
+  color: var(--polish-muted);
+  font-size: 0.76rem;
+  line-height: 1.45;
+}
+
+/* Clear location labels for the question and explanation surfaces. */
+.image-quiz-layout .active-question-panel {
+  display: grid;
+  gap: 10px;
+}
+
+.image-quiz-layout .active-question-panel::before,
+.image-quiz-layout .unified-explanation-surface.glass-explanation > h2 {
+  display: inline-flex;
+  width: max-content;
+  min-height: 30px;
+  align-items: center;
+  margin: 0;
+  padding: 0 11px;
+  border: 1px solid rgba(29, 111, 138, 0.16);
+  border-radius: 999px;
+  color: var(--polish-primary-strong);
+  background: var(--polish-primary-soft);
+  font-size: 0.8rem;
+  font-weight: 820;
+  letter-spacing: 0.04em;
+}
+
+.image-quiz-layout .active-question-panel::before {
+  content: "題目";
+}
+
+.image-quiz-layout .v90-explanation-disclosure {
+  margin-top: 22px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.image-quiz-layout .v90-explanation-disclosure > summary {
+  display: none;
+}
+
+.image-quiz-layout .image-answer-panel {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.image-quiz-layout .unified-explanation-surface.glass-explanation {
+  display: grid;
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.image-quiz-layout .unified-explanation-content {
+  padding: clamp(20px, 2.4vw, 30px);
+  border: 1px solid var(--polish-line);
+  border-radius: 22px;
+  color: var(--polish-text);
+  background: #ffffff;
+  box-shadow: 0 6px 20px rgba(28, 46, 66, 0.045);
+}
+
+.image-quiz-layout .unified-explanation-content .structured-scan-text,
+.image-quiz-layout .unified-explanation-content .scan-explanation-content {
+  color: var(--polish-text);
+  font-family: inherit;
+  font-size: clamp(1.02rem, 1.75vw, 1.22rem);
+  line-height: 1.72;
+  letter-spacing: 0;
+}
+
+@media (max-width: 760px) {
+  .image-quiz-layout .quiz-answer-card-button {
+    width: 46px;
+    padding: 0;
+  }
+
+  .image-quiz-layout .quiz-answer-card-button > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .image-quiz-layout .quiz-jump-panel-host {
+    margin-top: 14px;
+  }
+
+  .image-quiz-layout .quiz-jump-panel {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    padding: 17px;
+    border-radius: 19px;
+  }
+
+  .image-quiz-layout .quiz-jump-form > div {
+    grid-template-columns: minmax(0, 1fr) 84px;
+  }
+
+  .image-quiz-layout .quiz-jump-form button {
+    min-width: 0;
+    padding: 0 12px;
+  }
+
+  .image-quiz-layout nav.v90-bottom-controls:not(.submitted-review-controls) {
+    position: sticky;
+    z-index: 12;
+    bottom: max(10px, env(safe-area-inset-bottom));
+  }
+
+  .image-quiz-layout .unified-explanation-content {
+    padding: 18px 16px;
+    border-radius: 18px;
+  }
+}
