@@ -70,10 +70,12 @@ export function QuizHeadingEnhancer() {
 
     function sync(): void {
       const root = document.querySelector<HTMLElement>(".image-quiz-layout");
-      const questionSurface =
-        root?.querySelector<HTMLElement>(".active-question-panel") ??
-        root?.querySelector<HTMLElement>(".fx-question-text");
+      const questionSurface = root?.querySelector<HTMLElement>(
+        ".active-question-panel",
+      );
 
+      // Foreign-exchange practice already renders the same heading through its
+      // native question surface. Only securities pages need this injected host.
       if (!root || !questionSurface) {
         removeHost();
         return;
