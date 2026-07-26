@@ -20,6 +20,7 @@ import {
 } from "../lib/settingsNavigation";
 import { ModalLoadingFallback } from "./ModalLoadingFallback";
 import "../styles/theme-current.css";
+import "../styles/interface-polish.css";
 
 const loadSettingsPanel = () => import("./SettingsPanel");
 const loadCalculatorModal = () => import("./CalculatorModal");
