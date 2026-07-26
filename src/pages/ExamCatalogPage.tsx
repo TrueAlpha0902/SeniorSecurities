@@ -1,8 +1,9 @@
 import {
+  ArrowLeftRight,
   ArrowRight,
   BadgeDollarSign,
-  BookOpenCheck,
   CheckCircle2,
+  Globe2,
   LockKeyhole,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -23,7 +24,6 @@ type ExamCardConfig = {
   subjectCount: string;
   destination: string;
   activationDestination: string;
-  icon: typeof BadgeDollarSign;
 };
 
 const EXAMS: ExamCardConfig[] = [
@@ -33,7 +33,6 @@ const EXAMS: ExamCardConfig[] = [
     subjectCount: "3 科",
     destination: "/securities",
     activationDestination: "/activate?exam=senior-securities",
-    icon: BadgeDollarSign,
   },
   {
     id: "junior-foreign-exchange",
@@ -41,7 +40,6 @@ const EXAMS: ExamCardConfig[] = [
     subjectCount: "2 科",
     destination: "/foreign-exchange",
     activationDestination: "/activate?exam=junior-foreign-exchange",
-    icon: BookOpenCheck,
   },
 ];
 
@@ -77,7 +75,6 @@ export function ExamCatalogPage() {
     <div className="page-stack exam-catalog">
       <div className="exam-card-grid">
         {EXAMS.map((exam) => {
-          const Icon = exam.icon;
           const active = hasExamAccess(exam.id);
           const questionCount = EXAM_QUESTION_COUNTS[exam.id];
           const progress = data?.[exam.id];
@@ -87,9 +84,7 @@ export function ExamCatalogPage() {
           return (
             <GlassCard key={exam.id} className="exam-card exam-card-with-progress">
               <div className="exam-card-top">
-                <div className="exam-card-icon">
-                  <Icon aria-hidden="true" size={25} />
-                </div>
+                <CatalogExamIcon examId={exam.id} />
                 <span className={`exam-card-status${active ? "" : " is-locked"}`}>
                   {active ? (
                     <CheckCircle2 aria-hidden="true" size={15} />
@@ -131,6 +126,26 @@ export function ExamCatalogPage() {
           );
         })}
       </div>
+    </div>
+  );
+}
+
+function CatalogExamIcon({ examId }: { examId: ExamId }) {
+  if (examId === "junior-foreign-exchange") {
+    return (
+      <div
+        className="exam-card-icon exam-card-icon-global-exchange"
+        aria-hidden="true"
+      >
+        <Globe2 className="exam-card-icon-globe" size={40} />
+        <ArrowLeftRight className="exam-card-icon-exchange" size={22} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="exam-card-icon" aria-hidden="true">
+      <BadgeDollarSign size={40} />
     </div>
   );
 }
