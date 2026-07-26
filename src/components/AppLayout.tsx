@@ -19,6 +19,7 @@ import {
   type OpenSettingsDetail,
 } from "../lib/settingsNavigation";
 import { ModalLoadingFallback } from "./ModalLoadingFallback";
+import { QuizHeadingEnhancer } from "./QuizHeadingEnhancer";
 import { QuizNavigationEnhancer } from "./QuizNavigationEnhancer";
 import "../styles/theme-current.css";
 import "../styles/interface-polish.css";
@@ -26,6 +27,7 @@ import "../styles/quiz-settings-refinement.css";
 import "../styles/settings-sidebar-layout.css";
 import "../styles/answer-card-feedback-settings-final.css";
 import "../styles/quiz-navigation-panel.css";
+import "../styles/final-global-polish.css";
 
 const loadSettingsPanel = () => import("./SettingsPanel");
 const loadCalculatorModal = () => import("./CalculatorModal");
@@ -167,6 +169,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       </main>
 
       {isQuizRoute ? <QuizNavigationEnhancer /> : null}
+      {isQuizRoute ? <QuizHeadingEnhancer /> : null}
 
       {settingsOpen ? (
         <Suspense fallback={<ModalLoadingFallback label="載入設定" />}>
