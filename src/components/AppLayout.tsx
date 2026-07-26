@@ -19,9 +19,12 @@ import {
   type OpenSettingsDetail,
 } from "../lib/settingsNavigation";
 import { ModalLoadingFallback } from "./ModalLoadingFallback";
+import { QuizNavigationEnhancer } from "./QuizNavigationEnhancer";
 import "../styles/theme-current.css";
 import "../styles/interface-polish.css";
 import "../styles/quiz-settings-refinement.css";
+import "../styles/quiz-navigation-panel.css";
+import "../styles/settings-sidebar-layout.css";
 
 const loadSettingsPanel = () => import("./SettingsPanel");
 const loadCalculatorModal = () => import("./CalculatorModal");
@@ -161,6 +164,8 @@ export function AppLayout({ children }: AppLayoutProps) {
       <main className={`glass-shell${isQuizRoute ? " image-shell" : ""}`}>
         {children}
       </main>
+
+      {isQuizRoute ? <QuizNavigationEnhancer /> : null}
 
       {settingsOpen ? (
         <Suspense fallback={<ModalLoadingFallback label="載入設定" />}>
