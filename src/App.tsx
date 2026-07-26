@@ -10,7 +10,6 @@ import { LoadingState } from "./components/LoadingState";
 import { AuthProvider, type ExamId, useAuth } from "./auth/AuthContext";
 import { ProtectedRoute } from "./auth/ProtectedRoute";
 import { lazyWithRetry } from "./lib/lazyWithRetry";
-import "./styles/theme-v873-classic.css";
 
 const AccountPage = lazyWithRetry(() => import("./pages/AccountPage").then((module) => ({ default: module.AccountPage })));
 const ActivatePage = lazyWithRetry(() => import("./pages/ActivatePage").then((module) => ({ default: module.ActivatePage })));
