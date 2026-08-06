@@ -1,0 +1,113 @@
+name: B8-11 frozen Round 1 and Round 2
+
+on:
+  push:
+    branches:
+      - ta-quant-taifex-data-20260806
+    paths:
+      - .github/workflows/run-b8-11.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  empirical-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      OMP_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      NUMEXPR_NUM_THREADS: "1"
+    steps:
+      - name: Check out frozen branch
+        uses: actions/checkout@v4
+
+      - name: Reconstruct and verify frozen analysis script
+        shell: bash
+        run: |
+          mkdir -p research/ta_quant
+          cat research/ta_quant/bootstrap/run_b8_11.py.b64.part* | base64 --decode > research/ta_quant/run_b8_11.py
+          echo "6fc42c900d5cca58defba0c063f67a72ed9df7307678013a97a7ebeeead5c3a8  research/ta_quant/run_b8_11.py" | sha256sum --check
+          python -m py_compile research/ta_quant/run_b8_11.py
+
+      - name: Install frozen environment
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy==2.2.6 pandas==2.3.1 scipy==1.15.3 scikit-learn==1.7.1 joblib==1.5.1 pyarrow==20.0.0
+          python -m pip freeze > research/ta_quant/environment_b8_11.lock
+
+      - name: Fetch official TAIFEX 2022-2025 data
+        shell: bash
+        run: |
+          python - <<'PY'
+          from __future__ import annotations
+          import datetime as dt, hashlib, json, pathlib, time, zipfile, requests
+          out=pathlib.Path('/tmp/taifex_official'); out.mkdir(exist_ok=True)
+          session=requests.Session(); session.headers.update({'User-Agent':'Mozilla/5.0 (compatible; NCKU-TA-Quant-Research/1.0; academic reproducibility)','Accept':'text/csv,text/plain,*/*','Referer':'https://www.taifex.com.tw/cht/3/optDailyMarketView'})
+          endpoints={'TXO':['https://www.taifex.com.tw/cht/3/dlOptDataDown','https://www.taifex.com.tw/cht/3/optDataDown'],'TX':['https://www.taifex.com.tw/cht/3/dlFutDataDown','https://www.taifex.com.tw/cht/3/futDataDown']}
+          start,end=dt.date(2022,1,1),dt.date(2025,12,31); block=28
+          manifest={'source':'Taiwan Futures Exchange official daily market data','retrieved_at_utc':dt.datetime.now(dt.timezone.utc).isoformat(),'date_from':str(start),'date_to':str(end),'files':[]}
+          def good(b):
+              h=b[:1000].lower(); return len(b)>100 and b'<html' not in h and b'<!doctype' not in h and (b',' in h or b'\t' in h)
+          d=start
+          while d<=end:
+              e=min(d+dt.timedelta(days=block-1),end)
+              for symbol,urls in endpoints.items():
+                  payload={'down_type':'1','commodity_id':symbol,'queryStartDate':d.strftime('%Y/%m/%d'),'queryEndDate':e.strftime('%Y/%m/%d')}
+                  response=selected=None; last=None
+                  for url in urls:
+                      for method in ('POST','GET'):
+                          try:
+                              r=session.post(url,data=payload,timeout=90) if method=='POST' else session.get(url,params=payload,timeout=90)
+                              r.raise_for_status()
+                              if good(r.content): response,selected=r,(url if method=='POST' else r.url); break
+                              last=f'non-csv {method} {url}: {len(r.content)}'
+                          except Exception as exc: last=repr(exc)
+                          time.sleep(.35)
+                      if response is not None: break
+                  if response is None: raise RuntimeError(f'{symbol} {d} {e}: {last}')
+                  fn=f'{symbol}_{d:%Y%m%d}_{e:%Y%m%d}.csv'; p=out/fn; p.write_bytes(response.content)
+                  manifest['files'].append({'file':fn,'symbol':symbol,'query_start':str(d),'query_end':str(e),'endpoint':selected,'bytes':len(response.content),'sha256':hashlib.sha256(response.content).hexdigest(),'content_type':response.headers.get('content-type')})
+                  print(symbol,d,e,len(response.content),flush=True); time.sleep(.45)
+              d=e+dt.timedelta(days=1)
+          (out/'manifest.json').write_text(json.dumps(manifest,ensure_ascii=False,indent=2),encoding='utf-8')
+          target=pathlib.Path('/tmp/taifex_official_2022_2025.zip')
+          with zipfile.ZipFile(target,'w',compression=zipfile.ZIP_DEFLATED) as zf:
+              for p in sorted(out.iterdir()): zf.write(p,arcname=p.name)
+          print('official_zip',target.stat().st_size,hashlib.sha256(target.read_bytes()).hexdigest())
+          PY
+
+      - name: Execute frozen Round 1 and Round 2
+        shell: bash
+        run: |
+          rm -rf /tmp/B8_11_full research/ta_quant/results/B8_11
+          python research/ta_quant/run_b8_11.py \
+            --data-zip /tmp/taifex_official_2022_2025.zip \
+            --out /tmp/B8_11_full \
+            --n-jobs 4
+
+          mkdir -p research/ta_quant/results/B8_11
+          for f in result.json policy_summary.csv round1_thresholds.csv round2_thresholds.json robustness_by_period.csv surface_audit.csv surface_manifest.csv calibration_meta.csv sha256_manifest.json; do
+            if [ -f "/tmp/B8_11_full/$f" ]; then cp "/tmp/B8_11_full/$f" research/ta_quant/results/B8_11/; fi
+          done
+          python - <<'PY'
+          import hashlib,json,pathlib
+          root=pathlib.Path('research/ta_quant/results/B8_11')
+          m=[]
+          for p in sorted(root.iterdir()):
+              if p.is_file(): m.append({'file':p.name,'bytes':p.stat().st_size,'sha256':hashlib.sha256(p.read_bytes()).hexdigest()})
+          (root/'commit_manifest.json').write_text(json.dumps(m,indent=2),encoding='utf-8')
+          print((root/'result.json').read_text())
+          PY
+
+      - name: Commit immutable evidence package
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f research/ta_quant/run_b8_11.py research/ta_quant/environment_b8_11.lock research/ta_quant/results/B8_11
+          git commit -m "Add frozen B8-11 Round 1 and Round 2 evidence [skip ci]"
+          git push origin HEAD:ta-quant-taifex-data-20260806
