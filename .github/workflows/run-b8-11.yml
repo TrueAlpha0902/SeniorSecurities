@@ -28,7 +28,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p research/ta_quant
-          cat research/ta_quant/bootstrap/run_b8_11.py.b64.part* | base64 --decode > research/ta_quant/run_b8_11.py
+          cat research/ta_quant/bootstrap/run_b8_11.py.b64.part* | base64 --decode --ignore-garbage > research/ta_quant/run_b8_11.py
           echo "6fc42c900d5cca58defba0c063f67a72ed9df7307678013a97a7ebeeead5c3a8  research/ta_quant/run_b8_11.py" | sha256sum --check
           python -m py_compile research/ta_quant/run_b8_11.py
 
