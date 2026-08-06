@@ -1,0 +1,136 @@
+name: TAIFEX historical data retrieval
+
+on:
+  push:
+    branches:
+      - ta-quant-taifex-data-20260806
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fetch-taifex:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Fetch official TAIFEX TXO and TX daily data
+        shell: bash
+        run: |
+          python - <<'PY'
+          from __future__ import annotations
+
+          import datetime as dt
+          import hashlib
+          import json
+          import pathlib
+          import time
+          import zipfile
+
+          import requests
+
+          OUT = pathlib.Path("taifex_official")
+          OUT.mkdir(exist_ok=True)
+          session = requests.Session()
+          session.headers.update({
+              "User-Agent": "Mozilla/5.0 (compatible; NCKU-TA-Quant-Research/1.0; academic reproducibility)",
+              "Accept": "text/csv,text/plain,*/*",
+              "Referer": "https://www.taifex.com.tw/cht/3/optDailyMarketView",
+          })
+
+          datasets = {
+              "TXO": [
+                  "https://www.taifex.com.tw/cht/3/dlOptDataDown",
+                  "https://www.taifex.com.tw/cht/3/optDataDown",
+              ],
+              "TX": [
+                  "https://www.taifex.com.tw/cht/3/dlFutDataDown",
+                  "https://www.taifex.com.tw/cht/3/futDataDown",
+              ],
+          }
+
+          start = dt.date(2022, 1, 1)
+          end = dt.date(2025, 12, 31)
+          block_days = 28
+          manifest = {
+              "source": "Taiwan Futures Exchange official daily market data",
+              "retrieved_at_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
+              "date_from": start.isoformat(),
+              "date_to": end.isoformat(),
+              "files": [],
+          }
+
+          def looks_like_csv(content: bytes) -> bool:
+              if len(content) < 100:
+                  return False
+              head = content[:1000].lower()
+              return b"<html" not in head and b"<!doctype" not in head and (b"," in head or b"\t" in head)
+
+          current = start
+          while current <= end:
+              block_end = min(current + dt.timedelta(days=block_days - 1), end)
+              for symbol, urls in datasets.items():
+                  payload = {
+                      "down_type": "1",
+                      "commodity_id": symbol,
+                      "queryStartDate": current.strftime("%Y/%m/%d"),
+                      "queryEndDate": block_end.strftime("%Y/%m/%d"),
+                  }
+                  last_error = None
+                  response = None
+                  selected_url = None
+                  for url in urls:
+                      for method in ("POST", "GET"):
+                          try:
+                              if method == "POST":
+                                  r = session.post(url, data=payload, timeout=90)
+                              else:
+                                  r = session.get(url, params=payload, timeout=90)
+                              r.raise_for_status()
+                              if looks_like_csv(r.content):
+                                  response = r
+                                  selected_url = r.url if method == "GET" else url
+                                  break
+                              last_error = f"non-CSV response from {method} {url}: {len(r.content)} bytes"
+                          except Exception as exc:
+                              last_error = f"{method} {url}: {exc!r}"
+                          time.sleep(0.5)
+                      if response is not None:
+                          break
+                  if response is None:
+                      raise RuntimeError(f"Unable to retrieve {symbol} {current}..{block_end}: {last_error}")
+
+                  filename = f"{symbol}_{current:%Y%m%d}_{block_end:%Y%m%d}.csv"
+                  path = OUT / filename
+                  path.write_bytes(response.content)
+                  manifest["files"].append({
+                      "file": filename,
+                      "symbol": symbol,
+                      "query_start": current.isoformat(),
+                      "query_end": block_end.isoformat(),
+                      "endpoint": selected_url,
+                      "bytes": len(response.content),
+                      "sha256": hashlib.sha256(response.content).hexdigest(),
+                      "content_type": response.headers.get("content-type"),
+                  })
+                  print(symbol, current, block_end, len(response.content), selected_url, flush=True)
+                  time.sleep(0.8)
+              current = block_end + dt.timedelta(days=1)
+
+          (OUT / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+          with zipfile.ZipFile("taifex_official_2022_2025.zip", "w", compression=zipfile.ZIP_DEFLATED) as zf:
+              for p in sorted(OUT.iterdir()):
+                  zf.write(p, arcname=p.name)
+          print("artifact_bytes", pathlib.Path("taifex_official_2022_2025.zip").stat().st_size)
+          PY
+
+      - name: Upload official-data artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: taifex-official-2022-2025
+          path: taifex_official_2022_2025.zip
+          retention-days: 3
+          if-no-files-found: error
