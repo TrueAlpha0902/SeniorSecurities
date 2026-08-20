@@ -13,6 +13,7 @@ import {
   type ChangeEventHandler,
   type ReactNode,
 } from "react";
+import { createPortal } from "react-dom";
 import { useDialogFocusTrap } from "../hooks/useDialogFocusTrap";
 import { GlassButton } from "./GlassButton";
 
@@ -147,16 +148,18 @@ export function V93ConfirmDialog({
   const messageId = useId();
   const overlayRef = useRef<HTMLDivElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
-  useDialogFocusTrap(open, overlayRef, cancelRef, busy ? undefined : onCancel);
+  const portalTarget = typeof document === "undefined" ? null : document.body;
+  useDialogFocusTrap(open && portalTarget !== null, overlayRef, cancelRef, busy ? undefined : onCancel);
 
-  if (!open) return null;
+  if (!open || !portalTarget) return null;
 
-  return (
+  const dialog = (
     <div
       ref={overlayRef}
-      className="v93-confirm-backdrop"
+      className="theme-v93 theme-v90 v93-confirm-backdrop"
+      data-v93-confirm-dialog="true"
       role="presentation"
-      onMouseDown={(event) => {
+      onPointerDown={(event) => {
         if (!busy && event.target === event.currentTarget) onCancel();
       }}
     >
@@ -166,6 +169,7 @@ export function V93ConfirmDialog({
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={messageId}
+        aria-busy={busy || undefined}
         tabIndex={-1}
       >
         <header>
@@ -208,4 +212,6 @@ export function V93ConfirmDialog({
       </section>
     </div>
   );
+
+  return createPortal(dialog, portalTarget);
 }
