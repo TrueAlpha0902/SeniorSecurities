@@ -106,6 +106,58 @@
 .segment-src-field {
   grid-column: 1 / -1;
 }
+.admin-activation-scope {
+  display: grid;
+  gap: 9px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.admin-activation-scope legend {
+  margin-bottom: 7px;
+  color: var(--secondary);
+  font-weight: 850;
+}
+.admin-activation-scope-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.admin-tool-form-grid .admin-activation-scope-option {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 11px;
+  padding: 13px 14px;
+  border: 1px solid var(--glass-border-low);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.68);
+  cursor: pointer;
+}
+.admin-activation-scope-option.is-selected {
+  border-color: var(--primary);
+  background: rgba(29, 111, 138, 0.1);
+  box-shadow: 0 0 0 2px rgba(29, 111, 138, 0.08);
+}
+.admin-activation-scope-option input[type="radio"] {
+  width: 19px;
+  min-height: 19px;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--primary-strong);
+}
+.admin-activation-scope-option span {
+  display: grid;
+  gap: 3px;
+}
+.admin-activation-scope-option small,
+.admin-activation-scope > p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
 .admin-tool-actions {
   justify-content: flex-start;
 }
@@ -122,6 +174,14 @@
   overflow-wrap: anywhere;
   color: var(--primary-strong);
   font-size: 1.16rem;
+}
+.admin-created-code > div {
+  display: grid;
+  gap: 4px;
+}
+.admin-created-code-scope {
+  color: var(--primary-strong);
+  font-weight: 900;
 }
 .admin-tool-list {
   display: grid;
@@ -265,6 +325,7 @@
 @media (max-width: 620px) {
   .admin-tools-tabs,
   .admin-tool-form-grid,
+  .admin-activation-scope-options,
   .question-editor-selectors,
   .segment-field-grid,
   .segment-nudges {

@@ -2261,6 +2261,14 @@ p {
   display: grid;
   gap: 14px;
 }
+.activation-scope-note {
+  margin: 0;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 16px;
+  padding: 11px 13px;
+  background: rgba(255, 255, 255, 0.1);
+  line-height: 1.55;
+}
 .auth-form label {
   display: grid;
   gap: 7px;

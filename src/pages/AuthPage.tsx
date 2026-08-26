@@ -3,7 +3,7 @@ import { type FormEvent, useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { GlassButton } from "../components/GlassButton";
 import { GlassCard } from "../components/GlassCard";
-import { useAuth } from "../auth/AuthContext";
+import { useAuth, type ExamId } from "../auth/AuthContext";
 import { SupabaseSetupRequired } from "../auth/ProtectedRoute";
 
 type AuthMode = "signIn" | "signUp";
@@ -14,10 +14,21 @@ type ReturnState = {
   returnTo?: string;
 };
 
+function examIdForReturnTo(returnTo: string): ExamId {
+  if (returnTo.startsWith("/foreign-exchange")) return "junior-foreign-exchange";
+  if (returnTo.startsWith("/activate")) {
+    const query = returnTo.split("?", 2)[1] || "";
+    if (new URLSearchParams(query).get("exam") === "junior-foreign-exchange") {
+      return "junior-foreign-exchange";
+    }
+  }
+  return "senior-securities";
+}
+
 export function AuthPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { access, isActivated, isConfigured, loading: authLoading, signIn, signUp, user } = useAuth();
+  const { getExamAccess, isConfigured, loading: authLoading, signIn, signUp, user } = useAuth();
   const [mode, setMode] = useState<AuthMode>("signIn");
   const [email, setEmail] = useState(() => {
     if (typeof window === "undefined") return "";
@@ -35,6 +46,8 @@ export function AuthPage() {
   const returnTo = (location.state as ReturnState | null)?.returnTo ?? "/";
   const isSignIn = mode === "signIn";
   const isAdminReturn = returnTo.startsWith("/admin");
+  const requestedExamId = examIdForReturnTo(returnTo);
+  const requestedExamAccess = getExamAccess(requestedExamId);
 
   useEffect(() => {
     if (authLoading || !user) return;
@@ -44,15 +57,15 @@ export function AuthPage() {
       return;
     }
 
-    if (isActivated) {
+    if (requestedExamAccess.hasEntitlement) {
       navigate(returnTo, { replace: true });
       return;
     }
 
-    if (!access.hasEntitlement) {
-      navigate("/activate", { replace: true, state: { returnTo } });
+    if (!requestedExamAccess.hasEntitlement) {
+      navigate(`/activate?exam=${requestedExamId}`, { replace: true, state: { returnTo } });
     }
-  }, [access.hasEntitlement, authLoading, isActivated, isAdminReturn, navigate, returnTo, user]);
+  }, [authLoading, isAdminReturn, navigate, requestedExamAccess.hasEntitlement, requestedExamId, returnTo, user]);
 
   if (!isConfigured) {
     return <SupabaseSetupRequired />;
