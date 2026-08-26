@@ -1,7 +1,15 @@
 # SeniorSecurities Current State
 
-更新日期：2026-07-24
-目前版本：**v91 — 圖像手寫介面與題庫級考試計畫（尚未部署）**
+更新日期：2026-08-26
+目前版本：**v93 管理後台權限確認視窗修復（待部署）**
+
+## 2026-08-26 管理後台權限開通修復
+
+- 「開通證券高業」與「開通初階外匯」共用的確認視窗雖已 portal 到 `document.body`，其 `.v93-confirm-*` 樣式卻仍只存在於未載入的舊版 `theme-v93.css`，導致視窗以一般文件流落在管理員抽屜下方、使用者看不到「確認執行」，後端也不會收到開通請求。
+- 將確認視窗必要樣式移入現行唯一載入的 `theme-current.css`；桌面與手機皆固定覆蓋 viewport，層級高於管理員抽屜，並保留高度限制、捲動與 reduced-motion 行為。
+- 管理後台契約測試同時鎖定現行主題載入、portal 版面樣式，以及兩種 `examId` 從按鈕到 `/api/admin/action` POST 的傳遞。
+- 新增桌面與手機 Playwright 版面回歸測試，驗證 portal 直屬 `body`、`position: fixed`、完整 viewport 覆蓋、正確層級與確認按鈕可見；另以真實模擬考流程開啟同一個共用 React 元件並確認可取消。
+- Supabase schema、migration、題庫內容與既有會員權限均未變更。
 
 ## v91 圖像手寫介面與題庫級考試計畫
 

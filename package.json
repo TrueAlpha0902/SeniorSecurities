@@ -68,7 +68,7 @@
     "test:v93-safety": "tsx scripts/test-v93-safety-interactions.ts",
     "test:v93-e2e-regressions": "tsx scripts/test-v93-e2e-regressions.ts",
     "test:v93-quality": "tsx scripts/test-v93-final-quality.ts",
-    "test:e2e:v93": "playwright test tests/e2e/app-smoke.spec.ts tests/e2e/app-interactions-v93.spec.ts tests/e2e/learner-feedback-v93.spec.ts tests/e2e/mock-exam-flow.spec.ts tests/e2e/final-quality-v93.spec.ts --project=desktop --project=mobile --workers=1 --reporter=line",
+    "test:e2e:v93": "playwright test tests/e2e/app-smoke.spec.ts tests/e2e/app-interactions-v93.spec.ts tests/e2e/learner-feedback-v93.spec.ts tests/e2e/mock-exam-flow.spec.ts tests/e2e/final-quality-v93.spec.ts tests/e2e/confirmation-dialog-layout.spec.ts --project=desktop --project=mobile --workers=1 --reporter=line",
     "test:v87-reissue": "tsx scripts/test-v87-3-reissue-contracts.ts"
   },
   "dependencies": {

@@ -1348,3 +1348,121 @@ progress::-moz-progress-bar { background: var(--primary) !important; }
   }
 }
 /* === v87.3 approved polish: quiz and settings END === */
+
+/* Portaled confirmation dialogs must remain styled outside .product-app. */
+.v93-confirm-backdrop {
+  position: fixed;
+  z-index: 210;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 22px;
+  background: rgba(16, 24, 40, 0.58);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.v93-confirm-dialog {
+  display: grid;
+  gap: 20px;
+  width: min(480px, 100%);
+  max-height: calc(100dvh - 44px);
+  overflow-y: auto;
+  padding: 20px;
+  border: 1px solid var(--glass-border-low, rgba(16, 35, 63, 0.12));
+  border-radius: 18px;
+  color: var(--text, #172235);
+  background: var(--glass-bg-strong, #fff);
+  box-shadow: 0 24px 70px rgba(16, 35, 63, 0.24);
+  animation: current-confirm-in 160ms ease-out;
+}
+
+.v93-confirm-dialog > header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 13px;
+}
+
+.v93-confirm-icon {
+  display: inline-grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border: 1px solid rgba(138, 95, 18, 0.28);
+  border-radius: 12px;
+  color: var(--warning, #8a5f12);
+  background: #fff7e4;
+}
+
+.v93-confirm-dialog.is-danger .v93-confirm-icon {
+  border-color: rgba(173, 49, 64, 0.28);
+  color: var(--danger, #ad3140);
+  background: #fff0f2;
+}
+
+.v93-confirm-dialog h2 {
+  margin: 0 0 6px;
+  color: var(--text, #172235);
+  font-size: 19px;
+}
+
+.v93-confirm-dialog header div div,
+.v93-confirm-dialog header div p {
+  margin: 0;
+  color: var(--muted, #6c7888);
+  line-height: 1.65;
+}
+
+.v93-confirm-dialog header > button {
+  display: inline-grid;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  border-radius: 10px;
+  color: var(--muted, #6c7888);
+  background: transparent;
+}
+
+.v93-confirm-dialog header > button:hover:not(:disabled) {
+  color: var(--text, #172235);
+  background: rgba(20, 43, 59, 0.06);
+}
+
+.v93-confirm-dialog > footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+@keyframes current-confirm-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (max-width: 560px) {
+  .v93-confirm-backdrop {
+    align-items: end;
+    padding: 12px;
+  }
+
+  .v93-confirm-dialog {
+    max-height: calc(100dvh - 24px);
+    border-radius: 18px 18px 14px 14px;
+  }
+
+  .v93-confirm-dialog > footer {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .v93-confirm-dialog > footer .glass-button {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .v93-confirm-dialog { animation: none; }
+}
