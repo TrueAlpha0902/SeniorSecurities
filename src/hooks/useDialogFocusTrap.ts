@@ -1,4 +1,5 @@
 import { useEffect, type RefObject } from "react";
+import { useBodyScrollLock } from "./useBodyScrollLock";
 
 const FOCUSABLE_SELECTOR = [
   'a[href]',
@@ -15,13 +16,13 @@ export function useDialogFocusTrap(
   initialFocusRef?: RefObject<HTMLElement | null>,
   onEscape?: () => void,
 ): void {
+  useBodyScrollLock(open);
+
   useEffect(() => {
     if (!open) return;
     const previousFocus = document.activeElement instanceof HTMLElement
       ? document.activeElement
       : null;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
 
     const focusInitial = window.requestAnimationFrame(() => {
       const container = containerRef.current;
@@ -62,7 +63,6 @@ export function useDialogFocusTrap(
     return () => {
       window.cancelAnimationFrame(focusInitial);
       document.removeEventListener("keydown", handleKeyDown);
-      document.body.style.overflow = previousOverflow;
       previousFocus?.focus({ preventScroll: true });
     };
   }, [containerRef, initialFocusRef, onEscape, open]);
