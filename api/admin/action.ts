@@ -9,7 +9,7 @@ import {
 } from "../_adminClient.js";
 
 const DEFAULT_PASSWORD_RESET_URL = "https://senior-securities.vercel.app/reset-password";
-const EXPECTED_MIGRATION = "20260719120000_exam_scoped_entitlements_v80";
+const EXPECTED_MIGRATION = "20260826081812_add_exam_scoped_activation_redemption";
 const EMAIL_LIMIT_PER_HOUR = Number(process.env.PASSWORD_RESET_EMAIL_LIMIT_PER_HOUR || 3);
 type AdminClient = Awaited<ReturnType<typeof requireAdminUser>>["supabase"];
 type JsonObject = Record<string, unknown>;

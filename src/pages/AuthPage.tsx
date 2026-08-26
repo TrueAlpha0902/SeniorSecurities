@@ -44,6 +44,7 @@ export function AuthPage() {
   const [error, setError] = useState<string | null>(null);
 
   const returnTo = (location.state as ReturnState | null)?.returnTo ?? "/";
+  const activationReturnTo = returnTo.startsWith("/activate") ? "/" : returnTo;
   const isSignIn = mode === "signIn";
   const isAdminReturn = returnTo.startsWith("/admin");
   const requestedExamId = examIdForReturnTo(returnTo);
@@ -58,14 +59,14 @@ export function AuthPage() {
     }
 
     if (requestedExamAccess.hasEntitlement) {
-      navigate(returnTo, { replace: true });
+      navigate(activationReturnTo, { replace: true });
       return;
     }
 
     if (!requestedExamAccess.hasEntitlement) {
-      navigate(`/activate?exam=${requestedExamId}`, { replace: true, state: { returnTo } });
+      navigate(`/activate?exam=${requestedExamId}`, { replace: true, state: { returnTo: activationReturnTo } });
     }
-  }, [authLoading, isAdminReturn, navigate, requestedExamAccess.hasEntitlement, requestedExamId, returnTo, user]);
+  }, [activationReturnTo, authLoading, isAdminReturn, navigate, requestedExamAccess.hasEntitlement, requestedExamId, returnTo, user]);
 
   if (!isConfigured) {
     return <SupabaseSetupRequired />;

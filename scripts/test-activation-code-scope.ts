@@ -8,7 +8,8 @@ function assert(condition: unknown, message: string): asserts condition {
 const root = process.cwd();
 const read = (relativePath: string) => readFile(path.join(root, relativePath), "utf8");
 
-const [adminApi, adminPanel, authContext, activatePage, authPage, migration] = await Promise.all([
+const [adminAction, adminApi, adminPanel, authContext, activatePage, authPage, migration] = await Promise.all([
+  read("api/admin/action.ts"),
   read("api/admin/tools.ts"),
   read("src/components/AdminToolsPanel.tsx"),
   read("src/auth/AuthContext.tsx"),
@@ -25,6 +26,10 @@ assert(
 assert(
   adminApi.includes("p_exam_id: examId") && adminApi.includes("examId,"),
   "The admin API must persist and return the selected activation-code scope.",
+);
+assert(
+  adminAction.includes('const EXPECTED_MIGRATION = "20260826081812_add_exam_scoped_activation_redemption";'),
+  "Admin system status must identify the scoped-redemption migration required by this release.",
 );
 
 assert(
@@ -56,8 +61,9 @@ assert(
 assert(
   authPage.includes("examIdForReturnTo")
     && authPage.includes('returnTo.startsWith("/foreign-exchange")')
-    && authPage.includes("navigate(`/activate?exam=${requestedExamId}`"),
-  "Authentication must preserve the requested exam when redirecting an unentitled learner.",
+    && authPage.includes('const activationReturnTo = returnTo.startsWith("/activate") ? "/" : returnTo;')
+    && authPage.includes("state: { returnTo: activationReturnTo }"),
+  "Authentication must preserve the requested exam without looping back to the activation page.",
 );
 
 assert(
