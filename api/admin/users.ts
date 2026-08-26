@@ -11,6 +11,19 @@ interface AdminDataRow {
   [key: string]: unknown;
 }
 
+type ActivationCodeMembership = {
+  id: string;
+  examId: ExamId;
+  codePreview: string;
+  note: string | null;
+  maxUses: number;
+  useCount: number;
+  historyGap: number;
+  isActive: boolean;
+  redeemedAt: string | null;
+  source: "redeem" | "legacy_entitlement";
+};
+
 type ExamId = "senior-securities" | "junior-foreign-exchange";
 
 const ONLINE_WINDOW_SECONDS = 90;
@@ -167,7 +180,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
   }
 
   try {
-    const { supabase } = await requireAdminUser(req, { roles: ["primary_admin", "admin"] });
+    const { supabase, role } = await requireAdminUser(req, { roles: ["primary_admin", "admin"] });
 
     const page = Math.max(Number(req.query?.page || 1), 1);
     const perPage = Math.min(Math.max(Number(req.query?.perPage || 50), 1), 100);
@@ -178,11 +191,15 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     const userIds = users.map((user) => user.id).filter(Boolean);
 
     if (userIds.length === 0) {
-      sendJson(res, 200, { users: [], pagination: { page, perPage, hasMore: false } });
+      sendJson(res, 200, {
+        users: [],
+        admin: { role },
+        pagination: { page, perPage, total: 0, hasMore: false },
+      });
       return;
     }
 
-    const [examEntitlements, legacyEntitlements, overviewRows, leaderboardRows, presenceRows] = await Promise.all([
+    const [examEntitlements, legacyEntitlements, overviewRows, leaderboardRows, presenceRows, redemptionResult] = await Promise.all([
       safeSelect(
         supabase
           .from("user_exam_entitlements")
@@ -212,7 +229,20 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
           .in("user_id", userIds),
         [],
       ),
+      supabase
+        .from("activation_code_redemptions")
+        .select("activation_code_id, user_id, exam_id, redeemed_at, source")
+        .in("user_id", userIds)
+        .order("redeemed_at", { ascending: false })
+        .limit(5000),
     ]);
+    if (redemptionResult.error) {
+      throw new Error(`啟用碼分類帳無法讀取：${redemptionResult.error.message}`);
+    }
+    const redemptionRows = redemptionResult.data || [];
+    if (redemptionRows.length >= 5000) {
+      throw new Error("啟用碼分類資料超過單次安全上限，請縮小會員頁面範圍後再試。");
+    }
 
     const entitlementByUser = buildEntitlementMap(
       examEntitlements as AdminDataRow[],
@@ -226,18 +256,61 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     const sourceCodeHashes = Array.from(new Set(allEntitlementRows
       .map((row) => String(row.source_code_hash || ""))
       .filter(Boolean)));
-    const activationCodeByHash = new Map<string, string>();
-    if (sourceCodeHashes.length > 0) {
-      const activationRows = await safeSelect(
-        supabase
-          .from("activation_codes")
-          .select("code_hash, code_preview")
-          .in("code_hash", sourceCodeHashes),
-        [],
-      );
-      for (const code of activationRows as AdminDataRow[]) {
-        activationCodeByHash.set(String(code.code_hash), String(code.code_preview || ""));
+    const activationCodeIds = Array.from(new Set((redemptionRows as AdminDataRow[])
+      .map((row) => String(row.activation_code_id || ""))
+      .filter(Boolean)));
+    const [activationRowsByHash, activationRowsById] = await Promise.all([
+      sourceCodeHashes.length > 0
+        ? safeSelect(
+            supabase
+              .from("activation_codes")
+              .select("id, code_hash, exam_id, code_preview, note, max_uses, use_count, redemption_history_gap, is_active, created_at, redeemed_at")
+              .in("code_hash", sourceCodeHashes),
+            [],
+          )
+        : Promise.resolve([]),
+      activationCodeIds.length > 0
+        ? safeSelect(
+            supabase
+              .from("activation_codes")
+              .select("id, code_hash, exam_id, code_preview, note, max_uses, use_count, redemption_history_gap, is_active, created_at, redeemed_at")
+              .in("id", activationCodeIds),
+            [],
+          )
+        : Promise.resolve([]),
+    ]);
+    const activationCodeByHash = new Map<string, AdminDataRow>();
+    const activationCodeById = new Map<string, AdminDataRow>();
+    for (const code of [...activationRowsByHash, ...activationRowsById] as AdminDataRow[]) {
+      const id = String(code.id || "");
+      const hash = String(code.code_hash || "");
+      if (id) activationCodeById.set(id, code);
+      if (hash) activationCodeByHash.set(hash, code);
+    }
+
+    const activationCodesByUser = new Map<string, ActivationCodeMembership[]>();
+    for (const redemption of redemptionRows as AdminDataRow[]) {
+      const userId = String(redemption.user_id || "");
+      const code = activationCodeById.get(String(redemption.activation_code_id || ""));
+      const examId = examIdOf(code?.exam_id);
+      if (!userId || !code || !examId) continue;
+      if (redemption.exam_id !== code.exam_id) {
+        throw new Error(`啟用碼分類帳題庫不一致：${String(code.id || "unknown")}`);
       }
+      const memberships = activationCodesByUser.get(userId) || [];
+      memberships.push({
+        id: String(code.id),
+        examId,
+        codePreview: String(code.code_preview || ""),
+        note: code.note ? String(code.note) : null,
+        maxUses: Number(code.max_uses || 0),
+        useCount: Number(code.use_count || 0),
+        historyGap: Number(code.redemption_history_gap || 0),
+        isActive: Boolean(code.is_active),
+        redeemedAt: normalizeDate(redemption.redeemed_at),
+        source: redemption.source === "redeem" ? "redeem" : "legacy_entitlement",
+      });
+      activationCodesByUser.set(userId, memberships);
     }
 
     const result = users.map((user) => {
@@ -249,16 +322,44 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       const entitlements = EXAM_IDS.map((examId) => {
         const row = userEntitlements.get(examId);
         const sourceCodeHash = String(row?.source_code_hash || "");
+        const activationCode = sourceCodeHash ? activationCodeByHash.get(sourceCodeHash) || null : null;
         return {
           examId,
           status: row?.status || "none",
           plan: row?.plan || null,
           grantedAt: normalizeDate(row?.granted_at),
           expiresAt: normalizeDate(row?.expires_at),
-          activationCode: sourceCodeHash ? activationCodeByHash.get(sourceCodeHash) || null : null,
+          activationCode: activationCode ? {
+            id: String(activationCode.id || ""),
+            code_preview: String(activationCode.code_preview || ""),
+            max_uses: Number(activationCode.max_uses || 0),
+            use_count: Number(activationCode.use_count || 0),
+            redemption_history_gap: Number(activationCode.redemption_history_gap || 0),
+            is_active: Boolean(activationCode.is_active),
+            note: activationCode.note ? String(activationCode.note) : null,
+            created_at: normalizeDate(activationCode.created_at),
+            redeemed_at: normalizeDate(activationCode.redeemed_at),
+          } : null,
         };
       });
       const securities = entitlements.find((row) => row.examId === "senior-securities")!;
+      const activationCodes = activationCodesByUser.get(user.id) || [];
+      for (const entitlement of entitlements) {
+        const code = entitlement.activationCode;
+        if (!code?.id || activationCodes.some((membership) => membership.id === code.id)) continue;
+        activationCodes.push({
+          id: code.id,
+          examId: entitlement.examId,
+          codePreview: code.code_preview,
+          note: code.note,
+          maxUses: code.max_uses,
+          useCount: code.use_count,
+          historyGap: code.redemption_history_gap,
+          isActive: code.is_active,
+          redeemedAt: entitlement.grantedAt,
+          source: "legacy_entitlement",
+        });
+      }
 
       return {
         id: user.id,
@@ -266,11 +367,12 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
         createdAt: normalizeDate(user.created_at),
         lastSignInAt: normalizeDate(user.last_sign_in_at),
         entitlements,
+        activationCodes,
         entitlementStatus: securities.status,
         plan: securities.plan,
         grantedAt: securities.grantedAt,
         expiresAt: securities.expiresAt,
-        activationCode: securities.activationCode,
+        activationCode: securities.activationCode?.code_preview || null,
         lastEventAt: normalizeDate(overview?.last_event_at),
         lastEventType: overview?.last_event_type || null,
         lastIp: overview?.last_ip || null,
@@ -287,7 +389,16 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       };
     });
 
-    sendJson(res, 200, { users: result, pagination: { page, perPage, hasMore: users.length === perPage } });
+    sendJson(res, 200, {
+      users: result,
+      admin: { role },
+      pagination: {
+        page,
+        perPage,
+        total: Number("total" in authData ? authData.total || users.length : users.length),
+        hasMore: "nextPage" in authData ? authData.nextPage !== null : users.length === perPage,
+      },
+    });
   } catch (error) {
     console.error("/api/admin/users failed:", error);
     sendError(res, error);

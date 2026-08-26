@@ -1,7 +1,25 @@
 # SeniorSecurities Current State
 
-更新日期：2026-08-26
-目前版本：**v94.1 管理後台捲動鎖修復**
+更新日期：2026-08-27
+目前開發版本：**v95 管理後台會員分類與安全帳號移除（尚未部署）**
+
+## 2026-08-27 管理後台會員分類、安全帳號移除與 UX 預覽
+
+- 會員目錄新增「依會員／依啟用碼」切換；同一會員若曾分別兌換高業與外匯啟用碼，會出現在各自正確的題庫／啟用碼群組。管理員直接開通與尚未輸入啟用碼另列明確群組。
+- 分類來源改用只保存雜湊關聯的 redemption ledger；後台只顯示遮罩 preview、題庫、備註與使用量，不回傳或保存啟用碼明碼。無法還原歸屬的舊使用次數以 history gap 明確警示，不假裝成完整歷史。
+- 已使用的啟用碼改為只能停用／恢復，不可刪除；未使用碼仍可永久刪除，避免會員分類歷程被破壞。
+- 新增主要管理員永久移除會員流程：強制即時 AAL2、有效 Auth session、目前密碼重新驗證後才允許首次 TOTP enrollment，並要求完整 Email、「永久刪除」、原因與不可逆確認。
+- 帳號刪除採資料庫原子 claim、10 分鐘 lease 與 lease-token CAS；逾時操作可由新 operationId 安全接管，過期或已被接管的 worker 無法續租、完成或覆寫狀態。目標 fingerprint 只依穩定 userId 雜湊，不受 Email 變更影響。
+- 只要刪除仍為 pending（即使 lease 已逾期），Storage policy 仍禁止目標會員重傳頭像，Auth Email 變更、以相同 Email 新註冊或改綁其他帳號也會被擋下；userId 與 Email 兩條管理員授權路徑亦拒絕提升權限。刪除 operation 的 Email fingerprint 一經建立即不可被重試覆寫，Storage／Auth／授權檢查與 deletion claim 共用固定次序的 advisory lock。Storage 每批清理、Auth hard delete 前及 Auth 後的 Email 清理前皆重新確認 lease，並再次驗證操作者 AAL2、目標 Email 與管理員紀錄。
+- Auth hard delete 送出前先寫入 durable reconcile 標記；只有帶有此標記的 operation 才能在舊 userId 已不存在時進入 recovery。若同 Email 已在 claim 前由新 UUID 合法持有，recovery 只清舊 userId 綁定資料並跳過 Email-wide sweep；普通 pre-Auth failed 重試不得把 404 當成刪除成功。外部回應逾時或不確定時，操作維持 pending tombstone 並釋放給下一個 worker 接管，不能以普通 failed 狀態提早解除 Storage／管理員保護。
+- Storage 上傳的 RLS 檢查與最終 metadata commit 分屬不同交易，因此另在 `storage.objects` 最終 insert／update 加入永久 tombstone trigger；晚於 claim 或完成刪除才抵達的頭像 commit 會被拒絕，已完成刪除的 userId fingerprint 也持續阻擋舊路徑復活。
+- 密碼重設 throttle 紀錄改綁 `target_user_id` 並以 `ON DELETE CASCADE` 清除；pending／completed tombstone 阻止晚到寫入。管理 audit 保留問責事件但 trigger 會把刪除目標的 `target_email` 強制匿名化；Email artifact sweep 改在單一資料庫交易中驗證 operation、lease、userId 與 Email fingerprint 後執行，避免 stale worker 誤掃後來重用相同 Email 的帳號。自由文字刪除原因不寫入 audit，只保存是否提供與長度。
+- 頭像清理支援分頁、巢狀路徑、批次刪除與清除後複查；刪除 Auth 後的 audit／operation 記錄失敗只回傳可追蹤 warning，不會把已成功刪除誤報成失敗。啟用碼使用次數不回補，ledger 將 user_id 匿名化保留。
+- MFA 取消流程改為先關閉 UI、背景清除未完成 factor；使用 `listFactors().data.all` 辨識未驗證 factor、檢查 unenroll 回應，並以 lifecycle generation 防止關閉後才完成的 enrollment 遺留。Focus trap 不再因 inline Escape callback 每次 render 重置焦點。
+- 會員抽屜與確認視窗只依實際 render 的 overlay 上鎖；會員在背景刷新後消失會清除選取狀態。新增 Playwright 回歸，桌面、iPad Chromium 與手機 Chromium 均驗證關閉後恢復捲動。
+- 提供三款隔離、假資料、零正式 API 的 1440×900 預覽：A 清單指揮台、B 啟用碼班級、C 三欄 CRM；正式 React 介面尚未套用任一款，等待選版。
+- 新增 migration：`supabase/migrations/20260826145617_add_activation_redemption_ledger.sql`。整份 migration 已在正式 Supabase 以 `BEGIN`／`ROLLBACK` 驗證 schema、最小權限、claim／併發阻擋、過期 lease 拒絕與接管、Auth 不確定回應 reconcile、過期 pending 仍封鎖 Storage／兩條管理員授權路徑、Storage superuser 晚到 commit 在 pending／completed 都被拒絕、重設紀錄 tombstone／audit Email 匿名化、同 Email 新 owner 不被 recovery sweep 誤傷，以及跨 operationId 完成重播；回滾後三張新表、trigger、函式、audit、測試 Auth user 與 metadata 均不存在。
+- `typecheck`、`typecheck:api`、ESLint quiet、管理後台合約、啟用碼 scope 合約、production build、public boundary、bundle gate及新增桌面／iPad／手機 Chromium E2E 9／9 已通過。完整歷史 verify／E2E 仍被既有缺少外匯來源 PDF、CSS budget、v83–v93 舊契約與未安裝 WebKit 阻擋；因此 v95 migration 與正式站尚未部署。
 
 ## 2026-08-26 管理後台捲動鎖修復
 

@@ -1,4 +1,4 @@
-import { useEffect, type RefObject } from "react";
+import { useEffect, useRef, type RefObject } from "react";
 import { useBodyScrollLock } from "./useBodyScrollLock";
 
 const FOCUSABLE_SELECTOR = [
@@ -17,6 +17,11 @@ export function useDialogFocusTrap(
   onEscape?: () => void,
 ): void {
   useBodyScrollLock(open);
+  const onEscapeRef = useRef(onEscape);
+
+  useEffect(() => {
+    onEscapeRef.current = onEscape;
+  }, [onEscape]);
 
   useEffect(() => {
     if (!open) return;
@@ -32,9 +37,9 @@ export function useDialogFocusTrap(
     });
 
     function handleKeyDown(event: KeyboardEvent): void {
-      if (event.key === "Escape" && onEscape) {
+      if (event.key === "Escape" && onEscapeRef.current) {
         event.preventDefault();
-        onEscape();
+        onEscapeRef.current();
         return;
       }
       if (event.key !== "Tab") return;
@@ -65,5 +70,5 @@ export function useDialogFocusTrap(
       document.removeEventListener("keydown", handleKeyDown);
       previousFocus?.focus({ preventScroll: true });
     };
-  }, [containerRef, initialFocusRef, onEscape, open]);
+  }, [containerRef, initialFocusRef, open]);
 }

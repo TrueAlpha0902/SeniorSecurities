@@ -105,7 +105,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
         const auth = await requireAdminUser(req, { roles: ["primary_admin", "admin"] });
         const { data, error } = await auth.supabase
           .from("activation_codes")
-          .select("id, exam_id, code_preview, max_uses, use_count, is_active, note, created_at, redeemed_at")
+          .select("id, exam_id, code_preview, max_uses, use_count, redemption_history_gap, is_active, note, created_at, redeemed_at")
           .order("created_at", { ascending: false })
           .limit(100);
         if (error) throw error;
@@ -128,6 +128,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     const action = String(body.action || "");
     const highRiskActions = new Set([
       "delete-activation-code",
+      "set-activation-code-status",
       "upsert-admin",
       "disable-admin",
       "delete-admin",
@@ -139,16 +140,35 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     const actorEmail = user.email?.toLowerCase() || user.id;
     const ipAddress = requestIpAddress(req);
 
-    if (action === "delete-activation-code") {
+    if (action === "delete-activation-code" || action === "set-activation-code-status") {
       const activationCodeId = String(body.activationCodeId || "").trim();
       if (!/^[0-9a-f-]{36}$/i.test(activationCodeId)) throw new HttpError("啟用碼識別碼不正確。", 400);
       const { data: existing, error: lookupError } = await supabase
         .from("activation_codes")
-        .select("id")
+        .select("id, use_count, is_active")
         .eq("id", activationCodeId)
         .maybeSingle();
       if (lookupError) throw lookupError;
       if (!existing) throw new HttpError("找不到指定啟用碼。", 404);
+
+      if (action === "set-activation-code-status") {
+        const isActive = body.isActive;
+        if (typeof isActive !== "boolean") throw new HttpError("啟用碼狀態不正確。", 400);
+        const { error: statusError } = await supabase.rpc("set_activation_code_status_v95", {
+          p_actor_user_id: user.id,
+          p_actor_email: actorEmail,
+          p_activation_code_id: activationCodeId,
+          p_is_active: isActive,
+          p_ip_address: ipAddress,
+        });
+        if (statusError) throw statusError;
+        sendJson(res, 200, { ok: true, message: isActive ? "啟用碼已恢復使用。" : "啟用碼已停用，歷史分類仍會保留。" });
+        return;
+      }
+
+      if (Number(existing.use_count || 0) > 0) {
+        throw new HttpError("已使用的啟用碼必須保留分類歷程，只能停用、不能永久刪除。", 409);
+      }
       const { error } = await supabase.rpc("delete_activation_code_v79", {
         p_actor_user_id: user.id,
         p_actor_email: actorEmail,

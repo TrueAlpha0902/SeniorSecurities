@@ -22,6 +22,9 @@ const [
   appLayout,
   currentTheme,
   bodyScrollLock,
+  dialogFocusTrap,
+  deleteMemberDialog,
+  deletionMigration,
 ] = await Promise.all([
   read("src/components/AdminToolsPanel.tsx"),
   read("api/_adminClient.ts"),
@@ -33,6 +36,9 @@ const [
   read("src/components/AppLayout.tsx"),
   read("src/styles/theme-current.css"),
   read("src/hooks/useBodyScrollLock.ts"),
+  read("src/hooks/useDialogFocusTrap.ts"),
+  read("src/components/AdminDeleteMemberDialog.tsx"),
+  read("supabase/migrations/20260826145617_add_activation_redemption_ledger.sql"),
 ]);
 
 assert(panel.includes("啟用碼") && panel.includes("管理員") && panel.includes("系統狀態"), "Admin workspace must keep its core tools.");
@@ -72,6 +78,71 @@ assert(
     && !adminPage.includes("auditOpen || pendingConfirmation")
     && adminPage.includes("setPendingConfirmation(null);\n      await Promise.all(["),
   "Nested admin confirmations must share a reference-counted scroll lock and release the dialog before background refreshes.",
+);
+assert(
+  adminPage.includes('setDirectoryMode("activation-codes")')
+    && adminPage.includes("buildActivationCodeGroups(filteredUsers)")
+    && adminPage.includes("membership.codePreview")
+    && adminPage.includes("管理員直接開通")
+    && adminPage.includes("尚未輸入啟用碼"),
+  "The member directory must support privacy-safe grouping by actual activation-code provenance and explicit fallback groups.",
+);
+assert(
+  action.includes('action === "delete-user"')
+    && action.includes('roles: ["primary_admin"], requireAal2: true')
+    && action.includes("supabase.auth.admin.deleteUser(userId, false)")
+    && action.includes("removeMemberAvatarObjects")
+    && action.includes("claim_member_deletion_operation_v95")
+    && action.includes("renew_member_deletion_operation_v95")
+    && action.includes("mark_member_deletion_auth_started_v95")
+    && action.includes("release_member_deletion_for_reconcile_v95")
+    && action.includes("complete_member_deletion_operation_v95")
+    && action.includes("fail_member_deletion_operation_v95")
+    && action.includes("privacyFingerprint(userId)")
+    && action.includes('throw new HttpError("永久刪除需要有效的 operationId')
+    && action.includes("不可刪除目前登入的管理員帳號")
+    && action.includes("activationUsesRestored: false")
+    && action.includes("cleanupMemberEmailArtifacts")
+    && action.includes("cleanup_member_email_artifacts_v95")
+    && action.includes('if (!authDeleteStarted)')
+    && action.includes("email-reassigned-skipped-email-sweep")
+    && action.includes("targetUserId: userId")
+    && (action.match(/renewDeletionOperationLease\(\{ supabase, operationId, leaseToken \}\)/g)?.length || 0) >= 3,
+  "Permanent member deletion must use a stable-target fenced lease and durable Auth reconciliation, require primary-admin AAL2, remove Storage first, and never restore code uses.",
+);
+assert(
+  deleteMemberDialog.includes("challengeAndVerify")
+    && deleteMemberDialog.includes("signInWithPassword")
+    && deleteMemberDialog.includes("factors.data.all.filter")
+    && deleteMemberDialog.includes("cleanupEnrollmentFactor")
+    && deleteMemberDialog.includes("lifecycleGenerationRef")
+    && deleteMemberDialog.includes("confirmationEmail")
+    && deleteMemberDialog.includes('confirmationPhrase.trim() === "永久刪除"')
+    && deleteMemberDialog.includes("我了解此會員的雲端帳號與資料將無法復原")
+    && dialogFocusTrap.includes("const onEscapeRef = useRef(onEscape)")
+    && !dialogFocusTrap.includes("initialFocusRef, onEscape, open"),
+  "The deletion dialog must provide race-safe MFA cleanup, stable focus trapping, and explicit typed irreversible confirmation.",
+);
+assert(
+  deletionMigration.includes("v_requested.target_email_fingerprint is distinct from p_target_email_fingerprint")
+    && deletionMigration.includes("v_row.target_email_fingerprint is distinct from p_target_email_fingerprint")
+    && !deletionMigration.includes("target_email_fingerprint = p_target_email_fingerprint,")
+    && deletionMigration.includes("before insert or update of email\non auth.users")
+    && deletionMigration.includes("operation.target_email_fingerprint = v_new_email_fingerprint")
+    && deletionMigration.includes("create or replace function public.cleanup_member_email_artifacts_v95")
+    && deletionMigration.includes("and operation.lease_token = p_lease_token")
+    && deletionMigration.includes("v_current_email_owner <> p_target_user_id")
+    && deletionMigration.includes("return 'email_reassigned'")
+    && (action.match(/renewDeletionOperationLease\(\{ supabase, operationId, leaseToken \}\)/g)?.length || 0) >= 4,
+  "Deletion retries must keep the original email identity immutable and fence same-email Auth reuse through final cleanup.",
+);
+assert(
+  adminClient.includes("verify_active_aal2_session_v95")
+    && adminClient.includes("claims.session_id")
+    && adminClient.includes("configuredPrimaryAdminEmails.includes(email)")
+    && adminPage.includes("const userDrawerOpen = Boolean(selectedUserId && selectedUser)")
+    && adminPage.includes("users.some((row) => row.id === selectedUserId)"),
+  "Hard delete must require a live AAL2 session, preserve the primary-role boundary, and never lock scrolling for an invisible drawer.",
 );
 
 const originalDocument = Object.getOwnPropertyDescriptor(globalThis, "document");

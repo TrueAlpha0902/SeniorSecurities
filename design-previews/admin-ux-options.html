@@ -1,0 +1,560 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>後台 UX/UI 三款設計預覽</title>
+  <style>
+    :root {
+      --ink: #132238;
+      --navy: #0f3042;
+      --teal: #14758a;
+      --cyan: #52c6d9;
+      --green: #16815b;
+      --danger: #a73342;
+      --muted: #536276;
+      --line: rgba(15, 48, 66, .11);
+      --soft: #f3f7f8;
+      --white: #fff;
+      color-scheme: light;
+      font-family: Inter, "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html { background: #dfe6ea; }
+    body { margin: 0; color: var(--ink); background: #dfe6ea; }
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+    .preview-toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 22px;
+      min-height: 72px;
+      padding: 12px 24px;
+      border-bottom: 1px solid rgba(15, 48, 66, .16);
+      background: rgba(247, 250, 251, .96);
+      box-shadow: 0 8px 24px rgba(15, 48, 66, .08);
+      backdrop-filter: blur(18px);
+    }
+    .preview-brand { display: flex; align-items: center; gap: 12px; min-width: 300px; }
+    .preview-brand-mark {
+      display: grid;
+      width: 40px;
+      height: 40px;
+      place-items: center;
+      border-radius: 13px;
+      color: white;
+      background: #145d70;
+      font-weight: 950;
+    }
+    .preview-brand strong, .preview-brand small { display: block; }
+    .preview-brand strong { font-size: 14px; }
+    .preview-brand small { margin-top: 2px; color: var(--muted); font-size: 11px; }
+    .option-switch {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(150px, 1fr));
+      gap: 7px;
+      padding: 5px;
+      border: 1px solid var(--line);
+      border-radius: 15px;
+      background: #eaf0f2;
+    }
+    .option-switch button {
+      min-height: 45px;
+      padding: 7px 15px;
+      border: 0;
+      border-radius: 11px;
+      color: #4f6074;
+      background: transparent;
+      font-size: 12px;
+      font-weight: 900;
+    }
+    .option-switch button span { display: block; color: #526276; font-size: 9px; font-weight: 800; opacity: 1; }
+    .option-switch button.is-active {
+      color: white;
+      background: #145d70;
+      box-shadow: 0 7px 16px rgba(15, 48, 66, .18);
+    }
+    .option-switch button.is-active span { color: white; }
+    .preview-safety { min-width: 300px; color: #5d6e82; font-size: 11px; text-align: right; }
+    .preview-safety strong { color: var(--green); }
+    .stage { min-height: calc(100vh - 72px); padding: 24px; overflow: auto; }
+    .preview-option { display: none; }
+    .preview-option.is-active { display: block; }
+    .desktop-frame {
+      position: relative;
+      width: 1440px;
+      height: 900px;
+      margin: 0 auto 28px;
+      overflow: hidden;
+      border: 1px solid rgba(15, 48, 66, .16);
+      border-radius: 24px;
+      background: white;
+      box-shadow: 0 28px 80px rgba(15, 48, 66, .19);
+    }
+    .preview-only {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 9px;
+      border: 1px solid rgba(20, 117, 138, .17);
+      border-radius: 999px;
+      color: var(--teal);
+      background: #edf7f8;
+      font-size: 10px;
+      font-weight: 950;
+      letter-spacing: .08em;
+      white-space: nowrap;
+    }
+    .eyebrow { margin: 0 0 5px; color: var(--teal); font-size: 10px; font-weight: 950; letter-spacing: .13em; text-transform: uppercase; }
+    .muted { color: var(--muted); }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      min-height: 38px;
+      padding: 8px 13px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      color: #40536a;
+      background: white;
+      font-size: 11px;
+      font-weight: 900;
+    }
+    .btn.primary { color: white; border-color: transparent; background: var(--teal); }
+    .btn.danger { color: var(--danger); border-color: rgba(167, 51, 66, .2); background: #fff8f8; }
+    .btn[disabled] { cursor: default; opacity: .78; }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      min-height: 25px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      color: #526376;
+      background: #edf1f3;
+      font-size: 9px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+    .badge.high { color: #106c58; background: #e4f4ef; }
+    .badge.fx { color: #1d668a; background: #e6f1f7; }
+    .badge.live { color: #16724e; background: #e7f6ef; }
+    .badge.warn { color: #8c6421; background: #fff5dc; }
+    .badge.off { color: #515e6d; background: #edf0f2; }
+    .avatar {
+      display: grid;
+      flex: 0 0 auto;
+      width: 38px;
+      height: 38px;
+      place-items: center;
+      border: 1px solid #d8e5e8;
+      border-radius: 13px;
+      color: var(--teal);
+      background: white;
+      font-size: 13px;
+      font-weight: 950;
+    }
+    .avatar.online { box-shadow: inset 0 0 0 1px #b9ead8, 0 0 0 3px #edf9f4; }
+    .bar { height: 5px; overflow: hidden; border-radius: 999px; background: #e5ecef; }
+    .bar i { display: block; height: 100%; border-radius: inherit; background: var(--teal); }
+
+    /* Option A */
+    .frame-a { padding: 26px; background: #edf2f4; }
+    .a-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 78px;
+      padding: 0 22px;
+      border: 1px solid var(--line);
+      border-radius: 20px 20px 0 0;
+      background: white;
+    }
+    .a-title { display: flex; align-items: center; gap: 13px; }
+    .a-title-mark { display: grid; width: 42px; height: 42px; place-items: center; border-radius: 14px; color: white; background: #145d70; font-size: 18px; }
+    .a-title h1 { margin: 0; font-size: 22px; letter-spacing: -.03em; }
+    .a-title p { margin: 3px 0 0; color: var(--muted); font-size: 10px; }
+    .a-actions { display: flex; align-items: center; gap: 8px; }
+    .a-kpis {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      height: 102px;
+      border-right: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      border-left: 1px solid var(--line);
+      background: white;
+    }
+    .a-kpi { display: grid; grid-template-columns: 36px 1fr; align-content: center; gap: 2px 11px; padding: 17px 22px; }
+    .a-kpi + .a-kpi { border-left: 1px solid var(--line); }
+    .a-kpi .ico { grid-row: span 2; display: grid; width: 34px; height: 34px; place-items: center; color: var(--teal); font-size: 16px; }
+    .a-kpi small { color: var(--muted); font-size: 9px; font-weight: 850; }
+    .a-kpi strong { font-size: 22px; font-variant-numeric: tabular-nums; }
+    .a-workspace {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 320px;
+      height: 652px;
+      margin-top: 14px;
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      overflow: hidden;
+      background: white;
+    }
+    .a-directory { min-width: 0; padding: 21px; }
+    .a-heading, .a-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .a-heading h2 { margin: 1px 0 2px; font-size: 19px; }
+    .a-heading p:last-child { margin: 0; color: var(--muted); font-size: 10px; }
+    .a-toolbar { margin: 17px 0 10px; }
+    .searchbox { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 12px; border: 1px solid var(--line); border-radius: 12px; color: #59697b; background: #f7f9fa; font-size: 11px; }
+    .a-toolbar .searchbox { flex: 1; }
+    .seg { display: flex; gap: 3px; padding: 3px; border: 1px solid var(--line); border-radius: 12px; background: #edf2f4; }
+    .seg span { padding: 7px 10px; border-radius: 9px; color: #667489; font-size: 9px; font-weight: 900; }
+    .seg .on { color: white; background: var(--teal); }
+    .filter-chips { display: flex; gap: 6px; margin-bottom: 11px; }
+    .filter-chips span { padding: 6px 9px; border: 1px solid var(--line); border-radius: 999px; color: #617084; font-size: 9px; font-weight: 850; }
+    .filter-chips .on { color: var(--teal); border-color: rgba(20, 117, 138, .25); background: #edf7f8; }
+    .code-group-head {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto auto auto;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      color: #25445b;
+      background: #eef7f7;
+      font-size: 9px;
+    }
+    .code-group-head strong { font-size: 11px; }
+    .a-table-head, .a-row { display: grid; grid-template-columns: 1.6fr .9fr .75fr .7fr .7fr 20px; align-items: center; gap: 11px; }
+    .a-table-head { min-height: 35px; padding: 0 10px; color: #596778; font-size: 8px; font-weight: 950; letter-spacing: .04em; }
+    .a-row { min-height: 67px; padding: 8px 10px; border-top: 1px solid var(--line); font-size: 10px; }
+    .a-row.selected { background: #f5fafb; box-shadow: inset 3px 0 var(--teal); }
+    .a-person { display: flex; align-items: center; gap: 9px; min-width: 0; }
+    .a-person div { min-width: 0; }
+    .a-person strong, .a-person small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .a-person strong { font-size: 10px; }
+    .a-person small, .a-cell small { margin-top: 3px; color: #5b6979; font-size: 8px; }
+    .a-cell strong, .a-cell small { display: block; }
+    .a-cell strong { font-size: 10px; }
+    .a-pagination { display: flex; justify-content: center; gap: 12px; padding-top: 10px; color: var(--muted); font-size: 9px; }
+    .a-profile { display: flex; flex-direction: column; min-width: 0; border-left: 1px solid var(--line); background: #f9fbfb; }
+    .a-profile-head { padding: 20px; border-bottom: 1px solid var(--line); background: white; }
+    .a-profile-head .personline { display: flex; align-items: center; gap: 10px; margin-top: 11px; }
+    .a-profile-head h3 { margin: 0; max-width: 200px; overflow: hidden; font-size: 13px; text-overflow: ellipsis; }
+    .a-profile-head p { margin: 3px 0 0; color: var(--muted); font-size: 9px; }
+    .a-profile-body { display: grid; gap: 11px; padding: 15px; overflow: hidden; }
+    .side-section { padding: 12px; border: 1px solid var(--line); border-radius: 14px; background: white; }
+    .side-section h4 { margin: 0 0 9px; font-size: 10px; }
+    .side-section .twocol { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .mini-stat { padding: 8px; border-radius: 9px; background: var(--soft); }
+    .mini-stat small, .mini-stat strong { display: block; }
+    .mini-stat small { color: var(--muted); font-size: 8px; }
+    .mini-stat strong { margin-top: 3px; font-size: 11px; }
+    .code-source { display: grid; gap: 5px; padding: 9px; border-radius: 10px; background: #eef7f7; }
+    .code-source strong { font-size: 10px; }
+    .code-source small { color: var(--muted); font-size: 8px; }
+    .danger-zone { margin-top: auto; padding: 12px; border: 1px solid rgba(167, 51, 66, .16); border-radius: 14px; background: #fffafa; }
+    .danger-zone strong { display: block; color: var(--danger); font-size: 10px; }
+    .danger-zone p { margin: 5px 0 9px; color: #806d71; font-size: 8px; line-height: 1.5; }
+
+    /* Option B */
+    .frame-b { display: grid; grid-template-columns: 222px 1fr; background: #eef3f4; }
+    .b-sidebar { display: flex; flex-direction: column; padding: 24px 17px; color: #d8eef2; background: #12394a; }
+    .b-brand { display: flex; align-items: center; gap: 10px; padding: 0 7px 22px; border-bottom: 1px solid rgba(255,255,255,.11); }
+    .b-logo { display: grid; width: 37px; height: 37px; place-items: center; border-radius: 12px; color: #143746; background: #a9eaf2; font-weight: 950; }
+    .b-brand strong { display: block; color: white; font-size: 12px; }
+    .b-brand small { color: #91bdc7; font-size: 8px; }
+    .b-nav { display: grid; gap: 5px; margin-top: 20px; }
+    .b-nav div { display: flex; align-items: center; gap: 10px; padding: 10px 11px; border-radius: 11px; color: #a9c8d0; font-size: 10px; font-weight: 850; }
+    .b-nav .on { color: white; background: rgba(127, 219, 232, .14); box-shadow: inset 3px 0 #7bdbe8; }
+    .b-sidebar-note { margin-top: auto; padding: 12px; border: 1px solid rgba(255,255,255,.11); border-radius: 13px; background: rgba(255,255,255,.06); }
+    .b-sidebar-note strong { display: block; color: #a9eff8; font-size: 9px; }
+    .b-sidebar-note p { margin: 5px 0 0; color: #96b9c2; font-size: 8px; line-height: 1.55; }
+    .b-main { min-width: 0; padding: 22px 25px; overflow: hidden; }
+    .b-header { display: flex; align-items: center; justify-content: space-between; height: 66px; }
+    .b-header h1 { margin: 0; font-size: 24px; letter-spacing: -.04em; }
+    .b-header p { margin: 4px 0 0; color: var(--muted); font-size: 10px; }
+    .b-header-actions { display: flex; align-items: center; gap: 8px; }
+    .b-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 13px 0 15px; }
+    .b-kpi { min-height: 81px; padding: 13px 14px; border: 1px solid var(--line); border-radius: 16px; background: white; }
+    .b-kpi small, .b-kpi strong { display: block; }
+    .b-kpi small { color: var(--muted); font-size: 8px; font-weight: 900; }
+    .b-kpi strong { margin-top: 7px; font-size: 21px; }
+    .b-kpi span { color: var(--green); font-size: 8px; font-weight: 850; }
+    .b-content { display: grid; grid-template-columns: minmax(0, 1fr) 272px; gap: 14px; height: 693px; }
+    .b-cohorts, .b-aside-card { border: 1px solid var(--line); border-radius: 20px; background: white; }
+    .b-cohorts { padding: 18px; overflow: hidden; }
+    .b-cohorts-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+    .b-cohorts-head h2 { margin: 0; font-size: 17px; }
+    .b-cohorts-head p { margin: 4px 0 0; color: var(--muted); font-size: 9px; }
+    .b-cohort-filters { display: flex; gap: 6px; margin: 14px 0; }
+    .b-cohort-filters span { padding: 6px 9px; border-radius: 999px; color: #637286; background: #eef2f4; font-size: 8px; font-weight: 900; }
+    .b-cohort-filters .on { color: white; background: var(--teal); }
+    .cohort-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 11px; }
+    .cohort-card { position: relative; min-height: 188px; padding: 15px; overflow: hidden; border: 1px solid var(--line); border-radius: 16px; background: #fbfcfc; }
+    .cohort-card::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 4px; background: var(--teal); }
+    .cohort-card.fx::before { background: #397fa1; }
+    .cohort-card.system::before { background: #8a96a5; }
+    .cohort-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+    .cohort-top small { display: block; margin-bottom: 4px; color: var(--muted); font-size: 8px; }
+    .cohort-top strong { font-size: 12px; }
+    .cohort-code { margin: 13px 0 9px; color: #29445a; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 13px; font-weight: 900; letter-spacing: .04em; }
+    .cohort-numbers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin: 10px 0; }
+    .cohort-numbers div { padding: 7px; border-radius: 9px; background: #f0f4f5; }
+    .cohort-numbers small, .cohort-numbers strong { display: block; }
+    .cohort-numbers small { color: var(--muted); font-size: 7px; }
+    .cohort-numbers strong { margin-top: 3px; font-size: 10px; }
+    .cohort-foot { display: flex; justify-content: space-between; margin-top: 9px; color: var(--teal); font-size: 8px; font-weight: 900; }
+    .b-aside { display: grid; grid-template-rows: 1fr auto; gap: 12px; }
+    .b-aside-card { padding: 16px; }
+    .b-aside-card h3 { margin: 0; font-size: 13px; }
+    .b-aside-card > p { margin: 4px 0 12px; color: var(--muted); font-size: 8px; }
+    .attention-list { display: grid; gap: 8px; }
+    .attention-item { display: grid; grid-template-columns: 31px 1fr auto; align-items: center; gap: 9px; padding: 10px; border-radius: 12px; background: #f5f8f9; }
+    .attention-ico { display: grid; width: 31px; height: 31px; place-items: center; border-radius: 10px; color: #8d6520; background: #fff4d7; font-size: 12px; }
+    .attention-item strong, .attention-item small { display: block; }
+    .attention-item strong { font-size: 9px; }
+    .attention-item small { margin-top: 3px; color: var(--muted); font-size: 7px; }
+    .attention-item b { color: var(--teal); font-size: 13px; }
+    .safe-delete { padding: 14px; border: 1px solid rgba(167, 51, 66, .15); border-radius: 17px; background: #fffafa; }
+    .safe-delete strong { color: var(--danger); font-size: 10px; }
+    .safe-delete ol { margin: 8px 0 10px; padding-left: 18px; color: #78676b; font-size: 8px; line-height: 1.6; }
+
+    /* Option C */
+    .frame-c { display: grid; grid-template-columns: 264px 410px 1fr; background: #f3f6f7; }
+    .c-left { display: flex; flex-direction: column; min-width: 0; padding: 20px 15px; color: #d8e8ed; background: #112f40; }
+    .c-brand { display: flex; align-items: center; justify-content: space-between; padding: 0 4px 17px; border-bottom: 1px solid rgba(255,255,255,.1); }
+    .c-brand strong { display: block; color: white; font-size: 12px; }
+    .c-brand small { color: #8fb4bf; font-size: 8px; }
+    .c-search { margin: 14px 0; color: #9ebbc3; border-color: rgba(255,255,255,.1); background: rgba(255,255,255,.07); }
+    .tree-title { margin: 11px 7px 7px; color: #769eaa; font-size: 8px; font-weight: 950; letter-spacing: .1em; text-transform: uppercase; }
+    .tree-item { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 34px; padding: 7px 9px; border-radius: 9px; color: #a9c3ca; font-size: 9px; font-weight: 850; }
+    .tree-item span:last-child { min-width: 22px; padding: 2px 5px; border-radius: 99px; color: #b8d8df; background: rgba(255,255,255,.08); text-align: center; font-size: 7px; }
+    .tree-item.on { color: white; background: rgba(82,198,217,.16); box-shadow: inset 3px 0 var(--cyan); }
+    .tree-item.child { padding-left: 24px; }
+    .tree-item.child em { display: block; color: #c5dce1; font-size: 7px; font-style: normal; }
+    .c-left-foot { margin-top: auto; padding: 10px; border-radius: 12px; color: #9fc0c8; background: rgba(255,255,255,.06); font-size: 8px; line-height: 1.5; }
+    .c-list { display: flex; flex-direction: column; min-width: 0; border-right: 1px solid var(--line); background: white; }
+    .c-list-head { padding: 19px; border-bottom: 1px solid var(--line); }
+    .c-list-head-top { display: flex; align-items: center; justify-content: space-between; }
+    .c-list-head h2 { margin: 0; font-size: 16px; }
+    .c-list-head p { margin: 4px 0 12px; color: var(--muted); font-size: 8px; }
+    .c-member-list { overflow: hidden; }
+    .c-member { display: grid; grid-template-columns: 39px 1fr auto; align-items: center; gap: 10px; min-height: 83px; padding: 12px 15px; border-bottom: 1px solid var(--line); }
+    .c-member.on { background: #eef7f8; box-shadow: inset 3px 0 var(--teal); }
+    .c-member-main { min-width: 0; }
+    .c-member-main strong { display: block; overflow: hidden; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+    .c-member-main small { display: block; margin-top: 4px; color: var(--muted); font-size: 8px; }
+    .c-member-tags { display: flex; gap: 4px; margin-top: 6px; }
+    .c-member-side { color: #59697b; font-size: 8px; text-align: right; }
+    .c-member-side strong { display: block; color: #344b61; font-size: 10px; }
+    .c-detail { min-width: 0; overflow: hidden; background: #f6f8f9; }
+    .c-detail-head { display: flex; align-items: center; justify-content: space-between; height: 89px; padding: 18px 22px; border-bottom: 1px solid var(--line); background: white; }
+    .c-detail-person { display: flex; align-items: center; gap: 11px; min-width: 0; }
+    .c-detail-person h1 { margin: 0; max-width: 390px; overflow: hidden; font-size: 17px; text-overflow: ellipsis; }
+    .c-detail-person p { margin: 4px 0 0; color: var(--muted); font-size: 8px; }
+    .c-detail-actions { display: flex; align-items: center; gap: 6px; }
+    .c-detail-body { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; height: 811px; padding: 14px; overflow: hidden; }
+    .c-card { padding: 14px; border: 1px solid var(--line); border-radius: 15px; background: white; }
+    .c-card.span { grid-column: 1 / -1; }
+    .c-card h3 { display: flex; align-items: center; justify-content: space-between; margin: 0 0 11px; font-size: 11px; }
+    .c-card h3 span { color: var(--muted); font-size: 7px; font-weight: 750; }
+    .metrics4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .metric { padding: 9px; border-radius: 10px; background: #f2f6f7; }
+    .metric small, .metric strong { display: block; }
+    .metric small { color: var(--muted); font-size: 7px; }
+    .metric strong { margin-top: 4px; font-size: 13px; }
+    .entitlement { display: grid; grid-template-columns: 1fr auto; gap: 8px; padding: 10px; border-radius: 11px; background: #eef7f7; }
+    .entitlement + .entitlement { margin-top: 7px; }
+    .entitlement strong, .entitlement small { display: block; }
+    .entitlement strong { font-size: 9px; }
+    .entitlement small { margin-top: 3px; color: var(--muted); font-size: 7px; }
+    .timeline { display: grid; gap: 8px; }
+    .timeline div { display: grid; grid-template-columns: 8px 1fr auto; gap: 8px; color: #43566b; font-size: 8px; }
+    .timeline i { width: 7px; height: 7px; margin-top: 2px; border-radius: 50%; background: var(--teal); }
+    .timeline time { color: var(--muted); }
+    .device-row { display: flex; align-items: center; justify-content: space-between; gap: 9px; padding: 8px 0; border-top: 1px solid var(--line); font-size: 8px; }
+    .device-row:first-of-type { border-top: 0; }
+    .c-danger { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 16px; padding: 12px 14px; border: 1px solid rgba(167,51,66,.18); border-radius: 15px; background: #fffafa; }
+    .c-danger strong { display: block; color: var(--danger); font-size: 10px; }
+    .c-danger p { margin: 4px 0 0; color: #7d6d70; font-size: 8px; }
+    .c-danger-steps { color: #7d6d70; font-size: 7px; white-space: nowrap; }
+
+    @media (max-width: 1500px) {
+      .preview-toolbar { min-width: 980px; }
+      .desktop-frame { margin-left: 0; }
+    }
+  </style>
+</head>
+<body>
+  <header class="preview-toolbar">
+    <div class="preview-brand">
+      <span class="preview-brand-mark">UX</span>
+      <div><strong>後台 UX/UI 設計選款</strong><small>1440 × 900 靜態桌面稿</small></div>
+    </div>
+    <nav class="option-switch" aria-label="設計方案切換">
+      <button type="button" class="is-active" data-option="a">A｜清單指揮台<span>最快落地</span></button>
+      <button type="button" data-option="b">B｜啟用碼班級<span>最符合分組管理</span></button>
+      <button type="button" data-option="c">C｜三欄 CRM<span>最高操作效率</span></button>
+    </nav>
+    <div class="preview-safety"><strong>● 完全離線預覽</strong><br />所有帳號均為 example.test 假資料，不會連接或修改正式站</div>
+  </header>
+
+  <main class="stage">
+    <section class="preview-option is-active" data-panel="a" aria-label="方案 A 清單指揮台">
+      <div class="desktop-frame frame-a">
+        <header class="a-top">
+          <div class="a-title">
+            <span class="a-title-mark">◇</span>
+            <div><p class="eyebrow">Operations Center</p><h1>管理控制中心</h1><p>從同一張清單處理會員、啟用碼來源與學習狀態。</p></div>
+          </div>
+          <div class="a-actions">
+            <span class="preview-only">STATIC PREVIEW</span>
+            <button class="btn primary" type="button" disabled>＋ 管理工具</button>
+            <button class="btn" type="button" disabled>操作紀錄</button>
+            <button class="btn" type="button" disabled>同步資料</button>
+          </div>
+        </header>
+        <div class="a-kpis">
+          <div class="a-kpi"><span class="ico">◎</span><small>全部會員</small><strong>128</strong></div>
+          <div class="a-kpi"><span class="ico">●</span><small>目前在線</small><strong style="color:var(--green)">7</strong></div>
+          <div class="a-kpi"><span class="ico">◇</span><small>待處理會員</small><strong>14</strong></div>
+          <div class="a-kpi"><span class="ico">◷</span><small>本週活躍</small><strong>83</strong></div>
+        </div>
+        <div class="a-workspace">
+          <section class="a-directory">
+            <div class="a-heading">
+              <div><p class="eyebrow">Member Intelligence</p><h2>會員與啟用碼來源</h2><p>依輸入的啟用碼分組，展開群組即可查看會員。</p></div>
+              <span class="badge">不重複會員 128</span>
+            </div>
+            <div class="a-toolbar">
+              <div class="searchbox">⌕　搜尋 Email、啟用碼備註或方案</div>
+              <div class="seg"><span>依會員</span><span class="on">依啟用碼</span></div>
+            </div>
+            <div class="filter-chips"><span class="on">全部群組 11</span><span>證券高業 6</span><span>初階外匯 3</span><span>管理員開通 1</span><span>無來源 1</span></div>
+            <div class="code-group-head"><strong>⌄　SENIOR••••GSIR</strong><span class="badge high">證券高業</span><span>2026 夏季班</span><span><b>32</b> 位・32/50 次</span></div>
+            <div class="a-table-head"><span>會員</span><span>授權來源</span><span>學習成效</span><span>投入</span><span>最近活動</span><span></span></div>
+            <div class="a-row selected">
+              <div class="a-person"><span class="avatar online">陳</span><div><strong>learner.chen@example.test</strong><small>已驗證・目前在線</small></div></div>
+              <div><span class="badge high">高業 · SENIOR…</span></div><div class="a-cell"><strong>284 題</strong><small>82% 正確率</small></div><div class="a-cell"><strong>6 小時 18 分</strong><small>累積練習</small></div><div class="a-cell"><strong>正在使用</strong><small>今日 14:32</small></div><span>›</span>
+            </div>
+            <div class="a-row">
+              <div class="a-person"><span class="avatar">林</span><div><strong>student.lin@example.test</strong><small>已驗證</small></div></div>
+              <div><span class="badge high">高業 · SENIOR…</span></div><div class="a-cell"><strong>168 題</strong><small>76% 正確率</small></div><div class="a-cell"><strong>3 小時 44 分</strong><small>累積練習</small></div><div class="a-cell"><strong>2 小時前</strong><small>今日 12:08</small></div><span>›</span>
+            </div>
+            <div class="a-row">
+              <div class="a-person"><span class="avatar">吳</span><div><strong>demo.wu@example.test</strong><small>已驗證</small></div></div>
+              <div><span class="badge high">高業 · SENIOR…</span></div><div class="a-cell"><strong>0 題</strong><small>尚未開始</small></div><div class="a-cell"><strong>0 分</strong><small>累積練習</small></div><div class="a-cell"><strong>3 天前</strong><small>08/23 19:20</small></div><span>›</span>
+            </div>
+            <div class="a-row">
+              <div class="a-person"><span class="avatar">許</span><div><strong>practice.hsu@example.test</strong><small>已驗證</small></div></div>
+              <div><span class="badge high">高業 · SENIOR…</span></div><div class="a-cell"><strong>94 題</strong><small>71% 正確率</small></div><div class="a-cell"><strong>1 小時 11 分</strong><small>累積練習</small></div><div class="a-cell"><strong>5 天前</strong><small>08/21 09:42</small></div><span>›</span>
+            </div>
+            <div class="a-pagination"><span>‹ 上一頁</span><b>第 1 頁・本群組 32 位</b><span>下一頁 ›</span></div>
+          </section>
+          <aside class="a-profile">
+            <div class="a-profile-head">
+              <span class="preview-only">會員快速明細</span>
+              <div class="personline"><span class="avatar online">陳</span><div><h3>learner.chen@example.test</h3><p>會員 ID：demo-001</p></div></div>
+              <div style="display:flex;gap:5px;margin-top:10px"><span class="badge high">高業已開通</span><span class="badge off">外匯未開通</span></div>
+            </div>
+            <div class="a-profile-body">
+              <section class="side-section"><h4>學習概況</h4><div class="twocol"><div class="mini-stat"><small>累積作答</small><strong>284</strong></div><div class="mini-stat"><small>正確率</small><strong>82%</strong></div></div></section>
+              <section class="side-section"><h4>啟用碼來源</h4><div class="code-source"><strong>SENIOR••••GSIR</strong><small>證券高業・2026 夏季班</small><small>兌換：2026/08/12 19:24</small></div></section>
+              <section class="side-section"><h4>常用操作</h4><div style="display:grid;grid-template-columns:1fr 1fr;gap:6px"><button class="btn primary" type="button" disabled>開通外匯</button><button class="btn" type="button" disabled>重設密碼</button><button class="btn" type="button" disabled>封存裝置</button><button class="btn" type="button" disabled>查看紀錄</button></div></section>
+              <section class="danger-zone"><strong>危險區域・永久移除帳號</strong><p>只允許主要管理員；需先查看刪除影響、重新驗證並完整輸入會員 Email。</p><button class="btn danger" type="button" disabled>永久移除會員帳號</button></section>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <section class="preview-option" data-panel="b" aria-label="方案 B 啟用碼班級中心">
+      <div class="desktop-frame frame-b">
+        <aside class="b-sidebar">
+          <div class="b-brand"><span class="b-logo">S</span><div><strong>Senior Securities</strong><small>ADMINISTRATION</small></div></div>
+          <nav class="b-nav"><div>⌂　營運總覽</div><div>♙　會員名冊</div><div class="on">◇　啟用碼班級</div><div>✓　權限管理</div><div>▤　稽核紀錄</div><div>⚙　系統狀態</div></nav>
+          <div class="b-sidebar-note"><strong>STATIC DESIGN PREVIEW</strong><p>此畫面只使用虛構資料。任何按鈕皆不會送出請求。</p></div>
+        </aside>
+        <main class="b-main">
+          <header class="b-header">
+            <div><p class="eyebrow">Activation Cohorts</p><h1>啟用碼班級</h1><p>把每組啟用碼當作一個班級，直接比較會員與學習狀態。</p></div>
+            <div class="b-header-actions"><span class="preview-only">ONLY A PREVIEW</span><button class="btn" type="button" disabled>匯出群組</button><button class="btn primary" type="button" disabled>＋ 建立啟用碼</button></div>
+          </header>
+          <section class="b-kpis"><div class="b-kpi"><small>全部班級</small><strong>11</strong><span>8 組使用中</span></div><div class="b-kpi"><small>已由啟用碼開通</small><strong>104</strong><span>占會員 81%</span></div><div class="b-kpi"><small>本週新兌換</small><strong>23</strong><span>較上週 +18%</span></div><div class="b-kpi"><small>需要留意</small><strong>3</strong><span style="color:#946821">1 組即將用完</span></div></section>
+          <div class="b-content">
+            <section class="b-cohorts">
+              <div class="b-cohorts-head"><div><h2>所有啟用碼群組</h2><p>同一會員若輸入高業與外匯兩組碼，會同時存在於兩個班級。</p></div><div class="searchbox" style="width:220px">⌕　搜尋遮罩碼或班級備註</div></div>
+              <div class="b-cohort-filters"><span class="on">全部 11</span><span>證券高業 6</span><span>初階外匯 3</span><span>系統群組 2</span><span>停用 2</span></div>
+              <div class="cohort-grid">
+                <article class="cohort-card"><div class="cohort-top"><div><small>證券高業・使用中</small><strong>2026 夏季班</strong></div><span class="badge high">高業</span></div><div class="cohort-code">SENIOR••••GSIR</div><div class="bar"><i style="width:64%"></i></div><div class="cohort-numbers"><div><small>會員</small><strong>32 人</strong></div><div><small>使用量</small><strong>32 / 50</strong></div><div><small>本週活躍</small><strong>24 人</strong></div></div><div class="cohort-foot"><span>零作答 3 人</span><span>查看班級會員 →</span></div></article>
+                <article class="cohort-card fx"><div class="cohort-top"><div><small>初階外匯・使用中</small><strong>外匯加強班</strong></div><span class="badge fx">外匯</span></div><div class="cohort-code">FOREX••••2026</div><div class="bar"><i style="width:90%;background:#397fa1"></i></div><div class="cohort-numbers"><div><small>會員</small><strong>18 人</strong></div><div><small>使用量</small><strong>18 / 20</strong></div><div><small>本週活躍</small><strong>11 人</strong></div></div><div class="cohort-foot"><span style="color:#946821">剩餘 2 次</span><span>查看班級會員 →</span></div></article>
+                <article class="cohort-card"><div class="cohort-top"><div><small>證券高業・使用中</small><strong>合作講師專班</strong></div><span class="badge high">高業</span></div><div class="cohort-code">PARTNER••••A816</div><div class="bar"><i style="width:42%"></i></div><div class="cohort-numbers"><div><small>會員</small><strong>21 人</strong></div><div><small>使用量</small><strong>21 / 50</strong></div><div><small>本週活躍</small><strong>17 人</strong></div></div><div class="cohort-foot"><span>零作答 1 人</span><span>查看班級會員 →</span></div></article>
+                <article class="cohort-card system"><div class="cohort-top"><div><small>系統群組</small><strong>管理員直接開通</strong></div><span class="badge off">非啟用碼</span></div><div class="cohort-code">ADMIN GRANTED</div><div class="bar"><i style="width:100%;background:#8a96a5"></i></div><div class="cohort-numbers"><div><small>會員</small><strong>9 人</strong></div><div><small>高業</small><strong>7 人</strong></div><div><small>外匯</small><strong>5 人</strong></div></div><div class="cohort-foot" style="color:#687687"><span>由管理員操作產生</span><span>查看會員 →</span></div></article>
+              </div>
+            </section>
+            <aside class="b-aside">
+              <section class="b-aside-card"><h3>今天需要處理</h3><p>依群組自動整理的營運待辦。</p><div class="attention-list"><div class="attention-item"><span class="attention-ico">!</span><div><strong>外匯加強班即將用完</strong><small>FOREX••••2026・剩餘 2 次</small></div><b>1</b></div><div class="attention-item"><span class="attention-ico">◷</span><div><strong>開通後仍未作答</strong><small>分布於 3 個啟用碼班級</small></div><b>9</b></div><div class="attention-item"><span class="attention-ico">↘</span><div><strong>30 天沒有活動</strong><small>建議確認是否需要關懷</small></div><b>6</b></div><div class="attention-item"><span class="attention-ico">?</span><div><strong>來源無法辨識</strong><small>舊資料或手動匯入</small></div><b>2</b></div></div></section>
+              <section class="safe-delete"><strong>會員移除採雙重防呆</strong><ol><li>只能從會員詳細頁進入</li><li>預覽將刪除的所有資料</li><li>重新驗證並輸入完整 Email</li></ol><button class="btn danger" type="button" disabled>查看安全刪除流程</button></section>
+            </aside>
+          </div>
+        </main>
+      </div>
+    </section>
+
+    <section class="preview-option" data-panel="c" aria-label="方案 C 三欄 CRM 工作區">
+      <div class="desktop-frame frame-c">
+        <aside class="c-left">
+          <div class="c-brand"><div><strong>會員營運工作區</strong><small>ADMIN CRM</small></div><span class="preview-only" style="color:#a9eff8;background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.1)">PREVIEW</span></div>
+          <div class="searchbox c-search">⌕　搜尋會員或啟用碼</div>
+          <p class="tree-title">智慧清單</p><div class="tree-item"><span>全部會員</span><span>128</span></div><div class="tree-item"><span>待開通</span><span>14</span></div><div class="tree-item"><span>開通後零作答</span><span>9</span></div><div class="tree-item"><span>30 天未活動</span><span>6</span></div>
+          <p class="tree-title">依啟用碼分類</p><div class="tree-item"><span>⌄　證券高業</span><span>6</span></div><div class="tree-item child on"><span>SENIOR••••GSIR<em>2026 夏季班</em></span><span>32</span></div><div class="tree-item child"><span>PARTNER••••A816<em>合作講師專班</em></span><span>21</span></div><div class="tree-item"><span>›　初階外匯</span><span>3</span></div><div class="tree-item"><span>管理員直接開通</span><span>9</span></div><div class="tree-item"><span>來源不明</span><span>2</span></div>
+          <div class="c-left-foot"><strong style="color:#bcebf1">離線設計預覽</strong><br />所有 Email 均屬 example.test 保留網域；不會呼叫正式 API。</div>
+        </aside>
+        <section class="c-list">
+          <header class="c-list-head"><div class="c-list-head-top"><h2>2026 夏季班</h2><span class="badge high">高業</span></div><p>SENIOR••••GSIR・32 位兌換會員</p><div class="searchbox">⌕　在這個群組搜尋會員</div></header>
+          <div class="c-member-list">
+            <div class="c-member on"><span class="avatar online">陳</span><div class="c-member-main"><strong>learner.chen@example.test</strong><small>正在使用・今日 14:32</small><div class="c-member-tags"><span class="badge high">高業</span><span class="badge off">外匯未開通</span></div></div><div class="c-member-side"><strong>284 題</strong>82%</div></div>
+            <div class="c-member"><span class="avatar">林</span><div class="c-member-main"><strong>student.lin@example.test</strong><small>2 小時前・今日 12:08</small><div class="c-member-tags"><span class="badge high">高業</span><span class="badge fx">外匯</span></div></div><div class="c-member-side"><strong>168 題</strong>76%</div></div>
+            <div class="c-member"><span class="avatar">吳</span><div class="c-member-main"><strong>demo.wu@example.test</strong><small>3 天前・尚未開始</small><div class="c-member-tags"><span class="badge high">高業</span></div></div><div class="c-member-side"><strong>0 題</strong>—</div></div>
+            <div class="c-member"><span class="avatar">許</span><div class="c-member-main"><strong>practice.hsu@example.test</strong><small>5 天前・08/21 09:42</small><div class="c-member-tags"><span class="badge high">高業</span></div></div><div class="c-member-side"><strong>94 題</strong>71%</div></div>
+            <div class="c-member"><span class="avatar">黃</span><div class="c-member-main"><strong>sample.huang@example.test</strong><small>8 天前・08/18 16:10</small><div class="c-member-tags"><span class="badge high">高業</span><span class="badge fx">外匯</span></div></div><div class="c-member-side"><strong>412 題</strong>88%</div></div>
+            <div class="c-member"><span class="avatar">周</span><div class="c-member-main"><strong>training.chou@example.test</strong><small>12 天前・08/14 20:16</small><div class="c-member-tags"><span class="badge high">高業</span></div></div><div class="c-member-side"><strong>58 題</strong>69%</div></div>
+            <div class="c-member"><span class="avatar">趙</span><div class="c-member-main"><strong>mock.chao@example.test</strong><small>21 天前・08/05 08:03</small><div class="c-member-tags"><span class="badge high">高業</span></div></div><div class="c-member-side"><strong>21 題</strong>62%</div></div>
+          </div>
+        </section>
+        <main class="c-detail">
+          <header class="c-detail-head"><div class="c-detail-person"><span class="avatar online">陳</span><div><h1>learner.chen@example.test</h1><p>demo-001・Email 已驗證・目前在線</p></div></div><div class="c-detail-actions"><button class="btn primary" type="button" disabled>開通外匯</button><button class="btn" type="button" disabled>重設密碼</button><button class="btn" type="button" disabled>更多 ⋯</button></div></header>
+          <div class="c-detail-body">
+            <section class="c-card span"><h3>學習概況 <span>最後活動：正在使用</span></h3><div class="metrics4"><div class="metric"><small>累積作答</small><strong>284</strong></div><div class="metric"><small>正確率</small><strong>82%</strong></div><div class="metric"><small>累積時間</small><strong>6h 18m</strong></div><div class="metric"><small>最高連對</small><strong>19</strong></div></div></section>
+            <section class="c-card"><h3>題庫授權 <span>來源可追溯</span></h3><div class="entitlement"><div><strong>證券高業・已開通</strong><small>SENIOR••••GSIR・2026 夏季班</small><small>兌換：2026/08/12 19:24</small></div><span class="badge high">有效</span></div><div class="entitlement" style="background:#f1f3f4"><div><strong>初階外匯・未開通</strong><small>尚未輸入外匯啟用碼</small></div><span class="badge off">無權限</span></div></section>
+            <section class="c-card"><h3>帳號與裝置 <span>2 台有效裝置</span></h3><div class="device-row"><span>Windows Chrome・工作階段</span><span class="badge live">在線</span></div><div class="device-row"><span>iPhone Safari・昨日 22:14</span><span class="badge off">有效</span></div><div class="device-row"><span>Email 驗證</span><strong>2026/08/12</strong></div></section>
+            <section class="c-card"><h3>近期活動 <span>最近 7 天</span></h3><div class="timeline"><div><i></i><span>完成高業練習 20 題・85%</span><time>14:32</time></div><div><i></i><span>登入 Windows Chrome</span><time>13:58</time></div><div><i></i><span>收藏題目 #SEC-184</span><time>昨天</time></div><div><i></i><span>完成章節測驗・78%</span><time>08/24</time></div></div></section>
+            <section class="c-card"><h3>管理操作紀錄 <span>僅管理員可見</span></h3><div class="timeline"><div><i></i><span>啟用碼兌換・證券高業</span><time>08/12</time></div><div><i style="background:#8a96a5"></i><span>會員完成 Email 驗證</span><time>08/12</time></div><div><i style="background:#8a96a5"></i><span>帳號建立</span><time>08/12</time></div></div></section>
+            <section class="c-danger"><div><strong>帳號管理・永久移除會員</strong><p>將刪除 Auth 帳號與所有會員資料；不會回補啟用碼次數，且無法復原。</p></div><div style="display:flex;align-items:center;gap:10px"><span class="c-danger-steps">影響預覽 → 重新驗證 → 輸入完整 Email</span><button class="btn danger" type="button" disabled>永久移除帳號</button></div></section>
+          </div>
+        </main>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    (() => {
+      const buttons = Array.from(document.querySelectorAll('[data-option]'));
+      const panels = Array.from(document.querySelectorAll('[data-panel]'));
+      buttons.forEach((button) => {
+        button.addEventListener('click', () => {
+          const option = button.getAttribute('data-option');
+          buttons.forEach((candidate) => candidate.classList.toggle('is-active', candidate === button));
+          panels.forEach((panel) => panel.classList.toggle('is-active', panel.getAttribute('data-panel') === option));
+          document.querySelector('.stage')?.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+        });
+      });
+    })();
+  </script>
+</body>
+</html>
