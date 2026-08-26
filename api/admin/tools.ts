@@ -1,4 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
+import { canonicalizeActivationCode } from "../_activationCodeFormat.js";
 import {
   getConfiguredAdminEmails,
   HttpError,
@@ -49,9 +50,9 @@ function normalizeExamId(value: unknown): ExamId {
 function activationCodeRecord(customCode: string | null, examId: ExamId) {
   const prefix = examId === "junior-foreign-exchange" ? "FOREX" : "SENIOR";
   const raw = customCode || `${prefix}${randomBytes(8).toString("hex")}`;
-  const normalized = raw.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+  const normalized = canonicalizeActivationCode(raw);
   if (normalized.length < 10) throw new HttpError("啟用碼至少需要 10 個英數字元。", 400);
-  const formatted = normalized.match(/.{1,4}/g)?.join("-") || normalized;
+  const formatted = normalized;
   const preview = normalized.length <= 8 ? normalized : `${normalized.slice(0, 6)}...${normalized.slice(-4)}`;
   const hash = createHash("sha256").update(normalized).digest("hex");
   return { formatted, preview, hash };

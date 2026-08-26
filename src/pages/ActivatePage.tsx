@@ -69,7 +69,7 @@ export function ActivatePage() {
                 value={code}
                 required
                 onChange={(event) => setCode(event.currentTarget.value.toUpperCase())}
-                placeholder={examId === "junior-foreign-exchange" ? "FOREX-XXXX-XXXX" : "SENIOR-XXXX-XXXX"}
+                placeholder={examId === "junior-foreign-exchange" ? "FOREXXXXXXXX" : "SENIORXXXXXXXX"}
                 autoComplete="one-time-code"
               />
             </label>
