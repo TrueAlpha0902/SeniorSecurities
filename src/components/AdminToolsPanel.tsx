@@ -307,7 +307,7 @@ function ActivationCodeTool({ accessToken }: { accessToken: string }) {
           </select>
         </label>
         <label>可使用次數<input type="number" min={1} max={999} value={maxUses} onChange={(event) => setMaxUses(Number(event.target.value))} /></label>
-        <label className="admin-tool-wide">自訂啟用碼（可留空）<input value={customCode} onChange={(event) => setCustomCode(event.target.value)} placeholder={examId === "junior-foreign-exchange" ? "FOREX-XXXX-XXXX" : "SENIOR-XXXX-XXXX"} /></label>
+        <label className="admin-tool-wide">自訂啟用碼（可留空，不需連字號）<input value={customCode} onChange={(event) => setCustomCode(event.target.value)} placeholder={examId === "junior-foreign-exchange" ? "FOREXXXXXXXX" : "SENIORXXXXXXXX"} /></label>
         <label className="admin-tool-wide">備註<input value={note} onChange={(event) => setNote(event.target.value)} placeholder="例如：2026 夏季班" /></label>
       </div>
       <div className="admin-tool-actions">
@@ -469,4 +469,3 @@ function ToolMessages({ message, error }: { message: string; error: string }) {
     </>
   );
 }
-
