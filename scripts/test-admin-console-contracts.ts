@@ -1,5 +1,6 @@
 import { access, readFile } from "node:fs/promises";
 import path from "node:path";
+import { acquireBodyScrollLock } from "../src/hooks/useBodyScrollLock";
 
 const root = process.cwd();
 const read = (relativePath: string) => readFile(path.join(root, relativePath), "utf8");
@@ -20,6 +21,7 @@ const [
   interactionPrimitives,
   appLayout,
   currentTheme,
+  bodyScrollLock,
 ] = await Promise.all([
   read("src/components/AdminToolsPanel.tsx"),
   read("api/_adminClient.ts"),
@@ -30,6 +32,7 @@ const [
   read("src/components/V93InteractionPrimitives.tsx"),
   read("src/components/AppLayout.tsx"),
   read("src/styles/theme-current.css"),
+  read("src/hooks/useBodyScrollLock.ts"),
 ]);
 
 assert(panel.includes("啟用碼") && panel.includes("管理員") && panel.includes("系統狀態"), "Admin workspace must keep its core tools.");
@@ -62,5 +65,35 @@ assert(
     && adminPage.includes("body: JSON.stringify({ action, userId: target.id, email: target.email, deviceId, examId })"),
   "Both entitlement buttons must preserve their exam id through the confirmation and POST flow.",
 );
+assert(
+  bodyScrollLock.includes("const activeLocks = new Set<symbol>()")
+    && bodyScrollLock.includes("if (activeLocks.size > 0) return;")
+    && adminPage.includes("useBodyScrollLock(hasPageOverlay)")
+    && !adminPage.includes("auditOpen || pendingConfirmation")
+    && adminPage.includes("setPendingConfirmation(null);\n      await Promise.all(["),
+  "Nested admin confirmations must share a reference-counted scroll lock and release the dialog before background refreshes.",
+);
+
+const originalDocument = Object.getOwnPropertyDescriptor(globalThis, "document");
+const fakeBody = { style: { overflow: "auto" } };
+const currentOverflow = () => fakeBody.style.overflow;
+Object.defineProperty(globalThis, "document", {
+  configurable: true,
+  value: { body: fakeBody },
+});
+try {
+  const releaseDrawer = acquireBodyScrollLock();
+  const releaseConfirmation = acquireBodyScrollLock();
+  assert(currentOverflow() === "hidden", "Nested overlays must lock body scrolling.");
+  releaseConfirmation();
+  assert(currentOverflow() === "hidden", "Closing the confirmation must keep the underlying drawer locked.");
+  releaseDrawer();
+  assert(currentOverflow() === "auto", "Closing the final overlay must restore the original body overflow.");
+  releaseDrawer();
+  assert(currentOverflow() === "auto", "Scroll-lock cleanup must be idempotent.");
+} finally {
+  if (originalDocument) Object.defineProperty(globalThis, "document", originalDocument);
+  else delete (globalThis as { document?: unknown }).document;
+}
 
 console.log("Admin console contracts passed.");

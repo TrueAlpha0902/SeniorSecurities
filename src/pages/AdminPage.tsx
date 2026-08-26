@@ -28,6 +28,7 @@ import { GlassButton } from "../components/GlassButton";
 import { GlassCard } from "../components/GlassCard";
 import { LoadingState } from "../components/LoadingState";
 import { V93ConfirmDialog, V93InlineNotice } from "../components/V93InteractionPrimitives";
+import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 import { announceInteractionFeedback } from "../lib/interactionFeedback";
 import { formatTotalPracticeTime } from "../lib/practiceTime";
 import "../styles/admin-leaderboard-v42.css";
@@ -545,13 +546,11 @@ function AdminContent() {
     userDetailRequest.current.controller?.abort();
   }, []);
 
+  const hasPageOverlay = Boolean(selectedUserId || toolsOpen || leaderboardOpen || auditOpen);
+  useBodyScrollLock(hasPageOverlay);
+
   useEffect(() => {
-    const hasOverlay = Boolean(
-      selectedUserId || toolsOpen || leaderboardOpen || auditOpen || pendingConfirmation,
-    );
-    if (!hasOverlay) return;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    if (!hasPageOverlay) return;
     const closeTopOverlay = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       if (pendingConfirmation) return;
@@ -562,10 +561,9 @@ function AdminContent() {
     };
     window.addEventListener("keydown", closeTopOverlay);
     return () => {
-      document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", closeTopOverlay);
     };
-  }, [auditOpen, leaderboardOpen, pendingConfirmation, selectedUserId, toolsOpen]);
+  }, [auditOpen, hasPageOverlay, leaderboardOpen, pendingConfirmation, selectedUserId, toolsOpen]);
 
   function requestUserAction(
     action: UserAction,
@@ -609,8 +607,11 @@ function AdminContent() {
       const successMessage = payload.message || "操作完成。";
       setMessage(successMessage);
       announceInteractionFeedback(successMessage, "success", 3200);
-      await loadUsers(true);
-      if (selectedUserId === target.id) await loadUserDetail(true);
+      setPendingConfirmation(null);
+      await Promise.all([
+        loadUsers(true),
+        selectedUserId === target.id ? loadUserDetail(true) : Promise.resolve(),
+      ]);
     } catch (actionError: unknown) {
       const actionMessage = actionError instanceof Error ? actionError.message : "操作失敗。";
       setError(actionMessage);
