@@ -42,9 +42,9 @@ function normalizeActivationCode(value: unknown): string | null {
 }
 
 function normalizeExamId(value: unknown): ExamId {
-  const examId = String(value || "senior-securities").trim().toLowerCase();
+  const examId = String(value || "").trim().toLowerCase();
   if (examId === "senior-securities" || examId === "junior-foreign-exchange") return examId;
-  throw new HttpError("題庫種類不正確。", 400);
+  throw new HttpError("請明確選擇啟用碼適用題庫。", 400);
 }
 
 function activationCodeRecord(customCode: string | null, examId: ExamId) {

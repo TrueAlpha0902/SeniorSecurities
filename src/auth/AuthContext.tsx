@@ -35,7 +35,7 @@ type AuthContextValue = {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<string | null>;
   signOut: () => Promise<void>;
-  redeemActivationCode: (code: string) => Promise<void>;
+  redeemActivationCode: (code: string, expectedExamId: ExamId) => Promise<void>;
   requestPasswordReset: (email: string, redirectTo?: string) => Promise<void>;
   updatePassword: (password: string) => Promise<void>;
   refreshAccess: () => Promise<void>;
@@ -361,12 +361,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setExamAccess(emptyExamAccess());
   }, [session]);
 
-  const redeemActivationCode = useCallback(async (code: string) => {
+  const redeemActivationCode = useCallback(async (code: string, expectedExamId: ExamId) => {
     if (localPreviewEnabled) return;
     if (!supabase) throw new Error("尚未設定 Supabase。請先建立 .env.local。");
     const normalizedCode = code.trim();
     if (!normalizedCode) throw new Error("請輸入啟用碼。");
-    const { error } = await supabase.rpc("redeem_activation_code", { p_code: normalizedCode });
+    const { error } = await supabase.rpc("redeem_exam_activation_code_v94", {
+      p_code: normalizedCode,
+      p_expected_exam_id: expectedExamId,
+    });
     if (error) throw error;
     const { data } = await supabase.auth.getUser();
     await refreshAccessForUser(data.user ?? null);

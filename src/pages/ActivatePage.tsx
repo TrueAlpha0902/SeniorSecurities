@@ -40,8 +40,8 @@ export function ActivatePage() {
     setError(null);
     setMessage(null);
     try {
-      await redeemActivationCode(code);
-      setMessage("啟用成功。");
+      await redeemActivationCode(code, examId);
+      setMessage(`已成功開通${EXAM_LABELS[examId]}。`);
       setCode("");
     } catch (activationError: unknown) {
       setError(activationError instanceof Error ? activationError.message : "啟用失敗，請確認啟用碼。");
@@ -62,6 +62,9 @@ export function ActivatePage() {
           </div>
         ) : (
           <form className="auth-form" onSubmit={(event) => void handleSubmit(event)}>
+            <p className="activation-scope-note">
+              此頁只接受<strong>{EXAM_LABELS[examId]}</strong>啟用碼；另一題庫需使用另外建立的啟用碼。
+            </p>
             <label>
               <span>啟用碼</span>
               <input

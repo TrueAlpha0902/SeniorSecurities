@@ -9,6 +9,11 @@ import "../styles/admin-tools.css";
 type ToolId = "activation" | "admins" | "health";
 type ExamId = "senior-securities" | "junior-foreign-exchange";
 
+type CreatedActivationCode = {
+  code: string;
+  examId: ExamId;
+};
+
 const EXAM_LABELS: Record<ExamId, string> = {
   "senior-securities": "證券高業",
   "junior-foreign-exchange": "初階外匯",
@@ -203,7 +208,7 @@ function ActivationCodeTool({ accessToken }: { accessToken: string }) {
   const [customCode, setCustomCode] = useState("");
   const [note, setNote] = useState("");
   const [maxUses, setMaxUses] = useState(1);
-  const [createdCode, setCreatedCode] = useState("");
+  const [createdCode, setCreatedCode] = useState<CreatedActivationCode | null>(null);
   const [rows, setRows] = useState<ActivationCodeRow[]>([]);
   const [isPrimaryAdmin, setIsPrimaryAdmin] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -233,7 +238,10 @@ function ActivationCodeTool({ accessToken }: { accessToken: string }) {
         method: "POST",
         body: JSON.stringify({ action: "create-activation-code", examId, code: customCode, note, maxUses }),
       });
-      setCreatedCode(payload.code || "");
+      if (!payload.code || (payload.examId !== "senior-securities" && payload.examId !== "junior-foreign-exchange")) {
+        throw new Error("伺服器未回傳完整的啟用碼題庫資訊。");
+      }
+      setCreatedCode({ code: payload.code, examId: payload.examId });
       const successMessage = payload.message || "啟用碼已建立。";
       setMessage(successMessage);
       announceInteractionFeedback(successMessage, "success");
@@ -300,22 +308,52 @@ function ActivationCodeTool({ accessToken }: { accessToken: string }) {
   return (
     <div className="admin-tool-pane" role="tabpanel">
       <div className="admin-tool-form-grid">
-        <label>題庫
-          <select value={examId} onChange={(event) => setExamId(event.target.value as ExamId)}>
-            <option value="senior-securities">證券高業</option>
-            <option value="junior-foreign-exchange">初階外匯</option>
-          </select>
-        </label>
+        <fieldset className="admin-activation-scope admin-tool-wide">
+          <legend>啟用碼適用題庫</legend>
+          <div className="admin-activation-scope-options">
+            <label className={`admin-activation-scope-option${examId === "senior-securities" ? " is-selected" : ""}`}>
+              <input
+                type="radio"
+                name="activation-exam-id"
+                value="senior-securities"
+                checked={examId === "senior-securities"}
+                disabled={busy}
+                onChange={() => setExamId("senior-securities")}
+              />
+              <span><strong>證券高業啟用碼</strong><small>只開通證券高業，不會開通初階外匯</small></span>
+            </label>
+            <label className={`admin-activation-scope-option${examId === "junior-foreign-exchange" ? " is-selected" : ""}`}>
+              <input
+                type="radio"
+                name="activation-exam-id"
+                value="junior-foreign-exchange"
+                checked={examId === "junior-foreign-exchange"}
+                disabled={busy}
+                onChange={() => setExamId("junior-foreign-exchange")}
+              />
+              <span><strong>初階外匯啟用碼</strong><small>只開通初階外匯，不會開通證券高業</small></span>
+            </label>
+          </div>
+          <p>每組啟用碼只能開通一個題庫；若兩個題庫都需要，請分別建立兩組啟用碼。</p>
+        </fieldset>
         <label>可使用次數<input type="number" min={1} max={999} value={maxUses} onChange={(event) => setMaxUses(Number(event.target.value))} /></label>
         <label className="admin-tool-wide">自訂啟用碼（可留空，不需連字號）<input value={customCode} onChange={(event) => setCustomCode(event.target.value)} placeholder={examId === "junior-foreign-exchange" ? "FOREXXXXXXXX" : "SENIORXXXXXXXX"} /></label>
         <label className="admin-tool-wide">備註<input value={note} onChange={(event) => setNote(event.target.value)} placeholder="例如：2026 夏季班" /></label>
       </div>
       <div className="admin-tool-actions">
-        <GlassButton variant="primary" busy={busy} disabled={busy} onClick={() => void createCode()}><KeyRound size={18} />建立啟用碼</GlassButton>
+        <GlassButton variant="primary" busy={busy} disabled={busy} onClick={() => void createCode()}><KeyRound size={18} />建立{EXAM_LABELS[examId]}啟用碼</GlassButton>
         <GlassButton variant="secondary" disabled={busy} onClick={() => void loadRows()}><RefreshCcw size={18} />重新整理</GlassButton>
       </div>
       {createdCode ? (
-        <div className="admin-created-code"><div><small>只顯示這一次，關閉後無法再次查看完整啟用碼。</small><strong>{createdCode}</strong></div><GlassButton variant="secondary" onClick={() => void copyCode(createdCode)}><Clipboard size={16} />複製</GlassButton></div>
+        <div className="admin-created-code">
+          <div>
+            <small>只顯示這一次，關閉後無法再次查看完整啟用碼。</small>
+            <span className="admin-created-code-scope">僅適用：{EXAM_LABELS[createdCode.examId]}</span>
+            <strong>{createdCode.code}</strong>
+            <small>此碼只會開通{EXAM_LABELS[createdCode.examId]}，另一題庫需另外建立啟用碼。</small>
+          </div>
+          <GlassButton variant="secondary" onClick={() => void copyCode(createdCode.code)}><Clipboard size={16} />複製</GlassButton>
+        </div>
       ) : null}
       <ToolMessages message={message} error={error} />
       <div className="admin-tool-list">

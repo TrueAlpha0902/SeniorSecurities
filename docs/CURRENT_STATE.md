@@ -1,7 +1,19 @@
 # SeniorSecurities Current State
 
 更新日期：2026-08-26
-目前版本：**v93 啟用碼無連字號顯示**
+目前版本：**v94 題庫專屬啟用碼**
+
+## 2026-08-26 題庫專屬啟用碼
+
+- 每組啟用碼只綁定一個題庫：`senior-securities`（證券高業）或 `junior-foreign-exchange`（初階外匯），兩個題庫必須分別建立啟用碼。
+- 既有指定啟用碼維持證券高業專用，不改碼、不重建，也不會授予初階外匯權限；正式明碼不寫入版本庫。
+- 新增 `redeem_exam_activation_code_v94`；兌換時會同時驗證目前頁面的題庫，跨題庫輸入會在增加使用次數前拒絕。
+- 舊 `redeem_activation_code(text)` 暫時保留，供已安裝的舊 PWA rolling compatibility；新版前端只呼叫 v94 題庫專屬 RPC。
+- 登入後的啟用導向會保留原本題庫；從初階外匯入口登入不再被送到預設的證券高業啟用頁。
+- 管理後台將兩種啟用碼改為明確分開的選項，建立按鈕與一次性結果均顯示適用題庫；API 缺少 `examId` 時 fail closed，不再默認高業。
+- 新增 migration：`supabase/migrations/20260826081812_add_exam_scoped_activation_redemption.sql`。
+- 正式 Supabase 已套用 migration；`BEGIN`／`ROLLBACK` 測試通過高業正確兌換、外匯正確兌換、雙向跨題庫拒絕、無效題庫拒絕與 RPC 權限，測試後沒有殘留測試碼或權限。
+- 正式指定碼驗證後仍為 `senior-securities`，`use_count = 0`；文件與測試不保存其明碼。
 
 ## 2026-08-26 啟用碼無連字號顯示
 
