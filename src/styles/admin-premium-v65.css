@@ -1539,9 +1539,43 @@
   box-shadow: 0 5px 14px rgba(15, 48, 66, .08);
 }
 .admin-directory-view-switch button:focus-visible,
+.admin-activation-group-filter select:focus-visible,
 .admin-activation-group-members button:focus-visible {
   outline: 3px solid rgba(20, 117, 138, .18);
   outline-offset: 2px;
+}
+.admin-activation-group-filter {
+  display: grid;
+  grid-template-columns: minmax(180px, 240px) minmax(280px, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  margin: -7px 0 18px;
+  padding: 12px 14px;
+  border: 1px solid var(--admin-line);
+  border-radius: 16px;
+  background: #f8fbfc;
+}
+.admin-activation-group-filter label {
+  color: var(--admin-navy);
+  font-size: .78rem;
+  font-weight: 880;
+}
+.admin-activation-group-filter select {
+  width: 100%;
+  min-height: 42px;
+  padding: 8px 38px 8px 12px;
+  border: 1px solid rgba(20, 48, 67, .14);
+  border-radius: 12px;
+  outline: 0;
+  color: var(--admin-ink);
+  background: #fff;
+  font: inherit;
+  font-size: .82rem;
+}
+.admin-activation-group-filter > span {
+  color: #7a8797;
+  font-size: .72rem;
+  font-weight: 760;
 }
 .admin-activation-groups {
   display: grid;
@@ -1566,6 +1600,7 @@
 }
 .admin-activation-group.is-direct > header { background: #f7f9fb; }
 .admin-activation-group.is-unactivated > header { background: #fafafa; }
+.admin-activation-group.is-deleted > header { background: #f7f8f9; }
 .admin-activation-group-icon {
   display: grid;
   width: 40px;
@@ -1670,6 +1705,7 @@
 }
 @media (max-width: 680px) {
   .admin-directory-view-switch { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
+  .admin-activation-group-filter { grid-template-columns: 1fr; }
   .admin-activation-group > header { grid-template-columns: auto minmax(0, 1fr); }
   .admin-activation-group-stats { grid-column: 2; justify-items: start; text-align: left; }
   .admin-activation-group-members button { grid-template-columns: auto minmax(0, 1fr) auto; }
@@ -1703,7 +1739,7 @@
   line-height: 1.65;
 }
 
-/* High-risk member deletion with AAL2 step-up and explicit typed confirmation. */
+/* High-risk member deletion with a fresh password-authenticated session. */
 .admin-delete-member-backdrop {
   position: fixed;
   z-index: 1400;

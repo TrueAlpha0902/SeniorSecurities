@@ -199,7 +199,7 @@ export async function requireAuthenticatedUser(req: ApiRequest) {
 
 export async function requireAdminUser(
   req: ApiRequest,
-  options: { roles?: AdminRole[]; requireAal2?: boolean } = {},
+  options: { roles?: AdminRole[]; requireAal2?: boolean; requireFreshPassword?: boolean } = {},
 ) {
   const token = extractBearerToken(req);
   if (!token) throw new HttpError("尚未登入，或登入狀態已過期。", 401);
@@ -222,26 +222,41 @@ export async function requireAdminUser(
   }
 
   let aal: "aal1" | "aal2" = "aal1";
-  if (options.requireAal2) {
+  let passwordRecentlyVerified = false;
+  if (options.requireAal2 || options.requireFreshPassword) {
     const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
     const claims = claimsData?.claims;
     if (claimsError || !claims || claims.sub !== data.user.id) {
-      throw new HttpError("無法確認目前管理員的多因素驗證狀態。", 401);
+      throw new HttpError("無法確認目前管理員的驗證狀態。", 401);
     }
     aal = claims.aal === "aal2" ? "aal2" : "aal1";
-    if (aal !== "aal2") {
-      throw new HttpError("永久刪除會員需要主要管理員完成多因素驗證後才能執行。", 403);
-    }
     const sessionId = String(claims.session_id || "");
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sessionId)) {
       throw new HttpError("目前管理員工作階段缺少可驗證的 session_id。", 401);
     }
-    const { data: activeSession, error: activeSessionError } = await supabase.rpc(
-      "verify_active_aal2_session_v95",
-      { p_user_id: data.user.id, p_session_id: sessionId },
-    );
-    if (activeSessionError || activeSession !== true) {
-      throw new HttpError("目前管理員工作階段已失效，請重新登入並完成雙重驗證。", 401);
+
+    if (options.requireAal2) {
+      if (aal !== "aal2") {
+        throw new HttpError("此管理操作需要主要管理員完成多因素驗證後才能執行。", 403);
+      }
+      const { data: activeSession, error: activeSessionError } = await supabase.rpc(
+        "verify_active_aal2_session_v95",
+        { p_user_id: data.user.id, p_session_id: sessionId },
+      );
+      if (activeSessionError || activeSession !== true) {
+        throw new HttpError("目前管理員工作階段已失效，請重新登入並完成雙重驗證。", 401);
+      }
+    }
+
+    if (options.requireFreshPassword) {
+      const { data: activePasswordSession, error: activePasswordSessionError } = await supabase.rpc(
+        "verify_active_recent_password_session_v97",
+        { p_user_id: data.user.id, p_session_id: sessionId, p_max_age_seconds: 600 },
+      );
+      if (activePasswordSessionError || activePasswordSession !== true) {
+        throw new HttpError("目前密碼驗證已失效，請重新輸入主要管理員密碼。", 401);
+      }
+      passwordRecentlyVerified = true;
     }
   }
 
@@ -251,6 +266,7 @@ export async function requireAdminUser(
     role: databaseAccess.role,
     isPrimaryAdmin,
     aal,
+    passwordRecentlyVerified,
   };
 }
 

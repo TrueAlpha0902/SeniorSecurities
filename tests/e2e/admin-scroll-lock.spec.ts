@@ -174,6 +174,25 @@ async function mockAdminPage(page: Page, users: () => typeof memberRow[]) {
       body: `
         export const isSupabaseConfigured = false;
         export const supabase = null;
+        export function createEphemeralAuthClient() {
+          return {
+            auth: {
+              signInWithPassword: async ({ email, password }) => {
+                if (password !== "correct-admin-password") {
+                  return { data: { user: null, session: null }, error: { message: "invalid credentials" } };
+                }
+                return {
+                  data: {
+                    user: { id: "${ADMIN_ID}", email },
+                    session: { access_token: "fresh-password-proof-token" },
+                  },
+                  error: null,
+                };
+              },
+              signOut: async () => ({ error: null }),
+            },
+          };
+        }
       `,
     });
   });
@@ -279,11 +298,15 @@ test("member drawer releases body scrolling after close and after the selected m
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
 });
 
-test("activation-code groups keep exam memberships separate and expose the primary-admin delete dialog", async ({ page }) => {
+test("activation-code groups can be selected and member deletion uses only a fresh password proof", async ({ page }) => {
   let adminMutationCalls = 0;
+  let mutationAuthorization = "";
+  let mutationBody: Record<string, unknown> = {};
   await mockAdminPage(page, () => [memberRow]);
   await page.route("**/api/admin/action", async (route) => {
     adminMutationCalls += 1;
+    mutationAuthorization = route.request().headers().authorization || "";
+    mutationBody = route.request().postDataJSON() as Record<string, unknown>;
     await route.fulfill({
       status: 500,
       contentType: "application/json",
@@ -295,6 +318,10 @@ test("activation-code groups keep exam memberships separate and expose the prima
   await expect(page.getByRole("heading", { name: "使用者與活動" })).toBeVisible();
   await page.getByRole("button", { name: "依啟用碼" }).click();
 
+  const groupSelect = page.getByLabel("選擇啟用碼分類");
+  await expect(groupSelect).toBeVisible();
+  await groupSelect.selectOption(`code:${HIGH_CODE_ID}`);
+
   const highGroup = page.locator(".admin-activation-group").filter({
     has: page.getByRole("heading", { name: highCodeMembership.note }),
   });
@@ -305,6 +332,8 @@ test("activation-code groups keep exam memberships separate and expose the prima
   const fxGroup = page.locator(".admin-activation-group").filter({
     has: page.getByRole("heading", { name: fxCodeMembership.note }),
   });
+  await expect(fxGroup).toHaveCount(0);
+  await groupSelect.selectOption("all");
   await expect(fxGroup).toContainText("初階外匯");
   await expect(fxGroup).toContainText(fxCodeMembership.codePreview);
   await expect(fxGroup.getByRole("button", { name: `查看 ${MEMBER_EMAIL} 的會員明細` })).toBeVisible();
@@ -318,11 +347,29 @@ test("activation-code groups keep exam memberships separate and expose the prima
   const deleteDialog = page.getByRole("alertdialog", { name: "永久移除會員帳號" });
   await expect(deleteDialog).toBeVisible();
   await expect(deleteDialog).toContainText(MEMBER_EMAIL);
-  await expect(deleteDialog).toContainText("目前無法連線至身分驗證服務");
-  await expect(page.getByRole("button", { name: "永久刪除會員", exact: true })).toBeDisabled();
+  await expect(deleteDialog).toContainText("輸入目前主要管理員密碼");
+  await expect(deleteDialog).not.toContainText("驗證器 6 位數代碼");
+  await expect(deleteDialog).not.toContainText("輸入會員完整 Email");
+  const password = page.getByLabel("目前管理員密碼");
+  const submitDeletion = page.getByRole("button", { name: "驗證密碼並永久刪除", exact: true });
+  await expect(submitDeletion).toBeDisabled();
+
+  await password.fill("wrong-password");
+  await submitDeletion.click();
+  await expect(deleteDialog).toContainText("管理員密碼不正確");
   expect(adminMutationCalls).toBe(0);
+
+  await password.fill("correct-admin-password");
+  await submitDeletion.click();
+  await expect.poll(() => adminMutationCalls).toBe(1);
+  expect(mutationAuthorization).toBe("Bearer fresh-password-proof-token");
+  expect(mutationBody).toMatchObject({ action: "delete-user", userId: MEMBER_ID, email: MEMBER_EMAIL });
+  expect(mutationBody).not.toHaveProperty("password");
+  expect(mutationBody).not.toHaveProperty("confirmationEmail");
+  expect(mutationBody).not.toHaveProperty("confirmationPhrase");
+  expect(mutationBody).not.toHaveProperty("reason");
 
   await page.getByRole("button", { name: "關閉永久刪除視窗" }).click();
   await expect(deleteDialog).toHaveCount(0);
-  expect(adminMutationCalls).toBe(0);
+  expect(adminMutationCalls).toBe(1);
 });

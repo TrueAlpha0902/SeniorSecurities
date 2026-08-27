@@ -38,7 +38,6 @@ import { V93ConfirmDialog, V93InlineNotice } from "../components/V93InteractionP
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 import { announceInteractionFeedback } from "../lib/interactionFeedback";
 import { formatTotalPracticeTime } from "../lib/practiceTime";
-import { supabase } from "../lib/supabase";
 import "../styles/admin-leaderboard-v42.css";
 import "../styles/admin-premium-v65.css";
 
@@ -58,11 +57,16 @@ const SHORT_DATE_FORMATTER = new Intl.DateTimeFormat("zh-TW", {
 });
 
 type ExamId = "senior-securities" | "junior-foreign-exchange";
+type ActivationScope = ExamId | "all";
 
 const EXAM_IDS: readonly ExamId[] = ["senior-securities", "junior-foreign-exchange"];
 const EXAM_LABELS: Record<ExamId, string> = {
   "senior-securities": "證券高業",
   "junior-foreign-exchange": "初階外匯",
+};
+const ACTIVATION_SCOPE_LABELS: Record<ActivationScope, string> = {
+  ...EXAM_LABELS,
+  all: "全部題庫",
 };
 
 type ExamEntitlement = {
@@ -78,6 +82,8 @@ type ExamEntitlement = {
     use_count?: number;
     redemption_history_gap?: number;
     is_active?: boolean;
+    deleted_at?: string | null;
+    exam_id?: ActivationScope;
     note?: string | null;
     created_at?: string | null;
     redeemed_at?: string | null;
@@ -86,13 +92,15 @@ type ExamEntitlement = {
 
 type ActivationCodeMembership = {
   id: string;
-  examId: ExamId;
+  examId: ActivationScope;
+  examIds?: ExamId[];
   codePreview: string;
   note: string | null;
   maxUses: number;
   useCount: number;
   historyGap: number;
   isActive: boolean;
+  deletedAt?: string | null;
   redeemedAt: string | null;
   source: "redeem" | "legacy_entitlement";
 };
@@ -245,13 +253,14 @@ type AdminConfirmation =
 
 type ActivationCodeGroup = {
   key: string;
-  examId: ExamId | null;
+  examId: ActivationScope | null;
   codePreview: string;
   note: string;
   maxUses: number | null;
   useCount: number | null;
   historyGap: number;
   isActive: boolean;
+  deletedAt: string | null;
   members: AdminUserRow[];
   kind: "code" | "direct" | "unactivated";
 };
@@ -337,11 +346,18 @@ function buildActivationCodeGroups(rows: AdminUserRow[]): ActivationCodeGroup[] 
         useCount: membership.useCount,
         historyGap: membership.historyGap,
         isActive: membership.isActive,
+        deletedAt: membership.deletedAt || null,
         kind: "code",
       }).members.push(row);
     }
 
-    const membershipExams = new Set(memberships.map((membership) => membership.examId));
+    const membershipExams = new Set(memberships.flatMap((membership) =>
+      membership.examIds?.length
+        ? membership.examIds
+        : membership.examId === "all"
+          ? [...EXAM_IDS]
+          : [membership.examId],
+    ));
     const directExams = EXAM_IDS.filter((examId) => {
       const entitlement = entitlementFor(row.entitlements, examId);
       return entitlement.status === "active" && !membershipExams.has(examId);
@@ -356,6 +372,7 @@ function buildActivationCodeGroups(rows: AdminUserRow[]): ActivationCodeGroup[] 
         useCount: null,
         historyGap: 0,
         isActive: true,
+        deletedAt: null,
         kind: "direct",
       }).members.push(row);
     }
@@ -371,6 +388,7 @@ function buildActivationCodeGroups(rows: AdminUserRow[]): ActivationCodeGroup[] 
         useCount: null,
         historyGap: 0,
         isActive: false,
+        deletedAt: null,
         kind: "unactivated",
       }).members.push(row);
     }
@@ -468,6 +486,7 @@ function AdminContent() {
   const [query, setQuery] = useState("");
   const [userFilter, setUserFilter] = useState<UserFilter>("all");
   const [directoryMode, setDirectoryMode] = useState<DirectoryMode>("members");
+  const [selectedActivationGroupKey, setSelectedActivationGroupKey] = useState("all");
   const [leaderboardQuery, setLeaderboardQuery] = useState("");
   const [leaderboardMode, setLeaderboardMode] = useState<"streak" | "practice">("streak");
   const [message, setMessage] = useState<string | null>(null);
@@ -519,7 +538,7 @@ function AdminContent() {
           ...(row.activationCodes || []).flatMap((membership) => [
             membership.codePreview,
             membership.note,
-            EXAM_LABELS[membership.examId],
+            ACTIVATION_SCOPE_LABELS[membership.examId],
           ]),
         ]
           .filter(Boolean)
@@ -535,6 +554,22 @@ function AdminContent() {
     () => buildActivationCodeGroups(filteredUsers),
     [filteredUsers],
   );
+
+  const visibleActivationCodeGroups = useMemo(
+    () => selectedActivationGroupKey === "all"
+      ? activationCodeGroups
+      : activationCodeGroups.filter((group) => group.key === selectedActivationGroupKey),
+    [activationCodeGroups, selectedActivationGroupKey],
+  );
+
+  useEffect(() => {
+    if (
+      selectedActivationGroupKey !== "all"
+      && !activationCodeGroups.some((group) => group.key === selectedActivationGroupKey)
+    ) {
+      setSelectedActivationGroupKey("all");
+    }
+  }, [activationCodeGroups, selectedActivationGroupKey]);
 
   const filteredLeaderboardEntries = useMemo(() => {
     const sortedEntries = [...leaderboardEntries].sort((a, b) => {
@@ -780,19 +815,17 @@ function AdminContent() {
     setDeleteError(null);
     setMessage(null);
     try {
-      const latestSession = supabase ? await supabase.auth.getSession() : null;
-      const latestAccessToken = latestSession?.data.session?.access_token || accessToken;
       const response = await fetch("/api/admin/action", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: "Bearer " + latestAccessToken,
+          Authorization: "Bearer " + request.accessToken,
         },
         body: JSON.stringify({
           action: "delete-user",
           userId: target.id,
           email: target.email,
-          ...request,
+          operationId: request.operationId,
         }),
       });
       const payload = await readJsonResponse<ActionResponse>(response);
@@ -956,6 +989,29 @@ function AdminContent() {
           </button>
         </div>
 
+        {directoryMode === "activation-codes" && activationCodeGroups.length > 0 ? (
+          <div className="admin-activation-group-filter">
+            <label htmlFor="admin-activation-group-select">選擇啟用碼分類</label>
+            <select
+              id="admin-activation-group-select"
+              value={selectedActivationGroupKey}
+              onChange={(event) => setSelectedActivationGroupKey(event.target.value)}
+            >
+              <option value="all">全部啟用碼分類（{activationCodeGroups.length}）</option>
+              {activationCodeGroups.map((group) => (
+                <option key={group.key} value={group.key}>
+                  {group.examId ? ACTIVATION_SCOPE_LABELS[group.examId] : "尚未啟用"} · {group.note} · {group.codePreview}（{group.members.length} 位）
+                </option>
+              ))}
+            </select>
+            <span aria-live="polite">
+              {selectedActivationGroupKey === "all"
+                ? `目前顯示全部 ${activationCodeGroups.length} 個分類`
+                : `目前顯示 ${visibleActivationCodeGroups[0]?.note || "全部分類"}`}
+            </span>
+          </div>
+        ) : null}
+
         {message ? <V93InlineNotice tone="success" className="admin-premium-notice">{message}</V93InlineNotice> : null}
         {error ? <V93InlineNotice tone="error" className="admin-premium-notice">{error}</V93InlineNotice> : null}
 
@@ -1001,24 +1057,29 @@ function AdminContent() {
           })}
         </div> : (
           <div className="admin-activation-groups" aria-label="依啟用碼分類的會員">
-            {activationCodeGroups.length === 0 ? (
+            {visibleActivationCodeGroups.length === 0 ? (
               <div className="admin-premium-empty">
                 <KeyRound size={24} aria-hidden="true" />
                 <strong>沒有符合條件的啟用碼群組</strong>
                 <span>調整搜尋文字或會員篩選後再試一次。</span>
               </div>
-            ) : activationCodeGroups.map((group) => (
-              <section className={`admin-activation-group is-${group.kind}`} key={group.key}>
+            ) : visibleActivationCodeGroups.map((group) => {
+              const groupHeadingId = `activation-group-${group.key.replace(/[^a-z0-9-]/gi, "-")}`;
+              return <section
+                className={`admin-activation-group is-${group.kind}${group.deletedAt ? " is-deleted" : ""}`}
+                key={group.key}
+                aria-labelledby={groupHeadingId}
+              >
                 <header>
                   <span className="admin-activation-group-icon"><KeyRound size={19} aria-hidden="true" /></span>
                   <div>
-                    <p>{group.examId ? EXAM_LABELS[group.examId] : "尚未啟用"}</p>
-                    <h3>{group.note}</h3>
+                    <p>{group.examId ? ACTIVATION_SCOPE_LABELS[group.examId] : "尚未啟用"}{group.deletedAt ? " · 已刪除（保留歷史）" : ""}</p>
+                    <h3 id={groupHeadingId}>{group.note}</h3>
                     <code>{group.codePreview}</code>
                   </div>
                   <div className="admin-activation-group-stats">
                     <strong>{group.members.length} 位</strong>
-                    <span>{group.useCount !== null && group.maxUses !== null ? `使用 ${group.useCount}/${group.maxUses}` : "系統分類"}</span>
+                    <span>{group.deletedAt ? "已刪除 · " : group.kind === "code" && !group.isActive ? "已停用 · " : ""}{group.useCount !== null && group.maxUses !== null ? `使用 ${group.useCount}/${group.maxUses}` : "系統分類"}</span>
                     {group.historyGap > 0 ? <em>另有 {group.historyGap} 次舊紀錄無法辨識會員</em> : null}
                   </div>
                 </header>
@@ -1045,8 +1106,8 @@ function AdminContent() {
                     </button>
                   ))}
                 </div>
-              </section>
-            ))}
+              </section>;
+            })}
           </div>
         )}
         <div className="admin-pagination" aria-label="使用者分頁">
@@ -1425,6 +1486,8 @@ function AdminContent() {
         <AdminDeleteMemberDialog
           open={deleteDialogOpen}
           email={selectedUser.email}
+          adminId={session?.user.id || ""}
+          adminEmail={session?.user.email || ""}
           impact={{
             answered: userDetail.learning.totalAnswered,
             wrong: userDetail.learning.wrongQuestionCount,
@@ -1438,7 +1501,7 @@ function AdminContent() {
             setDeleteDialogOpen(false);
             setDeleteError(null);
           }}
-          onConfirm={(request) => void deleteSelectedMember(request)}
+          onConfirm={deleteSelectedMember}
         />
       ) : null}
 

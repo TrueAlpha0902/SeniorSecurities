@@ -64,7 +64,7 @@ export function ActivatePage() {
         ) : (
           <form className="auth-form" onSubmit={(event) => void handleSubmit(event)}>
             <p className="activation-scope-note">
-              此頁只接受<strong>{EXAM_LABELS[examId]}</strong>啟用碼；另一題庫需使用另外建立的啟用碼。
+              此頁接受<strong>{EXAM_LABELS[examId]}</strong>專用碼或全部題庫啟用碼；全部題庫碼會同時開通兩個題庫。
             </p>
             <label>
               <span>啟用碼</span>

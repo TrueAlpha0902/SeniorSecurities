@@ -1,5 +1,15 @@
 # AI Change Log
 
+## 2026-08-28 — 密碼直驗、全題庫啟用碼與分類篩選
+
+- 將會員永久刪除的前端驗證收斂為主要管理員目前密碼；移除 TOTP／QR Code、6 位碼、目標 Email、固定詞、理由與勾選。密碼只交給不保存 session 的獨立 Supabase Auth client，應用程式刪除 API 只收到新 access token 與 operation ID。
+- `requireAdminUser()` 新增近期密碼驗證模式；資料庫以 token 的 session ID 對照 `auth.sessions` 及 password AMR，驗證同一管理員於 10 分鐘內重新登入。刪除 Auth 使用者前再次檢查，既有 claim、lease、CAS、tombstone、Storage 分頁清理與 reconcile 防護不變。
+- 啟用碼 scope 新增 `all`；建立器加入「全部題庫」，兌換時單筆 ledger／單次 use count 原子建立高業與外匯兩筆 entitlement。重播、同會員重複使用或已擁有兩題庫時都不會額外消耗。
+- 啟用碼刪除改由資料庫鎖定後決定生命週期：無歷史碼實體刪除，已使用碼不可逆封存並保留 ledger、使用次數、來源分類與既有權限；封存碼不能兌換或恢復。
+- 會員目錄的「依啟用碼」模式新增分類下拉，可選全部、個別啟用碼、兩種直接開通或尚未啟用；以 code UUID 作穩定 key，全題庫碼展開兩個題庫標籤但只建立一個群組。
+- 會員分類 API 對啟用碼 metadata 查詢、ledger parent 與 scope mismatch 全部 fail closed；封存過的已使用碼仍可在會員歷史分類看見，不會被誤列為直接開通。
+- 新增 v97 migration、transaction-only SQL 語意測試、管理後台與 scope 靜態合約，以及桌面／手機 Playwright 回歸；管理健康檢查新增 v97 欄位與 RPC 探測。型別、lint、production build與聚焦 E2E 6／6 已通過；正式資料庫 migration 已記錄為 `20260827181105`，套用後語意測試再次通過且 rollback 後零測試資料殘留。
+
 ## 2026-08-27 — 重設安全、動態排行榜與啟用碼協助
 
 - 將錯題重設、重新開始與完整重設統一為資料庫原子 RPC，並把 per-user／per-exam 的 data、wrong、favorite generation 分開；只清錯題不再讓正常作答、收藏或進度失效，重新開始保留收藏，完整重設才推進 favorite generation。離線裝置即使錯過 complete → restart 仍不會帶回完整重設前收藏。三種模式皆使用可重試 request ID，重送相同 request 不會刪除重設後才建立的新資料。

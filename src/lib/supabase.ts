@@ -14,4 +14,15 @@ export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseKey);
 
 export const supabase = isSupabaseConfigured ? createClient(supabaseUrl, supabaseKey) : null;
 
+export function createEphemeralAuthClient() {
+  if (!isSupabaseConfigured) return null;
+  return createClient(supabaseUrl, supabaseKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
+  });
+}
+
 export type AuthUser = User;

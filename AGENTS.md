@@ -21,7 +21,8 @@
 - 不得提交 `.env`、私鑰、service-role key、Vercel token、`.vercel`、`supabase/.temp`、`node_modules`、`dist`、log 或 Playwright artifacts。
 - 題庫說明必須保留完整原文；OCR 內容只能標示為未校對、已逐字校對或需複查。
 - 管理權限只能透過 `api/_adminClient.ts` 的 `requireAdminUser()`；不得在個別 API 自建驗證。
-- 高風險操作原則上要求 primary admin 與 AAL2；題庫正式發布由 primary admin 直接執行，可在 AAL1 發布目前已儲存的修改。回滾與管理員破壞性異動仍必須 AAL2。
+- 高風險操作原則上要求 primary admin 與 AAL2；題庫正式發布由 primary admin 直接執行，可在 AAL1 發布目前已儲存的修改。會員永久刪除依產品決策改採 primary admin 目前密碼重新驗證，必須由獨立、不持久化的 Auth client 取得新 access token，伺服器再核對同一管理員、同一 session 與 10 分鐘內的 password AMR；密碼不得傳入應用程式 API。回滾與其餘管理員破壞性異動仍必須 AAL2。
+- 已使用的啟用碼只能封存，不得刪除兌換 ledger、扣回使用次數或撤銷既有會員權限；未使用且無歷史的啟用碼才可實體刪除。啟用碼分類必須保留不可逆的來源追溯。
 - 已發布 release 不得直接修改，只能建立新版本或 transaction rollback。
 - Production question API 不得讀取 draft override。
 - Activation code 不得保存或查詢 plaintext。
