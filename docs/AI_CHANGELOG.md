@@ -1,5 +1,37 @@
 # AI Change Log
 
+## 2026-08-27 — 重設安全、動態排行榜與啟用碼協助
+
+- 將錯題重設、重新開始與完整重設統一為資料庫原子 RPC，並把 per-user／per-exam 的 data、wrong、favorite generation 分開；只清錯題不再讓正常作答、收藏或進度失效，重新開始保留收藏，完整重設才推進 favorite generation。離線裝置即使錯過 complete → restart 仍不會帶回完整重設前收藏。三種模式皆使用可重試 request ID，重送相同 request 不會刪除重設後才建立的新資料。
+- 在前端本機資料、IndexedDB sync intent、可靠性佇列、學習事件與練習時數事件加入 generation scope；app DB 以同一 transaction 寫入 pending/final reset marker，瀏覽器若在伺服器完成後或外部 localStorage 清理途中中斷，下次啟動會補完。錯題模式只淘汰錯題工作，重新開始保留同一 favorite generation 的收藏，完整重設才清除該題庫全部學習資料。
+- 證券高業與初階外匯的重設範圍完整分離；重新登入或另一裝置上線時會先同步兩個題庫的 reset state，再進行任何本機上傳。
+- 排行榜移除獨立「學習榮耀榜」hero，將「榮耀殿堂」改名「排行榜」；前三名與完整清單共用同一分類狀態，支援連續答對、練習時數及新增的刷題大師。
+- 刷題大師以正式 3,526 題證券高業題號 catalog 限制輸入，並以 user／question 唯一鍵計算不重複作答題數；重設時與其他排行榜統計一併歸零。初階外匯 3,250 個正式題號也納入 canonical catalog，所有寫入由伺服器自行推導題庫，未知或混合題號會 fail closed。
+- 連續答對完整清單收斂為頭像、名稱及最右側連續答對題數；分類 tab 加入 roving focus、方向鍵／Home／End 鍵盤操作與共享 tabpanel 語意。
+- 在登入、啟用碼輸入與權限阻擋頁加入 `mailto:aaron.kcts@gmail.com`，並明確提醒不要寄送密碼或完整啟用碼。
+- 撤銷 authenticated 對舊版學習／排行榜／練習時數寫入 RPC 的權限；v96 練習時間事件加入伺服器實際經過時間預算，避免以快速更換事件 UUID 灌入時數。
+- v96.1 將六張學習表的直接 DELETE 對 authenticated／anon／PUBLIC 撤權；前端破壞性同步統一呼叫具 operation ID 的 SECURITY DEFINER RPC，sync intent 轉交可靠性佇列時保留同一 ID，讓來源列刪除、tombstone 與重播 ledger 原子提交，response-lost 或 handoff crash 重試不會刪除同 generation 後來新建的資料。
+- 新增 v96.1 migration 與可重播 SQL 語意測試；正式 schema rollback 已驗證 complete → restart、收藏保留／取消、stale generation、單筆／整表原子 tombstone 與相同／不同 payload operation replay，結果 `v961_semantics_passed` 且零殘留，並已正式套用為 `20260827052455`。正式權限檢查確認 authenticated／anon 無法直接 DELETE 六張學習表及 tombstone，只有 authenticated 可執行兩個 v96.1 RPC。
+- 新增 v96 migration、重設／排行榜靜態與 IndexedDB 合約，以及桌面／iPad／手機 Chromium 聚焦 E2E 6／6；typecheck、API typecheck、lint、production build、bundle 與 public boundary 通過。v95 → v96 完整 migration 與跨題庫／重設／排行榜語意先在正式 schema 以 transaction rollback 驗證通過且零殘留，再依序正式套用為 `20260827044831`、`20260827044849`。
+- 完整歷史 `verify` 仍因未隨 repo 提交的外匯官方 PDF 於 `audit:fx-source` 停止；既有 CSS budget 仍超過檔案數與 `!important` 上限，兩者均非本次變更造成。
+
+## 2026-08-27 — 啟用碼會員分類、安全帳號移除與後台 UX 三案
+
+- 管理後台會員目錄新增依啟用碼分類，使用 privacy-safe redemption ledger 區分高業／外匯碼、直接開通與未啟用會員；不暴露啟用碼明碼，舊資料缺口另行警示。
+- 已使用啟用碼改為只能停用或恢復，避免刪除會員分類歷程；未使用碼仍可由主要管理員刪除。
+- 新增主要管理員永久移除會員功能，要求有效 AAL2 session、首次 MFA 前重新驗證密碼、完整 Email、固定確認詞、理由與不可逆勾選。
+- 永久刪除採資料庫原子 claim、expiry-fenced lease 與 CAS 狀態機；穩定 userId fingerprint 支援跨 operationId 的逾時接管與完成重播，過期或舊 worker 無法再續租、settle 或覆寫新結果。
+- pending 刪除（含 lease 已逾期）持續以 Storage policy 阻止目標會員重傳頭像，並封鎖 Auth Email 變更、同 Email 新註冊與其他帳號改綁；operation 的 Email fingerprint 綁定後不可被重試覆寫。Storage、Auth、userId／Email 管理員授權 trigger 與 claim 共用固定次序的 advisory lock。Storage 每批清理、Auth hard delete 前及 Auth 後 Email 清理前重新確認 lease，並再次驗證操作者與目標角色／Email。
+- Auth hard delete 送出前持久化 reconcile 標記；只有帶此標記的 operation 可在舊 userId 已不存在時 recovery。若同 Email 在 claim 前已由新 UUID 持有，只清舊 userId 綁定資料並跳過 Email-wide sweep；普通 pre-Auth failed 重試不可把 404 當成刪除成功。外部結果不確定時保留 tombstone 並釋放 lease 給下一個 worker接管，普通 failed settlement 無法解除已開始 Auth 刪除的保護。
+- 針對 Supabase Storage 權限檢查與 final superuser upsert 分離的流程，在 `storage.objects` 加入 pending／completed userId fingerprint tombstone trigger；晚到的頭像 metadata commit 會失敗並進入 Storage uploader 的版本清理路徑。
+- 密碼重設紀錄新增 target Auth FK／cascade 與 tombstone trigger；audit trigger 對 pending／completed 目標強制清除 `target_email`。Email artifact sweep 收斂為單一資料庫交易，先驗證 operation、lease、userId 與 Email fingerprint 才清理，stale worker 無法誤掃後來重用相同 Email 的帳號。刪除原因只保留「已提供／長度」而不保存自由文字。
+- 頭像清理加入分頁、巢狀批次與清除後確認；Auth 刪除完成後，audit 或 operation 持久化錯誤只回 warning，不回傳假失敗；啟用碼次數不回補且兌換 ledger 匿名保留。
+- MFA cleanup 改用完整 factor 清單與回傳 error 檢查；取消先釋放 dialog／body lock，再背景清理，並防止 late enrollment。Focus trap 以 ref 保存 Escape callback，輸入欄位不再因 render 被搶回焦點。
+- 擴充管理後台與啟用碼合約，新增會員消失後解除 invisible scroll lock 的 Playwright E2E；未使用正式會員或執行任何正式帳號刪除。
+- 建立 A「清單指揮台」、B「啟用碼班級」、C「三欄 CRM」三款獨立預覽，全部使用 `example.test` 假資料且無外部連線；正式 UI 等待使用者選版。
+- 新增 v95 migration，已在正式 Supabase 的 rollback transaction 驗證 schema、最小權限與 claim／lease／重播狀態機，確認零 schema／測試資料殘留；其後於 v96 發布流程中先行正式套用。
+- 本次相關型別、lint、合約、build、public boundary、bundle 與桌面／iPad／手機 Chromium E2E 9／9 通過。專案完整 gate 仍受既有來源檔缺漏、CSS budget、歷史 v83–v93 契約失配與本機 WebKit 缺件影響；這些既有失敗已獨立留存，本輪只發布經針對性驗證的範圍。
+
 ## 2026-08-26 — 管理後台巢狀視窗捲動鎖修復
 
 - 修復會員明細抽屜開啟權限確認視窗後，關閉所有視窗仍可能讓 `body` 殘留 `overflow: hidden`、整頁無法捲動的問題。

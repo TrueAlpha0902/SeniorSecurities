@@ -8,14 +8,16 @@ function assert(condition: unknown, message: string): asserts condition {
 const root = process.cwd();
 const read = (relativePath: string) => readFile(path.join(root, relativePath), "utf8");
 
-const [adminAction, adminApi, adminPanel, authContext, activatePage, authPage, migration] = await Promise.all([
+const [adminAction, adminApi, adminUsersApi, adminPanel, authContext, activatePage, authPage, migration, ledgerMigration] = await Promise.all([
   read("api/admin/action.ts"),
   read("api/admin/tools.ts"),
+  read("api/admin/users.ts"),
   read("src/components/AdminToolsPanel.tsx"),
   read("src/auth/AuthContext.tsx"),
   read("src/pages/ActivatePage.tsx"),
   read("src/pages/AuthPage.tsx"),
   read("supabase/migrations/20260826081812_add_exam_scoped_activation_redemption.sql"),
+  read("supabase/migrations/20260826145617_add_activation_redemption_ledger.sql"),
 ]);
 
 assert(
@@ -28,8 +30,8 @@ assert(
   "The admin API must persist and return the selected activation-code scope.",
 );
 assert(
-  adminAction.includes('const EXPECTED_MIGRATION = "20260826081812_add_exam_scoped_activation_redemption";'),
-  "Admin system status must identify the scoped-redemption migration required by this release.",
+  adminAction.includes('const EXPECTED_MIGRATION = "20260826145617_add_activation_redemption_ledger";'),
+  "Admin system status must identify the redemption-ledger migration required by this release.",
 );
 
 assert(
@@ -90,6 +92,77 @@ assert(
     && migration.includes("from public, anon, authenticated")
     && migration.includes("to authenticated, service_role"),
   "The scoped RPC must keep a fixed search path and explicit least-privilege grants.",
+);
+assert(
+  ledgerMigration.includes("create table if not exists public.activation_code_redemptions")
+    && ledgerMigration.includes("unique (activation_code_id, user_id)")
+    && ledgerMigration.includes("foreign key (activation_code_id, exam_id)")
+    && ledgerMigration.includes("references public.activation_codes(id, exam_id) on delete restrict")
+    && ledgerMigration.includes("user_id uuid references auth.users(id) on delete set null"),
+  "Every code redemption must have an append-only, privacy-preserving membership ledger with a duplicate-use guard.",
+);
+assert(
+  ledgerMigration.includes("private.redeem_activation_code_v95")
+    && ledgerMigration.includes("from public.activation_code_redemptions")
+    && ledgerMigration.includes("這個帳號已使用過此啟用碼")
+    && ledgerMigration.includes("insert into public.activation_code_redemptions")
+    && ledgerMigration.includes("update public.activation_codes")
+    && ledgerMigration.indexOf("insert into public.activation_code_redemptions") < ledgerMigration.indexOf("update public.activation_codes"),
+  "Redemption must reject a repeated account/code tuple before consuming another use.",
+);
+assert(
+  adminUsersApi.includes('from("activation_code_redemptions")')
+    && adminUsersApi.includes("activationCodesByUser")
+    && adminUsersApi.includes("codePreview")
+    && !adminUsersApi.includes("code_plain"),
+  "The admin member API must classify users from the redemption ledger without exposing plaintext codes.",
+);
+assert(
+  ledgerMigration.includes("redemption_history_gap")
+    && ledgerMigration.includes("from public.user_entitlements as entitlement")
+    && ledgerMigration.includes("activation_code.redeemed_by")
+    && ledgerMigration.includes("revoke all on table public.activation_code_redemptions from public, anon, authenticated, service_role")
+    && ledgerMigration.includes("grant select on table public.activation_code_redemptions to service_role")
+    && !ledgerMigration.includes("grant all on table public.activation_code_redemptions"),
+  "Legacy redemption reconstruction must cover every available provenance source, expose gaps, and keep ledger privileges read-only.",
+);
+assert(
+  ledgerMigration.includes("revoke all on table public.password_reset_requests from public, anon, authenticated, service_role")
+    && ledgerMigration.includes("grant select, insert, delete on table public.password_reset_requests to service_role")
+    && ledgerMigration.includes("target_user_id uuid references auth.users(id) on delete cascade")
+    && ledgerMigration.includes("prevent_deleted_member_reset_record_v95")
+    && ledgerMigration.includes("password_reset_deletion_tombstone_v95")
+    && ledgerMigration.includes("anonymize_deleted_member_audit_email_v95")
+    && ledgerMigration.includes("admin_audit_deletion_anonymizer_v95")
+    && ledgerMigration.includes("revoke all on table public.admin_member_deletion_operations from public, anon, authenticated, service_role")
+    && ledgerMigration.includes("grant select on table public.admin_member_deletion_operations to service_role")
+    && ledgerMigration.includes("claim_member_deletion_operation_v95")
+    && ledgerMigration.includes("p_target_email_fingerprint text")
+    && ledgerMigration.includes("renew_member_deletion_operation_v95")
+    && ledgerMigration.includes("mark_member_deletion_auth_started_v95")
+    && ledgerMigration.includes("release_member_deletion_for_reconcile_v95")
+    && ledgerMigration.includes("authDeleteStarted")
+    && ledgerMigration.includes("lease_token = p_lease_token")
+    && ledgerMigration.includes("and lease_expires_at > v_now")
+    && ledgerMigration.includes("pg_advisory_xact_lock")
+    && ledgerMigration.includes("current_user_has_pending_member_deletion_v95")
+    && ledgerMigration.includes("prevent_admin_grant_during_member_deletion_v95")
+    && ledgerMigration.includes("prevent_admin_email_grant_during_member_deletion_v95")
+    && ledgerMigration.includes("admin_user_deletion_guard_v95")
+    && ledgerMigration.includes("prevent_auth_email_change_during_member_deletion_v95")
+    && ledgerMigration.includes("auth_user_email_deletion_guard_v95")
+    && ledgerMigration.includes("prevent_deleted_member_avatar_commit_v95")
+    && ledgerMigration.includes("member_avatar_deletion_tombstone_v95")
+    && ledgerMigration.includes("operation.status in ('pending', 'completed')")
+    && ledgerMigration.includes("language plpgsql\nvolatile")
+    && !/operation\.status = 'pending'\s+and operation\.lease_expires_at > now\(\)/.test(ledgerMigration),
+  "Server-only support tables must use least privilege, durable reconciliation guards, expiry-fenced leases, and serialized Storage/user-id/email writes.",
+);
+assert(
+  ledgerMigration.includes("if nullif(lower(trim(coalesce(p_expected_exam_id, ''))), '') is null")
+    && ledgerMigration.includes("used activation codes must be disabled instead of deleted")
+    && ledgerMigration.includes("set_activation_code_status_v95"),
+  "Scoped redemption must fail closed and used activation codes must be disabled rather than erased.",
 );
 
 console.log("Activation code scope contracts passed.");

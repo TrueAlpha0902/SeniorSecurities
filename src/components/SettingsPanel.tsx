@@ -12,12 +12,11 @@ import { useLocation } from "react-router-dom";
 import { useAsync } from "../hooks/useAsync";
 import { useDialogFocusTrap } from "../hooks/useDialogFocusTrap";
 import {
-  clearSelectedUserRecords,
   listFavoriteQuestions,
   listImageQuizSessions,
   listUserAnswers,
   listWrongQuestions,
-  type ClearRecordPart,
+  resetLearningDataForScope,
 } from "../lib/db";
 import {
   ANSWER_MODE_SETTING_CHANGED,
@@ -26,11 +25,7 @@ import {
   setAnswerModeEnabled,
   setAutoNextCorrectEnabled,
 } from "../lib/appSettings";
-import {
-  clearForeignExchangeProgress,
-  foreignExchangeProgressSummary,
-  type ForeignExchangeClearMode,
-} from "../lib/foreignExchangeProgress";
+import { foreignExchangeProgressSummary } from "../lib/foreignExchangeProgress";
 import {
   clearStudyPlanConfigForExam,
   formatExamDate,
@@ -46,7 +41,11 @@ import {
   type StudyPlanExamId,
 } from "../lib/studyPlan";
 import type { SettingsSectionTarget } from "../lib/settingsNavigation";
-import { removeScopedStorageItem } from "../lib/userScopedStorage";
+import {
+  readScopedStorageItem,
+  removeScopedStorageItem,
+  writeScopedStorageItem,
+} from "../lib/userScopedStorage";
 import {
   loadImageQuizBankSummaries,
   loadQuestionReleaseManifest,
@@ -60,6 +59,8 @@ import { OfflineContentPanel } from "./OfflineContentPanel";
 import { StudyPlanEditor } from "./StudyPlanEditor";
 import { V93InlineNotice } from "./V93InteractionPrimitives";
 import { announceInteractionFeedback } from "../lib/interactionFeedback";
+import { createUuid } from "../lib/uuid";
+import { performLearningResetExternalCleanup } from "../lib/resetExternalCleanup";
 
 const CLEAR_LEVELS = {
   wrong: {
@@ -88,6 +89,54 @@ type SettingsSection = SettingsSectionTarget;
 type SettingsView = "menu" | "clear" | "studyPlan" | "offline";
 type ClearExamScope = "senior-securities" | "junior-foreign-exchange" | "all";
 type ClearLevel = keyof typeof CLEAR_LEVELS;
+
+const PENDING_RESET_REQUEST_KEY = "learning-reset:pending-request:v96";
+
+type PendingResetRequest = {
+  scope: ClearExamScope;
+  mode: ClearLevel;
+  requestId: string;
+};
+
+function getOrCreateResetRequestId(
+  scope: ClearExamScope,
+  mode: ClearLevel,
+): string {
+  const raw = readScopedStorageItem(PENDING_RESET_REQUEST_KEY);
+  if (raw) {
+    try {
+      const pending = JSON.parse(raw) as Partial<PendingResetRequest>;
+      if (
+        pending.scope === scope &&
+        pending.mode === mode &&
+        typeof pending.requestId === "string" &&
+        pending.requestId
+      ) {
+        return pending.requestId;
+      }
+    } catch {
+      // Replace malformed state with a fresh idempotency key below.
+    }
+  }
+  const requestId = createUuid();
+  writeScopedStorageItem(
+    PENDING_RESET_REQUEST_KEY,
+    JSON.stringify({ scope, mode, requestId } satisfies PendingResetRequest),
+  );
+  return requestId;
+}
+
+function completeResetRequest(requestId: string): void {
+  const raw = readScopedStorageItem(PENDING_RESET_REQUEST_KEY);
+  if (!raw) return;
+  try {
+    const pending = JSON.parse(raw) as Partial<PendingResetRequest>;
+    if (pending.requestId !== requestId) return;
+  } catch {
+    return;
+  }
+  removeScopedStorageItem(PENDING_RESET_REQUEST_KEY);
+}
 
 type SettingsData = {
   banks: ImageQuizBank[];
@@ -125,12 +174,6 @@ function inferPlanExam(pathname: string): StudyPlanExamId {
 function dailyPracticeScopeIds(): string[] {
   return getStudyPlanScopesForExam("senior-securities").map(
     (scope) => `image:daily:${localTodayKey()}:${scope.id}`,
-  );
-}
-
-function dailyPlanStorageKeys(): string[] {
-  return getStudyPlanScopesForExam("senior-securities").map(
-    (scope) => `quizpwa:daily-plan:${scope.id}:${localTodayKey()}`,
   );
 }
 
@@ -287,24 +330,22 @@ export function SettingsPanel({ open, onClose, initialSection: requestedSection,
     setClearing(true);
     setMessage("");
     setOperationError("");
+    const requestId = getOrCreateResetRequestId(clearScope, clearLevel);
     try {
-      if (clearScope === "senior-securities" || clearScope === "all") {
-        const parts = clearPartsForLevel(clearLevel);
-        await clearSelectedUserRecords({
-          parts,
-          questionIds: data.securitiesQuestionIds,
-          progressScopeIds: data.securitiesProgressScopeIds,
-          sessionBankIds: data.banks.map((bank) => bank.bankId),
-          clearLegacyQuizSessions: parts.includes("sessions"),
-        });
-        if (parts.includes("progress")) {
-          dailyPlanStorageKeys().forEach((key) => removeScopedStorageItem(key));
+      await resetLearningDataForScope({
+        scope: clearScope,
+        mode: clearLevel,
+        requestId,
+        localCleanup: async () => {
+          const examIds = clearScope === "all"
+            ? ["senior-securities", "junior-foreign-exchange"] as const
+            : [clearScope] as const;
+          for (const examId of examIds) {
+            await performLearningResetExternalCleanup(examId, clearLevel);
+          }
         }
-      }
-
-      if (clearScope === "junior-foreign-exchange" || clearScope === "all") {
-        await clearForeignExchangeProgress(clearLevel as ForeignExchangeClearMode);
-      }
+      });
+      completeResetRequest(requestId);
 
       setClearConfirmationOpen(false);
       setClearAcknowledged(false);
@@ -653,12 +694,6 @@ function ResetChoice({ title, description, selected, recommended = false, danger
       <p>{description}</p>
     </button>
   );
-}
-
-function clearPartsForLevel(level: ClearLevel): ClearRecordPart[] {
-  if (level === "wrong") return ["wrong"];
-  if (level === "restart") return ["answers", "wrong", "progress", "sessions"];
-  return ["answers", "wrong", "favorites", "progress", "sessions"];
 }
 
 function clearScopeLabel(scope: ClearExamScope): string {

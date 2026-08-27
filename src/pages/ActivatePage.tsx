@@ -4,6 +4,7 @@ import { Navigate, useLocation, useSearchParams } from "react-router-dom";
 import { GlassButton, GlassLinkButton } from "../components/GlassButton";
 import { GlassCard } from "../components/GlassCard";
 import { LoadingState } from "../components/LoadingState";
+import { ActivationSupport } from "../components/ActivationSupport";
 import { useAuth, type ExamId } from "../auth/AuthContext";
 import { SupabaseSetupRequired } from "../auth/ProtectedRoute";
 
@@ -84,6 +85,8 @@ export function ActivatePage() {
             </GlassButton>
           </form>
         )}
+
+        {!access.hasEntitlement ? <ActivationSupport /> : null}
 
         <div className="button-row">
           <GlassLinkButton to={returnTo} variant="primary">返回</GlassLinkButton>

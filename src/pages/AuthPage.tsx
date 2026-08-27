@@ -3,6 +3,7 @@ import { type FormEvent, useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { GlassButton } from "../components/GlassButton";
 import { GlassCard } from "../components/GlassCard";
+import { ActivationSupport } from "../components/ActivationSupport";
 import { useAuth, type ExamId } from "../auth/AuthContext";
 import { SupabaseSetupRequired } from "../auth/ProtectedRoute";
 
@@ -202,6 +203,8 @@ export function AuthPage() {
             <span>{submitting ? "處理中" : isSignIn ? isAdminReturn ? "登入管理後台" : "登入帳號" : "建立帳號"}</span>
           </GlassButton>
         </form>
+
+        {!isAdminReturn ? <ActivationSupport /> : null}
 
         {!isAdminReturn ? (
           <button type="button" className="auth-admin-entry" onClick={goAdminLogin}>

@@ -35,13 +35,21 @@ const publishableKey = (
   || process.env.VITE_SUPABASE_ANON_KEY
   || ""
 ).trim();
-const configuredAdminEmails = Array.from(new Set(
-  [process.env.PRIMARY_ADMIN_EMAILS || "", process.env.ADMIN_EMAILS || ""]
-    .join(",")
+function parseEmailList(value: string | undefined): string[] {
+  return Array.from(new Set(
+    String(value || "")
     .split(",")
     .map((email) => email.trim().toLowerCase())
     .filter(Boolean),
-));
+  ));
+}
+
+const configuredPrimaryAdminEmails = parseEmailList(process.env.PRIMARY_ADMIN_EMAILS);
+const configuredLegacyAdminEmails = parseEmailList(process.env.ADMIN_EMAILS);
+const configuredAdminEmails = Array.from(new Set([
+  ...configuredPrimaryAdminEmails,
+  ...configuredLegacyAdminEmails,
+]));
 
 export type AdminRole = "primary_admin" | "admin";
 
@@ -191,7 +199,7 @@ export async function requireAuthenticatedUser(req: ApiRequest) {
 
 export async function requireAdminUser(
   req: ApiRequest,
-  options: { roles?: AdminRole[] } = {},
+  options: { roles?: AdminRole[]; requireAal2?: boolean } = {},
 ) {
   const token = extractBearerToken(req);
   if (!token) throw new HttpError("尚未登入，或登入狀態已過期。", 401);
@@ -201,10 +209,11 @@ export async function requireAdminUser(
   if (error || !data.user) throw new HttpError("無法驗證目前登入帳號。", 401);
 
   const email = data.user.email?.toLowerCase() || "";
-  const isConfiguredPrimaryAdmin = configuredAdminEmails.includes(email);
+  const isConfiguredPrimaryAdmin = configuredPrimaryAdminEmails.includes(email);
   const databaseAccess = isConfiguredPrimaryAdmin
     ? { role: "primary_admin" as AdminRole }
-    : await getDatabaseAdminAccess(data.user.id, email);
+    : (await getDatabaseAdminAccess(data.user.id, email))
+      || (configuredLegacyAdminEmails.includes(email) ? { role: "admin" as AdminRole } : null);
   if (!databaseAccess) throw new HttpError("這個帳號沒有管理員權限。", 403);
   const isPrimaryAdmin = databaseAccess.role === "primary_admin";
 
@@ -212,11 +221,36 @@ export async function requireAdminUser(
     throw new HttpError("目前管理員角色沒有執行此操作的權限。", 403);
   }
 
+  let aal: "aal1" | "aal2" = "aal1";
+  if (options.requireAal2) {
+    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
+    const claims = claimsData?.claims;
+    if (claimsError || !claims || claims.sub !== data.user.id) {
+      throw new HttpError("無法確認目前管理員的多因素驗證狀態。", 401);
+    }
+    aal = claims.aal === "aal2" ? "aal2" : "aal1";
+    if (aal !== "aal2") {
+      throw new HttpError("永久刪除會員需要主要管理員完成多因素驗證後才能執行。", 403);
+    }
+    const sessionId = String(claims.session_id || "");
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sessionId)) {
+      throw new HttpError("目前管理員工作階段缺少可驗證的 session_id。", 401);
+    }
+    const { data: activeSession, error: activeSessionError } = await supabase.rpc(
+      "verify_active_aal2_session_v95",
+      { p_user_id: data.user.id, p_session_id: sessionId },
+    );
+    if (activeSessionError || activeSession !== true) {
+      throw new HttpError("目前管理員工作階段已失效，請重新登入並完成雙重驗證。", 401);
+    }
+  }
+
   return {
     supabase,
     user: data.user,
     role: databaseAccess.role,
     isPrimaryAdmin,
+    aal,
   };
 }
 

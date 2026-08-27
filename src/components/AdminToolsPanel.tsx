@@ -1,4 +1,4 @@
-import { Activity, Clipboard, KeyRound, RefreshCcw, ShieldCheck, Trash2, UsersRound, X } from "lucide-react";
+import { Activity, Clipboard, KeyRound, RefreshCcw, ShieldCheck, ShieldOff, Trash2, UsersRound, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { GlassButton } from "./GlassButton";
 import { GlassCard } from "./GlassCard";
@@ -36,6 +36,7 @@ type ActivationCodeRow = {
   code_preview: string;
   max_uses: number;
   use_count: number;
+  redemption_history_gap: number;
   is_active: boolean;
   note: string | null;
   created_at: string;
@@ -215,6 +216,7 @@ function ActivationCodeTool({ accessToken }: { accessToken: string }) {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [pendingDeleteCode, setPendingDeleteCode] = useState<ActivationCodeRow | null>(null);
+  const [pendingStatusCode, setPendingStatusCode] = useState<ActivationCodeRow | null>(null);
 
   const loadRows = useCallback(async () => {
     setError("");
@@ -277,7 +279,23 @@ function ActivationCodeTool({ accessToken }: { accessToken: string }) {
       announceInteractionFeedback(errorMessage, "error", 4200);
       return;
     }
+    if (row.use_count > 0) {
+      const errorMessage = "已使用的啟用碼需保留會員分類歷程，只能停用、不能永久刪除。";
+      setError(errorMessage);
+      announceInteractionFeedback(errorMessage, "error", 4200);
+      return;
+    }
     setPendingDeleteCode(row);
+  }
+
+  function requestStatusChange(row: ActivationCodeRow): void {
+    if (!isPrimaryAdmin) {
+      const errorMessage = "只有主要管理員可以調整啟用碼狀態。";
+      setError(errorMessage);
+      announceInteractionFeedback(errorMessage, "error", 4200);
+      return;
+    }
+    setPendingStatusCode(row);
   }
 
   async function deleteCode(): Promise<void> {
@@ -298,6 +316,35 @@ function ActivationCodeTool({ accessToken }: { accessToken: string }) {
       await loadRows();
     } catch (deleteError) {
       const errorMessage = deleteError instanceof Error ? deleteError.message : "無法刪除啟用碼。";
+      setError(errorMessage);
+      announceInteractionFeedback(errorMessage, "error", 4200);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function setCodeStatus(): Promise<void> {
+    const row = pendingStatusCode;
+    if (!row) return;
+    setBusy(true);
+    setMessage("");
+    setError("");
+    try {
+      const payload = await adminRequest(accessToken, "/api/admin/tools", {
+        method: "POST",
+        body: JSON.stringify({
+          action: "set-activation-code-status",
+          activationCodeId: row.id,
+          isActive: !row.is_active,
+        }),
+      });
+      const successMessage = payload.message || (row.is_active ? "啟用碼已停用。" : "啟用碼已恢復使用。");
+      setMessage(successMessage);
+      announceInteractionFeedback(successMessage, "success");
+      setPendingStatusCode(null);
+      await loadRows();
+    } catch (statusError) {
+      const errorMessage = statusError instanceof Error ? statusError.message : "無法調整啟用碼狀態。";
       setError(errorMessage);
       announceInteractionFeedback(errorMessage, "error", 4200);
     } finally {
@@ -362,10 +409,21 @@ function ActivationCodeTool({ accessToken }: { accessToken: string }) {
           return (
             <article key={row.id}>
               <div><strong>{visibleCode}</strong><span>{EXAM_LABELS[row.exam_id] || "題庫"} · {row.note || "無備註"}</span></div>
-              <div><span>{row.use_count} / {row.max_uses} 次</span><span>{row.is_active ? "啟用" : "停用"}</span></div>
+              <div>
+                <span>{row.use_count} / {row.max_uses} 次</span>
+                <span>{row.is_active ? "啟用" : "停用"}</span>
+                {row.redemption_history_gap > 0 ? <span>另有 {row.redemption_history_gap} 次舊紀錄無法辨識會員</span> : null}
+              </div>
               <div className="admin-inline-actions">
                 {isPrimaryAdmin ? (
-                  <button type="button" className="is-danger" disabled={busy} onClick={() => requestDeleteCode(row)}><Trash2 size={14} />刪除</button>
+                  <>
+                    <button type="button" disabled={busy} onClick={() => requestStatusChange(row)}>
+                      {row.is_active ? <ShieldOff size={14} /> : <RefreshCcw size={14} />}{row.is_active ? "停用" : "恢復"}
+                    </button>
+                    {row.use_count === 0 ? (
+                      <button type="button" className="is-danger" disabled={busy} onClick={() => requestDeleteCode(row)}><Trash2 size={14} />刪除</button>
+                    ) : null}
+                  </>
                 ) : null}
               </div>
             </article>
@@ -376,12 +434,24 @@ function ActivationCodeTool({ accessToken }: { accessToken: string }) {
         open={Boolean(pendingDeleteCode)}
         title="永久刪除啟用碼"
         message={pendingDeleteCode
-          ? `確定永久刪除啟用碼 ${pendingDeleteCode.code_preview}？已使用紀錄仍會保留，但無法復原此啟用碼。`
+          ? `確定永久刪除尚未使用的啟用碼 ${pendingDeleteCode.code_preview}？此操作無法復原。`
           : ""}
         confirmLabel="永久刪除"
         busy={busy}
         onCancel={() => setPendingDeleteCode(null)}
         onConfirm={() => void deleteCode()}
+      />
+      <V93ConfirmDialog
+        open={Boolean(pendingStatusCode)}
+        title={pendingStatusCode?.is_active ? "停用啟用碼" : "恢復啟用碼"}
+        message={pendingStatusCode
+          ? `${pendingStatusCode.is_active ? "停用" : "恢復"}啟用碼 ${pendingStatusCode.code_preview}？${pendingStatusCode.is_active ? "會員分類與歷史使用次數仍會保留。" : "恢復後，剩餘次數可再次被兌換。"}`
+          : ""}
+        confirmLabel={pendingStatusCode?.is_active ? "確認停用" : "確認恢復"}
+        tone={pendingStatusCode?.is_active ? "danger" : "primary"}
+        busy={busy}
+        onCancel={() => setPendingStatusCode(null)}
+        onConfirm={() => void setCodeStatus()}
       />
     </div>
   );

@@ -13,6 +13,7 @@ export type LeaderboardEntry = {
   totalAnswered: number;
   totalCorrect: number;
   totalPracticeSeconds: number;
+  uniqueAnswered: number;
   updatedAt: string | null;
   isCurrentUser: boolean;
 };
@@ -36,6 +37,7 @@ type LeaderboardStatsRow = {
   total_answered?: unknown;
   total_correct?: unknown;
   total_practice_seconds?: unknown;
+  unique_answered?: unknown;
   updated_at?: unknown;
 };
 
@@ -99,6 +101,7 @@ function mapLeaderboardRows(
       totalAnswered: Number(row.total_answered ?? 0),
       totalCorrect: Number(row.total_correct ?? 0),
       totalPracticeSeconds: Number(row.total_practice_seconds ?? 0),
+      uniqueAnswered: Number(row.unique_answered ?? 0),
       updatedAt: row.updated_at ? String(row.updated_at) : null,
       isCurrentUser: currentUserId === userId,
     };
@@ -199,7 +202,7 @@ export async function listLeaderboard(limit = 30): Promise<LeaderboardEntry[]> {
   const currentUserId = userData.user?.id ?? null;
   const { data: rows, error } = await supabase
     .from("user_leaderboard_stats")
-    .select("user_id, best_correct_streak, current_correct_streak, total_answered, total_correct, total_practice_seconds, updated_at")
+    .select("user_id, best_correct_streak, current_correct_streak, total_answered, total_correct, total_practice_seconds, unique_answered, updated_at")
     .gt("best_correct_streak", 0)
     .order("best_correct_streak", { ascending: false })
     .order("total_correct", { ascending: false })
@@ -217,7 +220,7 @@ export async function listPracticeTimeLeaderboard(limit = 30): Promise<Leaderboa
   const currentUserId = userData.user?.id ?? null;
   const { data: rows, error } = await supabase
     .from("user_leaderboard_stats")
-    .select("user_id, best_correct_streak, current_correct_streak, total_answered, total_correct, total_practice_seconds, updated_at")
+    .select("user_id, best_correct_streak, current_correct_streak, total_answered, total_correct, total_practice_seconds, unique_answered, updated_at")
     .gt("total_practice_seconds", 0)
     .order("total_practice_seconds", { ascending: false })
     .order("total_answered", { ascending: false })
@@ -226,5 +229,26 @@ export async function listPracticeTimeLeaderboard(limit = 30): Promise<Leaderboa
   if (error) throw error;
   const stats = (rows ?? []) as LeaderboardStatsRow[];
   const profiles = await getPublicProfiles(stats.map((row) => String(row.user_id)));
+  return mapLeaderboardRows(stats, profiles, currentUserId);
+}
+
+export async function listQuestionMasterLeaderboard(
+  limit = 30,
+): Promise<LeaderboardEntry[]> {
+  if (!supabase) return [];
+  const { data: userData } = await supabase.auth.getUser();
+  const currentUserId = userData.user?.id ?? null;
+  const { data: rows, error } = await supabase
+    .from("user_leaderboard_stats")
+    .select("user_id, best_correct_streak, current_correct_streak, total_answered, total_correct, total_practice_seconds, unique_answered, updated_at")
+    .gt("unique_answered", 0)
+    .order("unique_answered", { ascending: false })
+    .order("updated_at", { ascending: true })
+    .limit(limit);
+  if (error) throw error;
+  const stats = (rows ?? []) as LeaderboardStatsRow[];
+  const profiles = await getPublicProfiles(
+    stats.map((row) => String(row.user_id)),
+  );
   return mapLeaderboardRows(stats, profiles, currentUserId);
 }

@@ -193,6 +193,63 @@ export async function replaceReliabilityLearningData<
   await tx.done;
 }
 
+export async function resetReliabilityLearningDomain<TPayload>(
+  userId: string,
+  metadataUpdates: Array<{ key: string; value: unknown }>,
+  reconcileMutation: (payload: TPayload) => TPayload | null,
+  clearLearningData = true,
+): Promise<void> {
+  const db = await openReliabilityDatabase(userId);
+  const tx = db.transaction(
+    [
+      "learningStates",
+      "learningAttempts",
+      "cloudQueue",
+      "deadLetters",
+      "syncMetadata",
+    ],
+    "readwrite",
+  );
+
+  if (clearLearningData) {
+    await Promise.all([
+      tx.objectStore("learningStates").clear(),
+      tx.objectStore("learningAttempts").clear(),
+    ]);
+  }
+
+  const queueStore = tx.objectStore("cloudQueue");
+  for (const entry of await queueStore.getAll()) {
+    const payload = reconcileMutation(entry.payload as TPayload);
+    if (payload === null) {
+      await queueStore.delete(entry.id);
+    } else if (payload !== entry.payload) {
+      await queueStore.put({ ...entry, payload, updatedAt: new Date().toISOString() });
+    }
+  }
+
+  const deadLetterStore = tx.objectStore("deadLetters");
+  for (const entry of await deadLetterStore.getAll()) {
+    const payload = reconcileMutation(entry.payload as TPayload);
+    if (payload === null) {
+      await deadLetterStore.delete(entry.id);
+    } else if (payload !== entry.payload) {
+      await deadLetterStore.put({ ...entry, payload });
+    }
+  }
+
+  const metadataStore = tx.objectStore("syncMetadata");
+  const updatedAt = new Date().toISOString();
+  for (const update of metadataUpdates) {
+    await metadataStore.put({
+      key: update.key,
+      value: update.value,
+      updatedAt,
+    });
+  }
+  await tx.done;
+}
+
 export async function mergeReliabilityLearningStates<
   TState extends { questionId: string },
 >(userId: string | null, states: TState[]): Promise<void> {

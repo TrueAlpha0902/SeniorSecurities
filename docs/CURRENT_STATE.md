@@ -1,7 +1,37 @@
 # SeniorSecurities Current State
 
-更新日期：2026-08-26
-目前版本：**v94.1 管理後台捲動鎖修復**
+更新日期：2026-08-27
+目前版本：**v96.1 重設安全、動態排行榜與啟用協助**
+
+## 2026-08-27 重設安全、三分類排行榜與啟用協助
+
+- 學習資料重設改為伺服器原子交易與每位會員／每個題庫分離的 data、wrong、favorite generation barrier；「只清錯題」只推進 wrong generation，「重新開始」推進 data／wrong 並保留 favorite generation，「完整重設」才同步推進三者。即使離線裝置錯過「完整重設 → 重新開始」兩次事件，也會由累積 favorite generation 判斷必須清除舊收藏。三種重設都使用可重試 request ID，避免逾時重送刪掉重設後才建立的新資料。
+- 雲端、本機 IndexedDB、localStorage、sync intent 與可靠性佇列共用重設範圍；app DB 會在同一筆 transaction 寫入帶 pending/final phase 的 reset marker，若瀏覽器在伺服器完成後或 localStorage 清理途中中斷，下次啟動仍會補完。錯題重設只淘汰錯題工作，重新開始保留相同 favorite generation 的收藏，完整重設才清除所有該題庫學習資料；證券高業與初階外匯始終分開處理。
+- 排行榜保留原本藍白風格並移除「學習榮耀榜」區塊；原「榮耀殿堂」改名為「排行榜」，前三名會依目前選取的「連續答對／練習時數／刷題大師」即時切換。
+- 排行分類選單移至完整排行榜卡片；連續答對清單只顯示頭像、名稱與最右側連續答對題數。新增「刷題大師」，只計正式證券高業題庫中做過的不重複題目數，重複作答不重複加分。
+- 登入、啟用碼頁與未開通提示新增 `aaron.kcts@gmail.com` 聯絡連結，並提醒不要寄送密碼或完整啟用碼。
+- 新增 migration：`supabase/migrations/20260827032452_reset_safe_leaderboards_v96.sql`。正式資料庫已依序記錄 v95 `20260827044831` 與 v96 `20260827044849`；v96 以正式 catalog 驗證 3,526 個證券高業題號與 3,250 個初階外匯題號，伺服器自行推導題庫範圍並拒絕未知／混合題號。舊版 authenticated 寫入 RPC 已撤銷，只保留帶 generation 的 v96 路徑；練習時數事件另受伺服器實際經過時間預算限制，不能靠大量 UUID 快速灌入。
+- 整份 v95 → v96 migration 與語意測試已在正式 Supabase 以 `BEGIN`／`ROLLBACK` 驗證：題庫範圍防偽、跨題庫隔離、三種重設語意、重設後歸零、舊 generation 拒絕、同 request 重播安全、刷題不重複計數、練習時數事件預算及舊 RPC 權限撤銷；回滾後沒有殘留 schema 或測試資料。
+- 新增 v96.1 correction migration：`supabase/migrations/20260827050500_reset_favorite_generation_v961.sql`。所有前端刪除改走 operation-ID 原子 RPC，sync intent 轉交可靠性佇列時沿用同一 operation ID；來源列刪除、tombstone 與重播 ledger 同一 transaction 提交，authenticated／anon／PUBLIC 不再能直接 DELETE 六張學習表。正式 schema 的 rollback 語意測試已覆蓋 complete → restart、收藏保留／取消、stale generation、response-lost 同操作重播、不同 payload 重用拒絕及 clear-table 多 tombstone，結果 `v961_semantics_passed` 且零殘留；正式 migration 已記錄為 `20260827052455`。
+- Production build、bundle budget、public boundary、新增重設／排行榜合約及桌面／iPad／手機 Chromium 聚焦 E2E 6／6 已通過。完整歷史 `verify` 仍被 repo 未附的外匯官方 PDF 擋住；既有 CSS 維護預算仍為 21／17 個檔案與 1026／950 個 `!important`，本次沒有新增 CSS 檔或 `!important`。
+
+## 2026-08-27 管理後台會員分類、安全帳號移除與 UX 預覽
+
+- 會員目錄新增「依會員／依啟用碼」切換；同一會員若曾分別兌換高業與外匯啟用碼，會出現在各自正確的題庫／啟用碼群組。管理員直接開通與尚未輸入啟用碼另列明確群組。
+- 分類來源改用只保存雜湊關聯的 redemption ledger；後台只顯示遮罩 preview、題庫、備註與使用量，不回傳或保存啟用碼明碼。無法還原歸屬的舊使用次數以 history gap 明確警示，不假裝成完整歷史。
+- 已使用的啟用碼改為只能停用／恢復，不可刪除；未使用碼仍可永久刪除，避免會員分類歷程被破壞。
+- 新增主要管理員永久移除會員流程：強制即時 AAL2、有效 Auth session、目前密碼重新驗證後才允許首次 TOTP enrollment，並要求完整 Email、「永久刪除」、原因與不可逆確認。
+- 帳號刪除採資料庫原子 claim、10 分鐘 lease 與 lease-token CAS；逾時操作可由新 operationId 安全接管，過期或已被接管的 worker 無法續租、完成或覆寫狀態。目標 fingerprint 只依穩定 userId 雜湊，不受 Email 變更影響。
+- 只要刪除仍為 pending（即使 lease 已逾期），Storage policy 仍禁止目標會員重傳頭像，Auth Email 變更、以相同 Email 新註冊或改綁其他帳號也會被擋下；userId 與 Email 兩條管理員授權路徑亦拒絕提升權限。刪除 operation 的 Email fingerprint 一經建立即不可被重試覆寫，Storage／Auth／授權檢查與 deletion claim 共用固定次序的 advisory lock。Storage 每批清理、Auth hard delete 前及 Auth 後的 Email 清理前皆重新確認 lease，並再次驗證操作者 AAL2、目標 Email 與管理員紀錄。
+- Auth hard delete 送出前先寫入 durable reconcile 標記；只有帶有此標記的 operation 才能在舊 userId 已不存在時進入 recovery。若同 Email 已在 claim 前由新 UUID 合法持有，recovery 只清舊 userId 綁定資料並跳過 Email-wide sweep；普通 pre-Auth failed 重試不得把 404 當成刪除成功。外部回應逾時或不確定時，操作維持 pending tombstone 並釋放給下一個 worker 接管，不能以普通 failed 狀態提早解除 Storage／管理員保護。
+- Storage 上傳的 RLS 檢查與最終 metadata commit 分屬不同交易，因此另在 `storage.objects` 最終 insert／update 加入永久 tombstone trigger；晚於 claim 或完成刪除才抵達的頭像 commit 會被拒絕，已完成刪除的 userId fingerprint 也持續阻擋舊路徑復活。
+- 密碼重設 throttle 紀錄改綁 `target_user_id` 並以 `ON DELETE CASCADE` 清除；pending／completed tombstone 阻止晚到寫入。管理 audit 保留問責事件但 trigger 會把刪除目標的 `target_email` 強制匿名化；Email artifact sweep 改在單一資料庫交易中驗證 operation、lease、userId 與 Email fingerprint 後執行，避免 stale worker 誤掃後來重用相同 Email 的帳號。自由文字刪除原因不寫入 audit，只保存是否提供與長度。
+- 頭像清理支援分頁、巢狀路徑、批次刪除與清除後複查；刪除 Auth 後的 audit／operation 記錄失敗只回傳可追蹤 warning，不會把已成功刪除誤報成失敗。啟用碼使用次數不回補，ledger 將 user_id 匿名化保留。
+- MFA 取消流程改為先關閉 UI、背景清除未完成 factor；使用 `listFactors().data.all` 辨識未驗證 factor、檢查 unenroll 回應，並以 lifecycle generation 防止關閉後才完成的 enrollment 遺留。Focus trap 不再因 inline Escape callback 每次 render 重置焦點。
+- 會員抽屜與確認視窗只依實際 render 的 overlay 上鎖；會員在背景刷新後消失會清除選取狀態。新增 Playwright 回歸，桌面、iPad Chromium 與手機 Chromium 均驗證關閉後恢復捲動。
+- 提供三款隔離、假資料、零正式 API 的 1440×900 預覽：A 清單指揮台、B 啟用碼班級、C 三欄 CRM；正式 React 介面尚未套用任一款，等待選版。
+- 新增 migration：`supabase/migrations/20260826145617_add_activation_redemption_ledger.sql`。整份 migration 已在正式 Supabase 以 `BEGIN`／`ROLLBACK` 驗證 schema、最小權限、claim／併發阻擋、過期 lease 拒絕與接管、Auth 不確定回應 reconcile、過期 pending 仍封鎖 Storage／兩條管理員授權路徑、Storage superuser 晚到 commit 在 pending／completed 都被拒絕、重設紀錄 tombstone／audit Email 匿名化、同 Email 新 owner 不被 recovery sweep 誤傷，以及跨 operationId 完成重播；回滾後三張新表、trigger、函式、audit、測試 Auth user 與 metadata 均不存在。v95 已於 v96 發布流程中先行正式套用。
+- `typecheck`、`typecheck:api`、ESLint quiet、管理後台合約、啟用碼 scope 合約、production build、public boundary、bundle gate及新增桌面／iPad／手機 Chromium E2E 9／9 已通過。完整歷史 verify／E2E 仍被既有缺少外匯來源 PDF、CSS budget、v83–v93 舊契約與未安裝 WebKit 阻擋；這些既有 gate 已留存，不影響本輪經獨立驗證的 v95／v96 發布範圍。
 
 ## 2026-08-26 管理後台捲動鎖修復
 
@@ -518,25 +548,27 @@ npm run verify
 - 初始資源約 **166.5 KiB gzip**。
 - Production build 不包含 `data/pdf-image-quiz.json` 或 `data/backups`。
 
-Playwright 實際 browser suite 不包含在 `npm run verify`；GitHub Actions 會使用官方 Playwright Chromium／WebKit 執行。本工作容器的系統 Chromium 受集中式 URL block policy 限制，因此本地未宣稱 browser E2E 通過。
+Playwright 實際 browser suite 不包含在 `npm run verify`。本輪聚焦流程已在桌面、iPad 與手機 Chromium 通過 6／6；完整跨版本 E2E 仍包含未安裝的 WebKit 與歷史 UI 契約，不宣稱整套全綠。
 
 ## 資料庫部署順序
 
-必須依序套用尚未部署的 migrations：
+正式環境已依序套用下列 migrations：
 
 ```text
-supabase/migrations/20260712090000_stabilization_final.sql
-supabase/migrations/20260712130000_final_hardening_v79.sql
+supabase/migrations/20260826145617_add_activation_redemption_ledger.sql
+supabase/migrations/20260827032452_reset_safe_leaderboards_v96.sql
+supabase/migrations/20260827050500_reset_favorite_generation_v961.sql
 ```
 
-v79 migration 新增：
+正式 migration 紀錄目前包含 v95 `20260827044831`、v96 `20260827044849` 與 v96.1 `20260827052455`。順序不可顛倒：v96 的 reset state、canonical question catalog、排行榜與 generation 防線建立在 v95 已完成的管理員／啟用碼資料結構之後，v96.1 再收斂收藏世代與原子刪除。
 
-- `user_sync_version_seq`
-- 各同步表 `sync_version` trigger／index
-- `user_image_quiz_sessions` 與 RLS
-- `image_session` tombstone type
-- 原子管理員及啟用碼 RPC
-- telemetry `source_hash`
+v96 migration 新增：
+
+- 每位會員／題庫分離的 data／wrong reset generation 與冪等 request ledger
+- 正式題號 catalog、題庫範圍推導與所有學習寫入 generation trigger
+- 三種排行榜事件與伺服器端練習時間預算
+- authenticated 舊寫入 RPC 撤權，只允許 v96 generation-aware 寫入
+- v96.1 favorite generation、pending/final 本機 marker 與 operation-ID 原子刪除／tombstone ledger
 
 ## 部署驗收
 

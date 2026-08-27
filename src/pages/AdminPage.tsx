@@ -5,7 +5,9 @@ import {
   ChevronRight,
   ClipboardList,
   Clock3,
+  FolderKanban,
   KeyRound,
+  LayoutList,
   LogIn,
   MailCheck,
   MonitorSmartphone,
@@ -15,6 +17,7 @@ import {
   ShieldOff,
   Target,
   Trash2,
+  UserRoundX,
   Trophy,
   UsersRound,
   Wrench,
@@ -24,6 +27,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ProtectedRoute } from "../auth/ProtectedRoute";
 import { useAuth } from "../auth/AuthContext";
 import { AdminToolsPanel } from "../components/AdminToolsPanel";
+import {
+  AdminDeleteMemberDialog,
+  type DeleteMemberRequest,
+} from "../components/AdminDeleteMemberDialog";
 import { GlassButton } from "../components/GlassButton";
 import { GlassCard } from "../components/GlassCard";
 import { LoadingState } from "../components/LoadingState";
@@ -31,6 +38,7 @@ import { V93ConfirmDialog, V93InlineNotice } from "../components/V93InteractionP
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 import { announceInteractionFeedback } from "../lib/interactionFeedback";
 import { formatTotalPracticeTime } from "../lib/practiceTime";
+import { supabase } from "../lib/supabase";
 import "../styles/admin-leaderboard-v42.css";
 import "../styles/admin-premium-v65.css";
 
@@ -64,14 +72,29 @@ type ExamEntitlement = {
   grantedAt: string | null;
   expiresAt: string | null;
   activationCode: {
+    id?: string;
     code_preview?: string | null;
     max_uses?: number;
     use_count?: number;
+    redemption_history_gap?: number;
     is_active?: boolean;
     note?: string | null;
     created_at?: string | null;
     redeemed_at?: string | null;
   } | null;
+};
+
+type ActivationCodeMembership = {
+  id: string;
+  examId: ExamId;
+  codePreview: string;
+  note: string | null;
+  maxUses: number;
+  useCount: number;
+  historyGap: number;
+  isActive: boolean;
+  redeemedAt: string | null;
+  source: "redeem" | "legacy_entitlement";
 };
 
 type AdminUserRow = {
@@ -80,6 +103,7 @@ type AdminUserRow = {
   createdAt: string | null;
   lastSignInAt: string | null;
   entitlements: ExamEntitlement[];
+  activationCodes: ActivationCodeMembership[];
   entitlementStatus: "active" | "revoked" | "none" | string;
   plan: string | null;
   grantedAt: string | null;
@@ -194,13 +218,20 @@ type AdminAuditEvent = {
   createdAt: string | null;
 };
 
-type UsersResponse = { users?: AdminUserRow[]; pagination?: { page: number; perPage: number; hasMore: boolean }; error?: string };
+type AdminRole = "primary_admin" | "admin";
+type UsersResponse = {
+  users?: AdminUserRow[];
+  admin?: { role: AdminRole };
+  pagination?: { page: number; perPage: number; total?: number; hasMore: boolean };
+  error?: string;
+};
 type UserDetailResponse = Partial<UserDetail> & { error?: string };
 type LeaderboardResponse = { entries?: LeaderboardAdminEntry[]; error?: string };
 type AuditResponse = { events?: AdminAuditEvent[]; error?: string };
 type ActionResponse = { ok?: boolean; message?: string; error?: string };
 type UserFilter = "all" | "active" | "inactive";
-type UserAction = "revoke" | "restore" | "send-password-reset" | "reset-devices" | "revoke-device";
+type DirectoryMode = "members" | "activation-codes";
+type UserAction = "revoke" | "restore" | "send-password-reset" | "reset-devices" | "revoke-device" | "delete-user";
 type AdminConfirmation =
   | {
       kind: "user-action";
@@ -211,6 +242,19 @@ type AdminConfirmation =
       examId?: ExamId;
     }
   | { kind: "leaderboard-delete"; entry: LeaderboardAdminEntry };
+
+type ActivationCodeGroup = {
+  key: string;
+  examId: ExamId | null;
+  codePreview: string;
+  note: string;
+  maxUses: number | null;
+  useCount: number | null;
+  historyGap: number;
+  isActive: boolean;
+  members: AdminUserRow[];
+  kind: "code" | "direct" | "unactivated";
+};
 
 function formatDate(value: string | null): string {
   if (!value) return "—";
@@ -267,7 +311,77 @@ function actionLabel(action: UserAction, examId?: ExamId): string {
   if (action === "restore") return `開通${EXAM_LABELS[examId ?? "senior-securities"]}權限`;
   if (action === "send-password-reset") return "寄送重設密碼信";
   if (action === "reset-devices") return "封存全部有效裝置紀錄（不會強制登出）";
+  if (action === "delete-user") return "永久移除會員帳號";
   return "封存這台裝置紀錄（不會強制登出）";
+}
+
+function buildActivationCodeGroups(rows: AdminUserRow[]): ActivationCodeGroup[] {
+  const groups = new Map<string, ActivationCodeGroup>();
+  const ensureGroup = (group: Omit<ActivationCodeGroup, "members">): ActivationCodeGroup => {
+    const current = groups.get(group.key);
+    if (current) return current;
+    const created = { ...group, members: [] };
+    groups.set(group.key, created);
+    return created;
+  };
+
+  for (const row of rows) {
+    const memberships = row.activationCodes || [];
+    for (const membership of memberships) {
+      ensureGroup({
+        key: `code:${membership.id}`,
+        examId: membership.examId,
+        codePreview: membership.codePreview || "來源碼已移除",
+        note: membership.note || "未命名啟用碼",
+        maxUses: membership.maxUses,
+        useCount: membership.useCount,
+        historyGap: membership.historyGap,
+        isActive: membership.isActive,
+        kind: "code",
+      }).members.push(row);
+    }
+
+    const membershipExams = new Set(memberships.map((membership) => membership.examId));
+    const directExams = EXAM_IDS.filter((examId) => {
+      const entitlement = entitlementFor(row.entitlements, examId);
+      return entitlement.status === "active" && !membershipExams.has(examId);
+    });
+    for (const examId of directExams) {
+      ensureGroup({
+        key: `direct:${examId}`,
+        examId,
+        codePreview: "管理員直接開通",
+        note: `${EXAM_LABELS[examId]}人工授權`,
+        maxUses: null,
+        useCount: null,
+        historyGap: 0,
+        isActive: true,
+        kind: "direct",
+      }).members.push(row);
+    }
+
+    const hasAnyEntitlement = row.entitlements.some((entitlement) => entitlement.status === "active");
+    if (memberships.length === 0 && !hasAnyEntitlement) {
+      ensureGroup({
+        key: "unactivated",
+        examId: null,
+        codePreview: "尚未輸入啟用碼",
+        note: "未啟用會員",
+        maxUses: null,
+        useCount: null,
+        historyGap: 0,
+        isActive: false,
+        kind: "unactivated",
+      }).members.push(row);
+    }
+  }
+
+  const kindOrder: Record<ActivationCodeGroup["kind"], number> = { code: 0, direct: 1, unactivated: 2 };
+  return Array.from(groups.values()).sort((left, right) =>
+    kindOrder[left.kind] - kindOrder[right.kind]
+      || String(left.examId || "z").localeCompare(String(right.examId || "z"))
+      || left.note.localeCompare(right.note, "zh-TW"),
+  );
 }
 
 function auditActionLabel(action: string): string {
@@ -277,8 +391,12 @@ function auditActionLabel(action: string): string {
     "user.devices.archive_all": "封存使用者全部裝置",
     "user.device.archive": "封存使用者裝置",
     "user.password_reset.send": "寄送密碼重設信",
+    "user.account.delete_requested": "要求永久移除會員帳號",
+    "user.account.delete_completed": "永久移除會員帳號",
+    "user.account.delete_failed": "移除會員帳號失敗",
     "leaderboard.entry.delete": "刪除排行榜紀錄",
     "activation_code.create": "建立啟用碼",
+    "activation_code.status_update": "調整啟用碼狀態",
     "activation_code.delete": "刪除啟用碼",
     "question_release.create": "建立題庫發布批次",
     "question_release.submit-review": "題庫批次送審",
@@ -331,6 +449,7 @@ function AdminContent() {
   const { session } = useAuth();
   const accessToken = session?.access_token || "";
   const [users, setUsers] = useState<AdminUserRow[]>([]);
+  const [adminRole, setAdminRole] = useState<AdminRole | null>(null);
   const [userPage, setUserPage] = useState(1);
   const [hasMoreUsers, setHasMoreUsers] = useState(false);
   const [leaderboardEntries, setLeaderboardEntries] = useState<LeaderboardAdminEntry[]>([]);
@@ -348,6 +467,7 @@ function AdminContent() {
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [userFilter, setUserFilter] = useState<UserFilter>("all");
+  const [directoryMode, setDirectoryMode] = useState<DirectoryMode>("members");
   const [leaderboardQuery, setLeaderboardQuery] = useState("");
   const [leaderboardMode, setLeaderboardMode] = useState<"streak" | "practice">("streak");
   const [message, setMessage] = useState<string | null>(null);
@@ -356,6 +476,8 @@ function AdminContent() {
   const [auditLoading, setAuditLoading] = useState(false);
   const [auditError, setAuditError] = useState<string | null>(null);
   const [pendingConfirmation, setPendingConfirmation] = useState<AdminConfirmation | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const userDetailRequest = useRef<{ sequence: number; controller: AbortController | null }>({
     sequence: 0,
     controller: null,
@@ -388,7 +510,17 @@ function AdminContent() {
           row.entitlementStatus,
           row.activationCode,
           row.plan,
-          ...(row.entitlements || []).flatMap((entitlement) => [EXAM_LABELS[entitlement.examId], entitlement.status, entitlement.activationCode]),
+          ...(row.entitlements || []).flatMap((entitlement) => [
+            EXAM_LABELS[entitlement.examId],
+            entitlement.status,
+            entitlement.activationCode?.code_preview,
+            entitlement.activationCode?.note,
+          ]),
+          ...(row.activationCodes || []).flatMap((membership) => [
+            membership.codePreview,
+            membership.note,
+            EXAM_LABELS[membership.examId],
+          ]),
         ]
           .filter(Boolean)
           .some((value) => String(value).toLowerCase().includes(normalizedQuery));
@@ -398,6 +530,11 @@ function AdminContent() {
         return new Date(b.lastActivityAt || 0).getTime() - new Date(a.lastActivityAt || 0).getTime();
       });
   }, [query, userFilter, users]);
+
+  const activationCodeGroups = useMemo(
+    () => buildActivationCodeGroups(filteredUsers),
+    [filteredUsers],
+  );
 
   const filteredLeaderboardEntries = useMemo(() => {
     const sortedEntries = [...leaderboardEntries].sort((a, b) => {
@@ -426,6 +563,7 @@ function AdminContent() {
       const payload = await readJsonResponse<UsersResponse>(response);
       if (!response.ok) throw new Error(payload.error || "讀取使用者失敗。");
       setUsers(payload.users || []);
+      setAdminRole(payload.admin?.role || null);
       setHasMoreUsers(Boolean(payload.pagination?.hasMore));
     } catch (loadError: unknown) {
       setError(loadError instanceof Error ? loadError.message : "讀取使用者失敗。");
@@ -536,24 +674,35 @@ function AdminContent() {
       setUserDetail(null);
       setUserDetailError(null);
       setUserDetailLoading(false);
+      setDeleteDialogOpen(false);
+      setDeleteError(null);
       return;
     }
     setUserDetail(null);
     void loadUserDetail();
   }, [loadUserDetail, selectedUserId]);
 
+  useEffect(() => {
+    if (loading || !selectedUserId || users.some((row) => row.id === selectedUserId)) return;
+    setSelectedUserId(null);
+    setDeleteDialogOpen(false);
+    setDeleteError(null);
+  }, [loading, selectedUserId, users]);
+
   useEffect(() => () => {
     userDetailRequest.current.controller?.abort();
   }, []);
 
-  const hasPageOverlay = Boolean(selectedUserId || toolsOpen || leaderboardOpen || auditOpen);
+  const userDrawerOpen = Boolean(selectedUserId && selectedUser);
+  const deleteMemberDialogVisible = Boolean(deleteDialogOpen && selectedUser && userDetail);
+  const hasPageOverlay = Boolean(userDrawerOpen || toolsOpen || leaderboardOpen || auditOpen || deleteMemberDialogVisible);
   useBodyScrollLock(hasPageOverlay);
 
   useEffect(() => {
     if (!hasPageOverlay) return;
     const closeTopOverlay = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
-      if (pendingConfirmation) return;
+      if (pendingConfirmation || deleteDialogOpen) return;
       if (toolsOpen) setToolsOpen(false);
       else if (leaderboardOpen) setLeaderboardOpen(false);
       else if (auditOpen) setAuditOpen(false);
@@ -563,7 +712,7 @@ function AdminContent() {
     return () => {
       window.removeEventListener("keydown", closeTopOverlay);
     };
-  }, [auditOpen, hasPageOverlay, leaderboardOpen, pendingConfirmation, selectedUserId, toolsOpen]);
+  }, [auditOpen, deleteDialogOpen, hasPageOverlay, leaderboardOpen, pendingConfirmation, selectedUserId, toolsOpen]);
 
   function requestUserAction(
     action: UserAction,
@@ -620,6 +769,47 @@ function AdminContent() {
     } finally {
       setBusyKey(null);
       setPendingConfirmation(null);
+    }
+  }
+
+  async function deleteSelectedMember(request: DeleteMemberRequest): Promise<void> {
+    if (!selectedUser || !accessToken || adminRole !== "primary_admin") return;
+    const target = selectedUser;
+    const key = `delete-user:${target.id}`;
+    setBusyKey(key);
+    setDeleteError(null);
+    setMessage(null);
+    try {
+      const latestSession = supabase ? await supabase.auth.getSession() : null;
+      const latestAccessToken = latestSession?.data.session?.access_token || accessToken;
+      const response = await fetch("/api/admin/action", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + latestAccessToken,
+        },
+        body: JSON.stringify({
+          action: "delete-user",
+          userId: target.id,
+          email: target.email,
+          ...request,
+        }),
+      });
+      const payload = await readJsonResponse<ActionResponse>(response);
+      if (!response.ok) throw new Error(payload.error || "永久移除會員失敗。");
+      const successMessage = payload.message || "會員帳號已永久移除。";
+      setMessage(successMessage);
+      announceInteractionFeedback(successMessage, "success", 4800);
+      setDeleteDialogOpen(false);
+      setSelectedUserId(null);
+      setUserDetail(null);
+      await loadUsers(true);
+    } catch (deleteMemberError: unknown) {
+      const deleteMessage = deleteMemberError instanceof Error ? deleteMemberError.message : "永久移除會員失敗。";
+      setDeleteError(deleteMessage);
+      announceInteractionFeedback(deleteMessage, "error", 6000);
+    } finally {
+      setBusyKey(null);
     }
   }
 
@@ -747,10 +937,29 @@ function AdminContent() {
           </div>
         </div>
 
+        <div className="admin-directory-view-switch" role="group" aria-label="會員分類方式">
+          <button
+            type="button"
+            className={directoryMode === "members" ? "is-active" : ""}
+            aria-pressed={directoryMode === "members"}
+            onClick={() => setDirectoryMode("members")}
+          >
+            <LayoutList size={17} aria-hidden="true" />依會員
+          </button>
+          <button
+            type="button"
+            className={directoryMode === "activation-codes" ? "is-active" : ""}
+            aria-pressed={directoryMode === "activation-codes"}
+            onClick={() => setDirectoryMode("activation-codes")}
+          >
+            <FolderKanban size={17} aria-hidden="true" />依啟用碼
+          </button>
+        </div>
+
         {message ? <V93InlineNotice tone="success" className="admin-premium-notice">{message}</V93InlineNotice> : null}
         {error ? <V93InlineNotice tone="error" className="admin-premium-notice">{error}</V93InlineNotice> : null}
 
-        <div className="admin-member-table">
+        {directoryMode === "members" ? <div className="admin-member-table">
           <div className="admin-member-table-head" aria-hidden="true">
             <span>使用者</span><span>學習成效</span><span>練習投入</span><span>最近活動</span><span>授權</span><span />
           </div>
@@ -790,7 +999,56 @@ function AdminContent() {
               </button>
             );
           })}
-        </div>
+        </div> : (
+          <div className="admin-activation-groups" aria-label="依啟用碼分類的會員">
+            {activationCodeGroups.length === 0 ? (
+              <div className="admin-premium-empty">
+                <KeyRound size={24} aria-hidden="true" />
+                <strong>沒有符合條件的啟用碼群組</strong>
+                <span>調整搜尋文字或會員篩選後再試一次。</span>
+              </div>
+            ) : activationCodeGroups.map((group) => (
+              <section className={`admin-activation-group is-${group.kind}`} key={group.key}>
+                <header>
+                  <span className="admin-activation-group-icon"><KeyRound size={19} aria-hidden="true" /></span>
+                  <div>
+                    <p>{group.examId ? EXAM_LABELS[group.examId] : "尚未啟用"}</p>
+                    <h3>{group.note}</h3>
+                    <code>{group.codePreview}</code>
+                  </div>
+                  <div className="admin-activation-group-stats">
+                    <strong>{group.members.length} 位</strong>
+                    <span>{group.useCount !== null && group.maxUses !== null ? `使用 ${group.useCount}/${group.maxUses}` : "系統分類"}</span>
+                    {group.historyGap > 0 ? <em>另有 {group.historyGap} 次舊紀錄無法辨識會員</em> : null}
+                  </div>
+                </header>
+                <div className="admin-activation-group-members">
+                  {group.members.map((row) => (
+                    <button
+                      type="button"
+                      key={`${group.key}:${row.id}`}
+                      onClick={() => setSelectedUserId(row.id)}
+                      aria-label={`查看 ${row.email} 的會員明細`}
+                    >
+                      <span className={"admin-user-avatar " + (row.isOnline ? "is-online" : "")}>
+                        {(row.email[0] || "U").toUpperCase()}
+                        {row.isOnline ? <i aria-label="正在使用" /> : null}
+                      </span>
+                      <span><strong>{row.email || "未命名帳號"}</strong><small>{relativeActivity(row.lastActivityAt)} · {(row.totalAnswered || row.practicedQuestionCount || 0).toLocaleString("zh-TW")} 題</small></span>
+                      <span className="admin-activation-member-entitlements">
+                        {EXAM_IDS.map((examId) => {
+                          const entitlement = entitlementFor(row.entitlements, examId);
+                          return <i key={examId} className={entitlement.status === "active" ? "is-active" : ""}>{EXAM_LABELS[examId]}</i>;
+                        })}
+                      </span>
+                      <ChevronRight size={18} aria-hidden="true" />
+                    </button>
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
+        )}
         <div className="admin-pagination" aria-label="使用者分頁">
           <GlassButton variant="secondary" disabled={userPage <= 1 || loading} onClick={() => setUserPage((page) => Math.max(1, page - 1))}>上一頁</GlassButton>
           <span>第 {userPage} 頁 · 每頁最多 50 位</span>
@@ -1008,6 +1266,31 @@ function AdminContent() {
                       </div>
                     </section>
                   ) : null}
+
+                  {adminRole === "primary_admin" ? (
+                    <section className="admin-detail-section admin-member-danger-zone">
+                      <div className="admin-detail-section-title">
+                        <div><UserRoundX size={19} /><h3>危險區域</h3></div>
+                        <span>僅主要管理員</span>
+                      </div>
+                      <div className="admin-member-danger-content">
+                        <div>
+                          <strong>永久移除會員帳號</strong>
+                          <p>刪除登入帳號、題庫權限、雲端學習紀錄、裝置、排行榜與頭像。啟用碼已使用次數不會回補。</p>
+                        </div>
+                        <GlassButton
+                          variant="danger"
+                          disabled={busyKey === `delete-user:${selectedUser.id}`}
+                          onClick={() => {
+                            setDeleteError(null);
+                            setDeleteDialogOpen(true);
+                          }}
+                        >
+                          <UserRoundX size={17} aria-hidden="true" />永久移除帳號
+                        </GlassButton>
+                      </div>
+                    </section>
+                  ) : null}
                 </>
               ) : null}
             </div>
@@ -1136,6 +1419,27 @@ function AdminContent() {
             </div>
           </GlassCard>
         </div>
+      ) : null}
+
+      {selectedUser && userDetail ? (
+        <AdminDeleteMemberDialog
+          open={deleteDialogOpen}
+          email={selectedUser.email}
+          impact={{
+            answered: userDetail.learning.totalAnswered,
+            wrong: userDetail.learning.wrongQuestionCount,
+            favorites: userDetail.learning.favoriteQuestionCount,
+            devices: userDetail.devices.length,
+            entitlements: userDetail.entitlements.filter((entitlement) => entitlement.status !== "none").length,
+          }}
+          busy={busyKey === `delete-user:${selectedUser.id}`}
+          error={deleteError}
+          onCancel={() => {
+            setDeleteDialogOpen(false);
+            setDeleteError(null);
+          }}
+          onConfirm={(request) => void deleteSelectedMember(request)}
+        />
       ) : null}
 
       <V93ConfirmDialog
