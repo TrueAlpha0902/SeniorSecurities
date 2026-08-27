@@ -25,6 +25,7 @@ function assert(condition: unknown, message: string): asserts condition {
 type TestMutation = {
   kind: string;
   examId?: LearningResetExamId;
+  resetGeneration?: number;
   record?: { questionId?: string; bankId?: string };
 };
 const userId = `reset-v96-${Date.now()}`;
@@ -67,6 +68,7 @@ await enqueueReliabilityMutation(
   userId,
   entry("favorite-queue", "upsert-favorite", {
     examId: "senior-securities",
+    resetGeneration: 0,
     record: { questionId: "investment-ch01-pdf-0002" },
   }),
 );
@@ -135,6 +137,7 @@ await applyLearningResetGeneration(
   1,
   "restart",
   2,
+  0,
 );
 learning = await loadReliabilityLearningData<
   { questionId: string },
@@ -151,8 +154,8 @@ const seniorQueue = queue.filter((item) =>
 assert(
   seniorQueue.length === 1 &&
     seniorQueue[0]?.payload.kind === "upsert-favorite" &&
-    (seniorQueue[0]?.payload as TestMutation & { resetGeneration?: number }).resetGeneration === 1,
-  "Restart must retain and rebase only favorite mutations for the reset exam.",
+    seniorQueue[0]?.payload.resetGeneration === 0,
+  "Restart must retain favorite mutations on their independent favorite generation.",
 );
 assert(
   queue.some((item) => item.payload.record?.questionId === "fx-47-trade-001"),
@@ -163,12 +166,39 @@ assert(
   "Restart must remove stale learning and leaderboard dead letters.",
 );
 
+const offlineUserId = `${userId}-offline`;
+await enqueueReliabilityMutation(
+  offlineUserId,
+  {
+    ...entry("offline-favorite", "upsert-favorite", {
+      examId: "senior-securities",
+      resetGeneration: 0,
+      record: { questionId: "investment-ch01-pdf-0003" },
+    }),
+    userId: offlineUserId,
+  },
+);
+await applyLearningResetGeneration(
+  offlineUserId,
+  "senior-securities",
+  2,
+  "restart",
+  2,
+  1,
+  "restart",
+);
+assert(
+  (await listReliabilityQueue<TestMutation>(offlineUserId, 20)).length === 0,
+  "A device that missed complete -> restart must drop pre-complete favorites via favorite generation.",
+);
+
 const root = process.cwd();
 const read = (relativePath: string) =>
   readFile(path.join(root, relativePath), "utf8");
-const [migration, page, settings, practice, fxProgress, support, database] =
+const [migration, correction, page, settings, practice, fxProgress, support, database] =
   await Promise.all([
     read("supabase/migrations/20260827032452_reset_safe_leaderboards_v96.sql"),
+    read("supabase/migrations/20260827050500_reset_favorite_generation_v961.sql"),
     read("src/pages/LeaderboardPage.tsx"),
     read("src/components/SettingsPanel.tsx"),
     read("src/lib/practiceTime.ts"),
@@ -200,6 +230,18 @@ assert(
     migration.includes("to authenticated, service_role"),
   "Reset RPC must revoke default execution and grant only signed-in/server callers.",
 );
+for (const contract of [
+  "favorite_generation",
+  "user_learning_delete_operations",
+  "delete_user_learning_records_v961",
+  "clear_user_record_tombstones_v961",
+  "securitiesFavoriteGeneration",
+  "foreignExchangeFavoriteGeneration",
+  "operation_id already used for a different deletion",
+  "revoke delete on table",
+]) {
+  assert(correction.includes(contract), `v96.1 migration is missing ${contract}.`);
+}
 assert(
   migration.includes("record_leaderboard_answer_events_batch_v75(jsonb)") &&
     migration.includes("from public, anon, authenticated") &&
@@ -215,9 +257,14 @@ assert(
 assert(
   database.includes('"resetMarkers"') &&
     database.includes("stampedResetScope") &&
-    database.includes('.eq("exam_id", reset.examId)') &&
-    database.includes('.eq("reset_generation", reset.resetGeneration)'),
-  "Local reset markers and generation-scoped destructive writes must stay enforced.",
+    database.includes("favoriteGeneration") &&
+    database.includes("externalCleanupPending") &&
+    database.includes('handoff?: Pick<SyncIntentRecord, "id" | "createdAt">') &&
+    database.includes("id: handoff?.id ?? createMutationId()") &&
+    database.includes("id: intent.id") &&
+    database.includes('rpc("delete_user_learning_records_v961"') &&
+    database.includes('{ kind: "upsert-wrong", record }'),
+  "Reset markers, stable outbox operation ids, independent generations, and atomic destructive writes must stay enforced.",
 );
 assert(
   practice.includes("PENDING_CLOUD_PRACTICE_EVENT_KEY") &&

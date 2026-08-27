@@ -2,14 +2,16 @@
 
 ## 2026-08-27 — 重設安全、動態排行榜與啟用碼協助
 
-- 將錯題重設、重新開始與完整重設統一為資料庫原子 RPC，並把 per-user／per-exam 的 data generation 與 wrong generation 分開；只清錯題不再讓正常作答、收藏或進度失效。三種模式皆使用可重試 request ID，重送相同 request 不會刪除重設後才建立的新資料。
-- 在前端本機資料、IndexedDB sync intent、可靠性佇列、學習事件與練習時數事件加入 generation scope；app DB 以同一 transaction 寫入 reset marker，瀏覽器若在伺服器完成後中斷，下次啟動會補完本機清理。錯題模式只淘汰錯題工作，重新開始保留並 rebase 收藏，完整重設才清除該題庫全部學習資料。
+- 將錯題重設、重新開始與完整重設統一為資料庫原子 RPC，並把 per-user／per-exam 的 data、wrong、favorite generation 分開；只清錯題不再讓正常作答、收藏或進度失效，重新開始保留收藏，完整重設才推進 favorite generation。離線裝置即使錯過 complete → restart 仍不會帶回完整重設前收藏。三種模式皆使用可重試 request ID，重送相同 request 不會刪除重設後才建立的新資料。
+- 在前端本機資料、IndexedDB sync intent、可靠性佇列、學習事件與練習時數事件加入 generation scope；app DB 以同一 transaction 寫入 pending/final reset marker，瀏覽器若在伺服器完成後或外部 localStorage 清理途中中斷，下次啟動會補完。錯題模式只淘汰錯題工作，重新開始保留同一 favorite generation 的收藏，完整重設才清除該題庫全部學習資料。
 - 證券高業與初階外匯的重設範圍完整分離；重新登入或另一裝置上線時會先同步兩個題庫的 reset state，再進行任何本機上傳。
 - 排行榜移除獨立「學習榮耀榜」hero，將「榮耀殿堂」改名「排行榜」；前三名與完整清單共用同一分類狀態，支援連續答對、練習時數及新增的刷題大師。
 - 刷題大師以正式 3,526 題證券高業題號 catalog 限制輸入，並以 user／question 唯一鍵計算不重複作答題數；重設時與其他排行榜統計一併歸零。初階外匯 3,250 個正式題號也納入 canonical catalog，所有寫入由伺服器自行推導題庫，未知或混合題號會 fail closed。
 - 連續答對完整清單收斂為頭像、名稱及最右側連續答對題數；分類 tab 加入 roving focus、方向鍵／Home／End 鍵盤操作與共享 tabpanel 語意。
 - 在登入、啟用碼輸入與權限阻擋頁加入 `mailto:aaron.kcts@gmail.com`，並明確提醒不要寄送密碼或完整啟用碼。
 - 撤銷 authenticated 對舊版學習／排行榜／練習時數寫入 RPC 的權限；v96 練習時間事件加入伺服器實際經過時間預算，避免以快速更換事件 UUID 灌入時數。
+- v96.1 將六張學習表的直接 DELETE 對 authenticated／anon／PUBLIC 撤權；前端破壞性同步統一呼叫具 operation ID 的 SECURITY DEFINER RPC，sync intent 轉交可靠性佇列時保留同一 ID，讓來源列刪除、tombstone 與重播 ledger 原子提交，response-lost 或 handoff crash 重試不會刪除同 generation 後來新建的資料。
+- 新增 v96.1 migration 與可重播 SQL 語意測試；正式 schema rollback 已驗證 complete → restart、收藏保留／取消、stale generation、單筆／整表原子 tombstone 與相同／不同 payload operation replay，結果 `v961_semantics_passed` 且零殘留，並已正式套用為 `20260827052455`。正式權限檢查確認 authenticated／anon 無法直接 DELETE 六張學習表及 tombstone，只有 authenticated 可執行兩個 v96.1 RPC。
 - 新增 v96 migration、重設／排行榜靜態與 IndexedDB 合約，以及桌面／iPad／手機 Chromium 聚焦 E2E 6／6；typecheck、API typecheck、lint、production build、bundle 與 public boundary 通過。v95 → v96 完整 migration 與跨題庫／重設／排行榜語意先在正式 schema 以 transaction rollback 驗證通過且零殘留，再依序正式套用為 `20260827044831`、`20260827044849`。
 - 完整歷史 `verify` 仍因未隨 repo 提交的外匯官方 PDF 於 `audit:fx-source` 停止；既有 CSS budget 仍超過檔案數與 `!important` 上限，兩者均非本次變更造成。
 

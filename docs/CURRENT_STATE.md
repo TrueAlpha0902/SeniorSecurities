@@ -1,17 +1,18 @@
 # SeniorSecurities Current State
 
 更新日期：2026-08-27
-目前版本：**v96 重設安全、動態排行榜與啟用協助**
+目前版本：**v96.1 重設安全、動態排行榜與啟用協助**
 
 ## 2026-08-27 重設安全、三分類排行榜與啟用協助
 
-- 學習資料重設改為伺服器原子交易與每位會員／每個題庫分離的 data generation、wrong generation barrier；「只清錯題」只推進 wrong generation，不會讓正常作答、收藏或進度失效，「重新開始／完整重設」才會同步推進兩者。三種重設都使用可重試 request ID，避免逾時重送刪掉重設後才建立的新資料，也拒絕其他裝置晚到的舊 generation 寫入。
-- 雲端、本機 IndexedDB、localStorage、sync intent 與可靠性佇列共用重設範圍；app DB 會在同一筆 transaction 寫入 reset marker，若瀏覽器在伺服器已完成後中斷，下次啟動仍會補完本機清理。錯題重設只移除錯題工作，重新開始保留並 rebase 收藏，完整重設才清除所有該題庫學習資料；證券高業與初階外匯始終分開處理。
+- 學習資料重設改為伺服器原子交易與每位會員／每個題庫分離的 data、wrong、favorite generation barrier；「只清錯題」只推進 wrong generation，「重新開始」推進 data／wrong 並保留 favorite generation，「完整重設」才同步推進三者。即使離線裝置錯過「完整重設 → 重新開始」兩次事件，也會由累積 favorite generation 判斷必須清除舊收藏。三種重設都使用可重試 request ID，避免逾時重送刪掉重設後才建立的新資料。
+- 雲端、本機 IndexedDB、localStorage、sync intent 與可靠性佇列共用重設範圍；app DB 會在同一筆 transaction 寫入帶 pending/final phase 的 reset marker，若瀏覽器在伺服器完成後或 localStorage 清理途中中斷，下次啟動仍會補完。錯題重設只淘汰錯題工作，重新開始保留相同 favorite generation 的收藏，完整重設才清除所有該題庫學習資料；證券高業與初階外匯始終分開處理。
 - 排行榜保留原本藍白風格並移除「學習榮耀榜」區塊；原「榮耀殿堂」改名為「排行榜」，前三名會依目前選取的「連續答對／練習時數／刷題大師」即時切換。
 - 排行分類選單移至完整排行榜卡片；連續答對清單只顯示頭像、名稱與最右側連續答對題數。新增「刷題大師」，只計正式證券高業題庫中做過的不重複題目數，重複作答不重複加分。
 - 登入、啟用碼頁與未開通提示新增 `aaron.kcts@gmail.com` 聯絡連結，並提醒不要寄送密碼或完整啟用碼。
 - 新增 migration：`supabase/migrations/20260827032452_reset_safe_leaderboards_v96.sql`。正式資料庫已依序記錄 v95 `20260827044831` 與 v96 `20260827044849`；v96 以正式 catalog 驗證 3,526 個證券高業題號與 3,250 個初階外匯題號，伺服器自行推導題庫範圍並拒絕未知／混合題號。舊版 authenticated 寫入 RPC 已撤銷，只保留帶 generation 的 v96 路徑；練習時數事件另受伺服器實際經過時間預算限制，不能靠大量 UUID 快速灌入。
 - 整份 v95 → v96 migration 與語意測試已在正式 Supabase 以 `BEGIN`／`ROLLBACK` 驗證：題庫範圍防偽、跨題庫隔離、三種重設語意、重設後歸零、舊 generation 拒絕、同 request 重播安全、刷題不重複計數、練習時數事件預算及舊 RPC 權限撤銷；回滾後沒有殘留 schema 或測試資料。
+- 新增 v96.1 correction migration：`supabase/migrations/20260827050500_reset_favorite_generation_v961.sql`。所有前端刪除改走 operation-ID 原子 RPC，sync intent 轉交可靠性佇列時沿用同一 operation ID；來源列刪除、tombstone 與重播 ledger 同一 transaction 提交，authenticated／anon／PUBLIC 不再能直接 DELETE 六張學習表。正式 schema 的 rollback 語意測試已覆蓋 complete → restart、收藏保留／取消、stale generation、response-lost 同操作重播、不同 payload 重用拒絕及 clear-table 多 tombstone，結果 `v961_semantics_passed` 且零殘留；正式 migration 已記錄為 `20260827052455`。
 - Production build、bundle budget、public boundary、新增重設／排行榜合約及桌面／iPad／手機 Chromium 聚焦 E2E 6／6 已通過。完整歷史 `verify` 仍被 repo 未附的外匯官方 PDF 擋住；既有 CSS 維護預算仍為 21／17 個檔案與 1026／950 個 `!important`，本次沒有新增 CSS 檔或 `!important`。
 
 ## 2026-08-27 管理後台會員分類、安全帳號移除與 UX 預覽
@@ -556,9 +557,10 @@ Playwright 實際 browser suite 不包含在 `npm run verify`。本輪聚焦流�
 ```text
 supabase/migrations/20260826145617_add_activation_redemption_ledger.sql
 supabase/migrations/20260827032452_reset_safe_leaderboards_v96.sql
+supabase/migrations/20260827050500_reset_favorite_generation_v961.sql
 ```
 
-正式 migration 紀錄分別為 v95 `20260827044831`、v96 `20260827044849`。順序不可顛倒：v96 的 reset state、canonical question catalog、排行榜與 generation 防線建立在 v95 已完成的管理員／啟用碼資料結構之後。
+正式 migration 紀錄目前包含 v95 `20260827044831`、v96 `20260827044849` 與 v96.1 `20260827052455`。順序不可顛倒：v96 的 reset state、canonical question catalog、排行榜與 generation 防線建立在 v95 已完成的管理員／啟用碼資料結構之後，v96.1 再收斂收藏世代與原子刪除。
 
 v96 migration 新增：
 
@@ -566,6 +568,7 @@ v96 migration 新增：
 - 正式題號 catalog、題庫範圍推導與所有學習寫入 generation trigger
 - 三種排行榜事件與伺服器端練習時間預算
 - authenticated 舊寫入 RPC 撤權，只允許 v96 generation-aware 寫入
+- v96.1 favorite generation、pending/final 本機 marker 與 operation-ID 原子刪除／tombstone ledger
 
 ## 部署驗收
 

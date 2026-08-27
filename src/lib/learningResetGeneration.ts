@@ -13,17 +13,20 @@ export const LEARNING_RESET_APPLIED_EVENT = "learning-reset:applied-v96";
 
 const dataGenerationCache = new Map<string, number>();
 const wrongGenerationCache = new Map<string, number>();
+const favoriteGenerationCache = new Map<string, number>();
 const remoteCheckedScopes = new Set<string>();
 
 export type LearningResetGenerationSync = {
   examId: LearningResetExamId;
   generation: number;
   wrongGeneration: number;
+  favoriteGeneration: number;
   mode: LearningResetMode | null;
   dataMode: Exclude<LearningResetMode, "wrong"> | null;
   changed: boolean;
   dataChanged: boolean;
   wrongChanged: boolean;
+  favoriteChanged: boolean;
 };
 
 function scopeKey(userId: string, examId: LearningResetExamId): string {
@@ -36,6 +39,10 @@ function dataMetadataKey(examId: LearningResetExamId): string {
 
 function wrongMetadataKey(examId: LearningResetExamId): string {
   return `${examId}-wrong-reset-generation-v96`;
+}
+
+function favoriteMetadataKey(examId: LearningResetExamId): string {
+  return `${examId}-favorite-reset-generation-v961`;
 }
 
 function normalizeGeneration(value: unknown): number {
@@ -107,25 +114,12 @@ export function isWrongResetMutation(payload: unknown): boolean {
       mutation.table === "user_wrong_records");
 }
 
-function isFavoriteMutation(payload: unknown): boolean {
+export function isFavoriteResetMutation(payload: unknown): boolean {
   const mutation = asRecord(payload);
   return mutation.kind === "upsert-favorite" ||
     mutation.kind === "delete-favorite" ||
     ((mutation.kind === "delete-many" || mutation.kind === "clear-table") &&
       mutation.table === "user_favorite_records");
-}
-
-function rebaseMutationGeneration(payload: unknown, generation: number): unknown {
-  const mutation = asRecord(payload);
-  if (!Object.keys(mutation).length) return payload;
-  const next: Record<string, unknown> = {
-    ...mutation,
-    resetGeneration: generation,
-  };
-  if (mutation.kind === "sync-learning-attempt") {
-    next.attempt = { ...asRecord(mutation.attempt), resetGeneration: generation };
-  }
-  return next;
 }
 
 function isMissingRpc(
@@ -167,6 +161,20 @@ async function localWrongGeneration(
   return persisted;
 }
 
+async function localFavoriteGeneration(
+  userId: string,
+  examId: LearningResetExamId,
+): Promise<number> {
+  const key = scopeKey(userId, examId);
+  const cached = favoriteGenerationCache.get(key);
+  if (cached != null) return cached;
+  const persisted = normalizeGeneration(
+    await getReliabilityMetadata<number>(userId, favoriteMetadataKey(examId)),
+  );
+  favoriteGenerationCache.set(key, persisted);
+  return persisted;
+}
+
 export function peekLearningResetGeneration(
   userId: string,
   examId: LearningResetExamId,
@@ -181,12 +189,20 @@ export function peekLearningWrongResetGeneration(
   return wrongGenerationCache.get(scopeKey(userId, examId)) ?? 0;
 }
 
+export function peekLearningFavoriteResetGeneration(
+  userId: string,
+  examId: LearningResetExamId,
+): number {
+  return favoriteGenerationCache.get(scopeKey(userId, examId)) ?? 0;
+}
+
 export async function applyLearningResetGeneration(
   userId: string,
   examId: LearningResetExamId,
   generation: number,
   mode: LearningResetMode | null = "restart",
   wrongGeneration: number = generation,
+  favoriteGeneration: number = peekLearningFavoriteResetGeneration(userId, examId),
   dataMode: Exclude<LearningResetMode, "wrong"> | null = mode === "complete"
     ? "complete"
     : mode === "restart"
@@ -195,25 +211,34 @@ export async function applyLearningResetGeneration(
 ): Promise<LearningResetGenerationSync> {
   const normalized = normalizeGeneration(generation);
   const normalizedWrong = normalizeGeneration(wrongGeneration);
-  const [previous, previousWrong] = await Promise.all([
+  const normalizedFavorite = normalizeGeneration(favoriteGeneration);
+  const [previous, previousWrong, previousFavorite] = await Promise.all([
     localDataGeneration(userId, examId),
     localWrongGeneration(userId, examId),
+    localFavoriteGeneration(userId, examId),
   ]);
-  if (normalized < previous || normalizedWrong < previousWrong) {
+  if (
+    normalized < previous ||
+    normalizedWrong < previousWrong ||
+    normalizedFavorite < previousFavorite
+  ) {
     throw new Error("伺服器回傳較舊的重設版本，已停止同步以保護本機資料。");
   }
   const dataChanged = previous !== normalized;
   const wrongChanged = previousWrong !== normalizedWrong;
-  if (!dataChanged && !wrongChanged) {
+  const favoriteChanged = previousFavorite !== normalizedFavorite;
+  if (!dataChanged && !wrongChanged && !favoriteChanged) {
     return {
       examId,
       generation: normalized,
       wrongGeneration: normalizedWrong,
+      favoriteGeneration: normalizedFavorite,
       mode,
       dataMode,
       changed: false,
       dataChanged: false,
       wrongChanged: false,
+      favoriteChanged: false,
     };
   }
 
@@ -222,37 +247,34 @@ export async function applyLearningResetGeneration(
     [
       { key: dataMetadataKey(examId), value: normalized },
       { key: wrongMetadataKey(examId), value: normalizedWrong },
+      { key: favoriteMetadataKey(examId), value: normalizedFavorite },
     ],
     (payload) => {
       if (!isLearningMutationForExam(payload, examId)) return payload;
-      if (!dataChanged) return isWrongResetMutation(payload) ? null : payload;
-      if (mode === "restart" && isFavoriteMutation(payload)) {
-        return rebaseMutationGeneration(payload, normalized);
-      }
-      return null;
+      if (isWrongResetMutation(payload)) return wrongChanged ? null : payload;
+      if (isFavoriteResetMutation(payload)) return favoriteChanged ? null : payload;
+      return dataChanged ? null : payload;
     },
     examId === "senior-securities" && dataChanged,
   );
   dataGenerationCache.set(scopeKey(userId, examId), normalized);
   wrongGenerationCache.set(scopeKey(userId, examId), normalizedWrong);
+  favoriteGenerationCache.set(scopeKey(userId, examId), normalizedFavorite);
   remoteCheckedScopes.add(scopeKey(userId, examId));
   if (examId === "senior-securities" && dataChanged) {
     clearLearningStoreCache(userId);
-  }
-  if (typeof window !== "undefined") {
-    window.dispatchEvent(new CustomEvent(LEARNING_RESET_APPLIED_EVENT, {
-      detail: { examId, mode, dataChanged, wrongChanged },
-    }));
   }
   return {
     examId,
     generation: normalized,
     wrongGeneration: normalizedWrong,
+    favoriteGeneration: normalizedFavorite,
     mode,
     dataMode,
     changed: true,
     dataChanged,
     wrongChanged,
+    favoriteChanged,
   };
 }
 
@@ -262,20 +284,23 @@ export async function synchronizeLearningResetGeneration(
   forceRemote = false,
 ): Promise<LearningResetGenerationSync> {
   const key = scopeKey(userId, examId);
-  const [local, localWrong] = await Promise.all([
+  const [local, localWrong, localFavorite] = await Promise.all([
     localDataGeneration(userId, examId),
     localWrongGeneration(userId, examId),
+    localFavoriteGeneration(userId, examId),
   ]);
   if (!forceRemote && remoteCheckedScopes.has(key)) {
     return {
       examId,
       generation: local,
       wrongGeneration: localWrong,
+      favoriteGeneration: localFavorite,
       mode: null,
       dataMode: null,
       changed: false,
       dataChanged: false,
       wrongChanged: false,
+      favoriteChanged: false,
     };
   }
   if (!supabase || userId === "local-preview-user") {
@@ -284,11 +309,13 @@ export async function synchronizeLearningResetGeneration(
       examId,
       generation: local,
       wrongGeneration: localWrong,
+      favoriteGeneration: localFavorite,
       mode: null,
       dataMode: null,
       changed: false,
       dataChanged: false,
       wrongChanged: false,
+      favoriteChanged: false,
     };
   }
 
@@ -309,14 +336,19 @@ export async function synchronizeLearningResetGeneration(
     const nextWrongGeneration = normalizeGeneration(
       state.wrongGeneration ?? nextDataGeneration,
     );
+    const nextFavoriteGeneration = normalizeGeneration(
+      state.favoriteGeneration ?? localFavorite,
+    );
     const normalizedDataMode = normalizeMode(state.dataMode);
     const dataMode = normalizedDataMode === "complete"
       ? "complete"
       : normalizedDataMode === "restart"
         ? "restart"
         : null;
-    const mode = nextDataGeneration > local
-      ? (dataMode ?? "restart")
+    const mode = nextFavoriteGeneration > localFavorite
+      ? "complete"
+      : nextDataGeneration > local
+        ? (dataMode ?? "restart")
       : nextWrongGeneration > localWrong
         ? "wrong"
         : normalizeMode(state.mode);
@@ -326,6 +358,7 @@ export async function synchronizeLearningResetGeneration(
       nextDataGeneration,
       mode,
       nextWrongGeneration,
+      nextFavoriteGeneration,
       dataMode,
     );
   }
@@ -344,11 +377,13 @@ export async function synchronizeLearningResetGeneration(
         examId,
         generation: local,
         wrongGeneration: localWrong,
+        favoriteGeneration: localFavorite,
         mode: null,
         dataMode: null,
         changed: false,
         dataChanged: false,
         wrongChanged: false,
+        favoriteChanged: false,
       };
     }
     throw legacyResult.error;
@@ -359,6 +394,8 @@ export async function synchronizeLearningResetGeneration(
     examId,
     normalizeGeneration(legacyResult.data),
     "restart",
+    normalizeGeneration(legacyResult.data),
+    localFavorite,
   );
 }
 
@@ -376,10 +413,18 @@ export async function getLearningWrongResetGeneration(
   return (await synchronizeLearningResetGeneration(userId, examId)).wrongGeneration;
 }
 
+export async function getLearningFavoriteResetGeneration(
+  userId: string,
+  examId: LearningResetExamId = "senior-securities",
+): Promise<number> {
+  return (await synchronizeLearningResetGeneration(userId, examId)).favoriteGeneration;
+}
+
 export function clearLearningResetGenerationCache(userId: string): void {
   for (const examId of ["senior-securities", "junior-foreign-exchange"] as const) {
     dataGenerationCache.delete(scopeKey(userId, examId));
     wrongGenerationCache.delete(scopeKey(userId, examId));
+    favoriteGenerationCache.delete(scopeKey(userId, examId));
     remoteCheckedScopes.delete(scopeKey(userId, examId));
   }
 }

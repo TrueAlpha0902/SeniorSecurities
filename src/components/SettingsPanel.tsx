@@ -25,11 +25,7 @@ import {
   setAnswerModeEnabled,
   setAutoNextCorrectEnabled,
 } from "../lib/appSettings";
-import {
-  clearForeignExchangeProgress,
-  foreignExchangeProgressSummary,
-  type ForeignExchangeClearMode,
-} from "../lib/foreignExchangeProgress";
+import { foreignExchangeProgressSummary } from "../lib/foreignExchangeProgress";
 import {
   clearStudyPlanConfigForExam,
   formatExamDate,
@@ -64,6 +60,7 @@ import { StudyPlanEditor } from "./StudyPlanEditor";
 import { V93InlineNotice } from "./V93InteractionPrimitives";
 import { announceInteractionFeedback } from "../lib/interactionFeedback";
 import { createUuid } from "../lib/uuid";
+import { performLearningResetExternalCleanup } from "../lib/resetExternalCleanup";
 
 const CLEAR_LEVELS = {
   wrong: {
@@ -177,12 +174,6 @@ function inferPlanExam(pathname: string): StudyPlanExamId {
 function dailyPracticeScopeIds(): string[] {
   return getStudyPlanScopesForExam("senior-securities").map(
     (scope) => `image:daily:${localTodayKey()}:${scope.id}`,
-  );
-}
-
-function dailyPlanStorageKeys(): string[] {
-  return getStudyPlanScopesForExam("senior-securities").map(
-    (scope) => `quizpwa:daily-plan:${scope.id}:${localTodayKey()}`,
   );
 }
 
@@ -346,20 +337,11 @@ export function SettingsPanel({ open, onClose, initialSection: requestedSection,
         mode: clearLevel,
         requestId,
         localCleanup: async () => {
-          if (
-            clearLevel !== "wrong" &&
-            (clearScope === "senior-securities" || clearScope === "all")
-          ) {
-          dailyPlanStorageKeys().forEach((key) => removeScopedStorageItem(key));
-          }
-          if (
-            clearScope === "junior-foreign-exchange" ||
-            clearScope === "all"
-          ) {
-            await clearForeignExchangeProgress(
-              clearLevel as ForeignExchangeClearMode,
-              { localOnly: true },
-            );
+          const examIds = clearScope === "all"
+            ? ["senior-securities", "junior-foreign-exchange"] as const
+            : [clearScope] as const;
+          for (const examId of examIds) {
+            await performLearningResetExternalCleanup(examId, clearLevel);
           }
         }
       });

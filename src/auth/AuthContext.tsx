@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { Session } from "@supabase/supabase-js";
 import { isSupabaseConfigured, supabase, type AuthUser } from "../lib/supabase";
 import {
+  finalizeLearningResetExternalCleanup,
   syncLocalRecordsToCloud,
   synchronizeUserLearningResetState,
 } from "../lib/db";
@@ -9,7 +10,6 @@ import { flushPracticeSecondsToCloud } from "../lib/practiceTime";
 import { setActiveUserStorageScope } from "../lib/userScopedStorage";
 import { initializeLearningStore } from "../lib/learningStateStore";
 import {
-  clearForeignExchangeProgress,
   hydrateForeignExchangeProgressFromSyncedRecords,
   prepareForeignExchangeCloudSync,
 } from "../lib/foreignExchangeProgress";
@@ -17,6 +17,7 @@ import {
   LEARNING_RESET_APPLIED_EVENT,
   type LearningResetMode,
 } from "../lib/learningResetGeneration";
+import { performLearningResetExternalCleanup } from "../lib/resetExternalCleanup";
 
 export const EXAM_IDS = ["senior-securities", "junior-foreign-exchange"] as const;
 export type ExamId = typeof EXAM_IDS[number];
@@ -104,9 +105,14 @@ let activeCloudSync: { userId: string; promise: Promise<void> } | null = null;
 async function initializeLearningForUser(userId: string): Promise<void> {
   const resets = await synchronizeUserLearningResetState(userId);
   for (const reset of resets) {
-    if (reset.examId === "junior-foreign-exchange") {
-      await clearForeignExchangeProgress(reset.mode, { localOnly: true });
-    }
+    await performLearningResetExternalCleanup(reset.examId, reset.mode);
+    await finalizeLearningResetExternalCleanup({
+      userId,
+      examId: reset.examId,
+      dataGeneration: reset.dataGeneration,
+      wrongGeneration: reset.wrongGeneration,
+      favoriteGeneration: reset.favoriteGeneration,
+    });
   }
   await initializeLearningStore(userId);
 }
@@ -187,12 +193,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const detail = (event as CustomEvent<{
         examId?: string;
         mode?: LearningResetMode | null;
+        userId?: string;
+        dataGeneration?: number;
+        wrongGeneration?: number;
+        favoriteGeneration?: number;
       }>).detail;
-      if (detail?.examId !== "junior-foreign-exchange") return;
+      const examId = detail?.examId;
+      if (
+        examId !== "senior-securities" &&
+        examId !== "junior-foreign-exchange"
+      ) return;
       const mode = detail.mode === "wrong" || detail.mode === "complete"
         ? detail.mode
         : "restart";
-      void clearForeignExchangeProgress(mode, { localOnly: true });
+      void (async () => {
+        await performLearningResetExternalCleanup(examId, mode);
+        if (
+          detail.userId &&
+          Number.isFinite(detail.dataGeneration) &&
+          Number.isFinite(detail.wrongGeneration) &&
+          Number.isFinite(detail.favoriteGeneration)
+        ) {
+          await finalizeLearningResetExternalCleanup({
+            userId: detail.userId,
+            examId,
+            dataGeneration: Number(detail.dataGeneration),
+            wrongGeneration: Number(detail.wrongGeneration),
+            favoriteGeneration: Number(detail.favoriteGeneration),
+          });
+        }
+      })().catch((error) => {
+        console.warn("Reset external cleanup will retry on next initialization", error);
+      });
     };
     window.addEventListener(LEARNING_RESET_APPLIED_EVENT, handleAppliedReset);
     return () => {
