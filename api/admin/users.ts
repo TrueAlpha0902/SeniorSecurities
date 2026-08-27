@@ -13,18 +13,21 @@ interface AdminDataRow {
 
 type ActivationCodeMembership = {
   id: string;
-  examId: ExamId;
+  examId: ActivationScope;
+  examIds: ExamId[];
   codePreview: string;
   note: string | null;
   maxUses: number;
   useCount: number;
   historyGap: number;
   isActive: boolean;
+  deletedAt: string | null;
   redeemedAt: string | null;
   source: "redeem" | "legacy_entitlement";
 };
 
 type ExamId = "senior-securities" | "junior-foreign-exchange";
+type ActivationScope = ExamId | "all";
 
 const ONLINE_WINDOW_SECONDS = 90;
 const EXAM_IDS: readonly ExamId[] = ["senior-securities", "junior-foreign-exchange"];
@@ -55,6 +58,14 @@ function newestDate(...values: unknown[]): string | null {
 
 function examIdOf(value: unknown): ExamId | null {
   return value === "senior-securities" || value === "junior-foreign-exchange" ? value : null;
+}
+
+function activationScopeOf(value: unknown): ActivationScope | null {
+  return value === "senior-securities" || value === "junior-foreign-exchange" || value === "all" ? value : null;
+}
+
+function examIdsForScope(scope: ActivationScope): ExamId[] {
+  return scope === "all" ? [...EXAM_IDS] : [scope];
 }
 
 async function safeSelect<T>(promise: PromiseLike<{ data: T | null; error: unknown }>, fallback: T): Promise<T> {
@@ -259,26 +270,28 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     const activationCodeIds = Array.from(new Set((redemptionRows as AdminDataRow[])
       .map((row) => String(row.activation_code_id || ""))
       .filter(Boolean)));
-    const [activationRowsByHash, activationRowsById] = await Promise.all([
+    const [activationRowsByHashResult, activationRowsByIdResult] = await Promise.all([
       sourceCodeHashes.length > 0
-        ? safeSelect(
-            supabase
-              .from("activation_codes")
-              .select("id, code_hash, exam_id, code_preview, note, max_uses, use_count, redemption_history_gap, is_active, created_at, redeemed_at")
-              .in("code_hash", sourceCodeHashes),
-            [],
-          )
-        : Promise.resolve([]),
+        ? supabase
+            .from("activation_codes")
+            .select("id, code_hash, exam_id, code_preview, note, max_uses, use_count, redemption_history_gap, is_active, created_at, redeemed_at, deleted_at")
+            .in("code_hash", sourceCodeHashes)
+        : Promise.resolve({ data: [], error: null }),
       activationCodeIds.length > 0
-        ? safeSelect(
-            supabase
-              .from("activation_codes")
-              .select("id, code_hash, exam_id, code_preview, note, max_uses, use_count, redemption_history_gap, is_active, created_at, redeemed_at")
-              .in("id", activationCodeIds),
-            [],
-          )
-        : Promise.resolve([]),
+        ? supabase
+            .from("activation_codes")
+            .select("id, code_hash, exam_id, code_preview, note, max_uses, use_count, redemption_history_gap, is_active, created_at, redeemed_at, deleted_at")
+            .in("id", activationCodeIds)
+        : Promise.resolve({ data: [], error: null }),
     ]);
+    if (activationRowsByHashResult.error) {
+      throw new Error(`啟用碼來源資料無法讀取：${activationRowsByHashResult.error.message}`);
+    }
+    if (activationRowsByIdResult.error) {
+      throw new Error(`啟用碼分類資料無法讀取：${activationRowsByIdResult.error.message}`);
+    }
+    const activationRowsByHash = activationRowsByHashResult.data || [];
+    const activationRowsById = activationRowsByIdResult.data || [];
     const activationCodeByHash = new Map<string, AdminDataRow>();
     const activationCodeById = new Map<string, AdminDataRow>();
     for (const code of [...activationRowsByHash, ...activationRowsById] as AdminDataRow[]) {
@@ -292,21 +305,26 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     for (const redemption of redemptionRows as AdminDataRow[]) {
       const userId = String(redemption.user_id || "");
       const code = activationCodeById.get(String(redemption.activation_code_id || ""));
-      const examId = examIdOf(code?.exam_id);
-      if (!userId || !code || !examId) continue;
+      const activationScope = activationScopeOf(code?.exam_id);
+      if (!userId) continue;
+      if (!code || !activationScope) {
+        throw new Error(`啟用碼分類帳缺少有效的來源資料：${String(redemption.activation_code_id || "unknown")}`);
+      }
       if (redemption.exam_id !== code.exam_id) {
         throw new Error(`啟用碼分類帳題庫不一致：${String(code.id || "unknown")}`);
       }
       const memberships = activationCodesByUser.get(userId) || [];
       memberships.push({
         id: String(code.id),
-        examId,
+        examId: activationScope,
+        examIds: examIdsForScope(activationScope),
         codePreview: String(code.code_preview || ""),
         note: code.note ? String(code.note) : null,
         maxUses: Number(code.max_uses || 0),
         useCount: Number(code.use_count || 0),
         historyGap: Number(code.redemption_history_gap || 0),
         isActive: Boolean(code.is_active),
+        deletedAt: normalizeDate(code.deleted_at),
         redeemedAt: normalizeDate(redemption.redeemed_at),
         source: redemption.source === "redeem" ? "redeem" : "legacy_entitlement",
       });
@@ -331,11 +349,13 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
           expiresAt: normalizeDate(row?.expires_at),
           activationCode: activationCode ? {
             id: String(activationCode.id || ""),
+            exam_id: String(activationCode.exam_id || ""),
             code_preview: String(activationCode.code_preview || ""),
             max_uses: Number(activationCode.max_uses || 0),
             use_count: Number(activationCode.use_count || 0),
             redemption_history_gap: Number(activationCode.redemption_history_gap || 0),
             is_active: Boolean(activationCode.is_active),
+            deleted_at: normalizeDate(activationCode.deleted_at),
             note: activationCode.note ? String(activationCode.note) : null,
             created_at: normalizeDate(activationCode.created_at),
             redeemed_at: normalizeDate(activationCode.redeemed_at),
@@ -347,15 +367,19 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       for (const entitlement of entitlements) {
         const code = entitlement.activationCode;
         if (!code?.id || activationCodes.some((membership) => membership.id === code.id)) continue;
+        const activationScope = activationScopeOf(code.exam_id);
+        if (!activationScope) throw new Error(`啟用碼來源題庫不正確：${code.id}`);
         activationCodes.push({
           id: code.id,
-          examId: entitlement.examId,
+          examId: activationScope,
+          examIds: examIdsForScope(activationScope),
           codePreview: code.code_preview,
           note: code.note,
           maxUses: code.max_uses,
           useCount: code.use_count,
           historyGap: code.redemption_history_gap,
           isActive: code.is_active,
+          deletedAt: code.deleted_at,
           redeemedAt: entitlement.grantedAt,
           source: "legacy_entitlement",
         });

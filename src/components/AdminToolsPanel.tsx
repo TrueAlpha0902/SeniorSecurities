@@ -8,15 +8,17 @@ import "../styles/admin-tools.css";
 
 type ToolId = "activation" | "admins" | "health";
 type ExamId = "senior-securities" | "junior-foreign-exchange";
+type ActivationScope = ExamId | "all";
 
 type CreatedActivationCode = {
   code: string;
-  examId: ExamId;
+  examId: ActivationScope;
 };
 
-const EXAM_LABELS: Record<ExamId, string> = {
+const EXAM_LABELS: Record<ActivationScope, string> = {
   "senior-securities": "證券高業",
   "junior-foreign-exchange": "初階外匯",
+  all: "全部題庫",
 };
 
 type AdminAccountRow = {
@@ -32,7 +34,7 @@ type AdminAccountRow = {
 
 type ActivationCodeRow = {
   id: string;
-  exam_id: ExamId;
+  exam_id: ActivationScope;
   code_preview: string;
   max_uses: number;
   use_count: number;
@@ -58,7 +60,7 @@ type ApiPayload = {
   message?: string;
   error?: string;
   code?: string;
-  examId?: ExamId;
+  examId?: ActivationScope;
   admins?: AdminAccountRow[];
   primaryEmails?: string[];
   activationCodes?: ActivationCodeRow[];
@@ -205,7 +207,7 @@ function SystemHealthTool({ accessToken }: { accessToken: string }) {
 }
 
 function ActivationCodeTool({ accessToken }: { accessToken: string }) {
-  const [examId, setExamId] = useState<ExamId>("senior-securities");
+  const [examId, setExamId] = useState<ActivationScope>("senior-securities");
   const [customCode, setCustomCode] = useState("");
   const [note, setNote] = useState("");
   const [maxUses, setMaxUses] = useState(1);
@@ -240,7 +242,7 @@ function ActivationCodeTool({ accessToken }: { accessToken: string }) {
         method: "POST",
         body: JSON.stringify({ action: "create-activation-code", examId, code: customCode, note, maxUses }),
       });
-      if (!payload.code || (payload.examId !== "senior-securities" && payload.examId !== "junior-foreign-exchange")) {
+      if (!payload.code || !payload.examId || !["senior-securities", "junior-foreign-exchange", "all"].includes(payload.examId)) {
         throw new Error("伺服器未回傳完整的啟用碼題庫資訊。");
       }
       setCreatedCode({ code: payload.code, examId: payload.examId });
@@ -275,12 +277,6 @@ function ActivationCodeTool({ accessToken }: { accessToken: string }) {
   function requestDeleteCode(row: ActivationCodeRow): void {
     if (!isPrimaryAdmin) {
       const errorMessage = "只有主要管理員可以刪除啟用碼。";
-      setError(errorMessage);
-      announceInteractionFeedback(errorMessage, "error", 4200);
-      return;
-    }
-    if (row.use_count > 0) {
-      const errorMessage = "已使用的啟用碼需保留會員分類歷程，只能停用、不能永久刪除。";
       setError(errorMessage);
       announceInteractionFeedback(errorMessage, "error", 4200);
       return;
@@ -380,11 +376,22 @@ function ActivationCodeTool({ accessToken }: { accessToken: string }) {
               />
               <span><strong>初階外匯啟用碼</strong><small>只開通初階外匯，不會開通證券高業</small></span>
             </label>
+            <label className={`admin-activation-scope-option${examId === "all" ? " is-selected" : ""}`}>
+              <input
+                type="radio"
+                name="activation-exam-id"
+                value="all"
+                checked={examId === "all"}
+                disabled={busy}
+                onChange={() => setExamId("all")}
+              />
+              <span><strong>全部題庫啟用碼</strong><small>使用一次，同時開通證券高業與初階外匯</small></span>
+            </label>
           </div>
-          <p>每組啟用碼只能開通一個題庫；若兩個題庫都需要，請分別建立兩組啟用碼。</p>
+          <p>{examId === "all" ? "全題庫啟用碼只消耗一次使用次數，會一次開通目前兩個題庫。" : "單題庫啟用碼只會開通所選題庫。"}</p>
         </fieldset>
         <label>可使用次數<input type="number" min={1} max={999} value={maxUses} onChange={(event) => setMaxUses(Number(event.target.value))} /></label>
-        <label className="admin-tool-wide">自訂啟用碼（可留空，不需連字號）<input value={customCode} onChange={(event) => setCustomCode(event.target.value)} placeholder={examId === "junior-foreign-exchange" ? "FOREXXXXXXXX" : "SENIORXXXXXXXX"} /></label>
+        <label className="admin-tool-wide">自訂啟用碼（可留空，不需連字號）<input value={customCode} onChange={(event) => setCustomCode(event.target.value)} placeholder={examId === "junior-foreign-exchange" ? "FOREXXXXXXXX" : examId === "all" ? "ALLBANKXXXXXXXX" : "SENIORXXXXXXXX"} /></label>
         <label className="admin-tool-wide">備註<input value={note} onChange={(event) => setNote(event.target.value)} placeholder="例如：2026 夏季班" /></label>
       </div>
       <div className="admin-tool-actions">
@@ -395,9 +402,9 @@ function ActivationCodeTool({ accessToken }: { accessToken: string }) {
         <div className="admin-created-code">
           <div>
             <small>只顯示這一次，關閉後無法再次查看完整啟用碼。</small>
-            <span className="admin-created-code-scope">僅適用：{EXAM_LABELS[createdCode.examId]}</span>
+            <span className="admin-created-code-scope">適用：{EXAM_LABELS[createdCode.examId]}</span>
             <strong>{createdCode.code}</strong>
-            <small>此碼只會開通{EXAM_LABELS[createdCode.examId]}，另一題庫需另外建立啟用碼。</small>
+            <small>{createdCode.examId === "all" ? "此碼會同時開通證券高業與初階外匯。" : `此碼只會開通${EXAM_LABELS[createdCode.examId]}。`}</small>
           </div>
           <GlassButton variant="secondary" onClick={() => void copyCode(createdCode.code)}><Clipboard size={16} />複製</GlassButton>
         </div>
@@ -420,9 +427,13 @@ function ActivationCodeTool({ accessToken }: { accessToken: string }) {
                     <button type="button" disabled={busy} onClick={() => requestStatusChange(row)}>
                       {row.is_active ? <ShieldOff size={14} /> : <RefreshCcw size={14} />}{row.is_active ? "停用" : "恢復"}
                     </button>
-                    {row.use_count === 0 ? (
-                      <button type="button" className="is-danger" disabled={busy} onClick={() => requestDeleteCode(row)}><Trash2 size={14} />刪除</button>
-                    ) : null}
+                    <button
+                      type="button"
+                      className="is-danger"
+                      disabled={busy}
+                      aria-label={`刪除啟用碼 ${visibleCode}`}
+                      onClick={() => requestDeleteCode(row)}
+                    ><Trash2 size={14} />刪除</button>
                   </>
                 ) : null}
               </div>
@@ -432,11 +443,13 @@ function ActivationCodeTool({ accessToken }: { accessToken: string }) {
       </div>
       <V93ConfirmDialog
         open={Boolean(pendingDeleteCode)}
-        title="永久刪除啟用碼"
+        title="刪除啟用碼"
         message={pendingDeleteCode
-          ? `確定永久刪除尚未使用的啟用碼 ${pendingDeleteCode.code_preview}？此操作無法復原。`
+          ? pendingDeleteCode.use_count > 0
+            ? `確定刪除啟用碼 ${pendingDeleteCode.code_preview}？此碼會立即失效並從清單移除，但既有會員權限、使用次數與分類歷史都會保留。`
+            : `確定永久刪除尚未使用的啟用碼 ${pendingDeleteCode.code_preview}？此操作無法復原。`
           : ""}
-        confirmLabel="永久刪除"
+        confirmLabel="確認刪除"
         busy={busy}
         onCancel={() => setPendingDeleteCode(null)}
         onConfirm={() => void deleteCode()}

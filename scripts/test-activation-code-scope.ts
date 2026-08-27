@@ -8,7 +8,7 @@ function assert(condition: unknown, message: string): asserts condition {
 const root = process.cwd();
 const read = (relativePath: string) => readFile(path.join(root, relativePath), "utf8");
 
-const [adminAction, adminApi, adminUsersApi, adminPanel, authContext, activatePage, authPage, migration, ledgerMigration] = await Promise.all([
+const [adminAction, adminApi, adminUsersApi, adminPanel, authContext, activatePage, authPage, migration, ledgerMigration, currentMigration] = await Promise.all([
   read("api/admin/action.ts"),
   read("api/admin/tools.ts"),
   read("api/admin/users.ts"),
@@ -18,6 +18,7 @@ const [adminAction, adminApi, adminUsersApi, adminPanel, authContext, activatePa
   read("src/pages/AuthPage.tsx"),
   read("supabase/migrations/20260826081812_add_exam_scoped_activation_redemption.sql"),
   read("supabase/migrations/20260826145617_add_activation_redemption_ledger.sql"),
+  read("supabase/migrations/20260828090000_admin_password_activation_management_v97.sql"),
 ]);
 
 assert(
@@ -30,16 +31,17 @@ assert(
   "The admin API must persist and return the selected activation-code scope.",
 );
 assert(
-  adminAction.includes('const EXPECTED_MIGRATION = "20260826145617_add_activation_redemption_ledger";'),
-  "Admin system status must identify the redemption-ledger migration required by this release.",
+  adminAction.includes('const EXPECTED_MIGRATION = "20260828090000_admin_password_activation_management_v97";'),
+  "Admin system status must identify the activation-management migration required by this release.",
 );
 
 assert(
   adminPanel.includes("啟用碼適用題庫")
     && adminPanel.includes("證券高業啟用碼")
     && adminPanel.includes("初階外匯啟用碼")
-    && adminPanel.includes("每組啟用碼只能開通一個題庫"),
-  "The admin generator must present securities and foreign-exchange codes as separate choices.",
+    && adminPanel.includes("全部題庫啟用碼")
+    && adminPanel.includes('onChange={() => setExamId("all")}'),
+  "The admin generator must present both single-bank scopes and an explicit all-question-bank choice.",
 );
 assert(
   adminPanel.includes("setCreatedCode({ code: payload.code, examId: payload.examId })")
@@ -56,9 +58,9 @@ assert(
 );
 assert(
   activatePage.includes("redeemActivationCode(code, examId)")
-    && activatePage.includes("此頁只接受")
-    && activatePage.includes("另一題庫需使用另外建立的啟用碼"),
-  "The activation page must enforce and explain its current question-bank scope.",
+    && activatePage.includes("專用碼或全部題庫啟用碼")
+    && activatePage.includes("同時開通兩個題庫"),
+  "The activation page must explain that the scoped endpoint also accepts an all-question-bank code.",
 );
 assert(
   authPage.includes("examIdForReturnTo")
@@ -111,8 +113,23 @@ assert(
   "Redemption must reject a repeated account/code tuple before consuming another use.",
 );
 assert(
+  currentMigration.includes("activation_codes_exam_id_check")
+    && currentMigration.includes("activation_code_redemptions_exam_id_check")
+    && (currentMigration.match(/'all'/g)?.length || 0) >= 7
+    && currentMigration.includes("private.redeem_activation_code_v97")
+    && currentMigration.includes("code_record.exam_id not in (normalized_exam_id, 'all')")
+    && currentMigration.includes("unnest(array['senior-securities', 'junior-foreign-exchange']::text[])")
+    && currentMigration.includes("insert into public.activation_code_redemptions")
+    && currentMigration.includes("insert into public.user_exam_entitlements")
+    && currentMigration.includes("if code_record.exam_id in ('senior-securities', 'all') then"),
+  "The v97 redemption transaction must consume one all-scope use and atomically grant both question banks.",
+);
+assert(
   adminUsersApi.includes('from("activation_code_redemptions")')
     && adminUsersApi.includes("activationCodesByUser")
+    && adminUsersApi.includes("examIdsForScope")
+    && adminUsersApi.includes("deletedAt")
+    && adminUsersApi.includes("啟用碼分類帳缺少有效的來源資料")
     && adminUsersApi.includes("codePreview")
     && !adminUsersApi.includes("code_plain"),
   "The admin member API must classify users from the redemption ledger without exposing plaintext codes.",
@@ -159,10 +176,16 @@ assert(
   "Server-only support tables must use least privilege, durable reconciliation guards, expiry-fenced leases, and serialized Storage/user-id/email writes.",
 );
 assert(
-  ledgerMigration.includes("if nullif(lower(trim(coalesce(p_expected_exam_id, ''))), '') is null")
-    && ledgerMigration.includes("used activation codes must be disabled instead of deleted")
-    && ledgerMigration.includes("set_activation_code_status_v95"),
-  "Scoped redemption must fail closed and used activation codes must be disabled rather than erased.",
+  currentMigration.includes("create or replace function public.delete_activation_code_v97")
+    && currentMigration.includes("deleted_at = clock_timestamp()")
+    && currentMigration.includes("deletion_mode := 'archived'")
+    && currentMigration.includes("create or replace function public.set_activation_code_status_v97")
+    && currentMigration.includes("deleted activation codes cannot be restored")
+    && adminApi.includes('.is("deleted_at", null)')
+    && adminApi.includes('supabase.rpc("delete_activation_code_v97"')
+    && adminApi.includes('supabase.rpc("create_activation_code_v97"')
+    && adminPanel.includes("既有會員權限、使用次數與分類歷史都會保留"),
+  "Activation-code deletion must hide the code while preserving used-code provenance and existing entitlements.",
 );
 
 console.log("Activation code scope contracts passed.");

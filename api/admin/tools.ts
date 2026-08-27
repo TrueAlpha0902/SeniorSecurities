@@ -13,10 +13,12 @@ import {
 
 type JsonObject = Record<string, unknown>;
 type ExamId = "senior-securities" | "junior-foreign-exchange";
+type ActivationScope = ExamId | "all";
 
-const EXAM_LABELS: Record<ExamId, string> = {
+const EXAM_LABELS: Record<ActivationScope, string> = {
   "senior-securities": "證券高業",
   "junior-foreign-exchange": "初階外匯",
+  all: "全部題庫",
 };
 
 function parseBody(req: ApiRequest): JsonObject {
@@ -41,14 +43,14 @@ function normalizeActivationCode(value: unknown): string | null {
   return code;
 }
 
-function normalizeExamId(value: unknown): ExamId {
+function normalizeExamId(value: unknown): ActivationScope {
   const examId = String(value || "").trim().toLowerCase();
-  if (examId === "senior-securities" || examId === "junior-foreign-exchange") return examId;
+  if (examId === "senior-securities" || examId === "junior-foreign-exchange" || examId === "all") return examId;
   throw new HttpError("請明確選擇啟用碼適用題庫。", 400);
 }
 
-function activationCodeRecord(customCode: string | null, examId: ExamId) {
-  const prefix = examId === "junior-foreign-exchange" ? "FOREX" : "SENIOR";
+function activationCodeRecord(customCode: string | null, examId: ActivationScope) {
+  const prefix = examId === "junior-foreign-exchange" ? "FOREX" : examId === "all" ? "ALLBANK" : "SENIOR";
   const raw = customCode || `${prefix}${randomBytes(8).toString("hex")}`;
   const normalized = canonicalizeActivationCode(raw);
   if (normalized.length < 10) throw new HttpError("啟用碼至少需要 10 個英數字元。", 400);
@@ -105,7 +107,8 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
         const auth = await requireAdminUser(req, { roles: ["primary_admin", "admin"] });
         const { data, error } = await auth.supabase
           .from("activation_codes")
-          .select("id, exam_id, code_preview, max_uses, use_count, redemption_history_gap, is_active, note, created_at, redeemed_at")
+          .select("id, exam_id, code_preview, max_uses, use_count, redemption_history_gap, is_active, note, created_at, redeemed_at, deleted_at")
+          .is("deleted_at", null)
           .order("created_at", { ascending: false })
           .limit(100);
         if (error) throw error;
@@ -143,18 +146,11 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     if (action === "delete-activation-code" || action === "set-activation-code-status") {
       const activationCodeId = String(body.activationCodeId || "").trim();
       if (!/^[0-9a-f-]{36}$/i.test(activationCodeId)) throw new HttpError("啟用碼識別碼不正確。", 400);
-      const { data: existing, error: lookupError } = await supabase
-        .from("activation_codes")
-        .select("id, use_count, is_active")
-        .eq("id", activationCodeId)
-        .maybeSingle();
-      if (lookupError) throw lookupError;
-      if (!existing) throw new HttpError("找不到指定啟用碼。", 404);
 
       if (action === "set-activation-code-status") {
         const isActive = body.isActive;
         if (typeof isActive !== "boolean") throw new HttpError("啟用碼狀態不正確。", 400);
-        const { error: statusError } = await supabase.rpc("set_activation_code_status_v95", {
+        const { error: statusError } = await supabase.rpc("set_activation_code_status_v97", {
           p_actor_user_id: user.id,
           p_actor_email: actorEmail,
           p_activation_code_id: activationCodeId,
@@ -166,17 +162,22 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
         return;
       }
 
-      if (Number(existing.use_count || 0) > 0) {
-        throw new HttpError("已使用的啟用碼必須保留分類歷程，只能停用、不能永久刪除。", 409);
-      }
-      const { error } = await supabase.rpc("delete_activation_code_v79", {
+      const { data: deletionResult, error } = await supabase.rpc("delete_activation_code_v97", {
         p_actor_user_id: user.id,
         p_actor_email: actorEmail,
         p_activation_code_id: activationCodeId,
         p_ip_address: ipAddress,
       });
       if (error) throw error;
-      sendJson(res, 200, { ok: true, message: "啟用碼已刪除。" });
+      const deletionMode = typeof deletionResult === "object" && deletionResult !== null && "mode" in deletionResult
+        ? String(deletionResult.mode || "")
+        : "";
+      sendJson(res, 200, {
+        ok: true,
+        message: deletionMode === "archived"
+          ? "啟用碼已刪除；既有會員權限、使用次數與分類歷史均已保留。"
+          : "尚未使用的啟用碼已永久刪除。",
+      });
       return;
     }
 
@@ -186,7 +187,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       const note = String(body.note || "").trim().slice(0, 500) || null;
       const maxUses = Math.min(999, Math.max(1, Math.trunc(Number(body.maxUses) || 1)));
       const code = activationCodeRecord(customCode, examId);
-      const { error } = await supabase.rpc("create_activation_code_v80", {
+      const { error } = await supabase.rpc("create_activation_code_v97", {
         p_actor_user_id: user.id,
         p_actor_email: actorEmail,
         p_code_hash: code.hash,

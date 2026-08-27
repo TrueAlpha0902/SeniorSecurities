@@ -54,6 +54,7 @@ const [
   adminUsers,
   adminDetail,
   migration,
+  migrationV97,
   clientError,
   vercel,
 ] = await Promise.all([
@@ -73,6 +74,7 @@ const [
   read("api/admin/users.ts"),
   read("api/admin/user-detail.ts"),
   read("supabase/migrations/20260719120000_exam_scoped_entitlements_v80.sql"),
+  read("supabase/migrations/20260828090000_admin_password_activation_management_v97.sql"),
   read("api/client-error.ts"),
   read("vercel.json"),
 ]);
@@ -144,7 +146,12 @@ assert(home.includes("第23至47屆") && home.includes("3,250題") && !home.incl
 assert(account.includes("證券高業") && account.includes("初階外匯") && account.includes("examAccess"), "Account page must show each question-bank entitlement separately.");
 
 assert(!adminTools.includes("create_activation_code_v80"), "Client must call the admin API rather than a database RPC directly.");
-assert(adminTools.includes('value="junior-foreign-exchange"') && adminTools.includes('value="senior-securities"'), "Activation-code admin UI must select the target question bank.");
+assert(
+  adminTools.includes('value="junior-foreign-exchange"')
+    && adminTools.includes('value="senior-securities"')
+    && adminTools.includes('value="all"'),
+  "Activation-code admin UI must support either individual question bank or all question banks.",
+);
 assert(adminAction.includes("normalizeExamId(body.examId)") && adminAction.includes('.eq("exam_id", examId)'), "Admin entitlement actions must be scoped to one question bank.");
 assert(adminPage.includes("EXAM_IDS.map") && adminPage.includes("examId }),"), "Admin member controls must send an explicit question-bank scope.");
 assert(adminUsers.includes("entitlements") && adminDetail.includes("entitlements: normalizedEntitlements"), "Admin APIs must return both entitlement states.");
@@ -152,6 +159,12 @@ assert(adminUsers.includes("entitlements") && adminDetail.includes("entitlements
 assert(migration.includes("create table if not exists public.user_exam_entitlements"), "Exam-scoped entitlement table migration is missing.");
 assert(migration.includes("primary key (user_id, exam_id)"), "Each user/question-bank entitlement must be independently keyed.");
 assert(migration.includes("create_activation_code_v80") && migration.includes("code_record.exam_id"), "Activation redemption must grant the code's own question bank.");
+assert(
+  migrationV97.includes("code_record.exam_id = 'all'")
+    && migrationV97.includes("array['senior-securities', 'junior-foreign-exchange']")
+    && migrationV97.includes("activation_code_redemptions"),
+  "All-question-bank activation must consume one redemption while granting both question banks.",
+);
 
 assert(!await exists("api/foreign-exchange/questions.ts"), "Legacy foreign-exchange route must be consolidated.");
 assert(!await exists("api/question-overrides.ts"), "Legacy override route must be consolidated.");

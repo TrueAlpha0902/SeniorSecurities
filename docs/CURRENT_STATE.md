@@ -1,7 +1,18 @@
 # SeniorSecurities Current State
 
-更新日期：2026-08-27
-目前版本：**v96.1 重設安全、動態排行榜與啟用協助**
+更新日期：2026-08-28
+目前版本：**v97 管理密碼驗證、全題庫啟用碼與分類篩選**
+
+## 2026-08-28 管理密碼驗證、啟用碼生命週期與分類篩選
+
+- 永久刪除會員改為只要求主要管理員輸入目前密碼；移除 TOTP enrollment、6 位碼、會員 Email、固定確認詞、原因與勾選。前端使用不保存 session 的獨立 Supabase Auth client 直接重新登入，密碼不會送到應用程式 API；刪除 API 只接收新 access token 與可重試 operation ID。
+- 伺服器不只相信 token 的簽發時間，會以 Auth session ID 對照 `auth.sessions` 與 `auth.mfa_amr_claims`，確認同一位主要管理員在 10 分鐘內確實完成 password authentication；真正刪除 Auth 使用者前再驗證一次，原有 claim／lease／CAS／tombstone／storage cleanup 安全流程維持不變。
+- 管理工具新增「全部題庫」啟用碼。一組碼只消耗一次、寫一筆不可重複的兌換紀錄，並在同一交易原子開通證券高業與初階外匯；任一步失敗即整筆回滾。單題庫碼仍禁止跨題庫兌換。
+- 所有啟用碼皆提供刪除操作：未使用且沒有兌換紀錄的碼會實體刪除；已使用碼改為不可恢復的封存，立即停止後續兌換，但不撤銷既有會員權限、不回補使用次數，也不破壞會員分類歷史。
+- 「依啟用碼」目錄新增原生分類選擇器，可在全部、每一組個別啟用碼、管理員直接開通及尚未啟用間切換；全題庫碼只顯示一個群組並正確標示兩套題庫。搜尋或刷新使選項消失時會安全回到全部分類。
+- 啟用碼 metadata、ledger parent 或 scope 不一致時，會員 API 會 fail closed，不再把查詢錯誤誤分類為管理員直接開通。後台只回傳遮罩 preview，不保存或曝光明碼。
+- 新增 migration：`supabase/migrations/20260828090000_admin_password_activation_management_v97.sql`，正式 Supabase 已記錄為 `20260827181105`；管理健康檢查會實際探測 v97 `deleted_at` 欄位及近期密碼 RPC，漏套 migration 時不會誤報正常。新增 transaction-only 語意測試 `supabase/tests/admin_password_activation_management_v97.sql`，正式 schema 已通過全題庫一次兌換、雙 entitlement、重播不消耗、已使用碼封存保留權限、不可恢復、近期／過期密碼 AMR 與最小函式權限，回滾後零測試資料殘留。
+- `typecheck`、API typecheck、lint、production build、管理後台／啟用碼合約，以及桌面與手機 Chromium 聚焦 E2E 6／6 已通過。完整歷史 gate 的既有缺口會在本次發布紀錄中如實保留，不以本輪針對性驗證掩蓋。
 
 ## 2026-08-27 重設安全、三分類排行榜與啟用協助
 

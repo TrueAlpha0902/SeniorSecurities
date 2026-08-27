@@ -11,7 +11,7 @@ import {
 } from "../_adminClient.js";
 
 const DEFAULT_PASSWORD_RESET_URL = "https://senior-securities.vercel.app/reset-password";
-const EXPECTED_MIGRATION = "20260826145617_add_activation_redemption_ledger";
+const EXPECTED_MIGRATION = "20260828090000_admin_password_activation_management_v97";
 const EMAIL_LIMIT_PER_HOUR = Number(process.env.PASSWORD_RESET_EMAIL_LIMIT_PER_HOUR || 3);
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 type AdminClient = Awaited<ReturnType<typeof requireAdminUser>>["supabase"];
@@ -350,20 +350,11 @@ async function deleteMemberAccount(args: {
 }): Promise<void> {
   const { supabase, user, req, res, body, userId } = args;
   const normalizedEmail = normalizeEmail(args.email);
-  const confirmationEmail = normalizeEmail(body.confirmationEmail);
-  const confirmationPhrase = String(body.confirmationPhrase || "").trim();
-  const reason = String(body.reason || "").trim().slice(0, 500);
   const requestedOperationId = String(body.operationId || "").trim();
 
   if (!UUID_PATTERN.test(userId)) throw new HttpError("會員識別碼不正確。", 400);
   if (!UUID_PATTERN.test(requestedOperationId)) throw new HttpError("永久刪除需要有效的 operationId，請重新開啟確認視窗。", 400);
-  if (!normalizedEmail || confirmationEmail !== normalizedEmail) {
-    throw new HttpError("請完整輸入會員 Email 以確認永久刪除。", 400);
-  }
-  if (confirmationPhrase !== "永久刪除") {
-    throw new HttpError("請輸入「永久刪除」完成最終確認。", 400);
-  }
-  if (reason.length < 3) throw new HttpError("請填寫至少 3 個字的刪除原因。", 400);
+  if (!normalizedEmail) throw new HttpError("會員 Email 不正確。", 400);
   if (userId === user.id) throw new HttpError("不可刪除目前登入的管理員帳號。", 400);
 
   const targetFingerprint = privacyFingerprint(userId);
@@ -485,7 +476,7 @@ async function deleteMemberAccount(args: {
       req,
       action: "user.account.delete_requested",
       targetUserId: userId,
-      metadata: { operationId, targetFingerprint, reasonProvided: true, reasonLength: reason.length },
+      metadata: { operationId, targetFingerprint, verification: "fresh_password" },
     });
   } catch (requestedAuditError) {
     await recordDeletionFailure({ stage: "requested-audit" });
@@ -514,7 +505,7 @@ async function deleteMemberAccount(args: {
       () => renewDeletionOperationLease({ supabase, operationId, leaseToken }),
     );
     await renewDeletionOperationLease({ supabase, operationId, leaseToken });
-    const latestActor = await requireAdminUser(req, { roles: ["primary_admin"], requireAal2: true });
+    const latestActor = await requireAdminUser(req, { roles: ["primary_admin"], requireFreshPassword: true });
     if (latestActor.user.id !== user.id) throw new HttpError("管理員工作階段已變更，已停止永久刪除。", 401);
     const { data: latestTargetData, error: latestTargetError } = await supabase.auth.admin.getUserById(userId);
     if (latestTargetError || !latestTargetData?.user) throw latestTargetError || new Error("會員帳號狀態已變更。");
@@ -650,7 +641,7 @@ async function handleHealthCheck(req: ApiRequest, res: ApiResponse): Promise<voi
       ["image-sessions", "user_image_quiz_sessions", "session_id"],
       ["release-pointer", "question_release_pointer", "singleton"],
       ["release-batches", "question_release_batches", "id"],
-      ["activation-codes", "activation_codes", "id"],
+      ["activation-codes-v97", "activation_codes", "deleted_at"],
       ["activation-redemptions", "activation_code_redemptions", "id"],
       ["member-deletions", "admin_member_deletion_operations", "operation_id"],
       ["password-reset-throttle", "password_reset_requests", "id"],
@@ -665,6 +656,20 @@ async function handleHealthCheck(req: ApiRequest, res: ApiResponse): Promise<voi
         message: error ? `${table}：${error.message}` : `${table} 可用`,
       });
     }
+
+    const { data: passwordProbe, error: passwordProbeError } = await supabase.rpc(
+      "verify_active_recent_password_session_v97",
+      { p_user_id: null, p_session_id: null, p_max_age_seconds: 60 },
+    );
+    checks.push({
+      id: "recent-password-v97",
+      ok: !passwordProbeError && passwordProbe === false,
+      message: passwordProbeError
+        ? `近期密碼驗證 RPC：${passwordProbeError.message}`
+        : passwordProbe === false
+          ? "近期密碼驗證 RPC 可用"
+          : "近期密碼驗證 RPC 回傳非預期結果",
+    });
 
     const ok = checks.every((check) => check.ok);
     sendJson(res, 200, {
@@ -703,7 +708,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     const action = String(body.action || "");
     const isAccountDeletion = action === "delete-user";
     const { supabase, user } = await requireAdminUser(req, isAccountDeletion
-      ? { roles: ["primary_admin"], requireAal2: true }
+      ? { roles: ["primary_admin"], requireFreshPassword: true }
       : { roles: ["primary_admin", "admin"] });
     const email = String(body.email || "").trim();
     const deviceId = String(body.deviceId || "").trim();
