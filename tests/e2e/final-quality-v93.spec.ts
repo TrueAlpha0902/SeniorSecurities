@@ -36,7 +36,7 @@ const majorRoutes = [
   { path: "/banks/investment", heading: "投資學" },
   { path: "/random", heading: "模擬考" },
   { path: "/similar", selector: ".similar-learning-page, .state-card" },
-  { path: "/leaderboard", heading: "學習榮耀榜" },
+  { path: "/leaderboard", heading: "排行榜" },
   { path: "/search", heading: "搜尋題目" },
   { path: "/account", heading: "我的帳號" },
   { path: "/activate", heading: /啟用證券高業/ },

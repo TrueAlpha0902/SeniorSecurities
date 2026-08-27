@@ -1,5 +1,18 @@
 # AI Change Log
 
+## 2026-08-27 — 重設安全、動態排行榜與啟用碼協助
+
+- 將錯題重設、重新開始與完整重設統一為資料庫原子 RPC，並把 per-user／per-exam 的 data generation 與 wrong generation 分開；只清錯題不再讓正常作答、收藏或進度失效。三種模式皆使用可重試 request ID，重送相同 request 不會刪除重設後才建立的新資料。
+- 在前端本機資料、IndexedDB sync intent、可靠性佇列、學習事件與練習時數事件加入 generation scope；app DB 以同一 transaction 寫入 reset marker，瀏覽器若在伺服器完成後中斷，下次啟動會補完本機清理。錯題模式只淘汰錯題工作，重新開始保留並 rebase 收藏，完整重設才清除該題庫全部學習資料。
+- 證券高業與初階外匯的重設範圍完整分離；重新登入或另一裝置上線時會先同步兩個題庫的 reset state，再進行任何本機上傳。
+- 排行榜移除獨立「學習榮耀榜」hero，將「榮耀殿堂」改名「排行榜」；前三名與完整清單共用同一分類狀態，支援連續答對、練習時數及新增的刷題大師。
+- 刷題大師以正式 3,526 題證券高業題號 catalog 限制輸入，並以 user／question 唯一鍵計算不重複作答題數；重設時與其他排行榜統計一併歸零。初階外匯 3,250 個正式題號也納入 canonical catalog，所有寫入由伺服器自行推導題庫，未知或混合題號會 fail closed。
+- 連續答對完整清單收斂為頭像、名稱及最右側連續答對題數；分類 tab 加入 roving focus、方向鍵／Home／End 鍵盤操作與共享 tabpanel 語意。
+- 在登入、啟用碼輸入與權限阻擋頁加入 `mailto:aaron.kcts@gmail.com`，並明確提醒不要寄送密碼或完整啟用碼。
+- 撤銷 authenticated 對舊版學習／排行榜／練習時數寫入 RPC 的權限；v96 練習時間事件加入伺服器實際經過時間預算，避免以快速更換事件 UUID 灌入時數。
+- 新增 v96 migration、重設／排行榜靜態與 IndexedDB 合約，以及桌面／iPad／手機 Chromium 聚焦 E2E 6／6；typecheck、API typecheck、lint、production build、bundle 與 public boundary 通過。v95 → v96 完整 migration 與跨題庫／重設／排行榜語意先在正式 schema 以 transaction rollback 驗證通過且零殘留，再依序正式套用為 `20260827044831`、`20260827044849`。
+- 完整歷史 `verify` 仍因未隨 repo 提交的外匯官方 PDF 於 `audit:fx-source` 停止；既有 CSS budget 仍超過檔案數與 `!important` 上限，兩者均非本次變更造成。
+
 ## 2026-08-27 — 啟用碼會員分類、安全帳號移除與後台 UX 三案
 
 - 管理後台會員目錄新增依啟用碼分類，使用 privacy-safe redemption ledger 區分高業／外匯碼、直接開通與未啟用會員；不暴露啟用碼明碼，舊資料缺口另行警示。
@@ -14,8 +27,8 @@
 - MFA cleanup 改用完整 factor 清單與回傳 error 檢查；取消先釋放 dialog／body lock，再背景清理，並防止 late enrollment。Focus trap 以 ref 保存 Escape callback，輸入欄位不再因 render 被搶回焦點。
 - 擴充管理後台與啟用碼合約，新增會員消失後解除 invisible scroll lock 的 Playwright E2E；未使用正式會員或執行任何正式帳號刪除。
 - 建立 A「清單指揮台」、B「啟用碼班級」、C「三欄 CRM」三款獨立預覽，全部使用 `example.test` 假資料且無外部連線；正式 UI 等待使用者選版。
-- 新增 v95 migration，已在正式 Supabase 的 rollback transaction 驗證 schema、最小權限與 claim／lease／重播狀態機，確認零 schema／測試資料殘留；尚未正式套用或部署。
-- 本次相關型別、lint、合約、build、public boundary、bundle 與桌面／iPad／手機 Chromium E2E 9／9 通過。專案完整 gate 仍受既有來源檔缺漏、CSS budget、歷史 v83–v93 契約失配與本機 WebKit 缺件影響，故未直接推送 production。
+- 新增 v95 migration，已在正式 Supabase 的 rollback transaction 驗證 schema、最小權限與 claim／lease／重播狀態機，確認零 schema／測試資料殘留；其後於 v96 發布流程中先行正式套用。
+- 本次相關型別、lint、合約、build、public boundary、bundle 與桌面／iPad／手機 Chromium E2E 9／9 通過。專案完整 gate 仍受既有來源檔缺漏、CSS budget、歷史 v83–v93 契約失配與本機 WebKit 缺件影響；這些既有失敗已獨立留存，本輪只發布經針對性驗證的範圍。
 
 ## 2026-08-26 — 管理後台巢狀視窗捲動鎖修復
 

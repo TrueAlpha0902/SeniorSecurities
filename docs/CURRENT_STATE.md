@@ -1,7 +1,18 @@
 # SeniorSecurities Current State
 
 更新日期：2026-08-27
-目前開發版本：**v95 管理後台會員分類與安全帳號移除（尚未部署）**
+目前版本：**v96 重設安全、動態排行榜與啟用協助**
+
+## 2026-08-27 重設安全、三分類排行榜與啟用協助
+
+- 學習資料重設改為伺服器原子交易與每位會員／每個題庫分離的 data generation、wrong generation barrier；「只清錯題」只推進 wrong generation，不會讓正常作答、收藏或進度失效，「重新開始／完整重設」才會同步推進兩者。三種重設都使用可重試 request ID，避免逾時重送刪掉重設後才建立的新資料，也拒絕其他裝置晚到的舊 generation 寫入。
+- 雲端、本機 IndexedDB、localStorage、sync intent 與可靠性佇列共用重設範圍；app DB 會在同一筆 transaction 寫入 reset marker，若瀏覽器在伺服器已完成後中斷，下次啟動仍會補完本機清理。錯題重設只移除錯題工作，重新開始保留並 rebase 收藏，完整重設才清除所有該題庫學習資料；證券高業與初階外匯始終分開處理。
+- 排行榜保留原本藍白風格並移除「學習榮耀榜」區塊；原「榮耀殿堂」改名為「排行榜」，前三名會依目前選取的「連續答對／練習時數／刷題大師」即時切換。
+- 排行分類選單移至完整排行榜卡片；連續答對清單只顯示頭像、名稱與最右側連續答對題數。新增「刷題大師」，只計正式證券高業題庫中做過的不重複題目數，重複作答不重複加分。
+- 登入、啟用碼頁與未開通提示新增 `aaron.kcts@gmail.com` 聯絡連結，並提醒不要寄送密碼或完整啟用碼。
+- 新增 migration：`supabase/migrations/20260827032452_reset_safe_leaderboards_v96.sql`。正式資料庫已依序記錄 v95 `20260827044831` 與 v96 `20260827044849`；v96 以正式 catalog 驗證 3,526 個證券高業題號與 3,250 個初階外匯題號，伺服器自行推導題庫範圍並拒絕未知／混合題號。舊版 authenticated 寫入 RPC 已撤銷，只保留帶 generation 的 v96 路徑；練習時數事件另受伺服器實際經過時間預算限制，不能靠大量 UUID 快速灌入。
+- 整份 v95 → v96 migration 與語意測試已在正式 Supabase 以 `BEGIN`／`ROLLBACK` 驗證：題庫範圍防偽、跨題庫隔離、三種重設語意、重設後歸零、舊 generation 拒絕、同 request 重播安全、刷題不重複計數、練習時數事件預算及舊 RPC 權限撤銷；回滾後沒有殘留 schema 或測試資料。
+- Production build、bundle budget、public boundary、新增重設／排行榜合約及桌面／iPad／手機 Chromium 聚焦 E2E 6／6 已通過。完整歷史 `verify` 仍被 repo 未附的外匯官方 PDF 擋住；既有 CSS 維護預算仍為 21／17 個檔案與 1026／950 個 `!important`，本次沒有新增 CSS 檔或 `!important`。
 
 ## 2026-08-27 管理後台會員分類、安全帳號移除與 UX 預覽
 
@@ -18,8 +29,8 @@
 - MFA 取消流程改為先關閉 UI、背景清除未完成 factor；使用 `listFactors().data.all` 辨識未驗證 factor、檢查 unenroll 回應，並以 lifecycle generation 防止關閉後才完成的 enrollment 遺留。Focus trap 不再因 inline Escape callback 每次 render 重置焦點。
 - 會員抽屜與確認視窗只依實際 render 的 overlay 上鎖；會員在背景刷新後消失會清除選取狀態。新增 Playwright 回歸，桌面、iPad Chromium 與手機 Chromium 均驗證關閉後恢復捲動。
 - 提供三款隔離、假資料、零正式 API 的 1440×900 預覽：A 清單指揮台、B 啟用碼班級、C 三欄 CRM；正式 React 介面尚未套用任一款，等待選版。
-- 新增 migration：`supabase/migrations/20260826145617_add_activation_redemption_ledger.sql`。整份 migration 已在正式 Supabase 以 `BEGIN`／`ROLLBACK` 驗證 schema、最小權限、claim／併發阻擋、過期 lease 拒絕與接管、Auth 不確定回應 reconcile、過期 pending 仍封鎖 Storage／兩條管理員授權路徑、Storage superuser 晚到 commit 在 pending／completed 都被拒絕、重設紀錄 tombstone／audit Email 匿名化、同 Email 新 owner 不被 recovery sweep 誤傷，以及跨 operationId 完成重播；回滾後三張新表、trigger、函式、audit、測試 Auth user 與 metadata 均不存在。
-- `typecheck`、`typecheck:api`、ESLint quiet、管理後台合約、啟用碼 scope 合約、production build、public boundary、bundle gate及新增桌面／iPad／手機 Chromium E2E 9／9 已通過。完整歷史 verify／E2E 仍被既有缺少外匯來源 PDF、CSS budget、v83–v93 舊契約與未安裝 WebKit 阻擋；因此 v95 migration 與正式站尚未部署。
+- 新增 migration：`supabase/migrations/20260826145617_add_activation_redemption_ledger.sql`。整份 migration 已在正式 Supabase 以 `BEGIN`／`ROLLBACK` 驗證 schema、最小權限、claim／併發阻擋、過期 lease 拒絕與接管、Auth 不確定回應 reconcile、過期 pending 仍封鎖 Storage／兩條管理員授權路徑、Storage superuser 晚到 commit 在 pending／completed 都被拒絕、重設紀錄 tombstone／audit Email 匿名化、同 Email 新 owner 不被 recovery sweep 誤傷，以及跨 operationId 完成重播；回滾後三張新表、trigger、函式、audit、測試 Auth user 與 metadata 均不存在。v95 已於 v96 發布流程中先行正式套用。
+- `typecheck`、`typecheck:api`、ESLint quiet、管理後台合約、啟用碼 scope 合約、production build、public boundary、bundle gate及新增桌面／iPad／手機 Chromium E2E 9／9 已通過。完整歷史 verify／E2E 仍被既有缺少外匯來源 PDF、CSS budget、v83–v93 舊契約與未安裝 WebKit 阻擋；這些既有 gate 已留存，不影響本輪經獨立驗證的 v95／v96 發布範圍。
 
 ## 2026-08-26 管理後台捲動鎖修復
 
@@ -536,25 +547,25 @@ npm run verify
 - 初始資源約 **166.5 KiB gzip**。
 - Production build 不包含 `data/pdf-image-quiz.json` 或 `data/backups`。
 
-Playwright 實際 browser suite 不包含在 `npm run verify`；GitHub Actions 會使用官方 Playwright Chromium／WebKit 執行。本工作容器的系統 Chromium 受集中式 URL block policy 限制，因此本地未宣稱 browser E2E 通過。
+Playwright 實際 browser suite 不包含在 `npm run verify`。本輪聚焦流程已在桌面、iPad 與手機 Chromium 通過 6／6；完整跨版本 E2E 仍包含未安裝的 WebKit 與歷史 UI 契約，不宣稱整套全綠。
 
 ## 資料庫部署順序
 
-必須依序套用尚未部署的 migrations：
+正式環境已依序套用下列 migrations：
 
 ```text
-supabase/migrations/20260712090000_stabilization_final.sql
-supabase/migrations/20260712130000_final_hardening_v79.sql
+supabase/migrations/20260826145617_add_activation_redemption_ledger.sql
+supabase/migrations/20260827032452_reset_safe_leaderboards_v96.sql
 ```
 
-v79 migration 新增：
+正式 migration 紀錄分別為 v95 `20260827044831`、v96 `20260827044849`。順序不可顛倒：v96 的 reset state、canonical question catalog、排行榜與 generation 防線建立在 v95 已完成的管理員／啟用碼資料結構之後。
 
-- `user_sync_version_seq`
-- 各同步表 `sync_version` trigger／index
-- `user_image_quiz_sessions` 與 RLS
-- `image_session` tombstone type
-- 原子管理員及啟用碼 RPC
-- telemetry `source_hash`
+v96 migration 新增：
+
+- 每位會員／題庫分離的 data／wrong reset generation 與冪等 request ledger
+- 正式題號 catalog、題庫範圍推導與所有學習寫入 generation trigger
+- 三種排行榜事件與伺服器端練習時間預算
+- authenticated 舊寫入 RPC 撤權，只允許 v96 generation-aware 寫入
 
 ## 部署驗收
 

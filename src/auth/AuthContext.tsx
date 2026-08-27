@@ -1,14 +1,22 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { isSupabaseConfigured, supabase, type AuthUser } from "../lib/supabase";
-import { syncLocalRecordsToCloud } from "../lib/db";
+import {
+  syncLocalRecordsToCloud,
+  synchronizeUserLearningResetState,
+} from "../lib/db";
 import { flushPracticeSecondsToCloud } from "../lib/practiceTime";
 import { setActiveUserStorageScope } from "../lib/userScopedStorage";
 import { initializeLearningStore } from "../lib/learningStateStore";
 import {
+  clearForeignExchangeProgress,
   hydrateForeignExchangeProgressFromSyncedRecords,
   prepareForeignExchangeCloudSync,
 } from "../lib/foreignExchangeProgress";
+import {
+  LEARNING_RESET_APPLIED_EVENT,
+  type LearningResetMode,
+} from "../lib/learningResetGeneration";
 
 export const EXAM_IDS = ["senior-securities", "junior-foreign-exchange"] as const;
 export type ExamId = typeof EXAM_IDS[number];
@@ -93,6 +101,16 @@ async function sendAuthAudit(session: Session | null, eventType: "sign_in" | "si
 
 let activeCloudSync: { userId: string; promise: Promise<void> } | null = null;
 
+async function initializeLearningForUser(userId: string): Promise<void> {
+  const resets = await synchronizeUserLearningResetState(userId);
+  for (const reset of resets) {
+    if (reset.examId === "junior-foreign-exchange") {
+      await clearForeignExchangeProgress(reset.mode, { localOnly: true });
+    }
+  }
+  await initializeLearningStore(userId);
+}
+
 async function triggerCloudRecordSync(userId: string): Promise<void> {
   if (activeCloudSync?.userId === userId) return activeCloudSync.promise;
   const promise = (async () => {
@@ -163,6 +181,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [examAccess, setExamAccess] = useState<ExamAccessMap>(emptyExamAccess);
   const hasLoggedSessionSeen = useRef(false);
   const verifiedAccessUserId = useRef<string | null>(null);
+
+  useEffect(() => {
+    const handleAppliedReset = (event: Event) => {
+      const detail = (event as CustomEvent<{
+        examId?: string;
+        mode?: LearningResetMode | null;
+      }>).detail;
+      if (detail?.examId !== "junior-foreign-exchange") return;
+      const mode = detail.mode === "wrong" || detail.mode === "complete"
+        ? detail.mode
+        : "restart";
+      void clearForeignExchangeProgress(mode, { localOnly: true });
+    };
+    window.addEventListener(LEARNING_RESET_APPLIED_EVENT, handleAppliedReset);
+    return () => {
+      window.removeEventListener(LEARNING_RESET_APPLIED_EVENT, handleAppliedReset);
+    };
+  }, []);
 
   const refreshAccessForUser = useCallback(async (currentUser: AuthUser | null) => {
     if (localPreviewEnabled) {
@@ -271,7 +307,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setActiveUserStorageScope(nextSession?.user.id ?? null);
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
-      if (nextSession?.user) await initializeLearningStore(nextSession.user.id);
+      if (nextSession?.user) await initializeLearningForUser(nextSession.user.id);
       await refreshAccessForUser(nextSession?.user ?? null);
       if (nextSession?.user) void triggerCloudRecordSync(nextSession.user.id);
       if (nextSession && !hasLoggedSessionSeen.current) {
@@ -292,7 +328,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
       void refreshAccessForUser(nextSession?.user ?? null);
-      if (nextSession?.user) void initializeLearningStore(nextSession.user.id).then(() => triggerCloudRecordSync(nextSession.user.id));
+      if (nextSession?.user) void initializeLearningForUser(nextSession.user.id).then(() => triggerCloudRecordSync(nextSession.user.id));
     });
 
     return () => {
@@ -315,7 +351,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setActiveUserStorageScope(data.user?.id ?? null);
     setSession(data.session ?? null);
     setUser(data.user ?? null);
-    if (data.user) await initializeLearningStore(data.user.id);
+    if (data.user) await initializeLearningForUser(data.user.id);
     await refreshAccessForUser(data.user ?? null);
     if (data.user) void triggerCloudRecordSync(data.user.id);
     void sendAuthAudit(data.session ?? null, "sign_in");
@@ -335,7 +371,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setActiveUserStorageScope(data.user?.id ?? null);
     setSession(data.session ?? null);
     setUser(data.user ?? null);
-    if (data.user) await initializeLearningStore(data.user.id);
+    if (data.user) await initializeLearningForUser(data.user.id);
     await refreshAccessForUser(data.user ?? null);
     if (data.user) void triggerCloudRecordSync(data.user.id);
     void sendAuthAudit(data.session ?? null, "sign_up");

@@ -3,6 +3,7 @@ import { Navigate, useLocation } from "react-router-dom";
 import { GlassLinkButton } from "../components/GlassButton";
 import { GlassCard } from "../components/GlassCard";
 import { LoadingState } from "../components/LoadingState";
+import { ActivationSupport } from "../components/ActivationSupport";
 import { useAuth, type ExamId } from "./AuthContext";
 
 type ProtectedRouteProps = {
@@ -67,6 +68,7 @@ function AccessState({ title, message, actionLabel, actionTo }: { title: string;
       <GlassCard className="state-card auth-state-card">
         <h1>{title}</h1>
         <p>{message}</p>
+        <ActivationSupport />
         <GlassLinkButton to={actionTo} variant="primary">{actionLabel}</GlassLinkButton>
       </GlassCard>
     </div>

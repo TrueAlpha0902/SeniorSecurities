@@ -12,6 +12,28 @@ import { isMockExamLearningRecorded } from "./mockExam";
 import { createUuid, isUuid } from "./uuid";
 import { supabase } from "./supabase";
 import {
+  applyLearningResetGeneration,
+  getLearningResetGeneration,
+  getLearningWrongResetGeneration,
+  inferLearningResetExamId,
+  isWrongResetMutation,
+  isStaleLearningGenerationError,
+  LEARNING_RESET_APPLIED_EVENT,
+  peekLearningResetGeneration,
+  peekLearningWrongResetGeneration,
+  synchronizeLearningResetGeneration,
+  type LearningResetExamId,
+  type LearningResetMode,
+  type LearningResetGenerationSync,
+} from "./learningResetGeneration";
+import {
+  flushPracticeSecondsToCloud,
+  pausePracticeTimeWrites,
+  resetLocalPracticeTime,
+  resumePracticeTimeWrites,
+  waitForActivePracticeSecondsFlush,
+} from "./practiceTime";
+import {
   mergeCloudLearningStates,
   type AnswerConfidence,
   type LearningAttemptInput,
@@ -116,6 +138,14 @@ type SyncIntentRecord = {
   payload: CloudMutation;
 };
 
+type AppliedResetMarker = {
+  examId: LearningResetExamId;
+  dataGeneration: number;
+  wrongGeneration: number;
+  mode: LearningResetMode;
+  updatedAt: string;
+};
+
 interface QuizPwaDatabase extends DBSchema {
   userAnswers: {
     key: string;
@@ -176,11 +206,15 @@ interface QuizPwaDatabase extends DBSchema {
       "by-coalesceKey": string;
     };
   };
+  resetMarkers: {
+    key: LearningResetExamId;
+    value: AppliedResetMarker;
+  };
 }
 
 const LEGACY_DB_NAME = "ipad-quiz-pwa";
 const SCOPED_DB_PREFIX = "ipad-quiz-pwa-v2";
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 const SYNC_READY_PREFIX = "quizpwa:cloud-sync-initialized";
 const LAST_SYNC_PREFIX = "quizpwa:last-cloud-sync";
 const LEGACY_MIGRATION_KEY = "quizpwa:legacy-db-migration:v2";
@@ -272,6 +306,9 @@ function openQuizDatabase(
         const store = db.createObjectStore("syncIntents", { keyPath: "id" });
         store.createIndex("by-createdAt", "createdAt");
         store.createIndex("by-coalesceKey", "coalesceKey");
+      }
+      if (!db.objectStoreNames.contains("resetMarkers")) {
+        db.createObjectStore("resetMarkers", { keyPath: "examId" });
       }
     },
   });
@@ -462,7 +499,33 @@ function toErrorMessage(error: unknown): string {
 
 type DatabaseRow = Record<string, unknown>;
 
-function toAnswerRow(userId: string, answer: UserAnswer) {
+type ResetWriteScope = {
+  examId: LearningResetExamId;
+  resetGeneration: number;
+};
+
+function resetWriteScope(
+  userId: string,
+  payload: Parameters<typeof inferLearningResetExamId>[0],
+  explicit?: Partial<ResetWriteScope>,
+): ResetWriteScope {
+  const examId = explicit?.examId ?? inferLearningResetExamId(payload);
+  const defaultGeneration = isWrongResetMutation(payload)
+    ? peekLearningWrongResetGeneration(userId, examId)
+    : peekLearningResetGeneration(userId, examId);
+  return {
+    examId,
+    resetGeneration: explicit?.resetGeneration
+      ?? defaultGeneration,
+  };
+}
+
+function toAnswerRow(
+  userId: string,
+  answer: UserAnswer,
+  explicit?: Partial<ResetWriteScope>,
+) {
+  const reset = resetWriteScope(userId, { record: answer }, explicit);
   return {
     user_id: userId,
     question_id: answer.questionId,
@@ -472,6 +535,8 @@ function toAnswerRow(userId: string, answer: UserAnswer) {
     answered_at: answer.answeredAt,
     bank_id: answer.bankId,
     chapter: answer.chapter,
+    exam_id: reset.examId,
+    reset_generation: reset.resetGeneration,
     updated_at: new Date().toISOString(),
   };
 }
@@ -488,7 +553,12 @@ function fromAnswerRow(row: DatabaseRow): UserAnswer {
   };
 }
 
-function toWrongRow(userId: string, record: WrongQuestionRecord) {
+function toWrongRow(
+  userId: string,
+  record: WrongQuestionRecord,
+  explicit?: Partial<ResetWriteScope>,
+) {
+  const reset = resetWriteScope(userId, { record }, explicit);
   return {
     user_id: userId,
     question_id: record.questionId,
@@ -496,6 +566,8 @@ function toWrongRow(userId: string, record: WrongQuestionRecord) {
     chapter: record.chapter,
     last_wrong_at: record.lastWrongAt,
     wrong_count: record.wrongCount,
+    exam_id: reset.examId,
+    reset_generation: reset.resetGeneration,
     updated_at: new Date().toISOString(),
   };
 }
@@ -510,13 +582,20 @@ function fromWrongRow(row: DatabaseRow): WrongQuestionRecord {
   };
 }
 
-function toFavoriteRow(userId: string, record: FavoriteQuestionRecord) {
+function toFavoriteRow(
+  userId: string,
+  record: FavoriteQuestionRecord,
+  explicit?: Partial<ResetWriteScope>,
+) {
+  const reset = resetWriteScope(userId, { record }, explicit);
   return {
     user_id: userId,
     question_id: record.questionId,
     bank_id: record.bankId,
     chapter: record.chapter,
     created_at: record.createdAt,
+    exam_id: reset.examId,
+    reset_generation: reset.resetGeneration,
     updated_at: new Date().toISOString(),
   };
 }
@@ -530,12 +609,19 @@ function fromFavoriteRow(row: DatabaseRow): FavoriteQuestionRecord {
   };
 }
 
-function toProgressRow(userId: string, record: QuizProgressRecord) {
+function toProgressRow(
+  userId: string,
+  record: QuizProgressRecord,
+  explicit?: Partial<ResetWriteScope>,
+) {
+  const reset = resetWriteScope(userId, { record }, explicit);
   return {
     user_id: userId,
     scope_id: record.scopeId,
     current_index: record.currentIndex,
     total_questions: record.totalQuestions,
+    exam_id: reset.examId,
+    reset_generation: reset.resetGeneration,
     updated_at: record.updatedAt,
   };
 }
@@ -549,7 +635,12 @@ function fromProgressRow(row: DatabaseRow): QuizProgressRecord {
   };
 }
 
-function toSessionRow(userId: string, session: QuizSession) {
+function toSessionRow(
+  userId: string,
+  session: QuizSession,
+  explicit?: Partial<ResetWriteScope>,
+) {
+  const reset = resetWriteScope(userId, {}, explicit);
   return {
     user_id: userId,
     session_id: session.sessionId,
@@ -560,6 +651,8 @@ function toSessionRow(userId: string, session: QuizSession) {
     correct_count: session.correctCount,
     wrong_count: session.wrongCount,
     accuracy: session.accuracy,
+    exam_id: reset.examId,
+    reset_generation: reset.resetGeneration,
     updated_at: new Date().toISOString(),
   };
 }
@@ -577,7 +670,12 @@ function fromSessionRow(row: DatabaseRow): QuizSession {
   };
 }
 
-function toImageSessionRow(userId: string, session: ImageQuizSessionRecord) {
+function toImageSessionRow(
+  userId: string,
+  session: ImageQuizSessionRecord,
+  explicit?: Partial<ResetWriteScope>,
+) {
+  const reset = resetWriteScope(userId, { record: session }, explicit);
   return {
     user_id: userId,
     session_id: session.sessionId,
@@ -597,6 +695,8 @@ function toImageSessionRow(userId: string, session: ImageQuizSessionRecord) {
     accuracy: session.accuracy,
     duration_minutes: session.durationMinutes ?? null,
     feedback_mode: session.feedbackMode ?? null,
+    exam_id: reset.examId,
+    reset_generation: reset.resetGeneration,
     updated_at:
       session.lastSettledAt ?? session.finishedAt ?? session.startedAt,
   };
@@ -1176,11 +1276,12 @@ async function tryImportCloudRecordsToLocal(): Promise<void> {
 async function upsertCloudAnswer(
   userId: string,
   userAnswer: UserAnswer,
+  reset?: Partial<ResetWriteScope>,
 ): Promise<void> {
   if (!supabase) return;
   const { error } = await supabase
     .from("user_answer_records")
-    .upsert(toAnswerRow(userId, userAnswer), {
+    .upsert(toAnswerRow(userId, userAnswer, reset), {
       onConflict: "user_id,question_id",
     });
   if (error) throw error;
@@ -1190,11 +1291,12 @@ async function upsertCloudAnswer(
 async function upsertCloudWrong(
   userId: string,
   record: WrongQuestionRecord,
+  reset?: Partial<ResetWriteScope>,
 ): Promise<void> {
   if (!supabase) return;
   const { error } = await supabase
     .from("user_wrong_records")
-    .upsert(toWrongRow(userId, record), { onConflict: "user_id,question_id" });
+    .upsert(toWrongRow(userId, record, reset), { onConflict: "user_id,question_id" });
   if (error) throw error;
   await deleteCloudTombstones(userId, "wrong", [record.questionId]);
 }
@@ -1223,15 +1325,21 @@ async function writeCloudTombstones(
 async function deleteCloudWrong(
   userId: string,
   questionId: string,
+  reset: ResetWriteScope,
 ): Promise<void> {
   if (!supabase) return;
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("user_wrong_records")
     .delete()
     .eq("user_id", userId)
-    .eq("question_id", questionId);
+    .eq("question_id", questionId)
+    .eq("exam_id", reset.examId)
+    .eq("reset_generation", reset.resetGeneration)
+    .select("question_id");
   if (error) throw error;
-  await writeCloudTombstones(userId, "user_wrong_records", [questionId]);
+  if (data?.length) {
+    await writeCloudTombstones(userId, "user_wrong_records", [questionId]);
+  }
 }
 
 async function getCloudFavorite(
@@ -1252,11 +1360,12 @@ async function getCloudFavorite(
 async function upsertCloudFavorite(
   userId: string,
   record: FavoriteQuestionRecord,
+  reset?: Partial<ResetWriteScope>,
 ): Promise<void> {
   if (!supabase) return;
   const { error } = await supabase
     .from("user_favorite_records")
-    .upsert(toFavoriteRow(userId, record), {
+    .upsert(toFavoriteRow(userId, record, reset), {
       onConflict: "user_id,question_id",
     });
   if (error) throw error;
@@ -1266,25 +1375,32 @@ async function upsertCloudFavorite(
 async function deleteCloudFavorite(
   userId: string,
   questionId: string,
+  reset: ResetWriteScope,
 ): Promise<void> {
   if (!supabase) return;
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("user_favorite_records")
     .delete()
     .eq("user_id", userId)
-    .eq("question_id", questionId);
+    .eq("question_id", questionId)
+    .eq("exam_id", reset.examId)
+    .eq("reset_generation", reset.resetGeneration)
+    .select("question_id");
   if (error) throw error;
-  await writeCloudTombstones(userId, "user_favorite_records", [questionId]);
+  if (data?.length) {
+    await writeCloudTombstones(userId, "user_favorite_records", [questionId]);
+  }
 }
 
 async function upsertCloudProgress(
   userId: string,
   record: QuizProgressRecord,
+  reset?: Partial<ResetWriteScope>,
 ): Promise<void> {
   if (!supabase) return;
   const { error } = await supabase
     .from("user_quiz_progress")
-    .upsert(toProgressRow(userId, record), { onConflict: "user_id,scope_id" });
+    .upsert(toProgressRow(userId, record, reset), { onConflict: "user_id,scope_id" });
   if (error) throw error;
   await deleteCloudTombstones(userId, "progress", [record.scopeId]);
 }
@@ -1307,25 +1423,32 @@ async function getCloudProgress(
 async function deleteCloudProgress(
   userId: string,
   scopeId: string,
+  reset: ResetWriteScope,
 ): Promise<void> {
   if (!supabase) return;
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("user_quiz_progress")
     .delete()
     .eq("user_id", userId)
-    .eq("scope_id", scopeId);
+    .eq("scope_id", scopeId)
+    .eq("exam_id", reset.examId)
+    .eq("reset_generation", reset.resetGeneration)
+    .select("scope_id");
   if (error) throw error;
-  await writeCloudTombstones(userId, "user_quiz_progress", [scopeId]);
+  if (data?.length) {
+    await writeCloudTombstones(userId, "user_quiz_progress", [scopeId]);
+  }
 }
 
 async function upsertCloudSession(
   userId: string,
   session: QuizSession,
+  reset?: Partial<ResetWriteScope>,
 ): Promise<void> {
   if (!supabase) return;
   const { error } = await supabase
     .from("user_quiz_sessions")
-    .upsert(toSessionRow(userId, session), {
+    .upsert(toSessionRow(userId, session, reset), {
       onConflict: "user_id,session_id",
     });
   if (error) throw error;
@@ -1337,43 +1460,60 @@ async function deleteCloudRecords(
   tableName: CloudTableName,
   columnName: string,
   values: string[],
+  reset: ResetWriteScope,
 ): Promise<void> {
   if (!supabase || values.length === 0) return;
+  const deletedKeys: string[] = [];
   for (const chunk of chunkRows(values)) {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from(tableName)
       .delete()
       .eq("user_id", userId)
-      .in(columnName, chunk);
+      .eq("exam_id", reset.examId)
+      .eq("reset_generation", reset.resetGeneration)
+      .in(columnName, chunk)
+      .select(columnName);
     if (error) throw error;
+    for (const row of data ?? []) {
+      const key = String((row as unknown as Record<string, unknown>)[columnName] ?? "");
+      if (key) deletedKeys.push(key);
+    }
   }
-  await writeCloudTombstones(userId, tableName, values);
+  await writeCloudTombstones(userId, tableName, deletedKeys);
 }
 
 async function fetchCloudKeys(
   userId: string,
   tableName: CloudTableName,
+  reset: ResetWriteScope,
 ): Promise<string[]> {
   const keyColumn = keyColumnForTable(tableName);
-  const page = await fetchKeysetCloudRows(
-    tableName,
-    `${keyColumn}, updated_at`,
-    userId,
-    0,
-  );
-  return page.rows.map((row) => String(row[keyColumn]));
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from(tableName)
+    .select(keyColumn)
+    .eq("user_id", userId)
+    .eq("exam_id", reset.examId)
+    .eq("reset_generation", reset.resetGeneration);
+  if (error) throw error;
+  return (data ?? [])
+    .map((row) => String((row as unknown as Record<string, unknown>)[keyColumn] ?? ""))
+    .filter(Boolean);
 }
 
 async function clearCloudTable(
   userId: string,
   tableName: CloudTableName,
+  reset: ResetWriteScope,
 ): Promise<void> {
   if (!supabase) return;
-  const keys = await fetchCloudKeys(userId, tableName);
+  const keys = await fetchCloudKeys(userId, tableName, reset);
   const { error } = await supabase
     .from(tableName)
     .delete()
-    .eq("user_id", userId);
+    .eq("user_id", userId)
+    .eq("exam_id", reset.examId)
+    .eq("reset_generation", reset.resetGeneration);
   if (error) throw error;
   await writeCloudTombstones(userId, tableName, keys);
 }
@@ -1386,7 +1526,7 @@ type CloudTableName =
   | "user_quiz_sessions"
   | "user_image_quiz_sessions";
 
-type CloudMutation =
+type CloudMutationBody =
   | { kind: "upsert-answer"; record: UserAnswer }
   | { kind: "upsert-wrong"; record: WrongQuestionRecord }
   | { kind: "delete-wrong"; questionId: string }
@@ -1402,20 +1542,34 @@ type CloudMutation =
       attempt: LearningAttemptInput;
       state: QuestionLearningState;
     }
-  | { kind: "record-leaderboard-answer"; eventId: string; isCorrect: boolean }
+  | {
+      kind: "record-leaderboard-answer";
+      eventId: string;
+      questionId?: string;
+      isCorrect: boolean;
+      resetGeneration?: number;
+    }
   | {
       kind: "delete-many";
       table: CloudTableName;
       column: string;
       values: string[];
+      examId: LearningResetExamId;
     }
-  | { kind: "clear-table"; table: CloudTableName };
+  | {
+      kind: "clear-table";
+      table: CloudTableName;
+      examId: LearningResetExamId;
+    };
+
+type CloudMutation = CloudMutationBody & Partial<ResetWriteScope>;
 
 type QueuedCloudMutation = ReliabilityQueueEntry<CloudMutation>;
 
 const CLOUD_WRITE_DEBOUNCE_MS = 650;
 const cloudWriteTimers = new Map<string, ReturnType<typeof setTimeout>>();
 const activeCloudWriteFlushes = new Map<string, Promise<void>>();
+const pausedCloudWriteUsers = new Set<string>();
 const legacyQueueMigrationPromises = new Map<string, Promise<void>>();
 
 function recordTypeForTable(
@@ -1510,6 +1664,33 @@ function mutationCoalesceKey(mutation: CloudMutation): string | null {
   }
 }
 
+function stampCloudMutation(
+  userId: string,
+  mutation: CloudMutation,
+): CloudMutation {
+  const reset = resetWriteScope(userId, mutation, mutation);
+  return {
+    ...mutation,
+    examId: reset.examId,
+    resetGeneration: reset.resetGeneration,
+  } as CloudMutation;
+}
+
+function stampedResetScope(mutation: CloudMutation): ResetWriteScope {
+  if (
+    (mutation.examId !== "senior-securities" &&
+      mutation.examId !== "junior-foreign-exchange") ||
+    !Number.isFinite(mutation.resetGeneration) ||
+    Number(mutation.resetGeneration) < 0
+  ) {
+    throw new Error("待同步資料缺少有效的題庫重設版本，已停止破壞性同步。");
+  }
+  return {
+    examId: mutation.examId,
+    resetGeneration: Math.trunc(Number(mutation.resetGeneration)),
+  };
+}
+
 function createMutationId(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function")
     return crypto.randomUUID();
@@ -1521,13 +1702,14 @@ function createSyncIntentRecord(
   mutation: CloudMutation,
 ): SyncIntentRecord {
   const now = new Date().toISOString();
+  const stampedMutation = stampCloudMutation(userId, mutation);
   return {
     id: createMutationId(),
     userId,
     createdAt: now,
     updatedAt: now,
-    coalesceKey: mutationCoalesceKey(mutation),
-    payload: mutation,
+    coalesceKey: mutationCoalesceKey(stampedMutation),
+    payload: stampedMutation,
   };
 }
 
@@ -1536,16 +1718,17 @@ function createQueuedCloudMutation(
   mutation: CloudMutation,
 ): QueuedCloudMutation {
   const now = new Date().toISOString();
+  const stampedMutation = stampCloudMutation(userId, mutation);
   return {
     id: createMutationId(),
     userId,
     createdAt: now,
     updatedAt: now,
-    coalesceKey: mutationCoalesceKey(mutation),
+    coalesceKey: mutationCoalesceKey(stampedMutation),
     attemptCount: 0,
     nextAttemptAt: now,
     lastError: null,
-    payload: mutation,
+    payload: stampedMutation,
   };
 }
 
@@ -1581,17 +1764,23 @@ async function migrateLegacyCloudQueue(userId: string): Promise<void> {
       const now = new Date().toISOString();
       const entries: QueuedCloudMutation[] = parsed
         .filter((entry) => entry?.userId === userId && entry.mutation)
-        .map((entry) => ({
-          id: entry.id || createMutationId(),
-          userId,
-          createdAt: entry.createdAt || now,
-          updatedAt: now,
-          coalesceKey: mutationCoalesceKey(entry.mutation as CloudMutation),
-          attemptCount: 0,
-          nextAttemptAt: now,
-          lastError: null,
-          payload: entry.mutation as CloudMutation,
-        }));
+        .map((entry) => {
+          const payload = stampCloudMutation(
+            userId,
+            entry.mutation as CloudMutation,
+          );
+          return {
+            id: entry.id || createMutationId(),
+            userId,
+            createdAt: entry.createdAt || now,
+            updatedAt: now,
+            coalesceKey: mutationCoalesceKey(payload),
+            attemptCount: 0,
+            nextAttemptAt: now,
+            lastError: null,
+            payload,
+          };
+        });
       await replaceReliabilityQueue(userId, entries);
       storage.removeItem(key);
     } catch (error) {
@@ -1617,16 +1806,18 @@ async function enqueueCloudMutation(
 ): Promise<void> {
   if (!userId) return;
   await migrateLegacyCloudQueue(userId);
-  if (mutation.kind === "clear-table") {
+  const stampedMutation = stampCloudMutation(userId, mutation);
+  if (stampedMutation.kind === "clear-table") {
     const existing = await listReliabilityQueue<CloudMutation>(userId, 10_000);
     const retained = existing.filter(
-      (entry) => mutationTable(entry.payload) !== mutation.table,
+      (entry) => mutationTable(entry.payload) !== stampedMutation.table ||
+        entry.payload.examId !== stampedMutation.examId,
     );
     await replaceReliabilityQueue(userId, retained);
   }
   await enqueueReliabilityMutation(
     userId,
-    createQueuedCloudMutation(userId, mutation),
+    createQueuedCloudMutation(userId, stampedMutation),
   );
   scheduleCloudWriteFlush(userId);
 }
@@ -1641,42 +1832,56 @@ async function syncLearningAttemptsBatch(
       throw new Error("Invalid learning batch entry");
     return { ...mutation.attempt, state: mutation.state };
   });
-  const { error } = await supabase.rpc("record_learning_attempts_batch_v75", {
+  const first = entries[0]?.payload;
+  const generation =
+    first?.kind === "sync-learning-attempt"
+      ? Math.max(0, Math.trunc(first.attempt.resetGeneration ?? 0))
+      : 0;
+  const { error } = await supabase.rpc("record_learning_attempts_batch_v96", {
+    p_exam_id: "senior-securities",
+    p_generation: generation,
     p_items: items,
   });
-  if (!error) return;
-  if (!isMissingRpc(error, "record_learning_attempts_batch_v75")) throw error;
-  for (const entry of entries) {
-    const mutation = entry.payload;
-    if (mutation.kind === "sync-learning-attempt") {
-      const { syncLearningAttempt } = await import("./learningEngine");
-      await syncLearningAttempt(mutation.attempt, mutation.state);
-    }
-  }
+  if (error) throw error;
 }
 
 async function syncLeaderboardBatch(
   entries: QueuedCloudMutation[],
 ): Promise<void> {
   if (!supabase || !entries.length) return;
+  const supportsV96 = entries.every((entry) => {
+    const mutation = entry.payload;
+    return (
+      mutation.kind === "record-leaderboard-answer" &&
+      typeof mutation.questionId === "string" &&
+      mutation.questionId.length > 0
+    );
+  });
   const items = entries.map((entry) => {
     const mutation = entry.payload;
     if (mutation.kind !== "record-leaderboard-answer")
       throw new Error("Invalid leaderboard batch entry");
-    return { event_id: mutation.eventId, is_correct: mutation.isCorrect };
+    return {
+      event_id: mutation.eventId,
+      question_id: mutation.questionId,
+      is_correct: mutation.isCorrect,
+    };
   });
+  const first = entries[0]?.payload;
+  const generation =
+    first?.kind === "record-leaderboard-answer"
+      ? Math.max(0, Math.trunc(first.resetGeneration ?? 0))
+      : 0;
+  if (!supportsV96) throw new Error("排行榜事件缺少正式題號，已停止舊版同步。");
   const { error } = await supabase.rpc(
-    "record_leaderboard_answer_events_batch_v75",
-    { p_items: items },
+    "record_leaderboard_answer_events_batch_v96",
+    {
+      p_exam_id: "senior-securities",
+      p_generation: generation,
+      p_items: items,
+    },
   );
-  if (!error) return;
-  if (!isMissingRpc(error, "record_leaderboard_answer_events_batch_v75"))
-    throw error;
-  for (const entry of entries) {
-    const mutation = entry.payload;
-    if (mutation.kind === "record-leaderboard-answer")
-      await updateLeaderboardAfterAnswer(mutation.isCorrect, mutation.eventId);
-  }
+  if (error) throw error;
 }
 
 async function executeCloudMutationGroup(
@@ -1690,14 +1895,13 @@ async function executeCloudMutationGroup(
   if (first.kind === "record-leaderboard-answer")
     return syncLeaderboardBatch(entries);
   if (first.kind === "upsert-answer") {
-    const records = entries.map(
-      (entry) =>
-        (entry.payload as Extract<CloudMutation, { kind: "upsert-answer" }>)
-          .record,
+    const mutations = entries.map(
+      (entry) => entry.payload as Extract<CloudMutation, { kind: "upsert-answer" }>,
     );
+    const records = mutations.map((mutation) => mutation.record);
     await upsertRowsBatched(
       "user_answer_records",
-      records.map((record) => toAnswerRow(userId, record)),
+      mutations.map((mutation) => toAnswerRow(userId, mutation.record, mutation)),
       "user_id,question_id",
     );
     return deleteCloudTombstones(
@@ -1707,14 +1911,13 @@ async function executeCloudMutationGroup(
     );
   }
   if (first.kind === "upsert-wrong") {
-    const records = entries.map(
-      (entry) =>
-        (entry.payload as Extract<CloudMutation, { kind: "upsert-wrong" }>)
-          .record,
+    const mutations = entries.map(
+      (entry) => entry.payload as Extract<CloudMutation, { kind: "upsert-wrong" }>,
     );
+    const records = mutations.map((mutation) => mutation.record);
     await upsertRowsBatched(
       "user_wrong_records",
-      records.map((record) => toWrongRow(userId, record)),
+      mutations.map((mutation) => toWrongRow(userId, mutation.record, mutation)),
       "user_id,question_id",
     );
     return deleteCloudTombstones(
@@ -1724,14 +1927,13 @@ async function executeCloudMutationGroup(
     );
   }
   if (first.kind === "upsert-favorite") {
-    const records = entries.map(
-      (entry) =>
-        (entry.payload as Extract<CloudMutation, { kind: "upsert-favorite" }>)
-          .record,
+    const mutations = entries.map(
+      (entry) => entry.payload as Extract<CloudMutation, { kind: "upsert-favorite" }>,
     );
+    const records = mutations.map((mutation) => mutation.record);
     await upsertRowsBatched(
       "user_favorite_records",
-      records.map((record) => toFavoriteRow(userId, record)),
+      mutations.map((mutation) => toFavoriteRow(userId, mutation.record, mutation)),
       "user_id,question_id",
     );
     return deleteCloudTombstones(
@@ -1741,14 +1943,13 @@ async function executeCloudMutationGroup(
     );
   }
   if (first.kind === "upsert-progress") {
-    const records = entries.map(
-      (entry) =>
-        (entry.payload as Extract<CloudMutation, { kind: "upsert-progress" }>)
-          .record,
+    const mutations = entries.map(
+      (entry) => entry.payload as Extract<CloudMutation, { kind: "upsert-progress" }>,
     );
+    const records = mutations.map((mutation) => mutation.record);
     await upsertRowsBatched(
       "user_quiz_progress",
-      records.map((record) => toProgressRow(userId, record)),
+      mutations.map((mutation) => toProgressRow(userId, mutation.record, mutation)),
       "user_id,scope_id",
     );
     return deleteCloudTombstones(
@@ -1758,14 +1959,13 @@ async function executeCloudMutationGroup(
     );
   }
   if (first.kind === "upsert-session") {
-    const records = entries.map(
-      (entry) =>
-        (entry.payload as Extract<CloudMutation, { kind: "upsert-session" }>)
-          .record,
+    const mutations = entries.map(
+      (entry) => entry.payload as Extract<CloudMutation, { kind: "upsert-session" }>,
     );
+    const records = mutations.map((mutation) => mutation.record);
     await upsertRowsBatched(
       "user_quiz_sessions",
-      records.map((record) => toSessionRow(userId, record)),
+      mutations.map((mutation) => toSessionRow(userId, mutation.record, mutation)),
       "user_id,session_id",
     );
     return deleteCloudTombstones(
@@ -1775,18 +1975,13 @@ async function executeCloudMutationGroup(
     );
   }
   if (first.kind === "upsert-image-session") {
-    const records = entries.map(
-      (entry) =>
-        (
-          entry.payload as Extract<
-            CloudMutation,
-            { kind: "upsert-image-session" }
-          >
-        ).record,
+    const mutations = entries.map(
+      (entry) => entry.payload as Extract<CloudMutation, { kind: "upsert-image-session" }>,
     );
+    const records = mutations.map((mutation) => mutation.record);
     await upsertRowsBatched(
       "user_image_quiz_sessions",
-      records.map((record) => toImageSessionRow(userId, record)),
+      mutations.map((mutation) => toImageSessionRow(userId, mutation.record, mutation)),
       "user_id,session_id",
     );
     return deleteCloudTombstones(
@@ -1797,15 +1992,16 @@ async function executeCloudMutationGroup(
   }
   for (const entry of entries) {
     const mutation = entry.payload;
+    const reset = stampedResetScope(mutation);
     switch (mutation.kind) {
       case "delete-wrong":
-        await deleteCloudWrong(userId, mutation.questionId);
+        await deleteCloudWrong(userId, mutation.questionId, reset);
         break;
       case "delete-favorite":
-        await deleteCloudFavorite(userId, mutation.questionId);
+        await deleteCloudFavorite(userId, mutation.questionId, reset);
         break;
       case "delete-progress":
-        await deleteCloudProgress(userId, mutation.scopeId);
+        await deleteCloudProgress(userId, mutation.scopeId, reset);
         break;
       case "delete-many":
         await deleteCloudRecords(
@@ -1813,30 +2009,31 @@ async function executeCloudMutationGroup(
           mutation.table,
           mutation.column,
           mutation.values,
+          reset,
         );
         break;
       case "clear-table":
-        await clearCloudTable(userId, mutation.table);
+        await clearCloudTable(userId, mutation.table, reset);
         break;
       case "upsert-answer":
-        await upsertCloudAnswer(userId, mutation.record);
+        await upsertCloudAnswer(userId, mutation.record, mutation);
         break;
       case "upsert-wrong":
-        await upsertCloudWrong(userId, mutation.record);
+        await upsertCloudWrong(userId, mutation.record, mutation);
         break;
       case "upsert-favorite":
-        await upsertCloudFavorite(userId, mutation.record);
+        await upsertCloudFavorite(userId, mutation.record, mutation);
         break;
       case "upsert-progress":
-        await upsertCloudProgress(userId, mutation.record);
+        await upsertCloudProgress(userId, mutation.record, mutation);
         break;
       case "upsert-session":
-        await upsertCloudSession(userId, mutation.record);
+        await upsertCloudSession(userId, mutation.record, mutation);
         break;
       case "upsert-image-session":
         await upsertRowsBatched(
           "user_image_quiz_sessions",
-          [toImageSessionRow(userId, mutation.record)],
+          [toImageSessionRow(userId, mutation.record, mutation)],
           "user_id,session_id",
         );
         await deleteCloudTombstones(userId, "image_session", [
@@ -1849,6 +2046,7 @@ async function executeCloudMutationGroup(
           "user_image_quiz_sessions",
           "session_id",
           [mutation.sessionId],
+          reset,
         );
         break;
       case "sync-learning-attempt":
@@ -1870,6 +2068,7 @@ function scheduleCloudWriteFlush(
   userId: string,
   delayMs = CLOUD_WRITE_DEBOUNCE_MS,
 ): void {
+  if (pausedCloudWriteUsers.has(userId)) return;
   const current = cloudWriteTimers.get(userId);
   if (current) clearTimeout(current);
   if (activeCloudWriteFlushes.has(userId)) return;
@@ -1896,7 +2095,11 @@ async function scheduleNextCloudFlush(userId: string): Promise<void> {
   scheduleCloudWriteFlush(userId, Math.min(delay, CLOUD_QUEUE_MAX_RETRY_MS));
 }
 
-async function flushQueuedCloudWritesForUser(userId: string): Promise<void> {
+async function flushQueuedCloudWritesForUser(
+  userId: string,
+  allowWhilePaused = false,
+): Promise<void> {
+  if (pausedCloudWriteUsers.has(userId) && !allowWhilePaused) return;
   const active = activeCloudWriteFlushes.get(userId);
   if (active) return active;
   const timer = cloudWriteTimers.get(userId);
@@ -1919,12 +2122,27 @@ async function flushQueuedCloudWritesForUser(userId: string): Promise<void> {
     if (!due.length) return;
     const groups = new Map<string, QueuedCloudMutation[]>();
     for (const entry of due) {
-      const key = entry.payload.kind;
+      const payload = entry.payload;
+      const generation =
+        payload.kind === "sync-learning-attempt"
+          ? payload.attempt.resetGeneration ?? 0
+          : payload.resetGeneration ?? 0;
+      const key = `${payload.kind}:${payload.examId ?? inferLearningResetExamId(payload)}:${generation}`;
       const group = groups.get(key) ?? [];
       group.push(entry);
       groups.set(key, group);
     }
-    for (const entries of groups.values()) {
+    const orderedGroups = [...groups.values()].sort((left, right) => {
+      const priority = (entries: QueuedCloudMutation[]): number => {
+        const kind = entries[0]?.payload.kind;
+        if (kind === "sync-learning-attempt") return 0;
+        if (kind === "record-leaderboard-answer") return 1;
+        return 2;
+      };
+      return priority(left) - priority(right);
+    });
+    for (const entries of orderedGroups) {
+      if (pausedCloudWriteUsers.has(userId) && !allowWhilePaused) return;
       if ((await getCurrentUserId()) !== userId) return;
       try {
         await executeCloudMutationGroup(userId, entries);
@@ -1933,6 +2151,15 @@ async function flushQueuedCloudWritesForUser(userId: string): Promise<void> {
           entries.map((entry) => entry.id),
         );
       } catch (error) {
+        if (isStaleLearningGenerationError(error)) {
+          const synchronized = await synchronizeLearningResetGeneration(
+            userId,
+            inferLearningResetExamId(entries[0]?.payload ?? {}),
+            true,
+          );
+          await applySynchronizedResetLocally(userId, synchronized);
+          return;
+        }
         const message = toErrorMessage(error).slice(0, 800);
         for (const entry of entries) {
           const attemptCount = entry.attemptCount + 1;
@@ -1966,6 +2193,308 @@ async function flushQueuedCloudWritesForUser(userId: string): Promise<void> {
 async function flushQueuedCloudWrites(): Promise<void> {
   const userId = await getCurrentUserId();
   if (userId) await flushQueuedCloudWritesForUser(userId);
+}
+
+export async function synchronizeUserLearningResetState(
+  userId: string,
+): Promise<Array<{
+  examId: LearningResetExamId;
+  mode: LearningResetMode;
+}>> {
+  const applied: Array<{
+    examId: LearningResetExamId;
+    mode: LearningResetMode;
+  }> = [];
+  for (const examId of ["senior-securities", "junior-foreign-exchange"] as const) {
+    const synchronized = await synchronizeLearningResetGeneration(
+      userId,
+      examId,
+      true,
+    );
+    const mode = await applySynchronizedResetLocally(userId, synchronized);
+    if (!mode) continue;
+    applied.push({ examId, mode });
+  }
+  return applied;
+}
+
+export type LearningResetScope =
+  | "senior-securities"
+  | "junior-foreign-exchange"
+  | "all";
+
+function mutationMatchesExam(
+  mutation: CloudMutation,
+  examId: LearningResetExamId,
+): boolean {
+  return inferLearningResetExamId(mutation) === examId;
+}
+
+function isFavoriteCloudMutation(mutation: CloudMutation): boolean {
+  return mutation.kind === "upsert-favorite" ||
+    mutation.kind === "delete-favorite" ||
+    ((mutation.kind === "delete-many" || mutation.kind === "clear-table") &&
+      mutation.table === "user_favorite_records");
+}
+
+function rebaseCloudMutation(
+  mutation: CloudMutation,
+  examId: LearningResetExamId,
+  resetGeneration: number,
+): CloudMutation {
+  return {
+    ...mutation,
+    examId,
+    resetGeneration,
+  } as CloudMutation;
+}
+
+async function applySynchronizedResetLocally(
+  userId: string,
+  synchronized: LearningResetGenerationSync,
+): Promise<LearningResetMode | null> {
+  const db = await getDbForUser(userId);
+  const marker = await db.get("resetMarkers", synchronized.examId);
+  const appliedDataGeneration = marker?.dataGeneration ?? 0;
+  const appliedWrongGeneration = marker?.wrongGeneration ?? 0;
+  let mode: LearningResetMode | null = null;
+  if (synchronized.generation > appliedDataGeneration) {
+    mode = synchronized.dataMode ?? "restart";
+  } else if (synchronized.wrongGeneration > appliedWrongGeneration) {
+    mode = "wrong";
+  }
+  if (!mode) return null;
+
+  await discardLocalRecordsForReset(
+    userId,
+    synchronized.examId,
+    mode,
+    synchronized.generation,
+    synchronized.wrongGeneration,
+  );
+  if (synchronized.examId === "senior-securities" && mode !== "wrong") {
+    resetLocalPracticeTime();
+  }
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent(LEARNING_RESET_APPLIED_EVENT, {
+      detail: {
+        examId: synchronized.examId,
+        mode,
+        dataChanged: mode !== "wrong",
+        wrongChanged: true,
+      },
+    }));
+  }
+  return mode;
+}
+
+async function discardLocalRecordsForReset(
+  userId: string,
+  examId: LearningResetExamId,
+  mode: LearningResetMode,
+  dataGeneration: number,
+  wrongGeneration: number,
+): Promise<void> {
+  const db = await getDbForUser(userId);
+  const tx = db.transaction(
+    [
+      "userAnswers",
+      "wrongQuestions",
+      "favoriteQuestions",
+      "quizProgress",
+      "quizSessions",
+      "imageQuizSessions",
+      "syncIntents",
+      "resetMarkers",
+    ],
+    "readwrite",
+  );
+
+  const deleteMatching = async <T extends { [key: string]: unknown }>(
+    storeName:
+      | "userAnswers"
+      | "wrongQuestions"
+      | "favoriteQuestions"
+      | "quizProgress"
+      | "quizSessions"
+      | "imageQuizSessions",
+    keyOf: (record: T) => string,
+  ): Promise<void> => {
+    const store = tx.objectStore(storeName);
+    for (const record of await store.getAll() as unknown as T[]) {
+      if (inferLearningResetExamId({ record }) === examId) {
+        await store.delete(keyOf(record));
+      }
+    }
+  };
+
+  if (mode !== "wrong") {
+    await deleteMatching<UserAnswer & Record<string, unknown>>(
+      "userAnswers",
+      (record) => record.questionId,
+    );
+    await deleteMatching<QuizProgressRecord & Record<string, unknown>>(
+      "quizProgress",
+      (record) => record.scopeId,
+    );
+    await deleteMatching<QuizSession & Record<string, unknown>>(
+      "quizSessions",
+      (record) => record.sessionId,
+    );
+    await deleteMatching<ImageQuizSessionRecord & Record<string, unknown>>(
+      "imageQuizSessions",
+      (record) => record.sessionId,
+    );
+  }
+  await deleteMatching<WrongQuestionRecord & Record<string, unknown>>(
+    "wrongQuestions",
+    (record) => record.questionId,
+  );
+  if (mode === "complete") {
+    await deleteMatching<FavoriteQuestionRecord & Record<string, unknown>>(
+      "favoriteQuestions",
+      (record) => record.questionId,
+    );
+  }
+
+  const intentStore = tx.objectStore("syncIntents");
+  for (const intent of await intentStore.getAll()) {
+    if (!mutationMatchesExam(intent.payload, examId)) continue;
+    if (mode === "wrong") {
+      if (isWrongResetMutation(intent.payload)) await intentStore.delete(intent.id);
+      continue;
+    }
+    if (mode === "restart" && isFavoriteCloudMutation(intent.payload)) {
+      const payload = rebaseCloudMutation(intent.payload, examId, dataGeneration);
+      await intentStore.put({ ...intent, payload, updatedAt: new Date().toISOString() });
+      continue;
+    }
+    await intentStore.delete(intent.id);
+  }
+  await tx.objectStore("resetMarkers").put({
+    examId,
+    dataGeneration,
+    wrongGeneration,
+    mode,
+    updatedAt: new Date().toISOString(),
+  });
+  await tx.done;
+  notifyRecordChange();
+}
+
+export async function resetLearningDataForScope(options: {
+  scope: LearningResetScope;
+  mode: LearningResetMode;
+  requestId: string;
+  localCleanup?: () => Promise<void>;
+}): Promise<void> {
+  const userId = await getCurrentUserId();
+  if (!userId && !import.meta.env.DEV) throw new Error("請先登入後再重設學習資料。");
+  const affectedExamIds: LearningResetExamId[] = options.scope === "all"
+    ? ["senior-securities", "junior-foreign-exchange"]
+    : [options.scope];
+  const affectsSecurities = affectedExamIds.includes("senior-securities");
+  if (userId) {
+    pausedCloudWriteUsers.add(userId);
+    const timer = cloudWriteTimers.get(userId);
+    if (timer) {
+      clearTimeout(timer);
+      cloudWriteTimers.delete(userId);
+    }
+  }
+  if (affectsSecurities) pausePracticeTimeWrites();
+
+  try {
+    if (userId) {
+      const active = activeCloudWriteFlushes.get(userId);
+      if (active) await active;
+      await flushQueuedCloudWritesForUser(userId, true);
+    }
+    if (affectsSecurities) {
+      await waitForActivePracticeSecondsFlush();
+      await flushPracticeSecondsToCloud(true, true);
+      await waitForActivePracticeSecondsFlush();
+    }
+
+    if (!supabase || !userId) {
+      const previewUserId = userId || "local-preview-user";
+      for (const examId of affectedExamIds) {
+        const [current, currentWrong] = await Promise.all([
+          getLearningResetGeneration(previewUserId, examId),
+          getLearningWrongResetGeneration(previewUserId, examId),
+        ]);
+        const nextData = options.mode === "wrong" ? current : current + 1;
+        const nextWrong = currentWrong + 1;
+        await applyLearningResetGeneration(
+          previewUserId,
+          examId,
+          nextData,
+          options.mode,
+          nextWrong,
+        );
+        await discardLocalRecordsForReset(
+          previewUserId,
+          examId,
+          options.mode,
+          nextData,
+          nextWrong,
+        );
+      }
+      if (affectsSecurities && options.mode !== "wrong") resetLocalPracticeTime();
+      await options.localCleanup?.();
+      return;
+    }
+
+    const { data, error } = await supabase.rpc("reset_learning_data_v96", {
+      p_scope: options.scope,
+      p_mode: options.mode,
+      p_request_id: options.requestId,
+    });
+    if (error) throw error;
+
+    const row = Array.isArray(data) ? data[0] : data;
+    const response = row && typeof row === "object"
+      ? row as Record<string, unknown>
+      : {};
+    for (const examId of affectedExamIds) {
+      const generationField = examId === "senior-securities"
+        ? "securitiesGeneration"
+        : "foreignExchangeGeneration";
+      const wrongGenerationField = examId === "senior-securities"
+        ? "securitiesWrongGeneration"
+        : "foreignExchangeWrongGeneration";
+      const generation = Number(response[generationField]);
+      const wrongGeneration = Number(response[wrongGenerationField]);
+      if (
+        !Number.isFinite(generation) || generation < 0 ||
+        !Number.isFinite(wrongGeneration) || wrongGeneration < 1
+      ) {
+        throw new Error("伺服器未回傳有效的重設版本，資料尚未在本機清除。");
+      }
+      await applyLearningResetGeneration(
+        userId,
+        examId,
+        generation,
+        options.mode,
+        wrongGeneration,
+      );
+      await discardLocalRecordsForReset(
+        userId,
+        examId,
+        options.mode,
+        generation,
+        wrongGeneration,
+      );
+    }
+    if (affectsSecurities && options.mode !== "wrong") resetLocalPracticeTime();
+    await options.localCleanup?.();
+  } finally {
+    if (affectsSecurities) resumePracticeTimeWrites();
+    if (userId) {
+      pausedCloudWriteUsers.delete(userId);
+      scheduleCloudWriteFlush(userId, 0);
+    }
+  }
 }
 
 if (typeof window !== "undefined") {
@@ -2150,35 +2679,6 @@ export async function syncLocalRecordsToCloud(
   return getSyncedRecordSummary();
 }
 
-function isMissingRpc(
-  error: { code?: string; message?: string },
-  functionName: string,
-): boolean {
-  return (
-    error.code === "PGRST202" ||
-    error.code === "42883" ||
-    String(error.message || "").includes(functionName)
-  );
-}
-
-async function updateLeaderboardAfterAnswer(
-  isCorrect: boolean,
-  eventId: string,
-): Promise<void> {
-  if (!supabase) return;
-  const { error } = await supabase.rpc("record_leaderboard_answer_event_v66", {
-    p_event_id: eventId,
-    p_is_correct: isCorrect,
-  });
-  if (!error) return;
-  if (!isMissingRpc(error, "record_leaderboard_answer_event_v66")) throw error;
-  const { error: legacyError } = await supabase.rpc(
-    "record_leaderboard_answer",
-    { p_is_correct: isCorrect },
-  );
-  if (legacyError) throw legacyError;
-}
-
 export type RecordAnswerOptions = {
   confidence?: AnswerConfidence;
   sessionId?: string | null;
@@ -2200,6 +2700,9 @@ async function recordLearningAndLeaderboard(args: {
   const { createAttemptId, recordLocalLearningAttempt } =
     await import("./learningEngine");
   const eventId = args.options?.eventId || createAttemptId();
+  const resetGeneration = args.userId
+    ? await getLearningResetGeneration(args.userId)
+    : 0;
   const attempt: LearningAttemptInput = {
     eventId,
     questionId: args.questionId,
@@ -2210,6 +2713,7 @@ async function recordLearningAndLeaderboard(args: {
     isCorrect: args.isCorrect,
     confidence: args.options?.confidence ?? "sure",
     answeredAt: args.answeredAt,
+    resetGeneration,
     sessionId: args.options?.sessionId ?? null,
     sessionMode: args.options?.sessionMode ?? null,
   };
@@ -2227,7 +2731,9 @@ async function recordLearningAndLeaderboard(args: {
           createQueuedCloudMutation(userId, {
             kind: "record-leaderboard-answer",
             eventId,
+            questionId: args.questionId,
             isCorrect: args.isCorrect,
+            resetGeneration,
           }),
         ]
       : undefined,
@@ -2484,12 +2990,15 @@ export async function clearWrongQuestions(): Promise<void> {
   const tx = db.transaction(["wrongQuestions", "syncIntents"], "readwrite");
   await tx.objectStore("wrongQuestions").clear();
   if (userId) {
-    await tx.objectStore("syncIntents").put(
-      createSyncIntentRecord(userId, {
-        kind: "clear-table",
-        table: "user_wrong_records",
-      }),
-    );
+    for (const examId of ["senior-securities", "junior-foreign-exchange"] as const) {
+      await tx.objectStore("syncIntents").put(
+        createSyncIntentRecord(userId, {
+          kind: "clear-table",
+          table: "user_wrong_records",
+          examId,
+        }),
+      );
+    }
   }
   await tx.done;
   if (userId) await drainLocalSyncIntents(userId, db);
@@ -3327,6 +3836,7 @@ export async function deleteImageQuizSessions(
             createSyncIntentRecord(userId, {
               kind: "delete-image-session",
               sessionId,
+              examId: inferLearningResetExamId({ record: session }),
             }),
           );
         }
@@ -3344,6 +3854,30 @@ export async function deleteImageQuizSessions(
     if (!deleted) skippedSessionIds.push(sessionId);
   }
   return skippedSessionIds;
+}
+
+async function enqueueScopedDeleteMany(
+  userId: string | null,
+  table: CloudTableName,
+  column: string,
+  values: string[],
+): Promise<void> {
+  const grouped = new Map<LearningResetExamId, string[]>();
+  for (const value of values) {
+    const examId = inferLearningResetExamId({ questionId: value, scopeId: value });
+    const keys = grouped.get(examId) ?? [];
+    keys.push(value);
+    grouped.set(examId, keys);
+  }
+  for (const [examId, keys] of grouped) {
+    await enqueueCloudMutation(userId, {
+      kind: "delete-many",
+      table,
+      column,
+      values: keys,
+      examId,
+    });
+  }
 }
 
 export async function clearChapterMemory(ref: {
@@ -3370,20 +3904,20 @@ export async function clearChapterMemory(ref: {
     )
     .map((wrongQuestion) => wrongQuestion.questionId);
   if (answerIds.length > 0) {
-    await enqueueCloudMutation(userId, {
-      kind: "delete-many",
-      table: "user_answer_records",
-      column: "question_id",
-      values: answerIds,
-    });
+    await enqueueScopedDeleteMany(
+      userId,
+      "user_answer_records",
+      "question_id",
+      answerIds,
+    );
   }
   if (wrongIds.length > 0) {
-    await enqueueCloudMutation(userId, {
-      kind: "delete-many",
-      table: "user_wrong_records",
-      column: "question_id",
-      values: wrongIds,
-    });
+    await enqueueScopedDeleteMany(
+      userId,
+      "user_wrong_records",
+      "question_id",
+      wrongIds,
+    );
   }
   if (ref.progressScopeId) {
     await enqueueCloudMutation(userId, {
@@ -3424,12 +3958,12 @@ export async function clearSelectedUserRecords(
       .filter((answer) => questionIds.has(answer.questionId))
       .map((answer) => answer.questionId);
     if (ids.length > 0) {
-      await enqueueCloudMutation(userId, {
-        kind: "delete-many",
-        table: "user_answer_records",
-        column: "question_id",
-        values: ids,
-      });
+      await enqueueScopedDeleteMany(
+        userId,
+        "user_answer_records",
+        "question_id",
+        ids,
+      );
     }
     await Promise.all(
       ids.map((questionId) => db.delete("userAnswers", questionId)),
@@ -3442,12 +3976,12 @@ export async function clearSelectedUserRecords(
       .filter((wrongQuestion) => questionIds.has(wrongQuestion.questionId))
       .map((wrongQuestion) => wrongQuestion.questionId);
     if (ids.length > 0) {
-      await enqueueCloudMutation(userId, {
-        kind: "delete-many",
-        table: "user_wrong_records",
-        column: "question_id",
-        values: ids,
-      });
+      await enqueueScopedDeleteMany(
+        userId,
+        "user_wrong_records",
+        "question_id",
+        ids,
+      );
     }
     await Promise.all(
       ids.map((questionId) => db.delete("wrongQuestions", questionId)),
@@ -3462,12 +3996,12 @@ export async function clearSelectedUserRecords(
       )
       .map((favoriteQuestion) => favoriteQuestion.questionId);
     if (ids.length > 0) {
-      await enqueueCloudMutation(userId, {
-        kind: "delete-many",
-        table: "user_favorite_records",
-        column: "question_id",
-        values: ids,
-      });
+      await enqueueScopedDeleteMany(
+        userId,
+        "user_favorite_records",
+        "question_id",
+        ids,
+      );
     }
     await Promise.all(
       ids.map((questionId) => db.delete("favoriteQuestions", questionId)),
@@ -3486,12 +4020,12 @@ export async function clearSelectedUserRecords(
       )
       .map((progress) => progress.scopeId);
     if (progressIds.length > 0) {
-      await enqueueCloudMutation(userId, {
-        kind: "delete-many",
-        table: "user_quiz_progress",
-        column: "scope_id",
-        values: progressIds,
-      });
+      await enqueueScopedDeleteMany(
+        userId,
+        "user_quiz_progress",
+        "scope_id",
+        progressIds,
+      );
     }
     await Promise.all(
       progressIds.map((scopeId) => db.delete("quizProgress", scopeId)),
@@ -3500,17 +4034,20 @@ export async function clearSelectedUserRecords(
 
   if (parts.has("sessions")) {
     const imageSessions = await db.getAll("imageQuizSessions");
-    const matchingImageSessionIds = imageSessions
+    const matchingImageSessions = imageSessions
       .filter(
         (session) =>
           sessionBankIds.has(session.bankId) ||
           session.questionIds.some((questionId) => questionIds.has(questionId)),
-      )
-      .map((session) => session.sessionId);
-    for (const sessionId of matchingImageSessionIds) {
+      );
+    const matchingImageSessionIds = matchingImageSessions.map(
+      (session) => session.sessionId,
+    );
+    for (const session of matchingImageSessions) {
       await enqueueCloudMutation(userId, {
         kind: "delete-image-session",
-        sessionId,
+        sessionId: session.sessionId,
+        examId: inferLearningResetExamId({ record: session }),
       });
     }
     await Promise.all(
@@ -3523,10 +4060,12 @@ export async function clearSelectedUserRecords(
       await enqueueCloudMutation(userId, {
         kind: "clear-table",
         table: "user_quiz_sessions",
+        examId: "senior-securities",
       });
       await enqueueCloudMutation(userId, {
         kind: "clear-table",
         table: "user_image_quiz_sessions",
+        examId: "senior-securities",
       });
       await db.clear("quizSessions");
     }
@@ -3535,26 +4074,18 @@ export async function clearSelectedUserRecords(
 
 export async function clearAllUserRecords(): Promise<void> {
   const { db, userId } = await getDbContext();
-  await enqueueCloudMutation(userId, {
-    kind: "clear-table",
-    table: "user_answer_records",
-  });
-  await enqueueCloudMutation(userId, {
-    kind: "clear-table",
-    table: "user_wrong_records",
-  });
-  await enqueueCloudMutation(userId, {
-    kind: "clear-table",
-    table: "user_favorite_records",
-  });
-  await enqueueCloudMutation(userId, {
-    kind: "clear-table",
-    table: "user_quiz_progress",
-  });
-  await enqueueCloudMutation(userId, {
-    kind: "clear-table",
-    table: "user_quiz_sessions",
-  });
+  for (const examId of ["senior-securities", "junior-foreign-exchange"] as const) {
+    for (const table of [
+      "user_answer_records",
+      "user_wrong_records",
+      "user_favorite_records",
+      "user_quiz_progress",
+      "user_quiz_sessions",
+      "user_image_quiz_sessions",
+    ] as const) {
+      await enqueueCloudMutation(userId, { kind: "clear-table", table, examId });
+    }
+  }
   const tx = db.transaction(
     [
       "userAnswers",

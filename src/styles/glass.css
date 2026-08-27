@@ -2269,6 +2269,22 @@ p {
   background: rgba(255, 255, 255, 0.1);
   line-height: 1.55;
 }
+.activation-support {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 11px;
+  margin: 0;
+  padding: 13px 14px;
+  border: 1px solid rgba(29, 111, 138, 0.16);
+  border-radius: 16px;
+  color: #40566a;
+  background: rgba(235, 246, 249, 0.72);
+}
+.activation-support > svg { margin-top: 2px; color: var(--primary, #1d6f8a); }
+.activation-support strong { color: #173b4d; }
+.activation-support p { margin: 3px 0 0; font-size: .8rem; line-height: 1.55; }
+.activation-support a { color: var(--primary, #1d6f8a); font-weight: 850; overflow-wrap: anywhere; }
 .auth-form label {
   display: grid;
   gap: 7px;

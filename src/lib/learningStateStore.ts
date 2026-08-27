@@ -20,6 +20,7 @@ export type LearningAttemptInput = {
   isCorrect: boolean;
   confidence: AnswerConfidence;
   answeredAt: string;
+  resetGeneration?: number;
   sessionId?: string | null;
   sessionMode?: string | null;
 };
@@ -214,6 +215,10 @@ function normalizeAttempt(raw: unknown): LearningAttemptInput | null {
         ? value.confidence
         : "sure",
     answeredAt: validDateIso(value.answeredAt, new Date(0).toISOString()),
+    resetGeneration: Math.max(
+      0,
+      Math.trunc(finiteNumber(value.resetGeneration, 0)),
+    ),
     sessionId: value.sessionId ?? null,
     sessionMode: value.sessionMode ?? null,
   };

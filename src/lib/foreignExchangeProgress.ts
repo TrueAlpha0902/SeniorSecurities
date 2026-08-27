@@ -214,9 +214,26 @@ export function resetForeignExchangeProgressState(
 
 export async function clearForeignExchangeProgress(
   mode: ForeignExchangeClearMode = "complete",
+  options: { localOnly?: boolean } = {},
 ): Promise<void> {
   const current = readForeignExchangeProgress();
   const localWrongIds = [...current.wrongReviewIds];
+
+  if (options.localOnly) {
+    writeProgress(resetForeignExchangeProgressState(current, mode));
+    if (mode !== "wrong") {
+      for (const key of Object.keys(localStorage)) {
+        if (
+          key.includes("quizpwa:fx-mock:v2:") ||
+          key.includes("foreign-exchange:mock:")
+        ) {
+          localStorage.removeItem(key);
+        }
+      }
+    }
+    writeScopedStorageItem(CLOUD_MIGRATION_KEY, "true");
+    return;
+  }
 
   const [answers, wrongQuestions, favorites] = await Promise.all([
     listUserAnswers().catch(() => []),
@@ -246,7 +263,12 @@ export async function clearForeignExchangeProgress(
 
   writeProgress(resetForeignExchangeProgressState(current, mode));
   for (const key of Object.keys(localStorage)) {
-    if (key.includes("foreign-exchange:mock:")) localStorage.removeItem(key);
+    if (
+      key.includes("quizpwa:fx-mock:v2:") ||
+      key.includes("foreign-exchange:mock:")
+    ) {
+      localStorage.removeItem(key);
+    }
   }
 
   const allForeignExchangeIds = Array.from(new Set([
